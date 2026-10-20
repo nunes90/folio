@@ -4,10 +4,18 @@
   "version": "0.1.0",
   "identifier": "io.github.nunes90.leitor",
   "build": {
-    "frontendDist": "../../ui"
+    "beforeDevCommand": {
+      "script": "npm run dev",
+      "cwd": "../../ui"
+    },
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": {
+      "script": "npm run build",
+      "cwd": "../../ui"
+    },
+    "frontendDist": "../../ui/dist"
   },
   "app": {
-    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Leitor",
@@ -21,6 +29,8 @@
   },
   "bundle": {
     "active": false,
-    "icon": ["icons/icon.png"]
+    "icon": [
+      "icons/icon.png"
+    ]
   }
 }
