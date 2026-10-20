@@ -10,3 +10,7 @@ cargo clippy --all-targets --quiet -- -D warnings
 
 echo "pre-commit: cargo test"
 cargo test --quiet
+
+echo "pre-commit: frontend (svelte-check + vitest)"
+npm --prefix ui run --silent check
+npm --prefix ui run --silent test

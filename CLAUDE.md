@@ -20,13 +20,13 @@ Prioridades: **acessibilidade ampla** e **animações fluidas**. Linguagem princ
 - **EPUB**: foliate-js (MIT) na webview. EPUB é HTML/CSS, então a webview resolve o layout e o leitor de tela.
 - **PDF**: pdf.js para começar (camada de texto acessível); pdfium-render no Rust se a performance exigir.
 - **Proibido**: dependências AGPL (ex.: MuPDF). Isso é verificado por `cargo deny`.
-- Frontend: a definir (Svelte ou Solid; ou Leptos/Dioxus-web se quisermos 100% Rust).
+- **Frontend**: Svelte 5 + Vite + TypeScript, sem SvelteKit (ADR 0003). Testes: Vitest + Testing Library + axe-core.
 
 ## Arquitetura
 ```
 crates/core/   # lógica pura, SEM dependência de Tauri. Toda lógica testável vive aqui.
 crates/app/    # Tauri: comandos finos (3–5 linhas) que só chamam o core.
-ui/            # frontend + foliate-js + pdf.js
+ui/            # frontend Svelte + foliate-js + pdf.js
 tests/fixtures/  # EPUBs/PDFs de teste (domínio público + casos quebrados)
 docs/decisions/  # ADRs
 ```
@@ -64,6 +64,9 @@ docs/decisions/  # ADRs
   janela com `ui/` estática (HTML/JS puros até escolhermos o framework), logging tracing → stderr +
   arquivo com rotação diária (7 arquivos), logs do frontend via `tauri-plugin-log` (`skip_logger` +
   `tracing-log`), `deny.toml`, CI (Ubuntu + macOS) e hook em `.githooks/` (`git config core.hooksPath .githooks`).
-- Rodar: `cargo run` (não precisa do `tauri-cli` por enquanto). Ícone em `crates/app/icons/` é provisório.
-- Pendências: CI do frontend (Vitest/axe) entra quando houver framework; janela ainda não testada no macOS.
-- Próximo passo: **M1**. Antes, decidir o frontend (Svelte/Solid/Leptos).
+- Frontend em Svelte 5 (branch `feat/frontend-svelte`): `ui/` com Vite + TS, log do frontend via
+  `@tauri-apps/plugin-log` (`ui/src/lib/log.ts`), teste com axe-core, job "Frontend" na CI, hook roda svelte-check + vitest.
+- Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
+  Ícone em `crates/app/icons/` é provisório.
+- Pendências: janela ainda não testada no macOS; a origem dos logs do frontend aponta para o wrapper/JS minificado.
+- Próximo passo: **M1** (abrir EPUB com foliate-js).
