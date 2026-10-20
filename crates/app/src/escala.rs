@@ -18,9 +18,11 @@ pub const EVENTO: &str = "escala-texto";
 pub struct EscalaTexto(pub Mutex<f64>);
 
 /// DPI de referência: escala 1.
+#[cfg(target_os = "linux")]
 const DPI_BASE: f64 = 96.0;
 
 /// Converte `gtk-xft-dpi` (DPI × 1024; ≤ 0 significa "não definido") em fator de escala.
+#[cfg(target_os = "linux")]
 pub fn fator_de_xft_dpi(xft_dpi: i32) -> f64 {
     if xft_dpi <= 0 {
         return 1.0;
@@ -78,7 +80,7 @@ fn fator_do_sistema() -> f64 {
 #[cfg(not(target_os = "linux"))]
 fn observar<R: Runtime>(_app: AppHandle<R>, _janela: WebviewWindow<R>) {}
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
 
