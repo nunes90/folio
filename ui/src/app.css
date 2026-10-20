@@ -1,10 +1,20 @@
 :root {
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
+  /* Escala de texto do sistema (definida por lib/escala.svelte.ts). Use rem na interface. */
+  font-size: calc(100% * var(--escala-texto, 1));
 }
 
 body {
   margin: 0;
+}
+
+/* Controles de formulário não herdam a fonte por padrão e ignorariam a escala de texto. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 /* Rede de segurança global; componentes com animação também devem checar a preferência. */

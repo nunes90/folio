@@ -57,16 +57,19 @@ docs/decisions/  # ADRs
 - WebKitGTK é o ponto fraco do Tauri no Linux. Ficar atento a NVIDIA/Wayland.
   Com driver NVIDIA, o renderizador DMABUF derruba a janela ("Error 71 (Protocol error)");
   o app define `WEBKIT_DISABLE_DMABUF_RENDERER=1` sozinho (ver `crates/app/src/main.rs`).
+- **Nunca usar zoom da webview**: no WebKitGTK ele é aplicado duas vezes em iframes e quebra o foliate-js.
+  A escala de texto do sistema é anulada no zoom e reaplicada via CSS (ADR 0004). Interface em `rem`.
 - Empacotamento: Flatpak (preferido) / AppImage; `.dmg` no macOS.
 
 ## Estado atual
-- **M0 concluído** (branch `feat/m0-esqueleto`): workspace (`leitor-core` + `leitor`), Tauri 2 abrindo
-  janela com `ui/` estática (HTML/JS puros até escolhermos o framework), logging tracing → stderr +
-  arquivo com rotação diária (7 arquivos), logs do frontend via `tauri-plugin-log` (`skip_logger` +
-  `tracing-log`), `deny.toml`, CI (Ubuntu + macOS) e hook em `.githooks/` (`git config core.hooksPath .githooks`).
-- Frontend em Svelte 5 (branch `feat/frontend-svelte`): `ui/` com Vite + TS, log do frontend via
-  `@tauri-apps/plugin-log` (`ui/src/lib/log.ts`), teste com axe-core, job "Frontend" na CI, hook roda svelte-check + vitest.
+- **M0**: workspace (`leitor-core` + `leitor`), Tauri 2, logging tracing → stderr + arquivo (rotação diária),
+  logs do frontend via `tauri-plugin-log`, `deny.toml`, CI (Ubuntu + macOS + frontend), hook em `.githooks/`.
+- **Frontend**: Svelte 5 + Vite + TS (ADR 0003).
+- **M1** (branch `feat/m1-abrir-epub`): `formato::detectar` e `livro::abrir` no core (proptest + fixtures em
+  `tests/fixtures/`); diálogo via `tauri-plugin-dialog`; `leitor caminho.epub` abre direto; foliate-js copiado em
+  `ui/src/vendor/foliate-js/` (commit 78914ae, sem `pdf.js`: o Vite troca por um stub); componentes `Leitor` e
+  `Indice`; escala de texto via CSS (ADR 0004).
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
-  Ícone em `crates/app/icons/` é provisório.
-- Pendências: janela ainda não testada no macOS; a origem dos logs do frontend aponta para o wrapper/JS minificado.
-- Próximo passo: **M1** (abrir EPUB com foliate-js).
+- Pendências: janela não testada no macOS; detecção de EPUB é estrita (`mimetype` precisa ser o 1º arquivo, sem
+  compressão), relaxar no M2; `abrir_livro` aceita qualquer caminho; origem dos logs do frontend aponta para o wrapper.
+- Próximo passo: **M2** (biblioteca).

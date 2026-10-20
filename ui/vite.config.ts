@@ -1,13 +1,26 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { svelteTesting } from "@testing-library/svelte/vite";
+import { fileURLToPath } from "node:url";
+import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
+
+// Troca o `./pdf.js` do foliate-js por um stub (ver src/lib/foliate-sem-pdf.js).
+const foliateSemPdf: Plugin = {
+  name: "foliate-sem-pdf",
+  enforce: "pre",
+  resolveId(fonte, importador) {
+    if (fonte === "./pdf.js" && importador?.includes("/vendor/foliate-js/")) {
+      return fileURLToPath(new URL("./src/lib/foliate-sem-pdf.js", import.meta.url));
+    }
+  },
+};
 
 // Definido pelo Tauri CLI ao rodar em dispositivo remoto; no desktop fica vazio.
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
   // svelteTesting: nos testes, usa a build "browser" do Svelte e limpa o DOM após cada teste.
-  plugins: [svelte(), svelteTesting()],
+  plugins: [foliateSemPdf, svelte(), svelteTesting()],
 
   // Não apagar a saída do Rust no terminal do `cargo tauri dev`.
   clearScreen: false,
