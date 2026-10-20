@@ -1,0 +1,18 @@
+[package]
+name = "leitor"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+leitor-core.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tauri = { version = "2", features = [] }
+tauri-plugin-log = "2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "tracing-log"] }
+tracing-appender = "0.2"
+directories = "6"
