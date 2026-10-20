@@ -44,10 +44,14 @@ pub fn init() -> anyhow::Result<WorkerGuard> {
 
     // try_init também instala o LogTracer (feature `tracing-log`), que converte
     // registros do crate `log` (Tauri, plugins, frontend) em eventos tracing.
+    //
+    // A camada do arquivo vem primeiro: as duas camadas compartilham o cache dos campos
+    // formatados de cada span, e quem formata primeiro decide. Se fosse a do stderr, os
+    // códigos de cor ANSI iriam parar no arquivo.
     tracing_subscriber::registry()
         .with(filtro)
-        .with(fmt::layer().with_writer(std::io::stderr))
         .with(fmt::layer().with_ansi(false).with_writer(escritor))
+        .with(fmt::layer().with_writer(std::io::stderr))
         .try_init()
         .context("inicializando o tracing")?;
 

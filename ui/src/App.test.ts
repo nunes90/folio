@@ -9,6 +9,11 @@ describe("App", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Leitor" })).toBeTruthy();
   });
 
+  it("oferece um botão para abrir livro", () => {
+    render(App);
+    expect(screen.getByRole("button", { name: "Abrir livro…" })).toBeTruthy();
+  });
+
   it("tem uma região main", () => {
     render(App);
     expect(screen.getByRole("main")).toBeTruthy();

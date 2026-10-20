@@ -1,6 +1,8 @@
 // Sem janela de console no Windows em release.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod comandos;
+mod escala;
 mod logging;
 
 use anyhow::Context;
@@ -20,6 +22,13 @@ fn main() -> anyhow::Result<()> {
         // skip_logger: o plugin não instala logger próprio. Os logs do frontend
         // chegam pelo crate `log` e o tracing-log os encaminha ao mesmo arquivo.
         .plugin(tauri_plugin_log::Builder::new().skip_logger().build())
+        .plugin(tauri_plugin_dialog::init())
+        .setup(|app| Ok(escala::configurar(app.handle())?))
+        .invoke_handler(tauri::generate_handler![
+            comandos::abrir_livro,
+            comandos::caminho_inicial,
+            comandos::escala_texto
+        ])
         .run(tauri::generate_context!())
         .context("falha ao executar o app Tauri")
 }
