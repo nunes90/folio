@@ -1,0 +1,18 @@
+---
+source: crates/core/tests/epub.rs
+expression: livro.metadados
+---
+Metadados {
+    titulo: Some(
+        "Dom Casmurro",
+    ),
+    autores: [
+        "Machado de Assis",
+    ],
+    idioma: Some(
+        "pt",
+    ),
+    identificador: Some(
+        "http://www.gutenberg.org/55752",
+    ),
+}

@@ -3,15 +3,16 @@ import axe from "axe-core";
 import { describe, expect, it } from "vitest";
 import App from "./App.svelte";
 
+// Fora do Tauri não há biblioteca: o App mostra a biblioteca vazia.
 describe("App", () => {
-  it("mostra o título do app", () => {
+  it("abre na biblioteca", () => {
     render(App);
-    expect(screen.getByRole("heading", { level: 1, name: "Leitor" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Biblioteca" })).toBeTruthy();
   });
 
-  it("oferece um botão para abrir livro", () => {
+  it("oferece um botão para importar livros", () => {
     render(App);
-    expect(screen.getByRole("button", { name: "Abrir livro…" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Importar livros…" })).toBeTruthy();
   });
 
   it("tem uma região main", () => {

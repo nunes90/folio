@@ -65,11 +65,15 @@ docs/decisions/  # ADRs
 - **M0**: workspace (`leitor-core` + `leitor`), Tauri 2, logging tracing → stderr + arquivo (rotação diária),
   logs do frontend via `tauri-plugin-log`, `deny.toml`, CI (Ubuntu + macOS + frontend), hook em `.githooks/`.
 - **Frontend**: Svelte 5 + Vite + TS (ADR 0003).
-- **M1** (branch `feat/m1-abrir-epub`): `formato::detectar` e `livro::abrir` no core (proptest + fixtures em
-  `tests/fixtures/`); diálogo via `tauri-plugin-dialog`; `leitor caminho.epub` abre direto; foliate-js copiado em
-  `ui/src/vendor/foliate-js/` (commit 78914ae, sem `pdf.js`: o Vite troca por um stub); componentes `Leitor` e
-  `Indice`; escala de texto via CSS (ADR 0004).
+- **M1**: `formato::detectar` (tolerante a EPUBs irregulares) e `livro::abrir`; foliate-js em
+  `ui/src/vendor/foliate-js/` (commit 78914ae, sem `pdf.js`: o Vite troca por um stub); `Leitor` e `Indice`;
+  escala de texto via CSS (ADR 0004).
+- **M2** (branch `feat/m2-biblioteca`): `epub::ler` (metadados + capa, EPUB 2 e 3), `biblioteca` em SQLite (ADR 0005):
+  importar (copia, id = SHA-256), listar por atividade recente, progresso em CFI. Tela `Biblioteca` com capas via
+  protocolo de assets; o livro reabre onde parou. Dados em `~/.local/share/io.github.nunes90.leitor`, capas em
+  `~/.cache/io.github.nunes90.leitor/capas`. Para testar sem tocar nos dados reais: `XDG_DATA_HOME`/`XDG_CACHE_HOME`.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
-- Pendências: janela não testada no macOS; detecção de EPUB é estrita (`mimetype` precisa ser o 1º arquivo, sem
-  compressão), relaxar no M2; `abrir_livro` aceita qualquer caminho; origem dos logs do frontend aponta para o wrapper.
-- Próximo passo: **M2** (biblioteca).
+- Pendências: janela não testada no macOS; remover livro da biblioteca; regerar capas se o cache for limpo;
+  progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
+  origem dos logs do frontend aponta para o wrapper.
+- Próximo passo: **M3** (PDF com pdf.js).

@@ -44,11 +44,19 @@ fn arquivo_vazio() {
 }
 
 #[test]
+fn epubs_irregulares_mas_legiveis_sao_aceitos() {
+    for nome in [
+        "quebrados/sem-mimetype.epub",
+        "quebrados/mimetype-comprimido.epub",
+    ] {
+        assert_eq!(detectar_fixture(nome), Ok(Formato::Epub), "{nome}");
+    }
+}
+
+#[test]
 fn quebrados_sao_desconhecidos() {
     for nome in [
         "quebrados/mimetype-errado.epub",
-        "quebrados/sem-mimetype.epub",
-        "quebrados/mimetype-comprimido.epub",
         "quebrados/truncado.epub",
         "quebrados/texto.epub",
     ] {

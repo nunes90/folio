@@ -3,12 +3,14 @@
 | Arquivo | O que é |
 |---|---|
 | `dom-casmurro.epub` | EPUB 3 real (Machado de Assis), Project Gutenberg #55752, domínio público |
-| `minimo.epub` | EPUB 3 mínimo válido: 2 capítulos e índice |
+| `minimo.epub` | EPUB 3 mínimo válido: 2 capítulos e índice, sem capa |
+| `capa-epub3.epub` | capa por `properties="cover-image"` em `imagens/minha%20capa.png`; título com entidades XML |
+| `capa-epub2.epub` | capa por `<meta name="cover">` (estilo EPUB 2) |
 | `minimo.pdf` | PDF de uma página em branco |
 | `pdf-com-lixo-antes.pdf` | PDF com 100 bytes nulos antes de `%PDF-` (leitores como o Acrobat aceitam) |
-| `quebrados/mimetype-errado.epub` | ZIP cujo `mimetype` diz `application/zip` |
-| `quebrados/sem-mimetype.epub` | ZIP sem o arquivo `mimetype` |
-| `quebrados/mimetype-comprimido.epub` | `mimetype` comprimido (a especificação OCF exige que esteja sem compressão) |
+| `quebrados/mimetype-errado.epub` | ZIP cujo `mimetype` diz `application/zip` (rejeitado) |
+| `quebrados/sem-mimetype.epub` | ZIP sem o arquivo `mimetype`, mas com `META-INF/container.xml` (aceito: irregular, mas legível) |
+| `quebrados/mimetype-comprimido.epub` | `mimetype` comprimido, contra a especificação OCF (aceito: irregular, mas legível) |
 | `quebrados/truncado.epub` | primeiros 20 bytes de `minimo.epub` |
 | `quebrados/vazio.epub` | 0 bytes |
 | `quebrados/texto.epub` | texto puro com extensão `.epub` |
