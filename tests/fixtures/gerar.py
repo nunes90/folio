@@ -3,7 +3,9 @@
 dom-casmurro.epub não é gerado: veio do Project Gutenberg (#55752, domínio público).
 """
 
+import struct
 import zipfile
+import zlib
 from pathlib import Path
 
 AQUI = Path(__file__).parent
@@ -61,14 +63,48 @@ def capitulo(n: int) -> str:
 """
 
 
-def epub(caminho: Path, mimetype: bytes | None, *, comprimir_mimetype: bool = False) -> None:
+def png_1x1() -> bytes:
+    def chunk(tipo: bytes, dados: bytes) -> bytes:
+        return struct.pack(">I", len(dados)) + tipo + dados + struct.pack(">I", zlib.crc32(tipo + dados))
+
+    ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(b"\0\xff\0\0")) + chunk(b"IEND", b"")
+
+
+# EPUB 3: capa por `properties="cover-image"`, num subdiretório e com espaço no nome (href codificado).
+OPF_CAPA_EPUB3 = OPF.replace(
+    "<dc:title>Livro Mínimo</dc:title>",
+    "<dc:title>Tom &amp; Jerry &#233; um t&#xED;tulo</dc:title>\n    <dc:creator>Autora Um</dc:creator>",
+).replace(
+    '<item id="nav"',
+    '<item id="img" href="imagens/minha%20capa.png" media-type="image/png" properties="cover-image"/>\n    <item id="nav"',
+)
+
+# EPUB 2: capa por `<meta name="cover" content="id"/>`, sem `properties`.
+OPF_CAPA_EPUB2 = OPF.replace(
+    '<meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>',
+    '<meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>\n    <meta name="cover" content="capa-img"/>',
+).replace(
+    '<item id="nav"',
+    '<item id="capa-img" href="capa.png" media-type="image/png"/>\n    <item id="nav"',
+)
+
+
+def epub(
+    caminho: Path,
+    mimetype: bytes | None,
+    *,
+    comprimir_mimetype: bool = False,
+    opf: str = OPF,
+    extras: dict[str, bytes] | None = None,
+) -> None:
     with zipfile.ZipFile(caminho, "w") as z:
         if mimetype is not None:
             tipo = zipfile.ZIP_DEFLATED if comprimir_mimetype else zipfile.ZIP_STORED
             z.writestr(zipfile.ZipInfo("mimetype", (2026, 1, 1, 0, 0, 0)), mimetype, compress_type=tipo)
         arquivos = {
             "META-INF/container.xml": CONTAINER,
-            "OEBPS/content.opf": OPF,
+            "OEBPS/content.opf": opf,
             "OEBPS/nav.xhtml": NAV,
             "OEBPS/cap1.xhtml": capitulo(1),
             "OEBPS/cap2.xhtml": capitulo(2),
@@ -76,6 +112,8 @@ def epub(caminho: Path, mimetype: bytes | None, *, comprimir_mimetype: bool = Fa
         for nome, conteudo in arquivos.items():
             info = zipfile.ZipInfo(nome, (2026, 1, 1, 0, 0, 0))
             z.writestr(info, conteudo, compress_type=zipfile.ZIP_DEFLATED)
+        for nome, conteudo in (extras or {}).items():
+            z.writestr(zipfile.ZipInfo(nome, (2026, 1, 1, 0, 0, 0)), conteudo)
 
 
 PDF_MINIMO = b"""%PDF-1.4
@@ -88,6 +126,18 @@ trailer << /Root 1 0 R >>
 
 if __name__ == "__main__":
     epub(AQUI / "minimo.epub", b"application/epub+zip")
+    epub(
+        AQUI / "capa-epub3.epub",
+        b"application/epub+zip",
+        opf=OPF_CAPA_EPUB3,
+        extras={"OEBPS/imagens/minha capa.png": png_1x1()},
+    )
+    epub(
+        AQUI / "capa-epub2.epub",
+        b"application/epub+zip",
+        opf=OPF_CAPA_EPUB2,
+        extras={"OEBPS/capa.png": png_1x1()},
+    )
     epub(AQUI / "quebrados/mimetype-errado.epub", b"application/zip")
     epub(AQUI / "quebrados/sem-mimetype.epub", None)
     epub(AQUI / "quebrados/mimetype-comprimido.epub", b"application/epub+zip", comprimir_mimetype=True)

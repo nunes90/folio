@@ -6,6 +6,7 @@ mod escala;
 mod logging;
 
 use anyhow::Context;
+use tauri::Manager;
 
 fn main() -> anyhow::Result<()> {
     // Antes do logging: init() cria uma thread, e set_var só é seguro sem outras threads.
@@ -23,9 +24,24 @@ fn main() -> anyhow::Result<()> {
         // chegam pelo crate `log` e o tracing-log os encaminha ao mesmo arquivo.
         .plugin(tauri_plugin_log::Builder::new().skip_logger().build())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| Ok(escala::configurar(app.handle())?))
+        .setup(|app| {
+            escala::configurar(app.handle())?;
+            // Dados (banco e livros) e cache de capas nos diretórios do app no sistema.
+            // O escopo do protocolo de assets (tauri.conf.json) libera só $APPCACHE/capas.
+            let caminhos = app.path();
+            let biblioteca = leitor_core::biblioteca::Biblioteca::abrir(
+                &caminhos.app_data_dir()?,
+                &caminhos.app_cache_dir()?.join("capas"),
+            )?;
+            app.manage(comandos::EstadoBiblioteca::new(biblioteca));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
+            comandos::listar_livros,
+            comandos::importar_livros,
             comandos::abrir_livro,
+            comandos::progresso_livro,
+            comandos::salvar_progresso,
             comandos::caminho_inicial,
             comandos::escala_texto
         ])

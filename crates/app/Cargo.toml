@@ -10,8 +10,9 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 leitor-core.workspace = true
 anyhow.workspace = true
+serde = { version = "1", features = ["derive"] }
 tracing.workspace = true
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "tracing-log"] }

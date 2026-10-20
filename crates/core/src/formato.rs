@@ -1,10 +1,29 @@
 //! Detecção do formato de um livro pelo conteúdo (assinatura), não pela extensão.
 
 /// Formatos que o leitor sabe abrir.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Formato {
     Epub,
     Pdf,
+}
+
+impl Formato {
+    /// Forma usada no banco da biblioteca.
+    pub fn como_texto(self) -> &'static str {
+        match self {
+            Formato::Epub => "epub",
+            Formato::Pdf => "pdf",
+        }
+    }
+
+    pub fn de_texto(texto: &str) -> Option<Self> {
+        match texto {
+            "epub" => Some(Formato::Epub),
+            "pdf" => Some(Formato::Pdf),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -28,12 +47,13 @@ const PDF_JANELA: usize = 1024;
 
 /// Descobre o formato a partir dos bytes do arquivo.
 ///
-/// Basta passar o início do arquivo: `PDF_JANELA` + alguns bytes cobrem os dois formatos.
+/// Passe o arquivo inteiro: para EPUBs fora da especificação é preciso ler o índice do ZIP,
+/// que fica no fim do arquivo.
 pub fn detectar(bytes: &[u8]) -> Result<Formato, ErroFormato> {
     if bytes.is_empty() {
         return Err(ErroFormato::Vazio);
     }
-    if eh_epub(bytes) {
+    if eh_epub(bytes) || eh_epub_tolerante(bytes) {
         return Ok(Formato::Epub);
     }
     if eh_pdf(bytes) {
@@ -69,6 +89,27 @@ fn eh_epub(bytes: &[u8]) -> bool {
         && bytes
             .get(inicio_conteudo..)
             .is_some_and(|conteudo| conteudo.starts_with(MIMETYPE_EPUB))
+}
+
+/// Caminho lento para EPUBs fora da especificação, que existem na prática e o foliate-js abre:
+/// `mimetype` comprimido ou fora da primeira posição, ou ausente com `META-INF/container.xml`
+/// presente. Um `mimetype` que declara outro tipo (ex.: `application/zip`) é rejeitado.
+fn eh_epub_tolerante(bytes: &[u8]) -> bool {
+    use std::io::Read;
+
+    if !bytes.starts_with(ZIP_CABECALHO_LOCAL) {
+        return false;
+    }
+    let Ok(mut zip) = zip::ZipArchive::new(std::io::Cursor::new(bytes)) else {
+        return false;
+    };
+    if let Ok(arquivo) = zip.by_name("mimetype") {
+        let mut conteudo = Vec::new();
+        // `take` limita a leitura: o mimetype tem 20 bytes, um arquivo enorme aqui é suspeito.
+        return arquivo.take(64).read_to_end(&mut conteudo).is_ok()
+            && conteudo.trim_ascii() == MIMETYPE_EPUB;
+    }
+    zip.index_for_name("META-INF/container.xml").is_some()
 }
 
 fn eh_pdf(bytes: &[u8]) -> bool {

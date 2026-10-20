@@ -12,7 +12,18 @@
   import { log } from "../lib/log";
   import { prefereMenosMovimento } from "../lib/movimento";
 
-  let { arquivo, onFechar }: { arquivo: File; onFechar: () => void } = $props();
+  let {
+    arquivo,
+    inicio,
+    onFechar,
+    onProgresso,
+  }: {
+    arquivo: File;
+    /** Onde retomar a leitura (EPUB CFI salvo na biblioteca). */
+    inicio?: string;
+    onFechar: () => void;
+    onProgresso?: (localizacao: string, fracao: number) => void;
+  } = $props();
 
   let palco: HTMLDivElement;
   let view: FoliateView | undefined;
@@ -49,9 +60,10 @@
   async function abrir() {
     const v = await criarView();
     v.addEventListener("relocate", (e) => {
-      const { fraction, tocItem } = (e as CustomEvent<DetalheRelocate>).detail;
+      const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;
       progresso = fraction;
       hrefAtual = tocItem?.href;
+      if (cfi) onProgresso?.(cfi, fraction);
     });
     // Cada capítulo é um iframe: as teclas pressionadas lá dentro não chegam à janela.
     v.addEventListener("load", (e) => {
@@ -68,7 +80,7 @@
 
     titulo = textoLocalizado(v.book.metadata?.title) || arquivo.name;
     indice = v.book.toc ?? [];
-    await v.init({ showTextStart: true });
+    await v.init({ lastLocation: inicio ?? null, showTextStart: !inicio });
   }
 
   function aoTeclar(e: KeyboardEvent) {
@@ -99,7 +111,7 @@
       Índice
     </button>
     <h1>{titulo}</h1>
-    <button type="button" onclick={onFechar}>Fechar livro</button>
+    <button type="button" onclick={onFechar}>Voltar à biblioteca</button>
   </header>
 
   <nav id="indice" aria-label="Índice" hidden={!indiceAberto}>

@@ -16,6 +16,8 @@ export interface Livro {
 
 export interface DetalheRelocate {
   fraction: number;
+  /** Posição atual como EPUB CFI; é o que guardamos para retomar a leitura. */
+  cfi?: string;
   tocItem?: { href: string; label: string };
 }
 
