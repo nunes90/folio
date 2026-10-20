@@ -55,7 +55,15 @@ docs/decisions/  # ADRs
 - O app não controla a posição da janela; o compositor decide.
 - Testar com decorações client-side (GNOME) e server-side (KDE/wlroots).
 - WebKitGTK é o ponto fraco do Tauri no Linux. Ficar atento a NVIDIA/Wayland.
+  Com driver NVIDIA, o renderizador DMABUF derruba a janela ("Error 71 (Protocol error)");
+  o app define `WEBKIT_DISABLE_DMABUF_RENDERER=1` sozinho (ver `crates/app/src/main.rs`).
 - Empacotamento: Flatpak (preferido) / AppImage; `.dmg` no macOS.
 
 ## Estado atual
-- Nada implementado ainda. Próximo passo: **M0** (ver ROADMAP.md).
+- **M0 concluído** (branch `feat/m0-esqueleto`): workspace (`leitor-core` + `leitor`), Tauri 2 abrindo
+  janela com `ui/` estática (HTML/JS puros até escolhermos o framework), logging tracing → stderr +
+  arquivo com rotação diária (7 arquivos), logs do frontend via `tauri-plugin-log` (`skip_logger` +
+  `tracing-log`), `deny.toml`, CI (Ubuntu + macOS) e hook em `.githooks/` (`git config core.hooksPath .githooks`).
+- Rodar: `cargo run` (não precisa do `tauri-cli` por enquanto). Ícone em `crates/app/icons/` é provisório.
+- Pendências: CI do frontend (Vitest/axe) entra quando houver framework; janela ainda não testada no macOS.
+- Próximo passo: **M1**. Antes, decidir o frontend (Svelte/Solid/Leptos).

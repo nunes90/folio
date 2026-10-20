@@ -1,0 +1,16 @@
+//! Núcleo do Leitor: lógica pura, sem dependência de Tauri.
+//!
+//! Parsing, biblioteca e modelo de dados vivem aqui (a partir do M1).
+
+/// Versão do núcleo, exposta para o app registrar no log de inicialização.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn versao_nao_vazia() {
+        assert!(!VERSION.is_empty());
+    }
+}

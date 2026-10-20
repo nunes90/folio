@@ -1,0 +1,35 @@
+# cargo deny check — licenças, advisories, bans e origens das dependências.
+# Regra do projeto: nada de AGPL/GPL (ex.: MuPDF). Só licenças permissivas na allow-list.
+# A allow-list é mínima: adicione uma licença só quando uma dependência nova precisar.
+
+[graph]
+all-features = true
+
+[advisories]
+# Advisories "unmaintained" afetam só dependências diretas; transitivas (ex.: GTK3 via Tauri) não travam a CI.
+unmaintained = "workspace"
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "Zlib",
+    "Unicode-3.0",
+    "MPL-2.0",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+# Crates do workspace (publish = false) não precisam de licença declarada.
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

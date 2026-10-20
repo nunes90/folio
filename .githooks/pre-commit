@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+# Ativar uma vez por clone:  git config core.hooksPath .githooks
+set -e
+
+echo "pre-commit: cargo fmt"
+cargo fmt --all --check
+
+echo "pre-commit: cargo clippy"
+cargo clippy --all-targets --quiet -- -D warnings
+
+echo "pre-commit: cargo test"
+cargo test --quiet
