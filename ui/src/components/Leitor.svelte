@@ -40,6 +40,10 @@
   let titulo = $state("");
   let indice = $state<ItemIndice[]>([]);
   let hrefAtual = $state<string>();
+  let tituloEl: HTMLHeadingElement;
+  /** Texto da região aria-live: anuncia a mudança de capítulo (não cada página). */
+  let anuncio = $state("");
+  let capituloAnunciado: string | undefined;
   let progresso = $state(0);
   let indiceAberto = $state(true);
   let aparenciaAberta = $state(false);
@@ -89,10 +93,30 @@
       progresso = fraction;
       hrefAtual = tocItem?.href;
       if (cfi) onProgresso?.(cfi, fraction);
+      const capitulo = tocItem?.label.trim();
+      // O primeiro posicionamento não é anunciado: o foco no título já informa o livro.
+      if (capitulo && capitulo !== capituloAnunciado) {
+        if (capituloAnunciado !== undefined) anuncio = `Capítulo: ${capitulo}`;
+        capituloAnunciado = capitulo;
+      }
     });
-    // Cada capítulo é um iframe: as teclas pressionadas lá dentro não chegam à janela.
+    // Cada capítulo é um iframe: teclas pressionadas lá dentro não chegam à janela. Uma cópia
+    // é reenviada à janela, onde ficam todos os atalhos (inclusive o F1 do App).
     v.addEventListener("load", (e) => {
-      (e as CustomEvent<{ doc: Document }>).detail.doc.addEventListener("keydown", aoTeclar);
+      const doc = (e as CustomEvent<{ doc: Document }>).detail.doc;
+      doc.addEventListener("keydown", (original) => {
+        const copia = new KeyboardEvent("keydown", {
+          key: original.key,
+          code: original.code,
+          ctrlKey: original.ctrlKey,
+          shiftKey: original.shiftKey,
+          altKey: original.altKey,
+          metaKey: original.metaKey,
+          cancelable: true,
+        });
+        window.dispatchEvent(copia);
+        if (copia.defaultPrevented) original.preventDefault();
+      });
     });
     palco.append(v);
     view = v;
@@ -104,9 +128,20 @@
     titulo = textoLocalizado(v.book.metadata?.title) || arquivo.name;
     indice = v.book.toc ?? [];
     await v.init({ lastLocation: inicio ?? null, showTextStart: !inicio });
+    // Foco no título: o leitor de tela anuncia qual livro foi aberto.
+    tituloEl.focus();
+  }
+
+  async function irParaCapitulo(href: string) {
+    if (!view) return;
+    await view.goTo(href);
+    // Leva o foco ao texto: o leitor de tela continua a leitura dali.
+    view.renderer.focusView();
   }
 
   function aoTeclar(e: KeyboardEvent) {
+    // Com um diálogo aberto (ex.: atalhos), as teclas são dele.
+    if (e.target instanceof Element && e.target.closest("dialog")) return;
     if (e.key === "Escape" && aparenciaAberta) {
       e.preventDefault();
       fecharAparencia();
@@ -140,7 +175,7 @@
     >
       Índice
     </button>
-    <h1>{titulo}</h1>
+    <h1 tabindex="-1" bind:this={tituloEl}>{titulo}</h1>
     <button
       type="button"
       bind:this={botaoAparencia}
@@ -154,7 +189,7 @@
   </header>
 
   <nav id="indice" aria-label="Índice" hidden={!indiceAberto}>
-    <Indice itens={indice} atual={hrefAtual} onNavegar={(href) => view?.goTo(href)} />
+    <Indice itens={indice} atual={hrefAtual} onNavegar={irParaCapitulo} />
   </nav>
 
   <div class="palco" bind:this={palco}>
@@ -181,6 +216,8 @@
     <span>{porcento.format(progresso)}</span>
     <button type="button" onclick={() => view?.next()}>Próxima</button>
   </footer>
+
+  <p class="so-leitor-de-tela" aria-live="polite">{anuncio}</p>
 </div>
 
 <style>

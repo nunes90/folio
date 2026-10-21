@@ -24,6 +24,7 @@
   } = $props();
 
   let conteiner: HTMLDivElement;
+  let tituloEl: HTMLHeadingElement;
   let campoBusca = $state<HTMLInputElement>();
   let visor: PDFViewer | undefined;
   let tarefa: PDFDocumentLoadingTask | undefined;
@@ -38,6 +39,8 @@
   const BUSCA = { ENCONTRADO: 0, NADA: 1, VOLTOU_AO_INICIO: 2, PENDENTE: 3 };
 
   onMount(() => {
+    // Foco no título: o leitor de tela anuncia qual documento foi aberto.
+    tituloEl.focus();
     window.addEventListener("keydown", aoTeclar);
     abrir().catch((e) => {
       erro = `Não foi possível abrir o PDF: ${e}`;
@@ -111,6 +114,8 @@
   }
 
   function aoTeclar(e: KeyboardEvent) {
+    // Com um diálogo aberto (ex.: atalhos), as teclas são dele.
+    if (e.target instanceof Element && e.target.closest("dialog")) return;
     if (!visor) return;
     const ctrl = e.ctrlKey || e.metaKey;
     if (ctrl && e.key === "f") {
@@ -144,7 +149,7 @@
 <div class="leitor">
   <header>
     <button type="button" onclick={onFechar}>Voltar à biblioteca</button>
-    <h1>{titulo}</h1>
+    <h1 tabindex="-1" bind:this={tituloEl}>{titulo}</h1>
     <BuscaPdf resultado={resultadoBusca} onBuscar={buscar} bind:campo={campoBusca} />
   </header>
 

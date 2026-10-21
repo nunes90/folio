@@ -13,6 +13,7 @@
     preferencias,
     onMudarPreferencias,
     temaDoSistema,
+    focarLivro,
   }: {
     livros: Livro[];
     importando?: boolean;
@@ -24,9 +25,61 @@
     preferencias?: Preferencias;
     onMudarPreferencias?: (mudancas: Partial<Preferencias>) => void;
     temaDoSistema?: TemaEfetivo;
+    /** Id do livro que recebe o foco ao mostrar a biblioteca (o que acabou de ser fechado). */
+    focarLivro?: string;
   } = $props();
 
   let aparenciaAberta = $state(false);
+
+  // Roving tabindex: a grade é uma só parada de Tab; as setas movem entre os livros.
+  let ativo = $state(0);
+  let lista = $state<HTMLUListElement>();
+
+  function botoes(): HTMLButtonElement[] {
+    return lista ? [...lista.querySelectorAll<HTMLButtonElement>(":scope > li > button")] : [];
+  }
+
+  function focar(indice: number) {
+    const todos = botoes();
+    if (!todos.length) return;
+    ativo = Math.max(0, Math.min(indice, todos.length - 1));
+    todos[ativo]!.focus();
+  }
+
+  /** Livros por linha, medidos no layout (a grade se adapta à largura da janela). */
+  function porLinha(): number {
+    const todos = botoes();
+    const topo = todos[0]?.offsetTop;
+    const n = todos.filter((b) => b.offsetTop === topo).length;
+    return Math.max(1, n);
+  }
+
+  function aoTeclar(e: KeyboardEvent) {
+    const destinos: Record<string, () => number> = {
+      ArrowRight: () => ativo + 1,
+      ArrowLeft: () => ativo - 1,
+      ArrowDown: () => ativo + porLinha(),
+      ArrowUp: () => ativo - porLinha(),
+      Home: () => 0,
+      End: () => livros.length - 1,
+    };
+    const destino = destinos[e.key];
+    if (!destino) return;
+    e.preventDefault();
+    focar(destino());
+  }
+
+  // Ao voltar de um livro, o foco vai para ele (e não para o topo da página).
+  $effect(() => {
+    if (!focarLivro || !lista) return;
+    const indice = livros.findIndex((l) => l.id === focarLivro);
+    if (indice >= 0) focar(indice);
+  });
+
+  // Se a lista encolher, o índice ativo continua válido.
+  $effect(() => {
+    if (ativo >= livros.length) ativo = Math.max(0, livros.length - 1);
+  });
 
   const porcento = new Intl.NumberFormat("pt-BR", { style: "percent" });
 
@@ -80,11 +133,18 @@
   {#if livros.length === 0}
     <p class="vazia">Sua biblioteca está vazia. Importe um EPUB ou PDF para começar.</p>
   {:else}
-    <ul>
-      {#each livros as livro (livro.id)}
+    <!-- As setas são tratadas no <ul> (delegação): o evento sobe do botão focado. -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <ul bind:this={lista} onkeydown={aoTeclar} aria-label="Livros">
+      {#each livros as livro, i (livro.id)}
         {@const capa = urlDaCapa(livro)}
         <li>
-          <button type="button" onclick={() => onAbrir(livro)}>
+          <button
+            type="button"
+            tabindex={i === ativo ? 0 : -1}
+            onfocus={() => (ativo = i)}
+            onclick={() => onAbrir(livro)}
+          >
             {#if capa}
               <!-- alt vazio: o título logo abaixo já identifica o livro. -->
               <img src={capa} alt="" loading="lazy" />

@@ -23,6 +23,8 @@ export interface DetalheRelocate {
 
 export interface Paginador extends HTMLElement {
   setStyles(css: string): void;
+  /** Põe o foco do teclado no capítulo (iframe). */
+  focusView(): void;
   next(): Promise<void>;
   prev(): Promise<void>;
 }
