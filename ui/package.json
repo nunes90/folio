@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copiar-pdfjs.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copiar-pdfjs.mjs",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run"
@@ -25,6 +27,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.3",
-    "@tauri-apps/plugin-log": "^2.10.1"
+    "@tauri-apps/plugin-log": "^2.10.1",
+    "pdfjs-dist": "^6.4.299"
   }
 }

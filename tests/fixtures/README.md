@@ -6,7 +6,9 @@
 | `minimo.epub` | EPUB 3 mínimo válido: 2 capítulos e índice, sem capa |
 | `capa-epub3.epub` | capa por `properties="cover-image"` em `imagens/minha%20capa.png`; título com entidades XML |
 | `capa-epub2.epub` | capa por `<meta name="cover">` (estilo EPUB 2) |
-| `minimo.pdf` | PDF de uma página em branco |
+| `minimo.pdf` | PDF de uma página em branco, sem metadados |
+| `metadados-utf16.pdf` | 2 páginas; título e autores em UTF-16BE (`Memórias Póstumas`, dois autores separados por `;`) |
+| `metadados-pdfdoc.pdf` | 2 páginas; título em PDFDocEncoding com escapes octais e parênteses; autor só com espaços |
 | `pdf-com-lixo-antes.pdf` | PDF com 100 bytes nulos antes de `%PDF-` (leitores como o Acrobat aceitam) |
 | `quebrados/mimetype-errado.epub` | ZIP cujo `mimetype` diz `application/zip` (rejeitado) |
 | `quebrados/sem-mimetype.epub` | ZIP sem o arquivo `mimetype`, mas com `META-INF/container.xml` (aceito: irregular, mas legível) |

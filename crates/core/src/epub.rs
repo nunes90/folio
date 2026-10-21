@@ -11,18 +11,12 @@ use quick_xml::events::{BytesRef, BytesStart, Event};
 use quick_xml::{Reader, XmlVersion};
 use zip::ZipArchive;
 
+pub use crate::metadados::Metadados;
+
 const CONTAINER: &str = "META-INF/container.xml";
 /// Limites de leitura: protegem contra "zip bombs" (arquivos que descompactam para gigabytes).
 const LIMITE_XML: u64 = 4 * 1024 * 1024;
 const LIMITE_CAPA: u64 = 20 * 1024 * 1024;
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Metadados {
-    pub titulo: Option<String>,
-    pub autores: Vec<String>,
-    pub idioma: Option<String>,
-    pub identificador: Option<String>,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Capa {
