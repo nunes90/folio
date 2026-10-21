@@ -21,8 +21,3 @@ export async function iniciarEscala(): Promise<void> {
     log.warn(`escala de texto indisponível: ${e}`);
   }
 }
-
-/** CSS injetado em cada capítulo do livro. */
-export function cssDoLivro(fator: number): string {
-  return `html { font-size: ${fator * 100}% !important; }`;
-}

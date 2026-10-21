@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { cssDoLivro, escala, iniciarEscala } from "./escala.svelte";
+import { escala, iniciarEscala } from "./escala.svelte";
 
+// O font-size do livro (escala × tamanho escolhido) é testado em preferencias.test.ts.
 describe("escala de texto", () => {
-  it("gera o font-size do livro a partir do fator", () => {
-    expect(cssDoLivro(1)).toBe("html { font-size: 100% !important; }");
-    expect(cssDoLivro(1.5)).toBe("html { font-size: 150% !important; }");
-  });
-
   it("fica em 1 fora do Tauri", async () => {
     await iniciarEscala();
     expect(escala.fator).toBe(1);

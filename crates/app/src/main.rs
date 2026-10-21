@@ -44,6 +44,8 @@ fn main() -> anyhow::Result<()> {
             comandos::definir_capa,
             comandos::progresso_livro,
             comandos::salvar_progresso,
+            comandos::preferencias_leitura,
+            comandos::salvar_preferencias_leitura,
             comandos::caminho_inicial,
             comandos::escala_texto
         ])

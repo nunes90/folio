@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Indice from "./Indice.svelte";
+  import PainelLeitura from "./PainelLeitura.svelte";
   import {
     criarView,
     textoLocalizado,
@@ -8,7 +9,13 @@
     type FoliateView,
     type ItemIndice,
   } from "../lib/foliate";
-  import { cssDoLivro, escala } from "../lib/escala.svelte";
+  import { escala } from "../lib/escala.svelte";
+  import {
+    atualizarPreferencias,
+    cssDoLivro,
+    preferencias,
+    restaurarPadrao,
+  } from "../lib/preferencias.svelte";
   import { log } from "../lib/log";
   import { prefereMenosMovimento } from "../lib/movimento";
 
@@ -33,14 +40,28 @@
   let hrefAtual = $state<string>();
   let progresso = $state(0);
   let indiceAberto = $state(true);
+  let aparenciaAberta = $state(false);
+  let botaoAparencia: HTMLButtonElement;
   let erro = $state<string | null>(null);
   let pronto = $state(false);
 
-  // Reaplica sempre que a escala do sistema mudar.
+  // Reaplica sempre que a escala do sistema ou as preferências mudarem (inclusive com o
+  // painel aberto: o livro funciona como prévia ao vivo).
   $effect(() => {
-    const css = cssDoLivro(escala.fator);
-    if (pronto) view?.renderer.setStyles(css);
+    const css = cssDoLivro(preferencias, escala.fator);
+    const largura = `${preferencias.larguraMaxima}px`;
+    const colunas = String(preferencias.colunas);
+    if (!pronto || !view) return;
+    view.renderer.setStyles(css);
+    view.renderer.setAttribute("max-inline-size", largura);
+    view.renderer.setAttribute("max-column-count", colunas);
   });
+
+  function fecharAparencia() {
+    aparenciaAberta = false;
+    // O foco estava dentro do painel, que some: devolve ao botão que o abriu.
+    botaoAparencia.focus();
+  }
 
   const porcento = new Intl.NumberFormat("pt-BR", { style: "percent" });
 
@@ -74,7 +95,6 @@
 
     await v.open(arquivo);
     v.renderer.setAttribute("flow", "paginated");
-    v.renderer.setAttribute("max-column-count", "2");
     if (!prefereMenosMovimento()) v.renderer.setAttribute("animated", "");
     pronto = true;
 
@@ -84,6 +104,13 @@
   }
 
   function aoTeclar(e: KeyboardEvent) {
+    if (e.key === "Escape" && aparenciaAberta) {
+      e.preventDefault();
+      fecharAparencia();
+      return;
+    }
+    // Setas dentro de controles (ex.: deslizantes do painel) são do controle, não do livro.
+    if (e.target instanceof HTMLInputElement) return;
     if (!view || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
     // Setas seguem a direção visual (livros RTL invertem); PageUp/PageDown seguem a ordem de leitura.
     const acoes: Record<string, () => Promise<void>> = {
@@ -111,6 +138,15 @@
       Índice
     </button>
     <h1>{titulo}</h1>
+    <button
+      type="button"
+      bind:this={botaoAparencia}
+      aria-expanded={aparenciaAberta}
+      aria-controls="aparencia"
+      onclick={() => (aparenciaAberta ? fecharAparencia() : (aparenciaAberta = true))}
+    >
+      Aparência
+    </button>
     <button type="button" onclick={onFechar}>Voltar à biblioteca</button>
   </header>
 
@@ -124,6 +160,14 @@
     {/if}
   </div>
 
+  <aside id="aparencia" aria-label="Aparência do texto" hidden={!aparenciaAberta}>
+    <PainelLeitura
+      {preferencias}
+      onMudar={atualizarPreferencias}
+      onRestaurar={restaurarPadrao}
+    />
+  </aside>
+
   <footer>
     <button type="button" onclick={() => view?.prev()}>Anterior</button>
     <span>{porcento.format(progresso)}</span>
@@ -134,12 +178,12 @@
 <style>
   .leitor {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
     grid-template-rows: auto 1fr auto;
     grid-template-areas:
-      "topo topo"
-      "indice palco"
-      "rodape rodape";
+      "topo topo topo"
+      "indice palco aparencia"
+      "rodape rodape rodape";
     height: 100vh;
   }
 
@@ -170,6 +214,15 @@
     border-inline-end: 1px solid color-mix(in srgb, currentColor 15%, transparent);
   }
 
+  aside {
+    grid-area: aparencia;
+    width: 20rem;
+    overflow-y: auto;
+    padding: 0.75rem;
+    border-inline-start: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  }
+
+  aside[hidden],
   nav[hidden] {
     display: none;
   }

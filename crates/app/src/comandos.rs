@@ -5,6 +5,7 @@ use std::sync::Mutex;
 
 use leitor_core::biblioteca::{Biblioteca, LivroNaBiblioteca, Progresso};
 use leitor_core::epub::Capa;
+use leitor_core::preferencias::PreferenciasLeitura;
 use serde::Serialize;
 use tauri::State;
 use tauri::ipc::{InvokeBody, Request, Response};
@@ -117,6 +118,28 @@ pub fn salvar_progresso(
     bib.lock()
         .unwrap()
         .salvar_progresso(&id, &progresso)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn preferencias_leitura(
+    bib: State<'_, EstadoBiblioteca>,
+) -> Result<PreferenciasLeitura, String> {
+    bib.lock()
+        .unwrap()
+        .preferencias_leitura()
+        .map_err(|e| registrar(&e))
+}
+
+/// Devolve o que foi gravado: valores fora dos limites voltam corrigidos.
+#[tauri::command]
+pub fn salvar_preferencias_leitura(
+    bib: State<'_, EstadoBiblioteca>,
+    preferencias: PreferenciasLeitura,
+) -> Result<PreferenciasLeitura, String> {
+    bib.lock()
+        .unwrap()
+        .salvar_preferencias_leitura(preferencias)
         .map_err(|e| registrar(&e))
 }
 

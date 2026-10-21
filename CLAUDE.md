@@ -71,11 +71,16 @@ docs/decisions/  # ADRs
 - **M2**: `epub::ler` (metadados + capa), `biblioteca` em SQLite (ADR 0005): importar (copia, id = SHA-256),
   listar por atividade recente, progresso. Dados em `~/.local/share/io.github.nunes90.leitor`, capas em
   `~/.cache/io.github.nunes90.leitor/capas`. Para testar sem tocar nos dados reais: `XDG_DATA_HOME`/`XDG_CACHE_HOME`.
-- **M3** (branch `feat/m3-pdf`): `pdf::ler` (lopdf: título/autores do `Info`); PDFs entram na biblioteca e a capa é
+- **M3**: `pdf::ler` (lopdf: título/autores do `Info`); PDFs entram na biblioteca e a capa é
   gerada pelo pdf.js no frontend (`definir_capa`, bytes crus com cabeçalhos `livro`/`tipo`). `LeitorPdf` com
   `PDFViewer`, busca, zoom e páginas; progresso `pagina:N`. Detalhes na ADR 0002.
+- **M4a** (branch `feat/m4a-preferencias`): preferências de leitura (`core::preferencias`, normalizadas no core,
+  JSON na tabela `preferencias`, migração 2). Fontes OFL embutidas via Fontsource (Literata, Atkinson Hyperlegible,
+  Lexend, OpenDyslexic; `ui/src/lib/fontes.ts`), tamanho × escala do sistema, entrelinha, espaçamentos, largura,
+  colunas, alinhamento, hifenização. Painel "Aparência" no leitor de EPUB (prévia ao vivo; Esc fecha e devolve o foco).
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
 - Pendências: janela não testada no macOS; remover livro da biblioteca; regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
   origem dos logs do frontend aponta para o wrapper.
-- Próximo passo: **M4** (acessibilidade: fontes, temas, espaçamento, TTS, Orca/VoiceOver).
+- Próximo passo: **M4b** (temas claro/escuro/sépia/alto contraste e movimento reduzido); depois M4c (teclado e
+  leitor de tela) e M4d (leitura em voz alta).
