@@ -21,6 +21,8 @@ export interface Preferencias {
   hifenizacao: boolean;
   tema: TemaEscolhido;
   movimento: Movimento;
+  /** Velocidade da leitura em voz alta, -100 a 100 (0 = normal do sistema). */
+  velocidadeVoz: number;
 }
 
 /** Mesmos padrões e limites do core; o core é quem decide no fim (normaliza ao salvar). */
@@ -36,6 +38,7 @@ export const PADRAO: Preferencias = {
   hifenizacao: false,
   tema: "sistema",
   movimento: "sistema",
+  velocidadeVoz: 0,
 };
 
 export const LIMITES = {
@@ -44,6 +47,7 @@ export const LIMITES = {
   espacoLetras: { min: 0, max: 0.3, passo: 0.01 },
   espacoPalavras: { min: 0, max: 1, passo: 0.05 },
   larguraMaxima: { min: 320, max: 1600, passo: 20 },
+  velocidadeVoz: { min: -100, max: 100, passo: 10 },
 } as const;
 
 export const preferencias = $state<Preferencias>({ ...PADRAO });

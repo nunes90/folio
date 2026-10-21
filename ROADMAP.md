@@ -10,7 +10,7 @@ Cada marco precisa terminar em algo utilizável.
   - [x] M4a — preferências de leitura (fontes, tamanho, espaçamentos, largura, alinhamento)
   - [x] M4b — temas e movimento reduzido
   - [x] M4c — teclado completo, foco e testes com Orca (roteiro em `docs/testes/orca.md`)
-  - [ ] M4d — leitura em voz alta (TTS). Atenção à qualidade da voz: o padrão do sistema (espeak-ng via
+  - [x] M4d — leitura em voz alta (TTS) de EPUB via speech-dispatcher (ADR 0007). Atenção à qualidade da voz: o padrão do sistema (espeak-ng via
     speech-dispatcher) é muito robótico; avaliar vozes neurais locais (ex.: Piper, com vozes pt-BR)
 - [ ] **M5 — Animações e polimento**: virada de página, transições, respeitando `prefers-reduced-motion`.
 - [ ] **M6 — Empacotamento**: Flatpak/AppImage.

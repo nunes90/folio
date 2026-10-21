@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use leitor_core::biblioteca::{Biblioteca, LivroNaBiblioteca, Progresso};
 use leitor_core::epub::Capa;
 use leitor_core::preferencias::PreferenciasLeitura;
+use leitor_core::voz::{ConfigVoz, MotorDeVoz};
 use serde::Serialize;
 use tauri::State;
 use tauri::ipc::{InvokeBody, Request, Response};
@@ -159,4 +160,39 @@ pub fn caminho_inicial() -> Option<PathBuf> {
 #[tauri::command]
 pub fn escala_texto(estado: State<'_, crate::escala::EscalaTexto>) -> f64 {
     *estado.0.lock().unwrap()
+}
+
+/// Motor de voz, se o sistema de voz estiver disponível (`None` = leitura em voz alta desligada).
+pub struct EstadoVoz(pub Option<Box<dyn MotorDeVoz>>);
+
+fn motor<'a>(voz: &'a State<'_, EstadoVoz>) -> Result<&'a dyn MotorDeVoz, String> {
+    voz.0
+        .as_deref()
+        .ok_or_else(|| "a leitura em voz alta precisa do speech-dispatcher".to_string())
+}
+
+#[tauri::command]
+pub fn voz_disponivel(voz: State<'_, EstadoVoz>) -> bool {
+    voz.0.is_some()
+}
+
+/// Fala um bloco SSML; o progresso chega pelo evento `voz` (emitido em `main.rs`).
+#[tauri::command]
+pub fn falar(voz: State<'_, EstadoVoz>, ssml: String, config: ConfigVoz) -> Result<(), String> {
+    motor(&voz)?.falar(ssml, config).map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn pausar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
+    motor(&voz)?.pausar().map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn retomar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
+    motor(&voz)?.retomar().map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn parar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
+    motor(&voz)?.parar().map_err(|e| registrar(&e))
 }

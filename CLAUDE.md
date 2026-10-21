@@ -86,10 +86,15 @@ docs/decisions/  # ADRs
   atalhos de uma letra, WCAG 2.1.4); setas/Home/End na grade da biblioteca (roving tabindex); foco gerenciado (título
   ao abrir, livro de volta ao fechar, texto ao escolher capítulo); mudança de capítulo anunciada por `aria-live`;
   teclas do iframe do EPUB reenviadas à janela. Roteiro manual do Orca em `docs/testes/orca.md`.
+- **M4d** (branch `feat/m4d-voz`): leitura em voz alta de EPUB (ADR 0007). `core::voz` (trait `MotorDeVoz`, máquina de
+  estados pura + `SpeechDispatcher`) e `core::ssip` (cliente SSIP próprio, sem dependências). Frontend converte o SSML
+  do `tts.js` do foliate-js para `<s><mark/>frase</s>` (`ui/src/lib/voz.ts`); destaque da frase lida e passagem
+  automática de parágrafo e capítulo. Velocidade nas preferências. Sem speech-dispatcher, a voz fica indisponível.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
 - Pendências: remover livro da biblioteca; regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
   origem dos logs do frontend aponta para o wrapper.
-- Roteiro do Orca executado (out/2026): navegação funcional. A voz do Orca (espeak-ng do sistema) é muito ruim;
-  isso afeta o M4d. Alternativas de voz ficam em aberto (Lucas vai avaliar).
-- Próximo passo: **M4d** (leitura em voz alta), começando por investigar a voz (speech-dispatcher, Piper, `speechSynthesis`).
+- Roteiro do Orca executado (out/2026): navegação funcional. A voz do sistema (espeak-ng) é muito robótica:
+  afeta o Orca e a leitura em voz alta. Alternativas (Piper no speech-dispatcher, voz neural local) em aberto.
+- Próximo passo: **M5** (animações e polimento). Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+  destaque da frase lida.

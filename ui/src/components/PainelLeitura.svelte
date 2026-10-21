@@ -61,6 +61,11 @@
       rotulo: "Largura máxima da coluna",
       formatar: (v: number) => `${v} px`,
     },
+    {
+      campo: "velocidadeVoz",
+      rotulo: "Velocidade da leitura em voz alta",
+      formatar: (v: number) => (v === 0 ? "normal" : v > 0 ? `+${v}` : `${v}`),
+    },
   ] as const;
 </script>
 

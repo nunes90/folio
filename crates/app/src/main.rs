@@ -6,7 +6,7 @@ mod escala;
 mod logging;
 
 use anyhow::Context;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 fn main() -> anyhow::Result<()> {
     // Antes do logging: init() cria uma thread, e set_var só é seguro sem outras threads.
@@ -34,6 +34,19 @@ fn main() -> anyhow::Result<()> {
                 &caminhos.app_cache_dir()?.join("capas"),
             )?;
             app.manage(comandos::EstadoBiblioteca::new(biblioteca));
+
+            // Voz é opcional: sem o speech-dispatcher, o app abre e só a leitura em voz alta
+            // fica indisponível. Os eventos do motor vão ao frontend como o evento `voz`.
+            let app_voz = app.handle().clone();
+            let motor = leitor_core::voz::SpeechDispatcher::conectar(move |evento| {
+                if let Err(erro) = app_voz.emit("voz", evento) {
+                    tracing::warn!(%erro, "falha ao enviar evento de voz");
+                }
+            })
+            .map(|m| Box::new(m) as Box<dyn leitor_core::voz::MotorDeVoz>)
+            .inspect_err(|erro| tracing::warn!(%erro, "leitura em voz alta indisponível"))
+            .ok();
+            app.manage(comandos::EstadoVoz(motor));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -46,6 +59,11 @@ fn main() -> anyhow::Result<()> {
             comandos::salvar_progresso,
             comandos::preferencias_leitura,
             comandos::salvar_preferencias_leitura,
+            comandos::voz_disponivel,
+            comandos::falar,
+            comandos::pausar_voz,
+            comandos::retomar_voz,
+            comandos::parar_voz,
             comandos::caminho_inicial,
             comandos::escala_texto
         ])
