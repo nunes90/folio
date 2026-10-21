@@ -36,7 +36,7 @@ export async function escolherArquivos(): Promise<string[]> {
   const escolhidos = await open({
     multiple: true,
     directory: false,
-    filters: [{ name: "EPUB", extensions: ["epub"] }],
+    filters: [{ name: "Livros (EPUB, PDF)", extensions: ["epub", "pdf"] }],
   });
   return escolhidos ?? [];
 }
@@ -47,10 +47,21 @@ export async function importarLivros(caminhos: string[]): Promise<Importacao> {
   return resultado;
 }
 
-/** Bytes do livro como File, que é o que o foliate-js recebe. */
-export async function carregarLivro(livro: Livro): Promise<File> {
-  const bytes = await invoke<ArrayBuffer>("abrir_livro", { id: livro.id });
-  return new File([bytes], `${livro.id}.epub`, { type: "application/epub+zip" });
+/** Bytes do livro para leitura; registra a abertura (ordem de leitura recente). */
+export function carregarLivro(livro: Livro): Promise<ArrayBuffer> {
+  return invoke<ArrayBuffer>("abrir_livro", { id: livro.id });
+}
+
+/** Bytes do livro sem registrar abertura (para gerar a capa de PDFs). */
+export function arquivoDoLivro(id: string): Promise<ArrayBuffer> {
+  return invoke<ArrayBuffer>("arquivo_livro", { id });
+}
+
+/** Envia a capa como bytes crus (sem JSON); id e tipo vão nos cabeçalhos. */
+export async function definirCapa(id: string, capa: Blob): Promise<Livro> {
+  return invoke<Livro>("definir_capa", new Uint8Array(await capa.arrayBuffer()), {
+    headers: { livro: id, tipo: capa.type },
+  });
 }
 
 export function progressoDoLivro(id: string): Promise<Progresso | null> {

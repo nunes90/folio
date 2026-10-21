@@ -4,9 +4,10 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use leitor_core::biblioteca::{Biblioteca, LivroNaBiblioteca, Progresso};
+use leitor_core::epub::Capa;
 use serde::Serialize;
 use tauri::State;
-use tauri::ipc::Response;
+use tauri::ipc::{InvokeBody, Request, Response};
 
 /// A conexão SQLite não pode ser usada por duas threads ao mesmo tempo, daí o Mutex.
 pub type EstadoBiblioteca = Mutex<Biblioteca>;
@@ -54,6 +55,46 @@ pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>)
 pub fn abrir_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Response, String> {
     let bytes = bib.lock().unwrap().ler(&id).map_err(|e| registrar(&e))?;
     Ok(Response::new(bytes))
+}
+
+/// Bytes do livro sem marcá-lo como aberto (usado para gerar a capa de PDFs).
+#[tauri::command]
+pub fn arquivo_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Response, String> {
+    let bytes = bib
+        .lock()
+        .unwrap()
+        .arquivo(&id)
+        .map_err(|e| registrar(&e))?;
+    Ok(Response::new(bytes))
+}
+
+/// Capa gerada no frontend. A imagem vem como corpo binário cru (sem JSON); o id do livro
+/// e o tipo da imagem vêm nos cabeçalhos `livro` e `tipo`. (Não dá para usar `content-type`:
+/// o Tauri o sobrescreve com `application/octet-stream` em corpos binários.)
+#[tauri::command]
+pub fn definir_capa(
+    bib: State<'_, EstadoBiblioteca>,
+    requisicao: Request<'_>,
+) -> Result<LivroNaBiblioteca, String> {
+    let InvokeBody::Raw(bytes) = requisicao.body() else {
+        return Err("a capa deve vir como bytes".into());
+    };
+    let cabecalho = |nome: &str| {
+        requisicao
+            .headers()
+            .get(nome)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned)
+    };
+    let id = cabecalho("livro").ok_or("falta o cabeçalho `livro`")?;
+    let capa = Capa {
+        tipo_midia: cabecalho("tipo").unwrap_or_else(|| "image/jpeg".into()),
+        bytes: bytes.clone(),
+    };
+    bib.lock()
+        .unwrap()
+        .definir_capa(&id, &capa)
+        .map_err(|e| registrar(&e))
 }
 
 #[tauri::command]

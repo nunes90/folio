@@ -48,7 +48,7 @@
   <p class="aviso" role="status">{aviso ?? ""}</p>
 
   {#if livros.length === 0}
-    <p class="vazia">Sua biblioteca está vazia. Importe um EPUB para começar.</p>
+    <p class="vazia">Sua biblioteca está vazia. Importe um EPUB ou PDF para começar.</p>
   {:else}
     <ul>
       {#each livros as livro (livro.id)}

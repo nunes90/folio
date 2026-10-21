@@ -68,12 +68,14 @@ docs/decisions/  # ADRs
 - **M1**: `formato::detectar` (tolerante a EPUBs irregulares) e `livro::abrir`; foliate-js em
   `ui/src/vendor/foliate-js/` (commit 78914ae, sem `pdf.js`: o Vite troca por um stub); `Leitor` e `Indice`;
   escala de texto via CSS (ADR 0004).
-- **M2** (branch `feat/m2-biblioteca`): `epub::ler` (metadados + capa, EPUB 2 e 3), `biblioteca` em SQLite (ADR 0005):
-  importar (copia, id = SHA-256), listar por atividade recente, progresso em CFI. Tela `Biblioteca` com capas via
-  protocolo de assets; o livro reabre onde parou. Dados em `~/.local/share/io.github.nunes90.leitor`, capas em
+- **M2**: `epub::ler` (metadados + capa), `biblioteca` em SQLite (ADR 0005): importar (copia, id = SHA-256),
+  listar por atividade recente, progresso. Dados em `~/.local/share/io.github.nunes90.leitor`, capas em
   `~/.cache/io.github.nunes90.leitor/capas`. Para testar sem tocar nos dados reais: `XDG_DATA_HOME`/`XDG_CACHE_HOME`.
+- **M3** (branch `feat/m3-pdf`): `pdf::ler` (lopdf: título/autores do `Info`); PDFs entram na biblioteca e a capa é
+  gerada pelo pdf.js no frontend (`definir_capa`, bytes crus com cabeçalhos `livro`/`tipo`). `LeitorPdf` com
+  `PDFViewer`, busca, zoom e páginas; progresso `pagina:N`. Detalhes na ADR 0002.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
 - Pendências: janela não testada no macOS; remover livro da biblioteca; regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
   origem dos logs do frontend aponta para o wrapper.
-- Próximo passo: **M3** (PDF com pdf.js).
+- Próximo passo: **M4** (acessibilidade: fontes, temas, espaçamento, TTS, Orca/VoiceOver).

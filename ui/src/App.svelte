@@ -4,8 +4,10 @@
   import Biblioteca from "./components/Biblioteca.svelte";
   import Leitor from "./components/Leitor.svelte";
   import {
+    arquivoDoLivro,
     caminhoInicial,
     carregarLivro,
+    definirCapa,
     escolherArquivos,
     importarLivros,
     listarLivros,
@@ -20,7 +22,7 @@
   const ESPERA_PROGRESSO_MS = 1000;
 
   let livros = $state<Livro[]>([]);
-  let aberto = $state<{ livro: Livro; arquivo: File; inicio?: string } | null>(null);
+  let aberto = $state<{ livro: Livro; dados: ArrayBuffer; inicio?: string } | null>(null);
   let importando = $state(false);
   let aviso = $state<string | null>(null);
 
@@ -31,6 +33,7 @@
     // Fora do Tauri (testes) não há biblioteca: fica a tela vazia.
     if (!isTauri()) return;
     await recarregar();
+    gerarCapasDePdfs();
     const caminho = await caminhoInicial();
     if (caminho) {
       const { importados } = await importar([caminho]);
@@ -58,6 +61,7 @@
       }
       aviso = partes.join(" ");
       await recarregar();
+      gerarCapasDePdfs();
       return resultado;
     } finally {
       importando = false;
@@ -71,12 +75,12 @@
 
   async function abrir(livro: Livro) {
     try {
-      const [arquivo, progresso] = await Promise.all([
+      const [dados, progresso] = await Promise.all([
         carregarLivro(livro),
         progressoDoLivro(livro.id),
       ]);
       aviso = null;
-      aberto = { livro, arquivo, inicio: progresso?.localizacao };
+      aberto = { livro, dados, inicio: progresso?.localizacao };
     } catch (e) {
       aviso = `Não foi possível abrir ${livro.titulo}: ${e}`;
       log.warn(aviso);
@@ -101,6 +105,30 @@
     }
   }
 
+  let gerandoCapas = false;
+
+  /** PDFs chegam sem capa: renderiza a primeira página com o pdf.js, um livro por vez. */
+  async function gerarCapasDePdfs() {
+    if (gerandoCapas) return;
+    gerandoCapas = true;
+    try {
+      // Import dinâmico: o pdf.js só é carregado se houver PDF sem capa.
+      let pdf: typeof import("./lib/pdf") | undefined;
+      for (const livro of livros.filter((l) => l.formato === "pdf" && !l.capa)) {
+        try {
+          pdf ??= await import("./lib/pdf");
+          const capa = await pdf.gerarCapa(await arquivoDoLivro(livro.id));
+          const atualizado = await definirCapa(livro.id, capa);
+          livros = livros.map((l) => (l.id === atualizado.id ? atualizado : l));
+        } catch (e) {
+          log.warn(`falha ao gerar capa de ${livro.titulo}: ${e}`);
+        }
+      }
+    } finally {
+      gerandoCapas = false;
+    }
+  }
+
   async function fechar() {
     clearTimeout(temporizador);
     await gravarPendente();
@@ -109,9 +137,20 @@
   }
 </script>
 
-{#if aberto}
+{#if aberto?.livro.formato === "pdf"}
+  <!-- Import dinâmico: o pdf.js só é carregado quando um PDF é aberto. -->
+  {#await import("./components/LeitorPdf.svelte") then { default: LeitorPdf }}
+    <LeitorPdf
+      dados={aberto.dados}
+      titulo={aberto.livro.titulo}
+      inicio={aberto.inicio}
+      onFechar={fechar}
+      onProgresso={aoProgredir}
+    />
+  {/await}
+{:else if aberto}
   <Leitor
-    arquivo={aberto.arquivo}
+    arquivo={new File([aberto.dados], `${aberto.livro.id}.epub`, { type: "application/epub+zip" })}
     inicio={aberto.inicio}
     onFechar={fechar}
     onProgresso={aoProgredir}

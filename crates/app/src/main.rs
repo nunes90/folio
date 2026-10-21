@@ -40,6 +40,8 @@ fn main() -> anyhow::Result<()> {
             comandos::listar_livros,
             comandos::importar_livros,
             comandos::abrir_livro,
+            comandos::arquivo_livro,
+            comandos::definir_capa,
             comandos::progresso_livro,
             comandos::salvar_progresso,
             comandos::caminho_inicial,

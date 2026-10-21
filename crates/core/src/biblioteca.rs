@@ -1,6 +1,6 @@
 //! Biblioteca: livros importados e progresso de leitura, em SQLite.
 //!
-//! Ao importar, o arquivo é **copiado** para o diretório de dados (`<id>.epub`), então a
+//! Ao importar, o arquivo é **copiado** para o diretório de dados (`<id>.epub` ou `<id>.pdf`), então a
 //! biblioteca continua funcionando se o original for movido ou apagado. O id é o SHA-256
 //! do conteúdo: importar o mesmo livro duas vezes não duplica nada.
 
@@ -13,9 +13,10 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use tracing::instrument;
 
-use crate::epub::{self, ErroEpub};
+use crate::epub::{self, Capa, ErroEpub};
 use crate::formato::Formato;
 use crate::livro::{self, ErroAbrir};
+use crate::pdf::{self, ErroPdf};
 
 const ARQUIVO_BANCO: &str = "biblioteca.sqlite3";
 const DIR_LIVROS: &str = "livros";
@@ -73,8 +74,8 @@ pub enum ErroBiblioteca {
     Abrir(#[from] ErroAbrir),
     #[error("EPUB inválido")]
     Epub(#[from] ErroEpub),
-    #[error("{0:?} ainda não é suportado na biblioteca")]
-    NaoSuportado(Formato),
+    #[error(transparent)]
+    Pdf(#[from] ErroPdf),
     #[error("livro não encontrado na biblioteca: {0}")]
     NaoEncontrado(String),
     #[error("não foi possível gravar {}", caminho.display())]
@@ -125,28 +126,24 @@ impl Biblioteca {
     #[instrument(skip(self), fields(origem = %origem.display()))]
     pub fn importar(&self, origem: &Path) -> Resultado<LivroNaBiblioteca> {
         let livro = livro::abrir(origem)?;
-        if livro.formato != Formato::Epub {
-            return Err(ErroBiblioteca::NaoSuportado(livro.formato));
-        }
         let id = hash(&livro.bytes);
         if let Some(existente) = self.obter(&id)? {
             tracing::info!(%id, "livro já estava na biblioteca");
             return Ok(existente);
         }
 
-        let epub = epub::ler(&livro.bytes)?;
-        let arquivo = format!("{id}.epub");
-        gravar(&self.dir_livros.join(&arquivo), &livro.bytes)?;
-        let capa = match &epub.capa {
-            Some(capa) => {
-                let nome = format!("{id}.{}", extensao(&capa.tipo_midia));
-                gravar(&self.dir_capas.join(&nome), &capa.bytes)?;
-                Some(nome)
+        // PDFs chegam sem capa: o frontend a gera com o pdf.js e chama `definir_capa`.
+        let (m, capa) = match livro.formato {
+            Formato::Epub => {
+                let epub = epub::ler(&livro.bytes)?;
+                (epub.metadados, epub.capa)
             }
-            None => None,
+            Formato::Pdf => (pdf::ler(&livro.bytes)?, None),
         };
+        let arquivo = format!("{id}.{}", livro.formato.como_texto());
+        gravar(&self.dir_livros.join(&arquivo), &livro.bytes)?;
+        let capa = capa.map(|c| self.gravar_capa(&id, &c)).transpose()?;
 
-        let m = epub.metadados;
         // Sem título nos metadados, usa o nome do arquivo.
         let titulo = m.titulo.unwrap_or_else(|| {
             origem
@@ -191,15 +188,41 @@ impl Biblioteca {
             .optional()?)
     }
 
-    /// Bytes do livro para leitura; registra a abertura.
-    #[instrument(skip(self))]
-    pub fn ler(&self, id: &str) -> Resultado<Vec<u8>> {
+    /// Bytes do livro, sem efeitos colaterais (ex.: para gerar a capa de um PDF).
+    pub fn arquivo(&self, id: &str) -> Resultado<Vec<u8>> {
         let livro = self
             .obter(id)?
             .ok_or_else(|| ErroBiblioteca::NaoEncontrado(id.to_owned()))?;
-        let bytes = livro::abrir(&livro.arquivo)?.bytes;
+        Ok(livro::abrir(&livro.arquivo)?.bytes)
+    }
+
+    /// Bytes do livro para leitura; registra a abertura.
+    #[instrument(skip(self))]
+    pub fn ler(&self, id: &str) -> Resultado<Vec<u8>> {
+        let bytes = self.arquivo(id)?;
         self.marcar_aberto(id)?;
         Ok(bytes)
+    }
+
+    /// Guarda uma capa gerada fora do core (a primeira página de um PDF, renderizada pelo pdf.js).
+    #[instrument(skip(self, capa), fields(tipo = %capa.tipo_midia, tamanho = capa.bytes.len()))]
+    pub fn definir_capa(&self, id: &str, capa: &Capa) -> Resultado<LivroNaBiblioteca> {
+        if self.obter(id)?.is_none() {
+            return Err(ErroBiblioteca::NaoEncontrado(id.to_owned()));
+        }
+        let nome = self.gravar_capa(id, capa)?;
+        self.conexao.execute(
+            "UPDATE livros SET capa = ?1 WHERE id = ?2",
+            params![nome, id],
+        )?;
+        self.obter(id)?
+            .ok_or_else(|| ErroBiblioteca::NaoEncontrado(id.to_owned()))
+    }
+
+    fn gravar_capa(&self, id: &str, capa: &Capa) -> Resultado<String> {
+        let nome = format!("{id}.{}", extensao(&capa.tipo_midia));
+        gravar(&self.dir_capas.join(&nome), &capa.bytes)?;
+        Ok(nome)
     }
 
     /// Registra que o livro foi aberto agora (para a ordenação por leitura recente).
@@ -377,13 +400,46 @@ mod tests {
     }
 
     #[test]
-    fn pdf_ainda_nao_e_suportado() {
+    fn importa_pdf_com_metadados_e_sem_capa() {
         let (_dir, bib) = nova();
-        let erro = bib.importar(&fixture("minimo.pdf")).unwrap_err();
-        assert!(
-            matches!(erro, ErroBiblioteca::NaoSuportado(Formato::Pdf)),
-            "{erro:?}"
-        );
+        let livro = bib.importar(&fixture("metadados-utf16.pdf")).unwrap();
+        assert_eq!(livro.formato, Formato::Pdf);
+        assert_eq!(livro.titulo, "Memórias Póstumas");
+        assert_eq!(livro.autores, ["Machado de Assis", "Outro"]);
+        assert!(livro.arquivo.extension().is_some_and(|e| e == "pdf"));
+        assert_eq!(livro.capa, None);
+    }
+
+    #[test]
+    fn pdf_sem_titulo_usa_nome_do_arquivo() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.pdf")).unwrap();
+        assert_eq!(livro.titulo, "minimo");
+    }
+
+    #[test]
+    fn definir_capa_grava_e_atualiza() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.pdf")).unwrap();
+        let capa = Capa {
+            tipo_midia: "image/jpeg".into(),
+            bytes: vec![0xff, 0xd8, 0xff],
+        };
+        let atualizado = bib.definir_capa(&livro.id, &capa).unwrap();
+        let caminho = atualizado.capa.expect("capa definida");
+        assert_eq!(std::fs::read(caminho).unwrap(), capa.bytes);
+        assert!(matches!(
+            bib.definir_capa("nao-existe", &capa).unwrap_err(),
+            ErroBiblioteca::NaoEncontrado(_)
+        ));
+    }
+
+    #[test]
+    fn arquivo_nao_marca_como_aberto() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.pdf")).unwrap();
+        bib.arquivo(&livro.id).unwrap();
+        assert_eq!(bib.obter(&livro.id).unwrap().unwrap().aberto_em, None);
     }
 
     #[test]

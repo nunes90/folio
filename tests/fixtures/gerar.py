@@ -124,6 +124,36 @@ trailer << /Root 1 0 R >>
 %%EOF
 """
 
+def pdf_com_info(info: bytes) -> bytes:
+    """PDF de 2 páginas com dicionário Info; a tabela xref é calculada para o arquivo ser válido."""
+    objetos = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] >>",
+        info,
+    ]
+    saida = bytearray(b"%PDF-1.7\n")
+    posicoes = []
+    for n, corpo in enumerate(objetos, start=1):
+        posicoes.append(len(saida))
+        saida += b"%d 0 obj\n" % n + corpo + b"\nendobj\n"
+    xref = len(saida)
+    saida += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objetos) + 1)
+    for pos in posicoes:
+        saida += b"%010d 00000 n \n" % pos
+    saida += b"trailer\n<< /Size %d /Root 1 0 R /Info 5 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (
+        len(objetos) + 1,
+        xref,
+    )
+    return bytes(saida)
+
+
+def utf16(texto: str) -> bytes:
+    """String hexadecimal de PDF em UTF-16BE com BOM."""
+    return b"<FEFF" + texto.encode("utf-16-be").hex().upper().encode() + b">"
+
+
 if __name__ == "__main__":
     epub(AQUI / "minimo.epub", b"application/epub+zip")
     epub(
@@ -145,4 +175,11 @@ if __name__ == "__main__":
     (AQUI / "quebrados/vazio.epub").write_bytes(b"")
     (AQUI / "quebrados/texto.epub").write_text("isto não é um epub\n")
     (AQUI / "minimo.pdf").write_bytes(PDF_MINIMO)
+    (AQUI / "metadados-utf16.pdf").write_bytes(
+        pdf_com_info(b"<< /Title " + utf16("Memórias Póstumas") + b" /Author " + utf16("Machado de Assis; Outro") + b" >>")
+    )
+    # PDFDocEncoding: \\351 é "é" em octal; parênteses escapados fazem parte do texto.
+    (AQUI / "metadados-pdfdoc.pdf").write_bytes(
+        pdf_com_info(b"<< /Title (Caf\\351 \\(edi\\347\\343o\\)) /Author (   ) >>")
+    )
     (AQUI / "pdf-com-lixo-antes.pdf").write_bytes(b"\x00" * 100 + PDF_MINIMO)
