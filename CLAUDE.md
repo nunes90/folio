@@ -78,12 +78,16 @@ docs/decisions/  # ADRs
   JSON na tabela `preferencias`, migração 2). Fontes OFL embutidas via Fontsource (Literata, Atkinson Hyperlegible,
   Lexend, OpenDyslexic; `ui/src/lib/fontes.ts`), tamanho × escala do sistema, entrelinha, espaçamentos, largura,
   colunas, alinhamento, hifenização. Painel "Aparência" no leitor de EPUB (prévia ao vivo; Esc fecha e devolve o foco).
-- **M4b** (branch `feat/m4b-temas`): temas claro/escuro/sépia/alto contraste (cores em `ui/src/lib/temas.ts`, fonte
+- **M4b**: temas claro/escuro/sépia/alto contraste (cores em `ui/src/lib/temas.ts`, fonte
   única para interface e livro; testes de contraste WCAG) e opção "sempre reduzir animações". Padrão: seguir o sistema
   (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`; reativo em `lib/ambiente.svelte.ts`).
   Foco visível global (`:focus-visible`). Painel de tema na biblioteca e no leitor de EPUB. Páginas de PDF não mudam de cor.
+- **M4c** (branch `feat/m4c-teclado`): F1 abre os atalhos do contexto (`ui/src/lib/atalhos.ts` é a fonte; evitar
+  atalhos de uma letra, WCAG 2.1.4); setas/Home/End na grade da biblioteca (roving tabindex); foco gerenciado (título
+  ao abrir, livro de volta ao fechar, texto ao escolher capítulo); mudança de capítulo anunciada por `aria-live`;
+  teclas do iframe do EPUB reenviadas à janela. Roteiro manual do Orca em `docs/testes/orca.md`.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
 - Pendências: janela não testada no macOS; remover livro da biblioteca; regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
   origem dos logs do frontend aponta para o wrapper.
-- Próximo passo: **M4c** (teclado completo, foco e testes com Orca); depois M4d (leitura em voz alta).
+- Próximo passo: rodar o roteiro do Orca e corrigir o que divergir; depois **M4d** (leitura em voz alta).

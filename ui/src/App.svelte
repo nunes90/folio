@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { isTauri } from "@tauri-apps/api/core";
+  import Atalhos from "./components/Atalhos.svelte";
   import Biblioteca from "./components/Biblioteca.svelte";
   import Leitor from "./components/Leitor.svelte";
   import {
@@ -27,6 +28,18 @@
   let livros = $state<Livro[]>([]);
   let aberto = $state<{ livro: Livro; dados: ArrayBuffer; inicio?: string } | null>(null);
   let importando = $state(false);
+  let ajudaAberta = $state(false);
+  /** Livro fechado por último: recebe o foco ao voltar para a biblioteca. */
+  let ultimoAberto = $state<string>();
+  const contexto = $derived(aberto ? aberto.livro.formato : "biblioteca");
+
+  // F1 em qualquer tela (no EPUB, o Leitor reenvia à janela as teclas do capítulo).
+  function aoTeclar(e: KeyboardEvent) {
+    if (e.key === "F1") {
+      e.preventDefault();
+      ajudaAberta = true;
+    }
+  }
   let aviso = $state<string | null>(null);
 
   let pendente: { id: string; progresso: Progresso } | null = null;
@@ -141,10 +154,15 @@
   async function fechar() {
     clearTimeout(temporizador);
     await gravarPendente();
+    ultimoAberto = aberto?.livro.id;
     aberto = null;
     await recarregar();
   }
 </script>
+
+<svelte:window onkeydown={aoTeclar} />
+
+<Atalhos {contexto} aberto={ajudaAberta} onFechar={() => (ajudaAberta = false)} />
 
 {#if aberto?.livro.formato === "pdf"}
   <!-- Import dinâmico: o pdf.js só é carregado quando um PDF é aberto. -->
@@ -174,5 +192,6 @@
     {preferencias}
     onMudarPreferencias={atualizarPreferencias}
     temaDoSistema={resolverTema("sistema", sistema)}
+    focarLivro={ultimoAberto}
   />
 {/if}

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import axe from "axe-core";
 import { describe, expect, it, vi } from "vitest";
 import type { Livro } from "../lib/biblioteca";
@@ -77,6 +77,38 @@ describe("Biblioteca", () => {
     await fireEvent.click(botao);
     expect(botao.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("radio", { name: "Sépia" })).toBeTruthy();
+  });
+
+  describe("teclado (roving tabindex)", () => {
+    const tres = [livro({ id: "a" }), livro({ id: "b", titulo: "B" }), livro({ id: "c", titulo: "C" })];
+    const botoes = () =>
+      screen.getAllByRole("listitem").map((li) => within(li).getByRole("button"));
+
+    it("só um livro fica na ordem do Tab", () => {
+      render(Biblioteca, { livros: tres, ...semAcao });
+      expect(botoes().map((b) => b.tabIndex)).toEqual([0, -1, -1]);
+    });
+
+    it("setas, Home e End movem o foco entre os livros", async () => {
+      render(Biblioteca, { livros: tres, ...semAcao });
+      const [a, b, c] = botoes();
+      a!.focus();
+      await fireEvent.keyDown(a!, { key: "ArrowRight" });
+      expect(document.activeElement).toBe(b);
+      await fireEvent.keyDown(b!, { key: "End" });
+      expect(document.activeElement).toBe(c);
+      await fireEvent.keyDown(c!, { key: "ArrowRight" });
+      expect(document.activeElement).toBe(c);
+      await fireEvent.keyDown(c!, { key: "Home" });
+      expect(document.activeElement).toBe(a);
+      expect(botoes().map((x) => x.tabIndex)).toEqual([0, -1, -1]);
+    });
+
+    it("devolve o foco ao livro que estava aberto", () => {
+      render(Biblioteca, { livros: tres, ...semAcao, focarLivro: "b" });
+      expect(document.activeElement).toBe(botoes()[1]);
+      expect(botoes()[1]!.tabIndex).toBe(0);
+    });
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen } from "@testing-library/svelte";
 import axe from "axe-core";
 import { describe, expect, it } from "vitest";
 import App from "./App.svelte";
@@ -18,6 +18,14 @@ describe("App", () => {
   it("tem uma região main", () => {
     render(App);
     expect(screen.getByRole("main")).toBeTruthy();
+  });
+
+  it("F1 abre os atalhos da biblioteca", async () => {
+    render(App);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await fireEvent.keyDown(window, { key: "F1" });
+    expect(screen.getByRole("dialog", { name: "Atalhos de teclado" })).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Biblioteca" })).toBeTruthy();
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {
