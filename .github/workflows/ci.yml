@@ -15,7 +15,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # Só Linux por enquanto: o macOS foi adiado (ADR 0006). Para voltar, acrescente
+        # um runner macOS aqui (ex.: macos-26).
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

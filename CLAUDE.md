@@ -3,7 +3,7 @@
 > Nome provisório. Atualize este arquivo ao fim de cada sessão de trabalho.
 
 ## Visão
-Leitor de ebooks (EPUB e PDF) para **Linux e macOS**, com **Windows possível no futuro**.
+Leitor de ebooks (EPUB e PDF) para **Linux**. **macOS e Windows ficam para o futuro** (ADR 0006).
 Prioridades: **acessibilidade ampla** e **animações fluidas**. Linguagem principal: **Rust**.
 
 ## Sobre o desenvolvedor
@@ -41,7 +41,7 @@ docs/decisions/  # ADRs
   `tauri-driver` para E2E (Linux/Windows; no macOS os testes são manuais), `criterion` mais tarde.
 - Git: uma branch por funcionalidade, PRs pequenos, Conventional Commits (`feat:`, `fix:`, `test:`, `refactor:`).
 - Antes de commitar: `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test`.
-- CI (GitHub Actions): Ubuntu + macOS. fmt, clippy, test, `cargo deny`, build/teste do frontend.
+- CI (GitHub Actions): Ubuntu. fmt, clippy, test, `cargo deny`, build/teste do frontend. (macOS adiado, ADR 0006.)
 
 ## Fluxo de uma sessão
 1. Ler este arquivo e o ROADMAP.md.
@@ -59,11 +59,11 @@ docs/decisions/  # ADRs
   o app define `WEBKIT_DISABLE_DMABUF_RENDERER=1` sozinho (ver `crates/app/src/main.rs`).
 - **Nunca usar zoom da webview**: no WebKitGTK ele é aplicado duas vezes em iframes e quebra o foliate-js.
   A escala de texto do sistema é anulada no zoom e reaplicada via CSS (ADR 0004). Interface em `rem`.
-- Empacotamento: Flatpak (preferido) / AppImage; `.dmg` no macOS.
+- Empacotamento: Flatpak (preferido) / AppImage. (`.dmg` quando o macOS voltar.)
 
 ## Estado atual
 - **M0**: workspace (`leitor-core` + `leitor`), Tauri 2, logging tracing → stderr + arquivo (rotação diária),
-  logs do frontend via `tauri-plugin-log`, `deny.toml`, CI (Ubuntu + macOS + frontend), hook em `.githooks/`.
+  logs do frontend via `tauri-plugin-log`, `deny.toml`, CI (Ubuntu + frontend), hook em `.githooks/`.
 - **Frontend**: Svelte 5 + Vite + TS (ADR 0003).
 - **M1**: `formato::detectar` (tolerante a EPUBs irregulares) e `livro::abrir`; foliate-js em
   `ui/src/vendor/foliate-js/` (commit 78914ae, sem `pdf.js`: o Vite troca por um stub); `Leitor` e `Indice`;
@@ -82,12 +82,12 @@ docs/decisions/  # ADRs
   única para interface e livro; testes de contraste WCAG) e opção "sempre reduzir animações". Padrão: seguir o sistema
   (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`; reativo em `lib/ambiente.svelte.ts`).
   Foco visível global (`:focus-visible`). Painel de tema na biblioteca e no leitor de EPUB. Páginas de PDF não mudam de cor.
-- **M4c** (branch `feat/m4c-teclado`): F1 abre os atalhos do contexto (`ui/src/lib/atalhos.ts` é a fonte; evitar
+- **M4c**: F1 abre os atalhos do contexto (`ui/src/lib/atalhos.ts` é a fonte; evitar
   atalhos de uma letra, WCAG 2.1.4); setas/Home/End na grade da biblioteca (roving tabindex); foco gerenciado (título
   ao abrir, livro de volta ao fechar, texto ao escolher capítulo); mudança de capítulo anunciada por `aria-live`;
   teclas do iframe do EPUB reenviadas à janela. Roteiro manual do Orca em `docs/testes/orca.md`.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
-- Pendências: janela não testada no macOS; remover livro da biblioteca; regerar capas se o cache for limpo;
+- Pendências: remover livro da biblioteca; regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
   origem dos logs do frontend aponta para o wrapper.
 - Próximo passo: rodar o roteiro do Orca e corrigir o que divergir; depois **M4d** (leitura em voz alta).
