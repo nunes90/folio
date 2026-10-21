@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import Indice from "./Indice.svelte";
   import PainelLeitura from "./PainelLeitura.svelte";
+  import PainelTema from "./PainelTema.svelte";
   import {
     criarView,
     textoLocalizado,
@@ -17,7 +18,8 @@
     restaurarPadrao,
   } from "../lib/preferencias.svelte";
   import { log } from "../lib/log";
-  import { prefereMenosMovimento } from "../lib/movimento";
+  import { movimentoReduzido, sistema, temaEfetivo } from "../lib/ambiente.svelte";
+  import { resolverTema } from "../lib/temas";
 
   let {
     arquivo,
@@ -48,13 +50,15 @@
   // Reaplica sempre que a escala do sistema ou as preferências mudarem (inclusive com o
   // painel aberto: o livro funciona como prévia ao vivo).
   $effect(() => {
-    const css = cssDoLivro(preferencias, escala.fator);
+    const css = cssDoLivro(preferencias, escala.fator, temaEfetivo());
+    const animado = !movimentoReduzido();
     const largura = `${preferencias.larguraMaxima}px`;
     const colunas = String(preferencias.colunas);
     if (!pronto || !view) return;
     view.renderer.setStyles(css);
     view.renderer.setAttribute("max-inline-size", largura);
     view.renderer.setAttribute("max-column-count", colunas);
+    view.renderer.toggleAttribute("animated", animado);
   });
 
   function fecharAparencia() {
@@ -95,7 +99,6 @@
 
     await v.open(arquivo);
     v.renderer.setAttribute("flow", "paginated");
-    if (!prefereMenosMovimento()) v.renderer.setAttribute("animated", "");
     pronto = true;
 
     titulo = textoLocalizado(v.book.metadata?.title) || arquivo.name;
@@ -160,7 +163,12 @@
     {/if}
   </div>
 
-  <aside id="aparencia" aria-label="Aparência do texto" hidden={!aparenciaAberta}>
+  <aside id="aparencia" aria-label="Aparência" hidden={!aparenciaAberta}>
+    <PainelTema
+      {preferencias}
+      onMudar={atualizarPreferencias}
+      temaDoSistema={resolverTema("sistema", sistema)}
+    />
     <PainelLeitura
       {preferencias}
       onMudar={atualizarPreferencias}

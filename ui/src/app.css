@@ -1,4 +1,5 @@
 :root {
+  /* Cores vêm de lib/temas.ts (aplicarTema); os valores após a vírgula valem até o JS rodar. */
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
   /* Escala de texto do sistema (definida por lib/escala.svelte.ts). Use rem na interface. */
@@ -7,6 +8,32 @@
 
 body {
   margin: 0;
+  background: var(--fundo, Canvas);
+  color: var(--texto, CanvasText);
+}
+
+a {
+  color: var(--link, LinkText);
+}
+
+button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--borda, ButtonBorder);
+  border-radius: 0.25rem;
+  background: var(--controle, ButtonFace);
+  color: var(--texto, ButtonText);
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Foco do teclado sempre visível, na cor de foco do tema (contraste ≥ 3:1, testado). */
+:focus-visible {
+  outline: 3px solid var(--foco, Highlight);
+  outline-offset: 2px;
 }
 
 /* Controles de formulário não herdam a fonte por padrão e ignorariam a escala de texto. */
@@ -18,6 +45,8 @@ textarea {
 }
 
 /* Rede de segurança global; componentes com animação também devem checar a preferência. */
+/* Movimento reduzido: pelo sistema (media query, vale antes do JS) ou pela preferência
+   do app (data-movimento, definido em App.svelte). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -27,4 +56,13 @@ textarea {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+:root[data-movimento="reduzido"] *,
+:root[data-movimento="reduzido"] *::before,
+:root[data-movimento="reduzido"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }

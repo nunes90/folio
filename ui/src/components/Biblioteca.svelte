@@ -1,5 +1,8 @@
 <script lang="ts">
   import { urlDaCapa, type Livro } from "../lib/biblioteca";
+  import type { Preferencias } from "../lib/preferencias.svelte";
+  import type { TemaEfetivo } from "../lib/temas";
+  import PainelTema from "./PainelTema.svelte";
 
   let {
     livros,
@@ -7,6 +10,9 @@
     aviso = null,
     onAbrir,
     onImportar,
+    preferencias,
+    onMudarPreferencias,
+    temaDoSistema,
   }: {
     livros: Livro[];
     importando?: boolean;
@@ -14,7 +20,13 @@
     aviso?: string | null;
     onAbrir: (livro: Livro) => void;
     onImportar: () => void;
+    /** Se presentes, a biblioteca oferece o painel de tema e movimento. */
+    preferencias?: Preferencias;
+    onMudarPreferencias?: (mudancas: Partial<Preferencias>) => void;
+    temaDoSistema?: TemaEfetivo;
   } = $props();
+
+  let aparenciaAberta = $state(false);
 
   const porcento = new Intl.NumberFormat("pt-BR", { style: "percent" });
 
@@ -39,10 +51,28 @@
 <main>
   <header>
     <h1>Biblioteca</h1>
-    <button type="button" onclick={onImportar} disabled={importando}>
-      {importando ? "Importando…" : "Importar livros…"}
-    </button>
+    <div class="acoes">
+      {#if preferencias}
+        <button
+          type="button"
+          aria-expanded={aparenciaAberta}
+          aria-controls="aparencia-biblioteca"
+          onclick={() => (aparenciaAberta = !aparenciaAberta)}
+        >
+          Aparência
+        </button>
+      {/if}
+      <button type="button" onclick={onImportar} disabled={importando}>
+        {importando ? "Importando…" : "Importar livros…"}
+      </button>
+    </div>
   </header>
+
+  {#if preferencias && onMudarPreferencias}
+    <section id="aparencia-biblioteca" aria-label="Aparência" hidden={!aparenciaAberta}>
+      <PainelTema {preferencias} onMudar={onMudarPreferencias} {temaDoSistema} />
+    </section>
+  {/if}
 
   <!-- Sempre no DOM: regiões aria-live só anunciam mudanças em elementos que já existiam. -->
   <p class="aviso" role="status">{aviso ?? ""}</p>
@@ -88,6 +118,20 @@
   h1 {
     margin: 0;
     font-size: 1.5rem;
+  }
+
+  .acoes {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  section {
+    max-width: 24rem;
+    margin-block-start: 1rem;
+  }
+
+  section[hidden] {
+    display: none;
   }
 
   .aviso:empty {
