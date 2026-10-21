@@ -90,4 +90,6 @@ docs/decisions/  # ADRs
 - Pendências: remover livro da biblioteca; regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
   origem dos logs do frontend aponta para o wrapper.
-- Próximo passo: rodar o roteiro do Orca e corrigir o que divergir; depois **M4d** (leitura em voz alta).
+- Roteiro do Orca executado (out/2026): navegação funcional. A voz do Orca (espeak-ng do sistema) é muito ruim;
+  isso afeta o M4d. Alternativas de voz ficam em aberto (Lucas vai avaliar).
+- Próximo passo: **M4d** (leitura em voz alta), começando por investigar a voz (speech-dispatcher, Piper, `speechSynthesis`).
