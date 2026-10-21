@@ -20,6 +20,16 @@
   import { log } from "../lib/log";
   import { movimentoReduzido, sistema, temaEfetivo } from "../lib/ambiente.svelte";
   import { resolverTema } from "../lib/temas";
+  import {
+    blocoParaFala,
+    falar,
+    ouvirVoz,
+    pararVoz,
+    pausarVoz,
+    retomarVoz,
+    vozDisponivel,
+    type EventoVoz,
+  } from "../lib/voz";
 
   let {
     arquivo,
@@ -51,6 +61,11 @@
   let erro = $state<string | null>(null);
   let pronto = $state(false);
 
+  // Leitura em voz alta: um bloco (parágrafo) por vez; ao terminar, o próximo.
+  let voz = $state<"parado" | "falando" | "pausado">("parado");
+  let vozPossivel = $state(false);
+  let idiomaDoLivro: string | null = null;
+
   // Reaplica sempre que a escala do sistema ou as preferências mudarem (inclusive com o
   // painel aberto: o livro funciona como prévia ao vivo).
   $effect(() => {
@@ -79,12 +94,95 @@
       erro = `Não foi possível abrir o livro: ${e}`;
       log.error(erro);
     });
+    let pararDeOuvir: (() => void) | undefined;
+    vozDisponivel()
+      .then((d) => (vozPossivel = d))
+      .catch(() => {});
+    ouvirVoz(aoEventoVoz)
+      .then((f) => (pararDeOuvir = f))
+      .catch(() => {});
     return () => {
       window.removeEventListener("keydown", aoTeclar);
+      // Fechar o livro encerra a leitura em voz alta.
+      if (voz !== "parado") pararVoz().catch(() => {});
+      pararDeOuvir?.();
       view?.close();
       view?.remove();
     };
   });
+
+  async function lerEmVozAlta() {
+    if (!view) return;
+    if (!vozPossivel) {
+      anuncio =
+        "Leitura em voz alta indisponível: o speech-dispatcher não está instalado ou ativo.";
+      return;
+    }
+    await view.initTTS("sentence");
+    // Começa na página atual, não no início do capítulo.
+    const range = view.lastLocation?.range;
+    await seguirLendo(range ? view.tts?.from(range) : view.tts?.start());
+  }
+
+  /** Fala o bloco dado ou, se não houver o que falar, procura o próximo (inclusive em outros capítulos). */
+  async function seguirLendo(ssml: string | undefined) {
+    if (!view?.tts) return;
+    for (;;) {
+      if (ssml === undefined) {
+        const proxima = await proximaSecao();
+        if (proxima === null) {
+          voz = "parado";
+          anuncio = "Fim do livro.";
+          return;
+        }
+        ssml = proxima;
+        continue;
+      }
+      const bloco = blocoParaFala(ssml);
+      if (bloco) {
+        voz = "falando";
+        await falar(bloco.ssml, {
+          idioma: bloco.idioma ?? idiomaDoLivro,
+          velocidade: preferencias.velocidadeVoz,
+        });
+        return;
+      }
+      ssml = view.tts.next();
+    }
+  }
+
+  /** Vai ao próximo capítulo e devolve o primeiro bloco dele; `null` no fim do livro. */
+  async function proximaSecao(): Promise<string | undefined | null> {
+    if (!view) return null;
+    const antes = view.renderer.getContents()[0]?.index;
+    await view.renderer.nextSection();
+    if (view.renderer.getContents()[0]?.index === antes) return null;
+    await view.initTTS("sentence");
+    return view.tts?.start();
+  }
+
+  function aoEventoVoz(e: EventoVoz) {
+    // Eventos atrasados depois de parar (ou de outro livro) são ignorados.
+    if (voz === "parado" || !view?.tts) return;
+    if (e.tipo === "marca") view.tts.setMark(e.marca);
+    else if (e.tipo === "fim") seguirLendo(view.tts.next()).catch((erro) => log.warn(`${erro}`));
+    else voz = "parado";
+  }
+
+  async function pausarOuRetomar() {
+    if (voz === "falando") {
+      await pausarVoz();
+      voz = "pausado";
+    } else if (voz === "pausado") {
+      await retomarVoz();
+      voz = "falando";
+    }
+  }
+
+  async function pararLeitura() {
+    voz = "parado";
+    await pararVoz();
+  }
 
   async function abrir() {
     const v = await criarView();
@@ -126,6 +224,8 @@
     pronto = true;
 
     titulo = textoLocalizado(v.book.metadata?.title) || arquivo.name;
+    const idioma = v.book.metadata?.language;
+    idiomaDoLivro = (Array.isArray(idioma) ? idioma[0] : idioma) ?? null;
     indice = v.book.toc ?? [];
     await v.init({ lastLocation: inicio ?? null, showTextStart: !inicio });
     // Foco no título: o leitor de tela anuncia qual livro foi aberto.
@@ -212,6 +312,16 @@
   </aside>
 
   <footer>
+    <div class="voz" role="group" aria-label="Leitura em voz alta">
+      {#if voz === "parado"}
+        <button type="button" onclick={lerEmVozAlta}>Ler em voz alta</button>
+      {:else}
+        <button type="button" onclick={pausarOuRetomar}>
+          {voz === "pausado" ? "Continuar leitura" : "Pausar leitura"}
+        </button>
+        <button type="button" onclick={pararLeitura}>Parar leitura</button>
+      {/if}
+    </div>
     <button type="button" onclick={() => view?.prev()}>Anterior</button>
     <span>{porcento.format(progresso)}</span>
     <button type="button" onclick={() => view?.next()}>Próxima</button>
@@ -295,5 +405,12 @@
     gap: 1.5rem;
     padding: 0.5rem 1rem;
     border-block-start: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  }
+
+  /* Controles de voz à esquerda; a navegação continua no centro. */
+  .voz {
+    display: flex;
+    gap: 0.5rem;
+    margin-inline-end: auto;
   }
 </style>

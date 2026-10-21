@@ -10,7 +10,7 @@ export interface ItemIndice {
 type TextoLocalizado = string | Record<string, string>;
 
 export interface Livro {
-  metadata?: { title?: TextoLocalizado };
+  metadata?: { title?: TextoLocalizado; language?: string | string[] };
   toc?: ItemIndice[];
 }
 
@@ -21,7 +21,18 @@ export interface DetalheRelocate {
   tocItem?: { href: string; label: string };
 }
 
+/** Leitura em voz alta do foliate-js (tts.js): SSML por bloco, com uma marca por frase. */
+export interface TtsFoliate {
+  start(): string | undefined;
+  next(): string | undefined;
+  from(range: Range): string | undefined;
+  /** Destaca a frase da marca e vira a página até ela. */
+  setMark(marca: string): void;
+}
+
 export interface Paginador extends HTMLElement {
+  nextSection(): Promise<void>;
+  getContents(): { doc: Document; index: number }[];
   setStyles(css: string): void;
   /** Põe o foco do teclado no capítulo (iframe). */
   focusView(): void;
@@ -32,6 +43,9 @@ export interface Paginador extends HTMLElement {
 export interface FoliateView extends HTMLElement {
   book: Livro;
   renderer: Paginador;
+  tts?: TtsFoliate;
+  lastLocation?: { range?: Range } | null;
+  initTTS(granularidade?: "word" | "sentence"): Promise<void>;
   open(arquivo: File | Blob): Promise<void>;
   init(opcoes: { lastLocation?: string | null; showTextStart?: boolean }): Promise<void>;
   close(): void;

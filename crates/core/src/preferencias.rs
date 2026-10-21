@@ -66,6 +66,7 @@ pub mod limites {
     pub const ESPACO_PALAVRAS: (f64, f64) = (0.0, 1.0);
     pub const LARGURA: (u32, u32) = (320, 1600);
     pub const COLUNAS: (u8, u8) = (1, 2);
+    pub const VELOCIDADE_VOZ: (i8, i8) = (-100, 100);
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -89,6 +90,8 @@ pub struct PreferenciasLeitura {
     pub hifenizacao: bool,
     pub tema: Tema,
     pub movimento: Movimento,
+    /// Velocidade da leitura em voz alta, de -100 (mais lenta) a 100; 0 é a normal do sistema.
+    pub velocidade_voz: i8,
 }
 
 impl Default for PreferenciasLeitura {
@@ -105,6 +108,7 @@ impl Default for PreferenciasLeitura {
             hifenizacao: false,
             tema: Tema::Sistema,
             movimento: Movimento::Sistema,
+            velocidade_voz: 0,
         }
     }
 }
@@ -137,6 +141,9 @@ impl PreferenciasLeitura {
                 .largura_maxima
                 .clamp(limites::LARGURA.0, limites::LARGURA.1),
             colunas: self.colunas.clamp(limites::COLUNAS.0, limites::COLUNAS.1),
+            velocidade_voz: self
+                .velocidade_voz
+                .clamp(limites::VELOCIDADE_VOZ.0, limites::VELOCIDADE_VOZ.1),
             ..self
         }
     }
@@ -237,6 +244,18 @@ mod tests {
         .para_json();
         assert!(json.contains(r#""tema":"alto-contraste""#), "{json}");
         assert!(json.contains(r#""movimento":"reduzido""#), "{json}");
+    }
+
+    #[test]
+    fn velocidade_da_voz_no_json_e_limitada() {
+        let p = PreferenciasLeitura::de_json(r#"{"velocidadeVoz": 30}"#);
+        assert_eq!(p.velocidade_voz, 30);
+        let p = PreferenciasLeitura {
+            velocidade_voz: i8::MIN,
+            ..Default::default()
+        }
+        .normalizada();
+        assert_eq!(p.velocidade_voz, -100);
     }
 
     #[test]
