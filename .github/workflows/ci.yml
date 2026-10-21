@@ -15,9 +15,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # macos-26 fixo (era o macos-latest em out/2026): evita trocas de sistema sem aviso
-        # quando o GitHub migra o "latest". Atualizar de propósito quando sair uma versão nova.
-        os: [ubuntu-latest, macos-26]
+        # Só Linux por enquanto: o macOS foi adiado (ADR 0006). Para voltar, acrescente
+        # um runner macOS aqui (ex.: macos-26).
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
