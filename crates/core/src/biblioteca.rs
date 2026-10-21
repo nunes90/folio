@@ -17,13 +17,17 @@ use crate::epub::{self, Capa, ErroEpub};
 use crate::formato::Formato;
 use crate::livro::{self, ErroAbrir};
 use crate::pdf::{self, ErroPdf};
+use crate::preferencias::PreferenciasLeitura;
+
+const CHAVE_LEITURA: &str = "leitura";
 
 const ARQUIVO_BANCO: &str = "biblioteca.sqlite3";
 const DIR_LIVROS: &str = "livros";
 
 /// Cada entrada leva o banco da versão `i` para `i + 1`. Nunca edite uma migração já
 /// publicada: acrescente outra. A versão atual fica em `PRAGMA user_version`.
-const MIGRACOES: &[&str] = &["
+const MIGRACOES: &[&str] = &[
+    "
     CREATE TABLE livros (
         id            TEXT PRIMARY KEY,  -- SHA-256 do arquivo, em hexadecimal
         formato       TEXT NOT NULL,
@@ -37,11 +41,19 @@ const MIGRACOES: &[&str] = &["
     );
     CREATE TABLE progresso (
         livro_id      TEXT PRIMARY KEY REFERENCES livros(id) ON DELETE CASCADE,
-        localizacao   TEXT NOT NULL,     -- EPUB CFI
+        localizacao   TEXT NOT NULL,     -- EPUB CFI ou `pagina:N` (PDF)
         fracao        REAL NOT NULL,     -- 0.0 a 1.0
         atualizado_em INTEGER NOT NULL
     );
-"];
+",
+    "
+    -- Preferências gerais, em JSON por chave (ex.: 'leitura').
+    CREATE TABLE preferencias (
+        chave TEXT PRIMARY KEY,
+        valor TEXT NOT NULL
+    );
+",
+];
 
 /// Um livro como a interface o vê.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -280,6 +292,35 @@ impl Biblioteca {
             .optional()?)
     }
 
+    /// Preferências de leitura salvas, ou o padrão se ainda não houver.
+    pub fn preferencias_leitura(&self) -> Resultado<PreferenciasLeitura> {
+        let json: Option<String> = self
+            .conexao
+            .query_row(
+                "SELECT valor FROM preferencias WHERE chave = ?1",
+                [CHAVE_LEITURA],
+                |linha| linha.get(0),
+            )
+            .optional()?;
+        Ok(json.map_or_else(PreferenciasLeitura::default, |j| {
+            PreferenciasLeitura::de_json(&j)
+        }))
+    }
+
+    /// Salva as preferências (normalizadas) e devolve o que foi de fato gravado.
+    pub fn salvar_preferencias_leitura(
+        &self,
+        preferencias: PreferenciasLeitura,
+    ) -> Resultado<PreferenciasLeitura> {
+        let preferencias = preferencias.normalizada();
+        self.conexao.execute(
+            "INSERT INTO preferencias (chave, valor) VALUES (?1, ?2)
+             ON CONFLICT (chave) DO UPDATE SET valor = excluded.valor",
+            params![CHAVE_LEITURA, preferencias.para_json()],
+        )?;
+        Ok(preferencias)
+    }
+
     fn livro_da_linha(&self, linha: &Row) -> rusqlite::Result<LivroNaBiblioteca> {
         let formato: String = linha.get("formato")?;
         let autores: String = linha.get("autores")?;
@@ -515,6 +556,64 @@ mod tests {
             bib.marcar_aberto("nao-existe").unwrap_err(),
             ErroBiblioteca::NaoEncontrado(_)
         ));
+    }
+
+    #[test]
+    fn preferencias_padrao_salvas_e_normalizadas() {
+        use crate::preferencias::Fonte;
+
+        let (_dir, bib) = nova();
+        assert_eq!(
+            bib.preferencias_leitura().unwrap(),
+            PreferenciasLeitura::default()
+        );
+
+        let pedidas = PreferenciasLeitura {
+            fonte: Fonte::Atkinson,
+            tamanho: 50.0,
+            ..Default::default()
+        };
+        let gravadas = bib.salvar_preferencias_leitura(pedidas).unwrap();
+        assert_eq!(gravadas.tamanho, crate::preferencias::limites::TAMANHO.1);
+        assert_eq!(bib.preferencias_leitura().unwrap(), gravadas);
+
+        let outras = PreferenciasLeitura {
+            fonte: Fonte::Lexend,
+            ..Default::default()
+        };
+        bib.salvar_preferencias_leitura(outras.clone()).unwrap();
+        assert_eq!(bib.preferencias_leitura().unwrap(), outras);
+    }
+
+    #[test]
+    fn migra_banco_da_versao_1_sem_perder_dados() {
+        let dir = tempfile::tempdir().unwrap();
+        let (dados, capas) = (dir.path().join("dados"), dir.path().join("capas"));
+        std::fs::create_dir_all(&dados).unwrap();
+        // Banco como o M2 deixava: só a primeira migração aplicada.
+        {
+            let conexao = Connection::open(dados.join(ARQUIVO_BANCO)).unwrap();
+            conexao.execute_batch(MIGRACOES[0]).unwrap();
+            conexao.pragma_update(None, "user_version", 1).unwrap();
+            conexao
+                .execute(
+                    "INSERT INTO livros (id, formato, titulo, autores, arquivo, adicionado_em)
+                     VALUES ('x', 'epub', 'Antigo', '', 'x.epub', 0)",
+                    [],
+                )
+                .unwrap();
+        }
+        let bib = Biblioteca::abrir(&dados, &capas).unwrap();
+        assert_eq!(bib.obter("x").unwrap().unwrap().titulo, "Antigo");
+        assert_eq!(
+            bib.preferencias_leitura().unwrap(),
+            PreferenciasLeitura::default()
+        );
+        let versao: i64 = bib
+            .conexao
+            .pragma_query_value(None, "user_version", |l| l.get(0))
+            .unwrap();
+        assert_eq!(versao as usize, MIGRACOES.len());
     }
 
     #[test]

@@ -3,6 +3,7 @@ import App from "./App.svelte";
 import "./app.css";
 import { iniciarEscala } from "./lib/escala.svelte";
 import { log } from "./lib/log";
+import { carregarPreferencias } from "./lib/preferencias.svelte";
 
 // Erros da webview não aparecem em lugar nenhum se não forem para o log.
 window.addEventListener("error", (e) => log.error(`erro não tratado: ${e.message}`));
@@ -11,7 +12,7 @@ document.addEventListener("securitypolicyviolation", (e) =>
   log.warn(`CSP bloqueou ${e.blockedURI || "inline"} (${e.violatedDirective})`),
 );
 
-await iniciarEscala();
+await Promise.all([iniciarEscala(), carregarPreferencias()]);
 
 const app = mount(App, { target: document.getElementById("app")! });
 
