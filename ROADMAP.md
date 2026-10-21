@@ -8,7 +8,7 @@ Cada marco precisa terminar em algo utilizável.
 - [x] **M3 — PDF**: abrir PDFs com pdf.js, com zoom, busca e texto selecionável.
 - [ ] **M4 — Acessibilidade**: fontes (inclusive para dislexia), tamanho, espaçamento de linha e letra, largura de coluna, temas (alto contraste, sépia, escuro), movimento reduzido, TTS, navegação completa por teclado, teste com Orca e VoiceOver.
   - [x] M4a — preferências de leitura (fontes, tamanho, espaçamentos, largura, alinhamento)
-  - [ ] M4b — temas e movimento reduzido
+  - [x] M4b — temas e movimento reduzido
   - [ ] M4c — teclado completo, foco e testes com Orca
   - [ ] M4d — leitura em voz alta (TTS)
 - [ ] **M5 — Animações e polimento**: virada de página, transições, respeitando `prefers-reduced-motion`.

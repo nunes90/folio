@@ -1,4 +1,4 @@
-//! Preferências de leitura (aparência do texto), guardadas na biblioteca.
+//! Preferências de leitura e de aparência (texto, tema, movimento), guardadas na biblioteca.
 //!
 //! Os valores chegam do frontend, então nada aqui confia neles: `normalizada` corrige
 //! valores fora dos limites (ou NaN) em vez de falhar, e campos ausentes ou desconhecidos
@@ -35,6 +35,29 @@ pub enum Alinhamento {
     Justificado,
 }
 
+/// Tema de cores da interface e do livro.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Tema {
+    /// Claro ou escuro conforme o sistema; alto contraste se o sistema pedir.
+    #[default]
+    Sistema,
+    Claro,
+    Escuro,
+    Sepia,
+    AltoContraste,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Movimento {
+    /// Reduz animações se o sistema pedir (`prefers-reduced-motion`).
+    #[default]
+    Sistema,
+    /// Sempre reduz, mesmo que o sistema não peça.
+    Reduzido,
+}
+
 /// Limites (mínimo, máximo) de cada valor numérico.
 pub mod limites {
     pub const TAMANHO: (f64, f64) = (0.75, 3.0);
@@ -64,6 +87,8 @@ pub struct PreferenciasLeitura {
     pub colunas: u8,
     pub alinhamento: Alinhamento,
     pub hifenizacao: bool,
+    pub tema: Tema,
+    pub movimento: Movimento,
 }
 
 impl Default for PreferenciasLeitura {
@@ -78,6 +103,8 @@ impl Default for PreferenciasLeitura {
             colunas: 2,
             alinhamento: Alinhamento::Original,
             hifenizacao: false,
+            tema: Tema::Sistema,
+            movimento: Movimento::Sistema,
         }
     }
 }
@@ -189,6 +216,27 @@ mod tests {
         let p = PreferenciasLeitura::de_json(r#"{"tamanho": 1.5}"#);
         assert_eq!(p.tamanho, 1.5);
         assert_eq!(p.entrelinha, PreferenciasLeitura::default().entrelinha);
+    }
+
+    #[test]
+    fn preferencias_salvas_antes_dos_temas_continuam_validas() {
+        // JSON como o M4a gravava: sem `tema` nem `movimento`.
+        let p = PreferenciasLeitura::de_json(r#"{"fonte":"lexend","tamanho":1.2}"#);
+        assert_eq!(p.fonte, Fonte::Lexend);
+        assert_eq!(p.tema, Tema::Sistema);
+        assert_eq!(p.movimento, Movimento::Sistema);
+    }
+
+    #[test]
+    fn tema_e_movimento_no_json() {
+        let json = PreferenciasLeitura {
+            tema: Tema::AltoContraste,
+            movimento: Movimento::Reduzido,
+            ..Default::default()
+        }
+        .para_json();
+        assert!(json.contains(r#""tema":"alto-contraste""#), "{json}");
+        assert!(json.contains(r#""movimento":"reduzido""#), "{json}");
     }
 
     #[test]

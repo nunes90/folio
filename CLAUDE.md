@@ -74,13 +74,16 @@ docs/decisions/  # ADRs
 - **M3**: `pdf::ler` (lopdf: título/autores do `Info`); PDFs entram na biblioteca e a capa é
   gerada pelo pdf.js no frontend (`definir_capa`, bytes crus com cabeçalhos `livro`/`tipo`). `LeitorPdf` com
   `PDFViewer`, busca, zoom e páginas; progresso `pagina:N`. Detalhes na ADR 0002.
-- **M4a** (branch `feat/m4a-preferencias`): preferências de leitura (`core::preferencias`, normalizadas no core,
+- **M4a**: preferências de leitura (`core::preferencias`, normalizadas no core,
   JSON na tabela `preferencias`, migração 2). Fontes OFL embutidas via Fontsource (Literata, Atkinson Hyperlegible,
   Lexend, OpenDyslexic; `ui/src/lib/fontes.ts`), tamanho × escala do sistema, entrelinha, espaçamentos, largura,
   colunas, alinhamento, hifenização. Painel "Aparência" no leitor de EPUB (prévia ao vivo; Esc fecha e devolve o foco).
+- **M4b** (branch `feat/m4b-temas`): temas claro/escuro/sépia/alto contraste (cores em `ui/src/lib/temas.ts`, fonte
+  única para interface e livro; testes de contraste WCAG) e opção "sempre reduzir animações". Padrão: seguir o sistema
+  (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`; reativo em `lib/ambiente.svelte.ts`).
+  Foco visível global (`:focus-visible`). Painel de tema na biblioteca e no leitor de EPUB. Páginas de PDF não mudam de cor.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
 - Pendências: janela não testada no macOS; remover livro da biblioteca; regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
   origem dos logs do frontend aponta para o wrapper.
-- Próximo passo: **M4b** (temas claro/escuro/sépia/alto contraste e movimento reduzido); depois M4c (teclado e
-  leitor de tela) e M4d (leitura em voz alta).
+- Próximo passo: **M4c** (teclado completo, foco e testes com Orca); depois M4d (leitura em voz alta).

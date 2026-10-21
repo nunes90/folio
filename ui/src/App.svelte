@@ -17,6 +17,9 @@
     type Progresso,
   } from "./lib/biblioteca";
   import { log } from "./lib/log";
+  import { movimentoReduzido, sistema, temaEfetivo } from "./lib/ambiente.svelte";
+  import { atualizarPreferencias, preferencias } from "./lib/preferencias.svelte";
+  import { aplicarTema, resolverTema } from "./lib/temas";
 
   /** Progresso só vai ao banco depois de um tempo sem virar página. */
   const ESPERA_PROGRESSO_MS = 1000;
@@ -28,6 +31,12 @@
 
   let pendente: { id: string; progresso: Progresso } | null = null;
   let temporizador: ReturnType<typeof setTimeout> | undefined;
+
+  // Tema e movimento da interface: reagem às preferências e às mudanças do sistema.
+  $effect(() => {
+    aplicarTema(temaEfetivo());
+    document.documentElement.dataset.movimento = movimentoReduzido() ? "reduzido" : "normal";
+  });
 
   onMount(async () => {
     // Fora do Tauri (testes) não há biblioteca: fica a tela vazia.
@@ -156,5 +165,14 @@
     onProgresso={aoProgredir}
   />
 {:else}
-  <Biblioteca {livros} {importando} {aviso} onAbrir={abrir} onImportar={escolherEImportar} />
+  <Biblioteca
+    {livros}
+    {importando}
+    {aviso}
+    onAbrir={abrir}
+    onImportar={escolherEImportar}
+    {preferencias}
+    onMudarPreferencias={atualizarPreferencias}
+    temaDoSistema={resolverTema("sistema", sistema)}
+  />
 {/if}

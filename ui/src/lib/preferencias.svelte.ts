@@ -3,9 +3,11 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { familiaCss, fontFace } from "./fontes";
 import { log } from "./log";
+import { cssDoTema, type TemaEfetivo, type TemaEscolhido } from "./temas";
 
 export type Fonte = "original" | "literata" | "atkinson" | "lexend" | "opendyslexic";
 export type Alinhamento = "original" | "inicio" | "justificado";
+export type Movimento = "sistema" | "reduzido";
 
 export interface Preferencias {
   fonte: Fonte;
@@ -17,6 +19,8 @@ export interface Preferencias {
   colunas: number;
   alinhamento: Alinhamento;
   hifenizacao: boolean;
+  tema: TemaEscolhido;
+  movimento: Movimento;
 }
 
 /** Mesmos padrões e limites do core; o core é quem decide no fim (normaliza ao salvar). */
@@ -30,6 +34,8 @@ export const PADRAO: Preferencias = {
   colunas: 2,
   alinhamento: "original",
   hifenizacao: false,
+  tema: "sistema",
+  movimento: "sistema",
 };
 
 export const LIMITES = {
@@ -71,8 +77,9 @@ export function atualizarPreferencias(mudancas: Partial<Preferencias>): void {
   }, ESPERA_GRAVACAO_MS);
 }
 
+/** Restaura o texto; tema e movimento ficam como estão (têm o próprio painel). */
 export function restaurarPadrao(): void {
-  atualizarPreferencias({ ...PADRAO });
+  atualizarPreferencias({ ...PADRAO, tema: preferencias.tema, movimento: preferencias.movimento });
 }
 
 /** Seletores de blocos de texto corrido (os mesmos que o leitor do foliate-js ajusta). */
@@ -82,8 +89,16 @@ const TEXTO = "p, li, blockquote, dd";
  * CSS injetado em cada capítulo do livro. `escala` é a escala de texto do sistema (ADR 0004);
  * o tamanho escolhido se multiplica a ela. `!important` porque o CSS do livro vem antes.
  */
-export function cssDoLivro(p: Preferencias, escala: number, base?: string): string {
-  const regras = [`html { font-size: ${+(escala * p.tamanho * 100).toFixed(2)}% !important; }`];
+export function cssDoLivro(
+  p: Preferencias,
+  escala: number,
+  tema: TemaEfetivo,
+  base?: string,
+): string {
+  const regras = [
+    cssDoTema(tema),
+    `html { font-size: ${+(escala * p.tamanho * 100).toFixed(2)}% !important; }`,
+  ];
 
   const espacamento = [`line-height: ${p.entrelinha} !important`];
   if (p.espacoLetras) espacamento.push(`letter-spacing: ${p.espacoLetras}em !important`);

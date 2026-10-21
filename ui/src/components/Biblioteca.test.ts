@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/svelte";
 import axe from "axe-core";
 import { describe, expect, it, vi } from "vitest";
 import type { Livro } from "../lib/biblioteca";
+import { PADRAO } from "../lib/preferencias.svelte";
 import Biblioteca from "./Biblioteca.svelte";
 
 function livro(parcial: Partial<Livro>): Livro {
@@ -61,6 +62,21 @@ describe("Biblioteca", () => {
     render(Biblioteca, { livros, importando: true, aviso: "2 livros importados", ...semAcao });
     expect(screen.getByRole("button", { name: "Importando…" }).hasAttribute("disabled")).toBe(true);
     expect(screen.getByRole("status").textContent).toBe("2 livros importados");
+  });
+
+  it("com preferências, oferece o painel de tema", async () => {
+    render(Biblioteca, {
+      livros,
+      ...semAcao,
+      preferencias: PADRAO,
+      onMudarPreferencias: () => {},
+      temaDoSistema: "claro",
+    });
+    const botao = screen.getByRole("button", { name: "Aparência" });
+    expect(botao.getAttribute("aria-expanded")).toBe("false");
+    await fireEvent.click(botao);
+    expect(botao.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("radio", { name: "Sépia" })).toBeTruthy();
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {

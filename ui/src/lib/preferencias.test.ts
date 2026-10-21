@@ -3,16 +3,20 @@ import { cssDoLivro, PADRAO, type Preferencias } from "./preferencias.svelte";
 
 const base = "tauri://localhost/";
 const css = (mudancas: Partial<Preferencias> = {}, escala = 1) =>
-  cssDoLivro({ ...PADRAO, ...mudancas }, escala, base);
+  cssDoLivro({ ...PADRAO, ...mudancas }, escala, "claro", base);
 
 describe("cssDoLivro", () => {
   it("multiplica o tamanho escolhido pela escala do sistema", () => {
     expect(css({ tamanho: 1.25 }, 1.3636)).toContain("html { font-size: 170.45% !important; }");
   });
 
+  it("inclui as cores do tema", () => {
+    expect(cssDoLivro(PADRAO, 1, "sepia", base)).toContain("background: #f4ecd8 !important");
+  });
+
   it("no padrão, não troca a fonte nem o alinhamento do livro", () => {
     const resultado = css();
-    expect(resultado).not.toContain("font-family");
+    expect(resultado).not.toMatch(/font-family: "/);
     expect(resultado).not.toContain("text-align");
     expect(resultado).not.toContain("letter-spacing");
     expect(resultado).toContain("line-height: 1.5 !important");
