@@ -19,3 +19,9 @@ Cada marco precisa terminar em algo utilizável.
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
   O código já trata o macOS em alguns pontos (diretório de logs, escala de texto) e deve continuar compilando.
 - **Windows**.
+- **Voz neural local** (ideia): ler EPUB e PDF com modelos de voz que rodam no próprio computador, sem
+  internet (ex.: Piper ou Kokoro, ambos com vozes pt-BR), via ONNX Runtime no Rust (crate `ort`). O texto
+  vem do `tts.js` do foliate-js (EPUB) ou da camada de texto do pdf.js (PDF), com destaque do trecho lido.
+  Antes: analisar licenças (o código do Piper e o espeak-ng, usado para fonemas, são GPL-3; cada voz tem a
+  sua), baixar vozes sob demanda em vez de embuti-las, e comparar a qualidade em pt-BR. Para facilitar, o
+  M4d deve ter um "motor de voz" trocável (speech-dispatcher primeiro).
