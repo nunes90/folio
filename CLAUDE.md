@@ -105,6 +105,14 @@ docs/decisions/  # ADRs
   estilo do app Livros da Apple: uma cópia da capa (`data-capa-livro`) cresce, só com transform/opacity, até a área do
   livro na moldura (`data-area-livro`) e volta; a tela nova (`data-tela`) esmaece. Os leitores esperam
   `aguardarTransicao()` antes de carregar o livro. Vale igual para EPUB e PDF.
+- **M5c** (branch `feat/m5c-virada`): virada de página igual para EPUB e PDF, via `MolduraLeitor.virarPagina(sentido,
+  navegar)` e `lib/virada.ts`. Estilos nas preferências (`virada`): esmaecer (padrão), deslizar (3%), virar a folha
+  (giro 3D a partir da lombada), nenhuma; 160 ms. A virada se repete centenas de vezes: o padrão deve ser quase
+  imperceptível (deslizar 8%/280 ms foi achado "muito motion"). A curvatura real da folha é inviável (a página do EPUB vive num iframe). A área fica
+  invisível até `navegar` terminar (no PDF, até o pdf.js desenhar a página, limite de 400 ms) e só então anima. O
+  `animated` do foliate saiu. PDF: `modoPdf` página a página (padrão) ou rolagem contínua (sem virada). Medido no
+  release: EPUB ~60 qps em todos; PDF esmaecer ~60, deslizar/virar ~30–40 (compor uma página grande transformada no
+  WebKitGTK custa caro; esconder a camada de texto quase não ajuda).
 - **Animações no estilo Apple**: a curva de `lib/animacao.ts` é uma mola criticamente amortecida (como a "smooth" do
   SwiftUI), em CSS via `linear()`; só animar transform e opacity; nada pesado durante o movimento.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
@@ -115,5 +123,5 @@ docs/decisions/  # ADRs
   origem dos logs do frontend aponta para o wrapper.
 - Roteiro do Orca executado (out/2026): navegação funcional. A voz do sistema (espeak-ng) é muito robótica:
   afeta o Orca e a leitura em voz alta. Alternativas (Piper no speech-dispatcher, voz neural local) em aberto.
-- Próximo passo: **M5** (animações e polimento). Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- Próximo passo: **M5d** (janelas estreitas, estados de carregamento). Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

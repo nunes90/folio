@@ -19,7 +19,7 @@
     restaurarPadrao,
   } from "../lib/preferencias.svelte";
   import { log } from "../lib/log";
-  import { movimentoReduzido, sistema, temaEfetivo } from "../lib/ambiente.svelte";
+  import { sistema, temaEfetivo } from "../lib/ambiente.svelte";
   import { resolverTema } from "../lib/temas";
   import { aguardarTransicao } from "../lib/transicao";
   import {
@@ -69,14 +69,13 @@
   // painel aberto: o livro funciona como prévia ao vivo).
   $effect(() => {
     const css = cssDoLivro(preferencias, escala.fator, temaEfetivo());
-    const animado = !movimentoReduzido();
     const largura = `${preferencias.larguraMaxima}px`;
     const colunas = String(preferencias.colunas);
     if (!pronto || !view) return;
     view.renderer.setStyles(css);
     view.renderer.setAttribute("max-inline-size", largura);
     view.renderer.setAttribute("max-column-count", colunas);
-    view.renderer.toggleAttribute("animated", animado);
+    // Sem o atributo "animated": a virada é a da moldura (lib/virada.ts), igual à do PDF.
   });
 
   const porcento = new Intl.NumberFormat("pt-BR", { style: "percent" });
@@ -103,6 +102,18 @@
       view?.remove();
     };
   });
+
+  /** Lado de onde vem a página seguinte: a direita, salvo em livros da direita para a esquerda. */
+  const ladoDaProxima = () => (view?.book.dir === "rtl" ? "esquerda" : "direita");
+  const ladoDaAnterior = () => (ladoDaProxima() === "direita" ? "esquerda" : "direita");
+
+  function proxima() {
+    return moldura.virarPagina(ladoDaProxima(), () => view?.next());
+  }
+
+  function anterior() {
+    return moldura.virarPagina(ladoDaAnterior(), () => view?.prev());
+  }
 
   async function lerEmVozAlta() {
     if (!view) return;
@@ -241,10 +252,10 @@
     if (!view || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
     // Setas seguem a direção visual (livros RTL invertem); PageUp/PageDown seguem a ordem de leitura.
     const acoes: Record<string, () => Promise<void>> = {
-      ArrowLeft: () => view!.goLeft(),
-      ArrowRight: () => view!.goRight(),
-      PageUp: () => view!.prev(),
-      PageDown: () => view!.next(),
+      ArrowLeft: () => moldura.virarPagina("esquerda", () => view!.goLeft()),
+      ArrowRight: () => moldura.virarPagina("direita", () => view!.goRight()),
+      PageUp: anterior,
+      PageDown: proxima,
     };
     const acao = acoes[e.key];
     if (acao) {
@@ -283,9 +294,9 @@
         <button type="button" onclick={pararLeitura}>Parar leitura</button>
       {/if}
     </div>
-    <button type="button" onclick={() => view?.prev()}>Anterior</button>
+    <button type="button" onclick={anterior}>Anterior</button>
     <span>{porcento.format(progresso)}</span>
-    <button type="button" onclick={() => view?.next()}>Próxima</button>
+    <button type="button" onclick={proxima}>Próxima</button>
   {/snippet}
 
   <div class="palco" bind:this={palco}>

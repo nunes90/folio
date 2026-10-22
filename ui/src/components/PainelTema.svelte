@@ -1,6 +1,7 @@
 <script lang="ts">
   import { TEMAS, type TemaEfetivo, type TemaEscolhido } from "../lib/temas";
   import type { Movimento, Preferencias } from "../lib/preferencias.svelte";
+  import type { EstiloVirada } from "../lib/virada";
 
   let {
     preferencias,
@@ -23,6 +24,13 @@
   const OPCOES: { valor: TemaEscolhido; nome: string }[] = [
     { valor: "sistema", nome: "Do sistema" },
     ...(Object.keys(NOMES) as TemaEfetivo[]).map((t) => ({ valor: t, nome: NOMES[t] })),
+  ];
+
+  const VIRADAS: { valor: EstiloVirada; nome: string }[] = [
+    { valor: "esmaecer", nome: "Esmaecer (sugerido)" },
+    { valor: "deslizar", nome: "Deslizar" },
+    { valor: "virar", nome: "Virar a folha" },
+    { valor: "nenhuma", nome: "Nenhuma" },
   ];
 
   const MOVIMENTOS: { valor: Movimento; nome: string }[] = [
@@ -62,6 +70,22 @@
             <span class="agora">(agora: {NOMES[temaDoSistema].toLowerCase()})</span>
           {/if}
         </span>
+      </label>
+    {/each}
+  </fieldset>
+
+  <fieldset>
+    <legend>Virada de página</legend>
+    {#each VIRADAS as v (v.valor)}
+      <label class="opcao">
+        <input
+          type="radio"
+          name="virada"
+          value={v.valor}
+          checked={preferencias.virada === v.valor}
+          onchange={() => onMudar({ virada: v.valor })}
+        />
+        {v.nome}
       </label>
     {/each}
   </fieldset>

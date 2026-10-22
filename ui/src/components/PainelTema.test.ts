@@ -41,6 +41,15 @@ describe("PainelTema", () => {
     ).toBe(true);
   });
 
+  it("virada de página: esmaecer é o padrão sugerido; as outras são opções", async () => {
+    const { onMudar } = renderizar();
+    expect((screen.getByRole("radio", { name: "Esmaecer (sugerido)" }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+    await fireEvent.click(screen.getByRole("radio", { name: "Virar a folha" }));
+    expect(onMudar).toHaveBeenCalledWith({ virada: "virar" });
+  });
+
   it("não tem violações de acessibilidade (axe)", async () => {
     const { container } = renderizar();
     const { violations } = await axe.run(container);

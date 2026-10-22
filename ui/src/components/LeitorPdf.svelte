@@ -7,6 +7,7 @@
   import BuscaPdf from "./BuscaPdf.svelte";
   import Indice from "./Indice.svelte";
   import MolduraLeitor from "./MolduraLeitor.svelte";
+  import PainelPdf from "./PainelPdf.svelte";
   import PainelTema from "./PainelTema.svelte";
   import { sistema } from "../lib/ambiente.svelte";
   import type { ItemIndice } from "../lib/foliate";
@@ -36,6 +37,9 @@
   let conteiner: HTMLDivElement;
   let campoBusca = $state<HTMLInputElement>();
   let visor: PDFViewer | undefined;
+  /** Modos de rolagem do pdf.js (ScrollMode), disponíveis depois de carregar o visor. */
+  let modosDeRolagem: { PAGE: number; VERTICAL: number } | undefined;
+  let pronto = $state(false);
   let links: PDFLinkService | undefined;
   let tarefa: PDFDocumentLoadingTask | undefined;
 
@@ -63,6 +67,15 @@
     }
   });
 
+  // Página a página (como um livro, zoom "página inteira") ou rolagem contínua (zoom
+  // "largura"). Reage na hora quando a preferência muda.
+  $effect(() => {
+    const paginas = preferencias.modoPdf === "paginas";
+    if (!pronto || !visor || !modosDeRolagem) return;
+    visor.scrollMode = paginas ? modosDeRolagem.PAGE : modosDeRolagem.VERTICAL;
+    visor.currentScaleValue = paginas ? "page-fit" : "page-width";
+  });
+
   /** Estados do PDFFindController (FindState no pdf.js). */
   const BUSCA = { ENCONTRADO: 0, NADA: 1, VOLTOU_AO_INICIO: 2, PENDENTE: 3 };
 
@@ -82,7 +95,9 @@
   async function abrir() {
     // Espera a transição da capa terminar: carregar o livro durante ela a faria engasgar.
     await aguardarTransicao();
-    const { EventBus, PDFFindController, PDFLinkService, PDFViewer } = await carregarVisor();
+    const { EventBus, PDFFindController, PDFLinkService, PDFViewer, ScrollMode } =
+      await carregarVisor();
+    modosDeRolagem = ScrollMode;
     const eventos = new EventBus();
     const l = new PDFLinkService({ eventBus: eventos });
     const busca = new PDFFindController({ eventBus: eventos, linkService: l });
@@ -92,7 +107,7 @@
     links = l;
 
     eventos.on("pagesinit", () => {
-      v.currentScaleValue = "page-width";
+      pronto = true; // o efeito acima aplica o modo e o zoom
       const n = Number(inicio?.match(/^pagina:(\d+)$/)?.[1]);
       if (n >= 1 && n <= v.pagesCount) v.currentPageNumber = n;
       pagina = v.currentPageNumber;
@@ -160,8 +175,46 @@
     conteiner.focus();
   }
 
+  /**
+   * Página a página, a navegação passa pela moldura: mesma animação de virada que o EPUB.
+   * Na rolagem contínua, o próprio pdf.js rola até a página (virar não faria sentido).
+   */
   function irPara(n: number) {
-    if (visor && n >= 1 && n <= total) visor.currentPageNumber = n;
+    if (!visor || n < 1 || n > total || n === pagina) return;
+    const v = visor;
+    if (preferencias.modoPdf === "rolagem") {
+      v.currentPageNumber = n;
+      return;
+    }
+    moldura.virarPagina(n > pagina ? "direita" : "esquerda", () => {
+      v.currentPageNumber = n;
+      return paginaRenderizada(v, n);
+    });
+  }
+
+  /** Estado "terminada" de uma página no pdf.js (RenderingStates.FINISHED). */
+  const RENDERIZADA = 3;
+  /** Limite de espera pela renderização: depois disso, anima assim mesmo. */
+  const ESPERA_MAXIMA_MS = 400;
+
+  /**
+   * Resolve quando o pdf.js terminar de desenhar a página `n` (na hora, se já estiver pronta):
+   * a virada só começa depois, para não disputar a thread com a renderização.
+   */
+  function paginaRenderizada(v: PDFViewer, n: number): Promise<void> {
+    if (v.getPageView(n - 1)?.renderingState === RENDERIZADA) return Promise.resolve();
+    return new Promise((resolver) => {
+      const aoRenderizar = ({ pageNumber }: { pageNumber: number }) => {
+        if (pageNumber === n) terminar();
+      };
+      const limite = setTimeout(() => terminar(), ESPERA_MAXIMA_MS);
+      function terminar() {
+        clearTimeout(limite);
+        v.eventBus.off("pagerendered", aoRenderizar);
+        resolver();
+      }
+      v.eventBus.on("pagerendered", aoRenderizar);
+    });
   }
 
   function buscar(termo: string, anterior: boolean) {
@@ -206,8 +259,8 @@
     // Setas trocam de página, exceto quando o foco está num campo de texto.
     const emCampo = e.target instanceof HTMLInputElement;
     if (emCampo || ctrl || e.altKey) return;
-    if (e.key === "ArrowLeft") visor.previousPage();
-    else if (e.key === "ArrowRight") visor.nextPage();
+    if (e.key === "ArrowLeft") irPara(pagina - 1);
+    else if (e.key === "ArrowRight") irPara(pagina + 1);
   }
 </script>
 
@@ -230,6 +283,7 @@
       onMudar={atualizarPreferencias}
       temaDoSistema={resolverTema("sistema", sistema)}
     />
+    <PainelPdf {preferencias} onMudar={atualizarPreferencias} />
     <p class="nota">
       Fonte, espaçamentos e colunas valem só para EPUB: o PDF tem layout fixo. Para ler maior,
       use o zoom (Ctrl + ou Ctrl −).

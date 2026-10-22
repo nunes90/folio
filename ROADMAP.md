@@ -16,7 +16,7 @@ Cada marco precisa terminar em algo utilizável.
   Tudo igual para EPUB e PDF (moldura e tokens de animação comuns).
   - [x] M5a — base de animação, moldura comum dos leitores, painéis, diálogos e microinterações
   - [x] M5b — transições entre telas (biblioteca ↔ leitor)
-  - [ ] M5c — virada de página
+  - [x] M5c — virada de página
   - [ ] M5d — janelas estreitas (painéis por cima do livro), estados de carregamento
 - [ ] **M6 — Empacotamento**: Flatpak/AppImage.
 
