@@ -54,6 +54,7 @@
 </script>
 
 <dialog
+  class="modal"
   bind:this={dialogo}
   aria-labelledby="titulo-confirmacao"
   aria-describedby="texto-confirmacao"
@@ -68,16 +69,9 @@
 </dialog>
 
 <style>
+  /* Aparência e animação comuns em app.css (dialog.modal). */
   dialog {
     max-width: min(32rem, 90vw);
-    border: 1px solid var(--borda);
-    border-radius: 0.5rem;
-    background: var(--fundo);
-    color: var(--texto);
-  }
-
-  dialog::backdrop {
-    background: rgb(0 0 0 / 50%);
   }
 
   h2 {

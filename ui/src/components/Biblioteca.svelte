@@ -2,6 +2,9 @@
   import { urlDaCapa, type Livro } from "../lib/biblioteca";
   import type { Preferencias } from "../lib/preferencias.svelte";
   import type { TemaEfetivo } from "../lib/temas";
+  import { fade } from "svelte/transition";
+  import { curva, duracao } from "../lib/animacao";
+  import Icone from "./Icone.svelte";
   import PainelTema from "./PainelTema.svelte";
 
   let {
@@ -142,7 +145,11 @@
   {/if}
 
   <!-- Sempre no DOM: regiões aria-live só anunciam mudanças em elementos que já existiam. -->
-  <p class="aviso" role="status">{aviso ?? ""}</p>
+  <p class="aviso" role="status">
+    {#key aviso}
+      <span in:fade={{ duration: duracao("curta"), easing: curva }}>{aviso ?? ""}</span>
+    {/key}
+  </p>
 
   {#if livros.length === 0}
     <p class="vazia">Sua biblioteca está vazia. Importe um EPUB ou PDF para começar.</p>
@@ -181,7 +188,7 @@
               tabindex="-1"
               aria-label="Remover {livro.titulo}"
               title="Remover da biblioteca"
-              onclick={() => onRemover(livro)}>×</button
+              onclick={() => onRemover(livro)}><Icone nome="fechar" /></button
             >
           {/if}
         </li>
@@ -221,7 +228,8 @@
     display: none;
   }
 
-  .aviso:empty {
+  /* Sem aviso, não ocupa espaço (o <span> existe sempre por causa da animação). */
+  .aviso:has(> span:empty) {
     margin: 0;
   }
 
@@ -251,9 +259,11 @@
     height: 2rem;
     padding: 0;
     border-radius: 50%;
-    font-size: 1.25rem;
-    line-height: 1;
+    display: grid;
+    place-items: center;
+    font-size: 1rem;
     opacity: 0.75;
+    transition: opacity var(--duracao-curta) var(--curva);
   }
 
   .remover:hover,
@@ -273,6 +283,19 @@
     color: inherit;
     text-align: start;
     cursor: pointer;
+  }
+
+  /* A capa se eleva um pouco ao passar o mouse ou focar: indica o que será aberto. */
+  img,
+  .capa-substituta {
+    transition: transform var(--duracao-curta) var(--curva);
+  }
+
+  li button.livro:hover img,
+  li button.livro:hover .capa-substituta,
+  li button.livro:focus-visible img,
+  li button.livro:focus-visible .capa-substituta {
+    transform: translateY(-0.25rem);
   }
 
   li button.livro:hover {

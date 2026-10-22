@@ -13,6 +13,11 @@ Cada marco precisa terminar em algo utilizável.
   - [x] M4d — leitura em voz alta (TTS) de EPUB via speech-dispatcher (ADR 0007). Atenção à qualidade da voz: o padrão do sistema (espeak-ng via
     speech-dispatcher) é muito robótico; avaliar vozes neurais locais (ex.: Piper, com vozes pt-BR)
 - [ ] **M5 — Animações e polimento**: virada de página, transições, respeitando `prefers-reduced-motion`.
+  Tudo igual para EPUB e PDF (moldura e tokens de animação comuns).
+  - [x] M5a — base de animação, moldura comum dos leitores, painéis, diálogos e microinterações
+  - [ ] M5b — transições entre telas (biblioteca ↔ leitor)
+  - [ ] M5c — virada de página
+  - [ ] M5d — janelas estreitas (painéis por cima do livro), estados de carregamento
 - [ ] **M6 — Empacotamento**: Flatpak/AppImage.
 
 ## Futuro

@@ -1,4 +1,10 @@
 :root {
+  /* Animação: valores reais vêm de lib/animacao.ts (aplicarAnimacao), zerados com movimento
+     reduzido. Estes valem só até o JS rodar. Use sempre estas variáveis, nos dois leitores. */
+  --duracao-curta: 120ms;
+  --duracao-media: 200ms;
+  --duracao-longa: 320ms;
+  --curva: cubic-bezier(0.2, 0, 0, 1);
   /* Cores vêm de lib/temas.ts (aplicarTema); os valores após a vírgula valem até o JS rodar. */
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
@@ -25,9 +31,48 @@ button {
   cursor: pointer;
 }
 
+button {
+  transition:
+    background-color var(--duracao-curta) var(--curva),
+    border-color var(--duracao-curta) var(--curva);
+}
+
 button:disabled {
   cursor: default;
   opacity: 0.6;
+}
+
+/* Diálogos modais (atalhos, confirmação): mesma aparência e mesma entrada em toda a interface. */
+dialog.modal {
+  border: 1px solid var(--borda);
+  border-radius: 0.5rem;
+  background: var(--fundo);
+  color: var(--texto);
+}
+
+dialog.modal[open] {
+  animation: entrar-dialogo var(--duracao-media) var(--curva);
+}
+
+dialog.modal::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+dialog.modal[open]::backdrop {
+  animation: esmaecer var(--duracao-media) var(--curva);
+}
+
+@keyframes entrar-dialogo {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+}
+
+@keyframes esmaecer {
+  from {
+    opacity: 0;
+  }
 }
 
 /* Visível só para leitores de tela (ex.: regiões aria-live). */

@@ -25,7 +25,7 @@
   });
 </script>
 
-<dialog bind:this={dialogo} aria-labelledby="titulo-atalhos" onclose={onFechar}>
+<dialog class="modal" bind:this={dialogo} aria-labelledby="titulo-atalhos" onclose={onFechar}>
   <h2 id="titulo-atalhos">Atalhos de teclado</h2>
   <table>
     <caption>{NOMES_CONTEXTO[contexto]}</caption>
@@ -57,16 +57,9 @@
 </dialog>
 
 <style>
+  /* Aparência e animação comuns em app.css (dialog.modal). */
   dialog {
     max-width: min(40rem, 90vw);
-    border: 1px solid var(--borda);
-    border-radius: 0.5rem;
-    background: var(--fundo);
-    color: var(--texto);
-  }
-
-  dialog::backdrop {
-    background: rgb(0 0 0 / 50%);
   }
 
   h2 {
