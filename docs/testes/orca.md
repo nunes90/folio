@@ -29,7 +29,7 @@ para o app) com `Orca+A`. Em controles como botões e campos ele costuma entrar 
 |---|---|---|
 | 2.1 | `Enter` num EPUB | Anuncia o título do livro (título 1) |
 | 2.2 | `Tab` até o índice e escolher um capítulo | O capítulo atual é anunciado como "atual"; depois do `Enter`, o foco vai para o texto e o Orca começa a lê-lo |
-| 2.3 | `→` e `←` com o foco no texto | Vira a página; ao entrar num capítulo novo, anuncia "Capítulo: …" (uma vez por capítulo, não a cada página) |
+| 2.3 | `→` e `←` com o foco no texto | Vira a página; ao entrar numa seção nova, anuncia "Seção: …" (uma vez por seção, não a cada página) |
 | 2.4 | Ler o texto no modo de navegação (setas para baixo) | Lê o conteúdo do capítulo em ordem |
 | 2.5 | `F1` com o foco no texto | Abre os atalhos de "Leitura de EPUB" |
 | 2.6 | "Aparência" → mover "Tamanho do texto" com as setas | Anuncia o valor por extenso ("125%"); o livro muda; as setas **não** viram a página |
@@ -39,7 +39,8 @@ para o app) com `Orca+A`. Em controles como botões e campos ele costuma entrar 
 ## 3. Leitura de PDF
 | # | Ação | Esperado |
 |---|---|---|
-| 3.1 | `Enter` num PDF | Anuncia o título do documento |
+| 3.1 | `Enter` num PDF | Anuncia o título do documento; o cabeçalho tem os mesmos botões do EPUB (Índice, Aparência, Voltar) |
+| 3.1b | "Índice" (se o PDF tiver sumário) e escolher uma seção | Vai para a seção; o foco vai para o documento; ao virar páginas, anuncia "Seção: …" |
 | 3.2 | `Tab` até a área do documento | Anuncia a região com o nome do documento; o texto da página pode ser lido |
 | 3.3 | `Ctrl+F`, digitar um termo, `Enter` | O foco vai para a busca; o resultado é anunciado ("1 de 12" ou "Nada encontrado") |
 | 3.4 | Campo "Página": digitar um número e `Enter` | Vai para a página; o campo anuncia o número |

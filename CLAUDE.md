@@ -90,9 +90,14 @@ docs/decisions/  # ADRs
   estados pura + `SpeechDispatcher`) e `core::ssip` (cliente SSIP próprio, sem dependências). Frontend converte o SSML
   do `tts.js` do foliate-js para `<s><mark/>frase</s>` (`ui/src/lib/voz.ts`); destaque da frase lida e passagem
   automática de parágrafo e capítulo. Velocidade nas preferências. Sem speech-dispatcher, a voz fica indisponível.
-- **Remover livro** (branch `feat/remover-livro`): `Biblioteca::remover` (registro, progresso, cópia e capa; o
+- **Remover livro**: `Biblioteca::remover` (registro, progresso, cópia e capa; o
   original não é tocado). Delete no livro focado ou botão × na capa; confirmação (`Confirmacao.svelte`, foco em
   Cancelar); foco vai ao livro vizinho.
+- **M5a** (branch `feat/m5a-moldura`): `MolduraLeitor.svelte` é a estrutura comum aos leitores de EPUB e PDF (mesmo
+  cabeçalho, painéis `PainelLateral` com a mesma animação, Esc, anúncios "Seção: …"). O PDF ganhou Índice (sumário do
+  arquivo, `lib/sumario.ts`) e Aparência (tema). Animações: durações e curva em `lib/animacao.ts` (variáveis CSS
+  `--duracao-*`/`--curva` e `duracao()` para o Svelte), zeradas com movimento reduzido. Diálogos com `class="modal"`.
+  Regra: animações e padrões visuais iguais nos dois formatos.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
 - Pendências: regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);

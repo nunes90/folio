@@ -23,6 +23,7 @@
   import { movimentoReduzido, sistema, temaEfetivo } from "./lib/ambiente.svelte";
   import { atualizarPreferencias, preferencias } from "./lib/preferencias.svelte";
   import { aplicarTema, resolverTema } from "./lib/temas";
+  import { aplicarAnimacao } from "./lib/animacao";
 
   /** Progresso só vai ao banco depois de um tempo sem virar página. */
   const ESPERA_PROGRESSO_MS = 1000;
@@ -52,7 +53,9 @@
   // Tema e movimento da interface: reagem às preferências e às mudanças do sistema.
   $effect(() => {
     aplicarTema(temaEfetivo());
-    document.documentElement.dataset.movimento = movimentoReduzido() ? "reduzido" : "normal";
+    const reduzido = movimentoReduzido();
+    document.documentElement.dataset.movimento = reduzido ? "reduzido" : "normal";
+    aplicarAnimacao(reduzido);
   });
 
   onMount(async () => {
