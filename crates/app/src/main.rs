@@ -52,6 +52,7 @@ fn main() -> anyhow::Result<()> {
         .invoke_handler(tauri::generate_handler![
             comandos::listar_livros,
             comandos::importar_livros,
+            comandos::remover_livro,
             comandos::abrir_livro,
             comandos::arquivo_livro,
             comandos::definir_capa,

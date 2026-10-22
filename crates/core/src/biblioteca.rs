@@ -237,6 +237,30 @@ impl Biblioteca {
         Ok(nome)
     }
 
+    /// Remove o livro da biblioteca: o registro, o progresso (`ON DELETE CASCADE`), a cópia do
+    /// arquivo e a capa em cache. O arquivo original, de onde foi importado, não é tocado.
+    #[instrument(skip(self))]
+    pub fn remover(&self, id: &str) -> Resultado<()> {
+        let livro = self
+            .obter(id)?
+            .ok_or_else(|| ErroBiblioteca::NaoEncontrado(id.to_owned()))?;
+        // Primeiro o banco: se apagar um arquivo falhar depois, sobra só um arquivo órfão
+        // (inofensivo), nunca um livro listado sem arquivo.
+        self.conexao
+            .execute("DELETE FROM livros WHERE id = ?1", [id])?;
+        for arquivo in std::iter::once(&livro.arquivo).chain(livro.capa.as_ref()) {
+            match std::fs::remove_file(arquivo) {
+                Ok(()) => {}
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                Err(erro) => {
+                    tracing::warn!(%erro, arquivo = %arquivo.display(), "arquivo do livro não apagado")
+                }
+            }
+        }
+        tracing::info!(%id, titulo = %livro.titulo, "livro removido");
+        Ok(())
+    }
+
     /// Registra que o livro foi aberto agora (para a ordenação por leitura recente).
     pub fn marcar_aberto(&self, id: &str) -> Resultado<()> {
         let alterados = self.conexao.execute(
@@ -614,6 +638,62 @@ mod tests {
             .pragma_query_value(None, "user_version", |l| l.get(0))
             .unwrap();
         assert_eq!(versao as usize, MIGRACOES.len());
+    }
+
+    #[test]
+    fn remover_apaga_registro_progresso_copia_e_capa() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("dom-casmurro.epub")).unwrap();
+        let p = Progresso {
+            localizacao: "epubcfi(/6/2)".into(),
+            fracao: 0.3,
+        };
+        bib.salvar_progresso(&livro.id, &p).unwrap();
+        let capa = livro.capa.clone().expect("tem capa");
+
+        bib.remover(&livro.id).unwrap();
+
+        assert!(bib.obter(&livro.id).unwrap().is_none());
+        assert!(bib.listar().unwrap().is_empty());
+        assert_eq!(
+            bib.progresso(&livro.id).unwrap(),
+            None,
+            "progresso vai junto (cascade)"
+        );
+        assert!(!livro.arquivo.exists(), "cópia do livro apagada");
+        assert!(!capa.exists(), "capa apagada");
+        assert!(
+            fixture("dom-casmurro.epub").exists(),
+            "o original nunca é tocado"
+        );
+    }
+
+    #[test]
+    fn remover_livro_inexistente() {
+        let (_dir, bib) = nova();
+        assert!(matches!(
+            bib.remover("nao-existe").unwrap_err(),
+            ErroBiblioteca::NaoEncontrado(_)
+        ));
+    }
+
+    #[test]
+    fn remover_sem_capa_e_com_arquivo_ja_apagado_funciona() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap();
+        std::fs::remove_file(&livro.arquivo).unwrap();
+        bib.remover(&livro.id).unwrap();
+        assert!(bib.obter(&livro.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn reimportar_depois_de_remover() {
+        let (_dir, bib) = nova();
+        let id = bib.importar(&fixture("minimo.epub")).unwrap().id;
+        bib.remover(&id).unwrap();
+        let de_novo = bib.importar(&fixture("minimo.epub")).unwrap();
+        assert_eq!(de_novo.id, id);
+        assert!(de_novo.arquivo.exists());
     }
 
     #[test]

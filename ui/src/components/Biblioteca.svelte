@@ -10,6 +10,7 @@
     aviso = null,
     onAbrir,
     onImportar,
+    onRemover,
     preferencias,
     onMudarPreferencias,
     temaDoSistema,
@@ -21,6 +22,8 @@
     aviso?: string | null;
     onAbrir: (livro: Livro) => void;
     onImportar: () => void;
+    /** Pedido de remoção (quem chama confirma antes de remover). */
+    onRemover?: (livro: Livro) => void;
     /** Se presentes, a biblioteca oferece o painel de tema e movimento. */
     preferencias?: Preferencias;
     onMudarPreferencias?: (mudancas: Partial<Preferencias>) => void;
@@ -36,7 +39,9 @@
   let lista = $state<HTMLUListElement>();
 
   function botoes(): HTMLButtonElement[] {
-    return lista ? [...lista.querySelectorAll<HTMLButtonElement>(":scope > li > button")] : [];
+    return lista
+      ? [...lista.querySelectorAll<HTMLButtonElement>(":scope > li > button.livro")]
+      : [];
   }
 
   function focar(indice: number) {
@@ -55,6 +60,11 @@
   }
 
   function aoTeclar(e: KeyboardEvent) {
+    if (e.key === "Delete" && onRemover && livros[ativo]) {
+      e.preventDefault();
+      onRemover(livros[ativo]);
+      return;
+    }
     const destinos: Record<string, () => number> = {
       ArrowRight: () => ativo + 1,
       ArrowLeft: () => ativo - 1,
@@ -69,11 +79,15 @@
     focar(destino());
   }
 
-  // Ao voltar de um livro, o foco vai para ele (e não para o topo da página).
+  // Ao voltar de um livro (ou remover um), o foco vai para o livro indicado. Só se o foco
+  // estiver perdido (no body, ex.: o elemento focado sumiu) ou já na lista: a lista muda
+  // sozinha (ex.: capas de PDF geradas) e não deve puxar o foco de outro controle.
   $effect(() => {
     if (!focarLivro || !lista) return;
     const indice = livros.findIndex((l) => l.id === focarLivro);
-    if (indice >= 0) focar(indice);
+    const atual = document.activeElement;
+    const focoPerdido = !atual || atual === document.body || lista.contains(atual);
+    if (indice >= 0 && focoPerdido) focar(indice);
   });
 
   // Se a lista encolher, o índice ativo continua válido.
@@ -141,7 +155,9 @@
         <li>
           <button
             type="button"
+            class="livro"
             tabindex={i === ativo ? 0 : -1}
+            aria-keyshortcuts={onRemover ? "Delete" : undefined}
             onfocus={() => (ativo = i)}
             onclick={() => onAbrir(livro)}
           >
@@ -157,6 +173,17 @@
             {/if}
             <span class="situacao">{situacao(livro)}</span>
           </button>
+          {#if onRemover}
+            <!-- Fora da ordem do Tab (o teclado usa Delete no livro focado); para o mouse. -->
+            <button
+              type="button"
+              class="remover"
+              tabindex="-1"
+              aria-label="Remover {livro.titulo}"
+              title="Remover da biblioteca"
+              onclick={() => onRemover(livro)}>×</button
+            >
+          {/if}
         </li>
       {/each}
     </ul>
@@ -212,7 +239,29 @@
     list-style: none;
   }
 
-  li button {
+  li {
+    position: relative;
+  }
+
+  .remover {
+    position: absolute;
+    inset-block-start: 1rem;
+    inset-inline-end: 1rem;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 1.25rem;
+    line-height: 1;
+    opacity: 0.75;
+  }
+
+  .remover:hover,
+  li:hover .remover {
+    opacity: 1;
+  }
+
+  li button.livro {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
@@ -226,7 +275,7 @@
     cursor: pointer;
   }
 
-  li button:hover {
+  li button.livro:hover {
     background: color-mix(in srgb, currentColor 8%, transparent);
   }
 

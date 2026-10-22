@@ -111,6 +111,38 @@ describe("Biblioteca", () => {
     });
   });
 
+  describe("remover", () => {
+    it("Delete no livro focado pede a remoção dele", async () => {
+      const onRemover = vi.fn();
+      render(Biblioteca, { livros, ...semAcao, onRemover });
+      const segundo = screen.getByRole("button", { name: /^Memórias Póstumas/ });
+      expect(segundo.getAttribute("aria-keyshortcuts")).toBe("Delete");
+      segundo.focus();
+      await fireEvent.keyDown(segundo, { key: "Delete" });
+      expect(onRemover).toHaveBeenCalledWith(livros[1]);
+    });
+
+    it("o botão × de cada capa pede a remoção, fora da ordem do Tab", async () => {
+      const onRemover = vi.fn();
+      render(Biblioteca, { livros, ...semAcao, onRemover });
+      const remover = screen.getByRole("button", { name: "Remover Dom Casmurro" });
+      expect(remover.tabIndex).toBe(-1);
+      await fireEvent.click(remover);
+      expect(onRemover).toHaveBeenCalledWith(livros[0]);
+    });
+
+    it("sem onRemover, não há botão × nem atalho", () => {
+      render(Biblioteca, { livros, ...semAcao });
+      expect(screen.queryByRole("button", { name: /^Remover/ })).toBeNull();
+    });
+
+    it("não tem violações de acessibilidade (axe)", async () => {
+      const { container } = render(Biblioteca, { livros, ...semAcao, onRemover: () => {} });
+      const { violations } = await axe.run(container);
+      expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+    });
+  });
+
   it("não tem violações de acessibilidade (axe)", async () => {
     const { container } = render(Biblioteca, { livros, aviso: "ok", ...semAcao });
     const { violations } = await axe.run(container);
