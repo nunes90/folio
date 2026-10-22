@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import PainelLateral from "./PainelLateral.svelte";
+  import { ATRIBUTO_AREA, ATRIBUTO_TELA } from "../lib/transicao";
 
   // Estrutura comum aos leitores de EPUB e PDF: os mesmos botões nos mesmos lugares, os mesmos
   // painéis com as mesmas animações e os mesmos anúncios. Cada formato só preenche as áreas.
@@ -62,7 +63,7 @@
 
 <svelte:window onkeydown={aoTeclar} />
 
-<div class="moldura">
+<div class="moldura" {...{ [ATRIBUTO_TELA]: "" }}>
   <header>
     <button
       type="button"
@@ -93,7 +94,8 @@
     </PainelLateral>
   </div>
 
-  <div class="conteudo">
+  <!-- Destino (e origem, ao fechar) da capa na transição com a biblioteca (lib/transicao.ts). -->
+  <div class="conteudo" {...{ [ATRIBUTO_AREA]: "" }}>
     {@render children()}
   </div>
 

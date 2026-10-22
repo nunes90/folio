@@ -79,7 +79,10 @@ export function salvarProgresso(id: string, progresso: Progresso): Promise<void>
 
 /** URL da capa pelo protocolo de assets (escopo restrito ao cache de capas). */
 export function urlDaCapa(livro: Livro): string | null {
-  return livro.capa ? convertFileSrc(livro.capa) : null;
+  if (!livro.capa) return null;
+  // No `cargo tauri dev`, o Vite serve as capas (ver capasNoDev em vite.config.ts).
+  if (import.meta.env.DEV) return `/__capas/${livro.capa.split(/[\\/]/).pop()}`;
+  return convertFileSrc(livro.capa);
 }
 
 export function caminhoInicial(): Promise<string | null> {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, type Component } from "svelte";
   import { isTauri } from "@tauri-apps/api/core";
   import Atalhos from "./components/Atalhos.svelte";
   import Biblioteca from "./components/Biblioteca.svelte";
@@ -24,6 +24,7 @@
   import { atualizarPreferencias, preferencias } from "./lib/preferencias.svelte";
   import { aplicarTema, resolverTema } from "./lib/temas";
   import { aplicarAnimacao } from "./lib/animacao";
+  import { transicionar } from "./lib/transicao";
 
   /** Progresso só vai ao banco depois de um tempo sem virar página. */
   const ESPERA_PROGRESSO_MS = 1000;
@@ -32,6 +33,8 @@
   let aberto = $state<{ livro: Livro; dados: ArrayBuffer; inicio?: string } | null>(null);
   let importando = $state(false);
   let ajudaAberta = $state(false);
+  /** Leitor de PDF, importado sob demanda (o pdf.js é grande) antes de a transição começar. */
+  let LeitorPdf = $state<Component<any> | null>(null);
   /** Livro esperando confirmação de remoção. */
   let aRemover = $state<Livro | null>(null);
   /** Livro fechado por último: recebe o foco ao voltar para a biblioteca. */
@@ -104,12 +107,18 @@
 
   async function abrir(livro: Livro) {
     try {
+      // Tudo o que é lento acontece antes da transição: durante ela a tela fica congelada.
       const [dados, progresso] = await Promise.all([
         carregarLivro(livro),
         progressoDoLivro(livro.id),
+        livro.formato === "pdf" && !LeitorPdf
+          ? import("./components/LeitorPdf.svelte").then((m) => (LeitorPdf = m.default))
+          : null,
       ]);
       aviso = null;
-      aberto = { livro, dados, inicio: progresso?.localizacao };
+      await transicionar(livro.id, "abrir", () => {
+        aberto = { livro, dados, inicio: progresso?.localizacao };
+      });
     } catch (e) {
       aviso = `Não foi possível abrir ${livro.titulo}: ${e}`;
       log.warn(aviso);
@@ -177,9 +186,15 @@
   async function fechar() {
     clearTimeout(temporizador);
     await gravarPendente();
-    ultimoAberto = aberto?.livro.id;
-    aberto = null;
+    const id = aberto?.livro.id;
+    ultimoAberto = id;
+    // A lista é recarregada antes, para a capa de destino já estar na tela nova.
     await recarregar();
+    const voltar = () => {
+      aberto = null;
+    };
+    if (id) await transicionar(id, "fechar", voltar);
+    else voltar();
   }
 </script>
 
@@ -203,8 +218,8 @@
 </Confirmacao>
 
 {#if aberto?.livro.formato === "pdf"}
-  <!-- Import dinâmico: o pdf.js só é carregado quando um PDF é aberto. -->
-  {#await import("./components/LeitorPdf.svelte") then { default: LeitorPdf }}
+  <!-- Importado em abrir(), antes da transição: o pdf.js só é carregado quando um PDF é aberto. -->
+  {#if LeitorPdf}
     <LeitorPdf
       dados={aberto.dados}
       titulo={aberto.livro.titulo}
@@ -212,7 +227,7 @@
       onFechar={fechar}
       onProgresso={aoProgredir}
     />
-  {/await}
+  {/if}
 {:else if aberto}
   <Leitor
     arquivo={new File([aberto.dados], `${aberto.livro.id}.epub`, { type: "application/epub+zip" })}

@@ -59,6 +59,9 @@ docs/decisions/  # ADRs
   o app define `WEBKIT_DISABLE_DMABUF_RENDERER=1` sozinho (ver `crates/app/src/main.rs`).
 - **Nunca usar zoom da webview**: no WebKitGTK ele é aplicado duas vezes em iframes e quebra o foliate-js.
   A escala de texto do sistema é anulada no zoom e reaplicada via CSS (ADR 0004). Interface em `rem`.
+- **Não usar a View Transitions API**: o WebKitGTK 2.54 a anuncia (`document.startViewTransition` existe), mas o
+  `WebKitWebProcess` aborta (SIGABRT) ao capturar a tela, mesmo numa transição mínima. Transições são feitas à mão.
+- foliate-js tem alterações locais marcadas com `LEITOR:` e listadas em `ui/src/vendor/foliate-js/PATCHES.md`.
 - Empacotamento: Flatpak (preferido) / AppImage. (`.dmg` quando o macOS voltar.)
 
 ## Estado atual
@@ -93,12 +96,20 @@ docs/decisions/  # ADRs
 - **Remover livro**: `Biblioteca::remover` (registro, progresso, cópia e capa; o
   original não é tocado). Delete no livro focado ou botão × na capa; confirmação (`Confirmacao.svelte`, foco em
   Cancelar); foco vai ao livro vizinho.
-- **M5a** (branch `feat/m5a-moldura`): `MolduraLeitor.svelte` é a estrutura comum aos leitores de EPUB e PDF (mesmo
+- **M5a**: `MolduraLeitor.svelte` é a estrutura comum aos leitores de EPUB e PDF (mesmo
   cabeçalho, painéis `PainelLateral` com a mesma animação, Esc, anúncios "Seção: …"). O PDF ganhou Índice (sumário do
   arquivo, `lib/sumario.ts`) e Aparência (tema). Animações: durações e curva em `lib/animacao.ts` (variáveis CSS
   `--duracao-*`/`--curva` e `duracao()` para o Svelte), zeradas com movimento reduzido. Diálogos com `class="modal"`.
   Regra: animações e padrões visuais iguais nos dois formatos.
+- **M5b** (branch `feat/m5b-transicoes`): transição biblioteca ↔ leitor feita à mão (FLIP) em `lib/transicao.ts`, no
+  estilo do app Livros da Apple: uma cópia da capa (`data-capa-livro`) cresce, só com transform/opacity, até a área do
+  livro na moldura (`data-area-livro`) e volta; a tela nova (`data-tela`) esmaece. Os leitores esperam
+  `aguardarTransicao()` antes de carregar o livro. Vale igual para EPUB e PDF.
+- **Animações no estilo Apple**: a curva de `lib/animacao.ts` é uma mola criticamente amortecida (como a "smooth" do
+  SwiftUI), em CSS via `linear()`; só animar transform e opacity; nada pesado durante o movimento.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
+  No dev, a página vem de `http://localhost:5173` e o WebKitGTK não carrega `asset://`: as capas vêm do próprio Vite
+  (`/__capas/`, plugin `capasNoDev` em `ui/vite.config.ts`). Na build de produção, `asset://` normal.
 - Pendências: regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
   origem dos logs do frontend aponta para o wrapper.
