@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Indice from "./Indice.svelte";
+  import Carregando from "./Carregando.svelte";
+  import Icone from "./Icone.svelte";
   import MolduraLeitor from "./MolduraLeitor.svelte";
   import PainelLeitura from "./PainelLeitura.svelte";
   import PainelTema from "./PainelTema.svelte";
@@ -286,22 +288,33 @@
   {#snippet rodape()}
     <div class="voz" role="group" aria-label="Leitura em voz alta">
       {#if voz === "parado"}
-        <button type="button" onclick={lerEmVozAlta}>Ler em voz alta</button>
+        <button type="button" onclick={lerEmVozAlta}>
+          <Icone nome="voz" /><span class="rotulo">Ler em voz alta</span>
+        </button>
       {:else}
         <button type="button" onclick={pausarOuRetomar}>
-          {voz === "pausado" ? "Continuar leitura" : "Pausar leitura"}
+          <Icone nome={voz === "pausado" ? "continuar" : "pausar"} />
+          <span class="rotulo">{voz === "pausado" ? "Continuar leitura" : "Pausar leitura"}</span>
         </button>
-        <button type="button" onclick={pararLeitura}>Parar leitura</button>
+        <button type="button" onclick={pararLeitura}>
+          <Icone nome="parar" /><span class="rotulo">Parar leitura</span>
+        </button>
       {/if}
     </div>
-    <button type="button" onclick={anterior}>Anterior</button>
+    <button type="button" onclick={anterior}>
+      <Icone nome="anterior" /><span class="rotulo">Anterior</span>
+    </button>
     <span>{porcento.format(progresso)}</span>
-    <button type="button" onclick={proxima}>Próxima</button>
+    <button type="button" onclick={proxima}>
+      <Icone nome="proxima" /><span class="rotulo">Próxima</span>
+    </button>
   {/snippet}
 
   <div class="palco" bind:this={palco}>
     {#if erro}
       <p role="alert">{erro}</p>
+    {:else if !pronto}
+      <Carregando texto="Abrindo o livro…" />
     {/if}
   </div>
 </MolduraLeitor>

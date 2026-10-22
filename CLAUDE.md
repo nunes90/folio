@@ -113,6 +113,12 @@ docs/decisions/  # ADRs
   `animated` do foliate saiu. PDF: `modoPdf` página a página (padrão) ou rolagem contínua (sem virada). Medido no
   release: EPUB ~60 qps em todos; PDF esmaecer ~60, deslizar/virar ~30–40 (compor uma página grande transformada no
   WebKitGTK custa caro; esconder a camada de texto quase não ajuda).
+- **M5d** (branch `feat/m5d-estreitas`): janela estreita (`sistema.estreita`, `max-width: 56rem` em
+  `lib/ambiente.svelte.ts`): na moldura, os painéis cobrem o livro (mesma célula do grid, véu por trás; o livro não é
+  repaginado), um por vez, o índice começa fechado, o foco vai ao painel e Esc/véu fecham e devolvem o foco.
+  Botões da barra com ícone (`Icone.svelte`) + `<span class="rotulo">`: na janela estreita, só o ícone aparece e o
+  rótulo segue como nome acessível (regra `.estreita .rotulo` no `app.css`).
+  `Carregando.svelte`: aviso discreto (`role="status"`) que só aparece após 400 ms, nos dois leitores.
 - **Animações no estilo Apple**: a curva de `lib/animacao.ts` é uma mola criticamente amortecida (como a "smooth" do
   SwiftUI), em CSS via `linear()`; só animar transform e opacity; nada pesado durante o movimento.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
@@ -123,5 +129,5 @@ docs/decisions/  # ADRs
   origem dos logs do frontend aponta para o wrapper.
 - Roteiro do Orca executado (out/2026): navegação funcional. A voz do sistema (espeak-ng) é muito robótica:
   afeta o Orca e a leitura em voz alta. Alternativas (Piper no speech-dispatcher, voz neural local) em aberto.
-- Próximo passo: **M5d** (janelas estreitas, estados de carregamento). Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- Próximo passo: **M6** (empacotamento: Flatpak/AppImage). Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

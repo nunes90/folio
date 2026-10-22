@@ -1,10 +1,13 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
+  import { tick, untrack, type Snippet } from "svelte";
+  import { fade } from "svelte/transition";
+  import { sistema } from "../lib/ambiente.svelte";
+  import Icone from "./Icone.svelte";
   import PainelLateral from "./PainelLateral.svelte";
   import { ATRIBUTO_AREA, ATRIBUTO_TELA } from "../lib/transicao";
   import { preferencias } from "../lib/preferencias.svelte";
   import { animarVirada, cancelarVirada, quadrosDaVirada, type Sentido } from "../lib/virada";
-  import { duracao } from "../lib/animacao";
+  import { curva, duracao } from "../lib/animacao";
 
   // Estrutura comum aos leitores de EPUB e PDF: os mesmos botões nos mesmos lugares, os mesmos
   // painéis com as mesmas animações e os mesmos anúncios. Cada formato só preenche as áreas.
@@ -40,6 +43,38 @@
   let botaoIndice: HTMLButtonElement;
   let botaoAparencia: HTMLButtonElement;
 
+  // Janela estreita: os painéis cobrem o livro (que não muda de tamanho nem é repaginado),
+  // um de cada vez, com um véu por trás. O índice começa fechado para o livro aparecer.
+  const estreita = $derived(sistema.estreita);
+  if (untrack(() => sistema.estreita)) indiceAberto = false;
+  $effect.pre(() => {
+    if (estreita && untrack(() => indiceAberto && aparenciaAberta)) indiceAberto = false;
+  });
+  const cobrindo = $derived(estreita && (indiceAberto || aparenciaAberta));
+
+  async function alternar(painel: "indice" | "aparencia") {
+    const abrir = painel === "indice" ? !indiceAberto : !aparenciaAberta;
+    if (painel === "indice") indiceAberto = abrir;
+    else aparenciaAberta = abrir;
+    if (!estreita || !abrir) return;
+    if (painel === "indice") aparenciaAberta = false;
+    else indiceAberto = false;
+    // O painel cobre o livro: o foco vai para ele (Esc ou o véu fecham e o devolvem).
+    await tick();
+    document.getElementById(painel)?.focus();
+  }
+
+  /** Fecha o painel que cobre o livro e devolve o foco ao botão que o abriu. */
+  function fecharPainel() {
+    if (aparenciaAberta) {
+      aparenciaAberta = false;
+      botaoAparencia.focus();
+    } else if (indiceAberto) {
+      indiceAberto = false;
+      botaoIndice.focus();
+    }
+  }
+
   /** Leva o foco ao título: o leitor de tela anuncia qual livro foi aberto. */
   export function focarTitulo() {
     tituloEl.focus();
@@ -71,6 +106,12 @@
     // Com um diálogo aberto (ex.: atalhos), o Esc é dele.
     if (e.target instanceof Element && e.target.closest("dialog")) return;
     const foco = document.activeElement;
+    // Painel cobrindo o livro (janela estreita): o Esc sempre o fecha.
+    if (cobrindo) {
+      e.preventDefault();
+      fecharPainel();
+      return;
+    }
     // Fecha o painel em que o foco está; senão, o de aparência (o que costuma cobrir o livro).
     if (indiceAberto && foco?.closest("#indice")) {
       e.preventDefault();
@@ -88,16 +129,16 @@
 
 <svelte:window onkeydown={aoTeclar} />
 
-<div class="moldura" {...{ [ATRIBUTO_TELA]: "" }}>
+<div class="moldura" class:estreita {...{ [ATRIBUTO_TELA]: "" }}>
   <header>
     <button
       type="button"
       bind:this={botaoIndice}
       aria-expanded={indiceAberto}
       aria-controls="indice"
-      onclick={() => (indiceAberto = !indiceAberto)}
+      onclick={() => alternar("indice")}
     >
-      Índice
+      <Icone nome="indice" /><span class="rotulo">Índice</span>
     </button>
     <h1 tabindex="-1" bind:this={tituloEl}>{titulo}</h1>
     {@render acoes?.()}
@@ -106,11 +147,13 @@
       bind:this={botaoAparencia}
       aria-expanded={aparenciaAberta}
       aria-controls="aparencia"
-      onclick={() => (aparenciaAberta = !aparenciaAberta)}
+      onclick={() => alternar("aparencia")}
     >
-      Aparência
+      <Icone nome="aparencia" /><span class="rotulo">Aparência</span>
     </button>
-    <button type="button" onclick={onFechar}>Voltar à biblioteca</button>
+    <button type="button" onclick={onFechar}>
+      <Icone nome="voltar" /><span class="rotulo">Voltar à biblioteca</span>
+    </button>
   </header>
 
   <div class="area-indice">
@@ -123,6 +166,17 @@
   <div class="conteudo" bind:this={areaEl} {...{ [ATRIBUTO_AREA]: "" }}>
     {@render children()}
   </div>
+
+  {#if cobrindo}
+    <!-- Só para o mouse: no teclado, Esc fecha o painel. -->
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <div
+      class="veu"
+      aria-hidden="true"
+      onclick={fecharPainel}
+      transition:fade={{ duration: duracao("media"), easing: curva }}
+    ></div>
+  {/if}
 
   <div class="area-aparencia">
     <PainelLateral id="aparencia" rotulo="Aparência" aberto={aparenciaAberta} lado="fim">
@@ -160,6 +214,7 @@
 
   h1 {
     flex: 1;
+    min-width: 3rem;
     margin: 0;
     font-size: 1rem;
     text-align: center;
@@ -200,9 +255,47 @@
     overflow: hidden;
   }
 
+  /* Janela estreita: os painéis ficam na mesma célula do livro, por cima dele. */
+  .estreita .area-indice,
+  .estreita .area-aparencia,
+  .veu {
+    grid-area: conteudo;
+    z-index: 1;
+  }
+
+  .estreita .area-indice {
+    justify-self: start;
+  }
+
+  .estreita .area-aparencia {
+    justify-self: end;
+  }
+
+  .estreita .area-indice,
+  .estreita .area-aparencia {
+    z-index: 2;
+    max-width: 100%;
+    background: var(--fundo);
+    box-shadow: 0 0 1.5rem rgb(0 0 0 / 25%);
+  }
+
+  .estreita .area-indice :global(.painel),
+  .estreita .area-aparencia :global(.painel) {
+    max-width: 100%;
+  }
+
+  .veu {
+    background: rgb(0 0 0 / 30%);
+  }
+
+  .estreita header {
+    gap: 0.5rem;
+  }
+
   footer {
     grid-area: rodape;
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
     gap: 1.5rem;
