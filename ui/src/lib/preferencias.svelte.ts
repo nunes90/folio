@@ -4,10 +4,12 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { familiaCss, fontFace } from "./fontes";
 import { log } from "./log";
 import { cssDoTema, type TemaEfetivo, type TemaEscolhido } from "./temas";
+import type { EstiloVirada } from "./virada";
 
 export type Fonte = "original" | "literata" | "atkinson" | "lexend" | "opendyslexic";
 export type Alinhamento = "original" | "inicio" | "justificado";
 export type Movimento = "sistema" | "reduzido";
+export type ModoPdf = "paginas" | "rolagem";
 
 export interface Preferencias {
   fonte: Fonte;
@@ -23,6 +25,10 @@ export interface Preferencias {
   movimento: Movimento;
   /** Velocidade da leitura em voz alta, -100 a 100 (0 = normal do sistema). */
   velocidadeVoz: number;
+  /** Animação ao virar a página (EPUB e PDF). */
+  virada: EstiloVirada;
+  /** PDF página a página ou em rolagem contínua. */
+  modoPdf: ModoPdf;
 }
 
 /** Mesmos padrões e limites do core; o core é quem decide no fim (normaliza ao salvar). */
@@ -39,6 +45,8 @@ export const PADRAO: Preferencias = {
   tema: "sistema",
   movimento: "sistema",
   velocidadeVoz: 0,
+  virada: "esmaecer",
+  modoPdf: "paginas",
 };
 
 export const LIMITES = {
@@ -81,9 +89,10 @@ export function atualizarPreferencias(mudancas: Partial<Preferencias>): void {
   }, ESPERA_GRAVACAO_MS);
 }
 
-/** Restaura o texto; tema e movimento ficam como estão (têm o próprio painel). */
+/** Restaura o texto; tema, movimento, virada e modo do PDF ficam (têm os próprios painéis). */
 export function restaurarPadrao(): void {
-  atualizarPreferencias({ ...PADRAO, tema: preferencias.tema, movimento: preferencias.movimento });
+  const { tema, movimento, virada, modoPdf } = preferencias;
+  atualizarPreferencias({ ...PADRAO, tema, movimento, virada, modoPdf });
 }
 
 /** Seletores de blocos de texto corrido (os mesmos que o leitor do foliate-js ajusta). */

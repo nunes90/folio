@@ -2,6 +2,9 @@
   import type { Snippet } from "svelte";
   import PainelLateral from "./PainelLateral.svelte";
   import { ATRIBUTO_AREA, ATRIBUTO_TELA } from "../lib/transicao";
+  import { preferencias } from "../lib/preferencias.svelte";
+  import { animarVirada, cancelarVirada, quadrosDaVirada, type Sentido } from "../lib/virada";
+  import { duracao } from "../lib/animacao";
 
   // Estrutura comum aos leitores de EPUB e PDF: os mesmos botões nos mesmos lugares, os mesmos
   // painéis com as mesmas animações e os mesmos anúncios. Cada formato só preenche as áreas.
@@ -33,12 +36,34 @@
   } = $props();
 
   let tituloEl: HTMLHeadingElement;
+  let areaEl: HTMLDivElement;
   let botaoIndice: HTMLButtonElement;
   let botaoAparencia: HTMLButtonElement;
 
   /** Leva o foco ao título: o leitor de tela anuncia qual livro foi aberto. */
   export function focarTitulo() {
     tituloEl.focus();
+  }
+
+  /**
+   * Navega com a animação de virada escolhida nas preferências: igual para EPUB e PDF.
+   * `sentido` é o lado de onde a página nova vem; `navegar` só deve terminar quando a página
+   * nova estiver pronta (no PDF, renderizada). Estilo Apple, nada pesado durante o
+   * movimento: a área fica invisível enquanto isso (é o primeiro quadro de toda virada) e a
+   * animação começa com a thread livre. A virada anterior é cancelada antes: os leitores
+   * medem a área do livro e ela não pode estar transformada.
+   */
+  export async function virarPagina(sentido: Sentido, navegar: () => unknown): Promise<void> {
+    cancelarVirada();
+    const animar = duracao("curta") > 0 && quadrosDaVirada(preferencias.virada, sentido) !== null;
+    if (animar) areaEl.style.opacity = "0";
+    try {
+      await navegar();
+    } finally {
+      // Volta ao normal na mesma tarefa em que a animação começa: não há quadro intermediário.
+      if (animar) areaEl.style.opacity = "";
+    }
+    animarVirada(areaEl, preferencias.virada, sentido);
   }
 
   function aoTeclar(e: KeyboardEvent) {
@@ -95,7 +120,7 @@
   </div>
 
   <!-- Destino (e origem, ao fechar) da capa na transição com a biblioteca (lib/transicao.ts). -->
-  <div class="conteudo" {...{ [ATRIBUTO_AREA]: "" }}>
+  <div class="conteudo" bind:this={areaEl} {...{ [ATRIBUTO_AREA]: "" }}>
     {@render children()}
   </div>
 

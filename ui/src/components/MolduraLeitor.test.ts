@@ -77,6 +77,21 @@ describe("MolduraLeitor", () => {
     expect(regiao.getAttribute("aria-live")).toBe("polite");
   });
 
+  it("virarPagina navega e depois anima a área do livro com o estilo das preferências", async () => {
+    const { component } = renderizar();
+    const area = document.querySelector<HTMLElement>("[data-area-livro]")!;
+    const animar = vi.spyOn(area, "animate");
+    const ordem: string[] = [];
+    animar.mockImplementation(() => {
+      ordem.push("animou");
+      return { cancel() {} } as unknown as Animation;
+    });
+    await component.virarPagina("direita", () => ordem.push("navegou"));
+    expect(ordem).toEqual(["navegou", "animou"]);
+    // Padrão: esmaecer.
+    expect(animar.mock.calls[0]![0]).toEqual([{ opacity: 0 }, { opacity: 1 }]);
+  });
+
   it("não tem violações de acessibilidade (axe)", async () => {
     const { container } = renderizar({ aparenciaAberta: true });
     const { violations } = await axe.run(container);

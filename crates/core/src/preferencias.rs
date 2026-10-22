@@ -58,6 +58,32 @@ pub enum Movimento {
     Reduzido,
 }
 
+/// Animação ao virar a página (igual para EPUB e PDF).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Virada {
+    /// A página nova entra deslizando, de leve, na direção da leitura.
+    Deslizar,
+    /// A página nova gira em 3D a partir da lombada, como uma folha.
+    Virar,
+    /// Só a opacidade muda: o padrão, porque a virada se repete centenas de vezes e deve
+    /// ser quase imperceptível (e é o mais leve para quem é sensível a movimento).
+    #[default]
+    Esmaecer,
+    Nenhuma,
+}
+
+/// Como o PDF é exibido.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModoPdf {
+    /// Uma página por vez, como o EPUB.
+    #[default]
+    Paginas,
+    /// Todas as páginas numa rolagem contínua.
+    Rolagem,
+}
+
 /// Limites (mínimo, máximo) de cada valor numérico.
 pub mod limites {
     pub const TAMANHO: (f64, f64) = (0.75, 3.0);
@@ -92,6 +118,8 @@ pub struct PreferenciasLeitura {
     pub movimento: Movimento,
     /// Velocidade da leitura em voz alta, de -100 (mais lenta) a 100; 0 é a normal do sistema.
     pub velocidade_voz: i8,
+    pub virada: Virada,
+    pub modo_pdf: ModoPdf,
 }
 
 impl Default for PreferenciasLeitura {
@@ -109,6 +137,8 @@ impl Default for PreferenciasLeitura {
             tema: Tema::Sistema,
             movimento: Movimento::Sistema,
             velocidade_voz: 0,
+            virada: Virada::Esmaecer,
+            modo_pdf: ModoPdf::Paginas,
         }
     }
 }
@@ -256,6 +286,23 @@ mod tests {
         }
         .normalizada();
         assert_eq!(p.velocidade_voz, -100);
+    }
+
+    #[test]
+    fn virada_e_modo_do_pdf_tem_padrao_e_vao_no_json() {
+        // JSON de versões anteriores (sem os campos) usa os padrões sugeridos.
+        let p = PreferenciasLeitura::de_json(r#"{"tamanho": 1.2}"#);
+        assert_eq!(p.virada, Virada::Esmaecer);
+        assert_eq!(p.modo_pdf, ModoPdf::Paginas);
+
+        let json = PreferenciasLeitura {
+            virada: Virada::Virar,
+            modo_pdf: ModoPdf::Rolagem,
+            ..Default::default()
+        }
+        .para_json();
+        assert!(json.contains(r#""virada":"virar""#), "{json}");
+        assert!(json.contains(r#""modoPdf":"rolagem""#), "{json}");
     }
 
     #[test]

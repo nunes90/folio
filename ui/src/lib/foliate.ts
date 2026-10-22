@@ -11,6 +11,8 @@ type TextoLocalizado = string | Record<string, string>;
 
 export interface Livro {
   metadata?: { title?: TextoLocalizado; language?: string | string[] };
+  /** Direção de leitura ("rtl" em livros da direita para a esquerda). */
+  dir?: string;
   toc?: ItemIndice[];
 }
 
