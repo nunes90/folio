@@ -136,7 +136,14 @@ describe("Biblioteca", () => {
       expect(screen.queryByRole("button", { name: /^Remover/ })).toBeNull();
     });
 
-    it("não tem violações de acessibilidade (axe)", async () => {
+    it("cada capa é marcada com o id do livro (origem da transição para o leitor)", () => {
+    render(Biblioteca, { livros, ...semAcao });
+    const capas = document.querySelectorAll<HTMLElement>(".capa-substituta");
+    expect(capas[0]!.getAttribute("data-capa-livro")).toBe("a");
+    expect(capas[1]!.getAttribute("data-capa-livro")).toBe("b");
+  });
+
+  it("não tem violações de acessibilidade (axe)", async () => {
       const { container } = render(Biblioteca, { livros, ...semAcao, onRemover: () => {} });
       const { violations } = await axe.run(container);
       expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);

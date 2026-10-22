@@ -360,6 +360,9 @@ class View {
         }
     }
     expand() {
+        // LEITOR: um ResizeObserver já enfileirado pode chamar expand() depois que o
+        // capítulo foi fechado e o iframe removido (this.document === null). Ver PATCHES.md.
+        if (!this.document) return
         const { documentElement } = this.document
         if (this.#column) {
             const side = this.#vertical ? 'height' : 'width'

@@ -15,6 +15,7 @@
   import { atualizarPreferencias, preferencias } from "../lib/preferencias.svelte";
   import { achatar, converterSumario, itemAtual, type ItemSumarioPdf } from "../lib/sumario";
   import { resolverTema } from "../lib/temas";
+  import { aguardarTransicao } from "../lib/transicao";
 
   let {
     dados,
@@ -79,6 +80,8 @@
   });
 
   async function abrir() {
+    // Espera a transição da capa terminar: carregar o livro durante ela a faria engasgar.
+    await aguardarTransicao();
     const { EventBus, PDFFindController, PDFLinkService, PDFViewer } = await carregarVisor();
     const eventos = new EventBus();
     const l = new PDFLinkService({ eventBus: eventos });

@@ -21,6 +21,7 @@
   import { log } from "../lib/log";
   import { movimentoReduzido, sistema, temaEfetivo } from "../lib/ambiente.svelte";
   import { resolverTema } from "../lib/temas";
+  import { aguardarTransicao } from "../lib/transicao";
   import {
     blocoParaFala,
     falar,
@@ -177,6 +178,8 @@
   }
 
   async function abrir() {
+    // Espera a transição da capa terminar: carregar o livro durante ela a faria engasgar.
+    await aguardarTransicao();
     const v = await criarView();
     v.addEventListener("relocate", (e) => {
       const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;

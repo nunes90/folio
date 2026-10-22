@@ -4,6 +4,7 @@
   import type { TemaEfetivo } from "../lib/temas";
   import { fade } from "svelte/transition";
   import { curva, duracao } from "../lib/animacao";
+  import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
   import Icone from "./Icone.svelte";
   import PainelTema from "./PainelTema.svelte";
 
@@ -118,7 +119,7 @@
   }
 </script>
 
-<main>
+<main {...{ [ATRIBUTO_TELA]: "" }}>
   <header>
     <h1>Biblioteca</h1>
     <div class="acoes">
@@ -170,9 +171,19 @@
           >
             {#if capa}
               <!-- alt vazio: o título logo abaixo já identifica o livro. -->
-              <img src={capa} alt="" loading="lazy" />
+              <img
+                src={capa}
+                alt=""
+                loading="lazy"
+                {...{ [ATRIBUTO_CAPA]: livro.id }}
+              />
             {:else}
-              <span class="capa-substituta" aria-hidden="true">{iniciais(livro.titulo)}</span>
+              <span
+                class="capa-substituta"
+                aria-hidden="true"
+                {...{ [ATRIBUTO_CAPA]: livro.id }}
+                >{iniciais(livro.titulo)}</span
+              >
             {/if}
             <span class="titulo">{livro.titulo}</span>
             {#if livro.autores.length}
