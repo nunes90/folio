@@ -16,5 +16,5 @@
 
 ## Consequências
 - Espaço em disco duplicado para quem mantém os originais.
-- Remover livros da biblioteca (e seus arquivos) ainda não existe.
+- Remover um livro apaga a cópia do app, a capa e o progresso; o arquivo original nunca é tocado.
 - Capas ficam em cache: se o cache for limpo, será preciso regerá-las a partir do EPUB (ainda não implementado; hoje aparece a capa substituta).

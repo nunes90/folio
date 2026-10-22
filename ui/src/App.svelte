@@ -3,6 +3,7 @@
   import { isTauri } from "@tauri-apps/api/core";
   import Atalhos from "./components/Atalhos.svelte";
   import Biblioteca from "./components/Biblioteca.svelte";
+  import Confirmacao from "./components/Confirmacao.svelte";
   import Leitor from "./components/Leitor.svelte";
   import {
     arquivoDoLivro,
@@ -13,6 +14,7 @@
     importarLivros,
     listarLivros,
     progressoDoLivro,
+    removerLivro,
     salvarProgresso,
     type Livro,
     type Progresso,
@@ -29,6 +31,8 @@
   let aberto = $state<{ livro: Livro; dados: ArrayBuffer; inicio?: string } | null>(null);
   let importando = $state(false);
   let ajudaAberta = $state(false);
+  /** Livro esperando confirmação de remoção. */
+  let aRemover = $state<Livro | null>(null);
   /** Livro fechado por último: recebe o foco ao voltar para a biblioteca. */
   let ultimoAberto = $state<string>();
   const contexto = $derived(aberto ? aberto.livro.formato : "biblioteca");
@@ -151,6 +155,22 @@
     }
   }
 
+  async function remover(livro: Livro) {
+    // O foco vai para o vizinho (o seguinte ou, se era o último, o anterior).
+    const i = livros.findIndex((l) => l.id === livro.id);
+    const vizinho = livros[i + 1] ?? livros[i - 1];
+    try {
+      await removerLivro(livro.id);
+      aviso = `${livro.titulo} foi removido da biblioteca.`;
+    } catch (e) {
+      aviso = `Não foi possível remover ${livro.titulo}: ${e}`;
+      log.warn(aviso);
+      return;
+    }
+    await recarregar();
+    ultimoAberto = vizinho?.id;
+  }
+
   async function fechar() {
     clearTimeout(temporizador);
     await gravarPendente();
@@ -163,6 +183,21 @@
 <svelte:window onkeydown={aoTeclar} />
 
 <Atalhos {contexto} aberto={ajudaAberta} onFechar={() => (ajudaAberta = false)} />
+
+<Confirmacao
+  aberto={aRemover !== null}
+  titulo="Remover {aRemover?.titulo ?? ''} da biblioteca?"
+  rotuloConfirmar="Remover"
+  onConfirmar={() => {
+    const livro = aRemover;
+    aRemover = null;
+    if (livro) remover(livro);
+  }}
+  onCancelar={() => (aRemover = null)}
+>
+  <p>O arquivo original, de onde o livro foi importado, não é afetado.</p>
+  <p>O progresso de leitura deste livro será perdido.</p>
+</Confirmacao>
 
 {#if aberto?.livro.formato === "pdf"}
   <!-- Import dinâmico: o pdf.js só é carregado quando um PDF é aberto. -->
@@ -193,5 +228,6 @@
     onMudarPreferencias={atualizarPreferencias}
     temaDoSistema={resolverTema("sistema", sistema)}
     focarLivro={ultimoAberto}
+    onRemover={(livro) => (aRemover = livro)}
   />
 {/if}

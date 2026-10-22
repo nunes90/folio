@@ -59,6 +59,12 @@ pub fn abrir_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Respo
     Ok(Response::new(bytes))
 }
 
+/// Remove o livro da biblioteca (a cópia do app; o arquivo original não é tocado).
+#[tauri::command]
+pub fn remover_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
+    bib.lock().unwrap().remover(&id).map_err(|e| registrar(&e))
+}
+
 /// Bytes do livro sem marcá-lo como aberto (usado para gerar a capa de PDFs).
 #[tauri::command]
 pub fn arquivo_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Response, String> {

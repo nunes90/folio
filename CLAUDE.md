@@ -86,12 +86,15 @@ docs/decisions/  # ADRs
   atalhos de uma letra, WCAG 2.1.4); setas/Home/End na grade da biblioteca (roving tabindex); foco gerenciado (título
   ao abrir, livro de volta ao fechar, texto ao escolher capítulo); mudança de capítulo anunciada por `aria-live`;
   teclas do iframe do EPUB reenviadas à janela. Roteiro manual do Orca em `docs/testes/orca.md`.
-- **M4d** (branch `feat/m4d-voz`): leitura em voz alta de EPUB (ADR 0007). `core::voz` (trait `MotorDeVoz`, máquina de
+- **M4d**: leitura em voz alta de EPUB (ADR 0007). `core::voz` (trait `MotorDeVoz`, máquina de
   estados pura + `SpeechDispatcher`) e `core::ssip` (cliente SSIP próprio, sem dependências). Frontend converte o SSML
   do `tts.js` do foliate-js para `<s><mark/>frase</s>` (`ui/src/lib/voz.ts`); destaque da frase lida e passagem
   automática de parágrafo e capítulo. Velocidade nas preferências. Sem speech-dispatcher, a voz fica indisponível.
+- **Remover livro** (branch `feat/remover-livro`): `Biblioteca::remover` (registro, progresso, cópia e capa; o
+  original não é tocado). Delete no livro focado ou botão × na capa; confirmação (`Confirmacao.svelte`, foco em
+  Cancelar); foco vai ao livro vizinho.
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
-- Pendências: remover livro da biblioteca; regerar capas se o cache for limpo;
+- Pendências: regerar capas se o cache for limpo;
   progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
   origem dos logs do frontend aponta para o wrapper.
 - Roteiro do Orca executado (out/2026): navegação funcional. A voz do sistema (espeak-ng) é muito robótica:

@@ -52,6 +52,11 @@ export function carregarLivro(livro: Livro): Promise<ArrayBuffer> {
   return invoke<ArrayBuffer>("abrir_livro", { id: livro.id });
 }
 
+/** Remove da biblioteca a cópia do livro, a capa e o progresso; o arquivo original fica. */
+export function removerLivro(id: string): Promise<void> {
+  return invoke("remover_livro", { id });
+}
+
 /** Bytes do livro sem registrar abertura (para gerar a capa de PDFs). */
 export function arquivoDoLivro(id: string): Promise<ArrayBuffer> {
   return invoke<ArrayBuffer>("arquivo_livro", { id });

@@ -21,6 +21,7 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
     { teclas: [["←"], ["→"], ["↑"], ["↓"]], acao: "Mover entre os livros" },
     { teclas: [["Home"], ["End"]], acao: "Ir para o primeiro ou o último livro" },
     { teclas: [["Enter"]], acao: "Abrir o livro selecionado" },
+    { teclas: [["Delete"]], acao: "Remover o livro selecionado (pede confirmação)" },
     ...GERAIS,
   ],
   epub: [
