@@ -15,6 +15,8 @@
     continuar: "M7 5l12 7-12 7z",
     parar: "M7 7h10v10H7z",
     largura: "M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4",
+    mais: "M12 5v14M5 12h14",
+    livro: "M12 6.5C10.5 5.3 8.2 4.8 4 5v13c4.2-.2 6.5.3 8 1.5 1.5-1.2 3.8-1.7 8-1.5V5c-4.2-.2-6.5.3-8 1.5zM12 6.5v13",
   } as const;
 
   let { nome }: { nome: keyof typeof CAMINHOS } = $props();

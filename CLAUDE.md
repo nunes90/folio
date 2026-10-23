@@ -143,5 +143,10 @@ docs/decisions/  # ADRs
   decorativa (`progresso` da moldura, `scaleX`); `.grupo-barra` no `app.css` para grupos compactos ("‹ 12% ›", página e
   zoom do PDF); índice com item atual em `--destaque-suave` + barra lateral; `PainelLateral` com cabeçalho (título e
   botão "Fechar …" que devolve o foco).
-- Próximo passo: **M7c** (biblioteca). M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M7c** (branch `feat/m7c-biblioteca`): biblioteca sobre `--app`; "Importar livros…" como botão primário
+  (`--destaque`/`--sobre-destaque`) e Aparência sem borda, ambos com ícone; cards com capa em `--sombra`, barra de
+  progresso decorativa na capa (`.progresso-capa`, cor de destaque, só se a leitura começou), selo EPUB/PDF e
+  situação ("37% lido", "Concluído" quando arredonda para 100%); estado vazio com ícone, título e o único botão de
+  importar. Painel de aparência da biblioteca em `--painel`. `dialog.modal` em `--card` com `--sombra`; `kbd` como tecla.
+- **M7 concluído.** Próximo passo: definir as features da v0.2 (M8+). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

@@ -85,14 +85,18 @@
     vertical-align: top;
   }
 
+  /* Tecla física: borda de baixo mais grossa, como a tecla vista de lado. */
   kbd {
     display: inline-block;
-    min-width: 1.5rem;
-    padding: 0 0.3rem;
+    min-width: 1.6rem;
+    padding: 0.05rem 0.35rem;
     border: 1px solid var(--borda);
-    border-radius: 0.25rem;
-    background: var(--controle);
+    border-block-end-width: 2px;
+    border-radius: var(--raio-pequeno);
+    background: var(--card);
     font: inherit;
+    font-size: 0.875em;
+    font-weight: 600;
     text-align: center;
   }
 
