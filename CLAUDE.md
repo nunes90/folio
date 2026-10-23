@@ -133,5 +133,9 @@ docs/decisions/  # ADRs
 - **Redesign**: análise do design system proposto em `docs/design/redesign.md` (o que entra, o que não entra e
   por quê; tokens adaptados com contraste conferido). Regras para qualquer componente novo: contraste WCAG, `rem`,
   animações de `lib/animacao.ts`, nada só no hover, foco visível, ícones SVG, cores só em `lib/temas.ts`.
-- Próximo passo: **v0.2, M7a** (tokens do refinamento visual). M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M7a** (branch `feat/m7a-tokens`): tokens de superfície em `Cores` (`app`, `painel`, `card`, `hover`, `divisoria`,
+  `destaque`, `sobreDestaque`, `destaqueSuave`, `sombra`), publicados por `aplicarTema` como `--app`, `--painel`,
+  `--sobre-destaque` etc.; `fundo` continua sendo a página do livro. Contraste de cada combinação testado nos 4 temas.
+  Raios `--raio-*` no `app.css`. Ainda sem uso visual: entram no M7b/M7c.
+- Próximo passo: **M7b** (barras e painéis do leitor). M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

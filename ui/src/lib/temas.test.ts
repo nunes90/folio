@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contraste, cssDoTema, resolverTema, TEMAS, type TemaEfetivo } from "./temas";
+import { aplicarTema, contraste, cssDoTema, resolverTema, TEMAS, type TemaEfetivo } from "./temas";
 
 const nomes = Object.keys(TEMAS) as TemaEfetivo[];
 
@@ -27,6 +27,48 @@ describe.each(nomes)("tema %s", (nome) => {
   it("indicador de foco se destaca do fundo (3:1, WCAG 1.4.11)", () => {
     expect(contraste(c.foco, c.fundo)).toBeGreaterThanOrEqual(3);
     expect(contraste(c.foco, c.controle)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe.each(nomes)("superfícies do tema %s (M7: refinamento visual)", (nome) => {
+  const c = TEMAS[nome];
+  const superficies = { app: c.app, painel: c.painel, card: c.card, hover: c.hover };
+
+  it.each(Object.entries(superficies))("texto AAA (7:1) e suave AA (4,5:1) sobre %s", (_, fundo) => {
+    expect(contraste(c.texto, fundo)).toBeGreaterThanOrEqual(7);
+    expect(contraste(c.suave, fundo)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("borda de controles e foco se destacam das superfícies (3:1, WCAG 1.4.11)", () => {
+    for (const fundo of [c.app, c.painel, c.card]) {
+      expect(contraste(c.borda, fundo)).toBeGreaterThanOrEqual(3);
+      expect(contraste(c.foco, fundo)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("destaque como texto e texto sobre o destaque têm pelo menos AA (4,5:1)", () => {
+    for (const fundo of [c.app, c.painel, c.card, c.destaqueSuave]) {
+      expect(contraste(c.destaque, fundo)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contraste(c.sobreDestaque, c.destaque)).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(c.texto, c.destaqueSuave)).toBeGreaterThanOrEqual(7);
+  });
+});
+
+describe("aplicarTema", () => {
+  it("publica as cores como variáveis CSS (nomes em kebab-case)", () => {
+    const raiz = document.createElement("div");
+    aplicarTema("sepia", raiz);
+    expect(raiz.style.getPropertyValue("--fundo")).toBe(TEMAS.sepia.fundo);
+    expect(raiz.style.getPropertyValue("--painel")).toBe(TEMAS.sepia.painel);
+    expect(raiz.style.getPropertyValue("--sobre-destaque")).toBe(TEMAS.sepia.sobreDestaque);
+    expect(raiz.style.getPropertyValue("--destaque-suave")).toBe(TEMAS.sepia.destaqueSuave);
+    expect(raiz.style.getPropertyValue("--sombra")).toBe(TEMAS.sepia.sombra);
+    expect(raiz.dataset.tema).toBe("sepia");
+  });
+
+  it("alto contraste não usa sombras: o contorno faz esse papel", () => {
+    expect(TEMAS["alto-contraste"].sombra).toBe("none");
   });
 });
 
