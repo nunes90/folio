@@ -162,5 +162,14 @@ docs/decisions/  # ADRs
   (`<search>`, Ctrl+F, registrado em `atalhos.ts`), filtros Todos · Lendo · Concluídos com `aria-pressed` e contagem,
   anúncio "N livros encontrados" (`role="status"`), mensagem sem resultado com "Limpar busca"/"Mostrar todos"; setas,
   Delete e foco seguem só os livros visíveis.
-- Próximo passo: **M8d** (arrastar para importar). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M8d** (branch `feat/m8d-arrastar`): arrastar arquivos para a janela importa (`lib/arrastar.ts`:
+  `tratarArraste`, puro, e `ouvirArraste` com `onDragDropEvent` do Tauri; permissão já no `core:default`). Só com a
+  biblioteca na tela; área "Solte para importar" (`arrastando`, decorativa). Ctrl+O importa (botão com
+  `aria-keyshortcuts`; no F1). Importar mostra "Importando…" (`avisarSeDemorar`, aviso tipo `progresso`) se passar
+  de 400 ms.
+- **Desempenho**: comandos Tauri sem `async` rodam na thread principal e congelam a janela. Os que leem ou copiam o
+  livro inteiro (`importar_livros`, `abrir_livro`, `arquivo_livro`, `definir_capa`) são `#[tauri::command(async)]`.
+  No perfil dev, `sha2`, `lopdf`, `miniz_oxide` e `zip` são compilados com `opt-level = 3` (importar um PDF de
+  86 MB: 2,4 s → 0,1 s no `cargo tauri dev`).
+- **M8 concluído.** Próximo passo: definir o M9 (ou o M6, empacotamento). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

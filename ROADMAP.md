@@ -31,12 +31,12 @@ Cada marco precisa terminar em algo utilizável.
   - [x] M7b — barras e painéis do leitor: botões de ícone, título centralizado, paginação compacta, barra de
     progresso, índice com item ativo destacado, cabeçalho dos painéis
   - [x] M7c — biblioteca: cards com progresso na capa, selo EPUB/PDF e "% lido", estado vazio, teclas (kbd) no F1
-- [ ] **M8 — Biblioteca que escala**: cada parte traz seus componentes da análise do redesign.
+- [x] **M8 — Biblioteca que escala**: cada parte traz seus componentes da análise do redesign.
   - [x] M8a — avisos (toasts): sucesso em `role="status"`, erro em `role="alert"`, pausa sob o ponteiro ou o foco;
     importar avisa quando o livro já estava na biblioteca (`Importado::JaExistia` no core)
   - [x] M8b — situação do livro no core (não iniciado / lendo / concluído)
   - [x] M8c — busca (título e autor) e filtros Todos · Lendo · Concluídos
-  - [ ] M8d — arrastar arquivos para importar (o botão "Importar livros…" continua)
+  - [x] M8d — arrastar arquivos para importar (o botão "Importar livros…" continua)
 - [ ] **M9+**: a definir (coleções, menu de contexto, paleta de comandos, slider de páginas, modo foco, destaques…).
 
 ## Futuro

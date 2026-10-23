@@ -44,6 +44,15 @@ describe("Avisos", () => {
     expect(avisos.map((a) => a.tipo)).toEqual(["erro"]);
   });
 
+  it("progresso vai para a região de status e não some sozinho", async () => {
+    render(Avisos);
+    avisar("Importando 3 livros…", "progresso");
+    await tick();
+    expect(screen.getByRole("status").textContent).toContain("Importando 3 livros…");
+    vi.advanceTimersByTime(DURACAO_AVISO_MS * 2);
+    expect(avisos).toHaveLength(1);
+  });
+
   it("com o ponteiro ou o foco em cima, o aviso não some (WCAG 2.2.1)", async () => {
     render(Avisos);
     avisar("Dom Casmurro foi importado.");

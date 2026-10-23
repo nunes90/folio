@@ -12,6 +12,10 @@ use tauri::State;
 use tauri::ipc::{InvokeBody, Request, Response};
 
 /// A conexão SQLite não pode ser usada por duas threads ao mesmo tempo, daí o Mutex.
+///
+/// Comandos sem `async` rodam na thread principal, a mesma que desenha a janela. Os que
+/// leem ou copiam o livro inteiro (dezenas de MB) são `#[tauri::command(async)]`: rodam
+/// numa thread do runtime e a interface não congela enquanto isso.
 pub type EstadoBiblioteca = Mutex<Biblioteca>;
 
 #[tauri::command]
@@ -35,7 +39,7 @@ pub struct Importacao {
 }
 
 /// Importa vários arquivos; um que falhe não impede os outros.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>) -> Importacao {
     let bib = bib.lock().unwrap();
     let mut resultado = Importacao {
@@ -58,7 +62,7 @@ pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>)
 
 /// Bytes crus do livro. O `Response` evita serializar o arquivo como JSON (um array de
 /// números); o frontend recebe um ArrayBuffer.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn abrir_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Response, String> {
     let bytes = bib.lock().unwrap().ler(&id).map_err(|e| registrar(&e))?;
     Ok(Response::new(bytes))
@@ -71,7 +75,7 @@ pub fn remover_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(),
 }
 
 /// Bytes do livro sem marcá-lo como aberto (usado para gerar a capa de PDFs).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn arquivo_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Response, String> {
     let bytes = bib
         .lock()
@@ -84,7 +88,7 @@ pub fn arquivo_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Res
 /// Capa gerada no frontend. A imagem vem como corpo binário cru (sem JSON); o id do livro
 /// e o tipo da imagem vêm nos cabeçalhos `livro` e `tipo`. (Não dá para usar `content-type`:
 /// o Tauri o sobrescreve com `application/octet-stream` em corpos binários.)
-#[tauri::command]
+#[tauri::command(async)]
 pub fn definir_capa(
     bib: State<'_, EstadoBiblioteca>,
     requisicao: Request<'_>,

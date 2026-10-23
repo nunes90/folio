@@ -3,7 +3,8 @@
 // o foco, WCAG 2.2.1); erro fica até ser fechado, para dar tempo de ler.
 import type { Importacao } from "./biblioteca";
 
-export type TipoAviso = "sucesso" | "erro";
+/** `progresso`: algo em andamento ("Importando…"); some quando o trabalho termina. */
+export type TipoAviso = "sucesso" | "erro" | "progresso";
 
 export interface Aviso {
   id: number;
@@ -28,6 +29,25 @@ export function avisar(texto: string, tipo: TipoAviso = "sucesso"): number {
 export function dispensar(id: number): void {
   const i = avisos.findIndex((a) => a.id === id);
   if (i >= 0) avisos.splice(i, 1);
+}
+
+/**
+ * Espera `trabalho` e, se ele passar de `atrasoMs`, mostra `texto` como aviso de progresso até
+ * terminar. Trabalho rápido não pisca aviso nenhum (o mesmo critério de Carregando.svelte).
+ */
+export async function avisarSeDemorar<T>(
+  trabalho: Promise<T>,
+  texto: string,
+  atrasoMs = 400,
+): Promise<T> {
+  let id: number | undefined;
+  const espera = setTimeout(() => (id = avisar(texto, "progresso")), atrasoMs);
+  try {
+    return await trabalho;
+  } finally {
+    clearTimeout(espera);
+    if (id !== undefined) dispensar(id);
+  }
 }
 
 /** O que dizer depois de uma importação: um aviso por resultado, sem texto vazio. */
