@@ -18,7 +18,22 @@ Cada marco precisa terminar em algo utilizável.
   - [x] M5b — transições entre telas (biblioteca ↔ leitor)
   - [x] M5c — virada de página
   - [x] M5d — janelas estreitas (painéis por cima do livro), estados de carregamento
-- [ ] **M6 — Empacotamento**: Flatpak/AppImage.
+- [ ] **M6 — Empacotamento**: Flatpak/AppImage. Fica em aberto até a distribuição; incluir a CI que anexa o
+  AppImage às Releases a cada tag `v*`.
+
+**v0.1.0** (out/2026): M0–M5. Tag `v0.1.0`, Release como pre-release no GitHub.
+
+## v0.2
+- [ ] **M7 — Refinamento visual**: a parte adaptada do design system proposto (análise em
+  `docs/design/redesign.md`). Igual para EPUB e PDF; contraste testado nos 4 temas; medidas em `rem`.
+  - [ ] M7a — tokens: superfícies (app, painel, card, hover), texto secundário/suave, divisória, sombra, raio e
+    destaque no `Cores` de `lib/temas.ts`, com testes de contraste
+  - [ ] M7b — barras e painéis do leitor: botões de ícone, título centralizado, paginação compacta, barra de
+    progresso, índice com item ativo destacado, cabeçalho dos painéis
+  - [ ] M7c — biblioteca: cards com progresso na capa, selo EPUB/PDF e "% lido", estado vazio, teclas (kbd) no F1
+- [ ] **M8+ — Features**: a definir. Cada uma traz seus componentes da proposta ("com a feature" na análise:
+  busca, filtros e abas, coleções, menu de contexto, toasts, paleta de comandos, slider de páginas, modo foco,
+  arrastar para importar, destaques).
 
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.

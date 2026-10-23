@@ -129,5 +129,9 @@ docs/decisions/  # ADRs
   origem dos logs do frontend aponta para o wrapper.
 - Roteiro do Orca executado (out/2026): navegação funcional. A voz do sistema (espeak-ng) é muito robótica:
   afeta o Orca e a leitura em voz alta. Alternativas (Piper no speech-dispatcher, voz neural local) em aberto.
-- Próximo passo: **M6** (empacotamento: Flatpak/AppImage). Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **v0.1.0** (out/2026): tag assinada `v0.1.0` (M0–M5) e Release no GitHub como pre-release.
+- **Redesign**: análise do design system proposto em `docs/design/redesign.md` (o que entra, o que não entra e
+  por quê; tokens adaptados com contraste conferido). Regras para qualquer componente novo: contraste WCAG, `rem`,
+  animações de `lib/animacao.ts`, nada só no hover, foco visível, ícones SVG, cores só em `lib/temas.ts`.
+- Próximo passo: **v0.2, M7a** (tokens do refinamento visual). M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.
