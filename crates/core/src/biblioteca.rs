@@ -83,6 +83,31 @@ impl Importado {
     }
 }
 
+/// Em que pé está a leitura de um livro (filtros da biblioteca e texto do card).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Situacao {
+    /// Nunca foi aberto (não há progresso salvo).
+    NaoIniciado,
+    Lendo,
+    Concluido,
+}
+
+impl Situacao {
+    /// A partir de que fração o livro conta como concluído: a última página raramente dá 1.0
+    /// exato, e o que arredonda para 100% já aparece como "100% lido".
+    const LIMIAR_CONCLUIDO: f64 = 0.995;
+
+    /// `None` é "nunca aberto"; qualquer progresso salvo, mesmo 0.0, já é "lendo".
+    pub fn da_fracao(fracao: Option<f64>) -> Self {
+        match fracao {
+            None => Situacao::NaoIniciado,
+            Some(f) if f >= Self::LIMIAR_CONCLUIDO => Situacao::Concluido,
+            Some(_) => Situacao::Lendo,
+        }
+    }
+}
+
 /// Um livro como a interface o vê.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -98,6 +123,8 @@ pub struct LivroNaBiblioteca {
     pub aberto_em: Option<i64>,
     /// Quanto já foi lido (0.0 a 1.0), se o livro já foi aberto.
     pub fracao: Option<f64>,
+    /// Derivada de `fracao` (ver [`Situacao::da_fracao`]); vai pronta para a interface.
+    pub situacao: Situacao,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, serde::Deserialize)]
@@ -380,6 +407,7 @@ impl Biblioteca {
         let autores: String = linha.get("autores")?;
         let arquivo: String = linha.get("arquivo")?;
         let capa: Option<String> = linha.get("capa")?;
+        let fracao: Option<f64> = linha.get("fracao")?;
         Ok(LivroNaBiblioteca {
             id: linha.get("id")?,
             formato: Formato::de_texto(&formato).unwrap_or(Formato::Epub),
@@ -390,7 +418,8 @@ impl Biblioteca {
             capa: capa.map(|c| self.dir_capas.join(c)),
             adicionado_em: linha.get("adicionado_em")?,
             aberto_em: linha.get("aberto_em")?,
-            fracao: linha.get("fracao")?,
+            fracao,
+            situacao: Situacao::da_fracao(fracao),
         })
     }
 }
@@ -606,6 +635,47 @@ mod tests {
 
         assert_eq!(bib.progresso(&livro.id).unwrap(), Some(p2));
         assert_eq!(bib.obter(&livro.id).unwrap().unwrap().fracao, Some(0.5));
+    }
+
+    #[test]
+    fn situacao_vem_da_fracao() {
+        assert_eq!(Situacao::da_fracao(None), Situacao::NaoIniciado);
+        assert_eq!(Situacao::da_fracao(Some(0.0)), Situacao::Lendo);
+        assert_eq!(Situacao::da_fracao(Some(0.37)), Situacao::Lendo);
+        assert_eq!(Situacao::da_fracao(Some(0.994)), Situacao::Lendo);
+        // A última página raramente dá 1.0 exato: o que arredonda para 100% está concluído.
+        assert_eq!(Situacao::da_fracao(Some(0.995)), Situacao::Concluido);
+        assert_eq!(Situacao::da_fracao(Some(1.0)), Situacao::Concluido);
+    }
+
+    #[test]
+    fn situacao_vai_para_a_interface_em_kebab_case() {
+        let json = |s: Situacao| serde_json::to_string(&s).unwrap();
+        assert_eq!(json(Situacao::NaoIniciado), r#""nao-iniciado""#);
+        assert_eq!(json(Situacao::Lendo), r#""lendo""#);
+        assert_eq!(json(Situacao::Concluido), r#""concluido""#);
+    }
+
+    #[test]
+    fn livro_acompanha_a_situacao_do_progresso() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        assert_eq!(livro.situacao, Situacao::NaoIniciado);
+
+        let ate = |fracao| Progresso {
+            localizacao: "epubcfi(/6/2)".into(),
+            fracao,
+        };
+        bib.salvar_progresso(&livro.id, &ate(0.4)).unwrap();
+        assert_eq!(
+            bib.obter(&livro.id).unwrap().unwrap().situacao,
+            Situacao::Lendo
+        );
+        bib.salvar_progresso(&livro.id, &ate(1.0)).unwrap();
+        assert_eq!(
+            bib.obter(&livro.id).unwrap().unwrap().situacao,
+            Situacao::Concluido
+        );
     }
 
     #[test]

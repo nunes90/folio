@@ -17,12 +17,13 @@ function livro(parcial: Partial<Livro>): Livro {
     adicionadoEm: 0,
     abertoEm: null,
     fracao: null,
+    situacao: "nao-iniciado",
     ...parcial,
   };
 }
 
 const livros = [
-  livro({ id: "a", fracao: 0.37 }),
+  livro({ id: "a", fracao: 0.37, situacao: "lendo" }),
   livro({ id: "b", titulo: "Memórias Póstumas", fracao: null }),
 ];
 
@@ -39,18 +40,21 @@ describe("Biblioteca", () => {
   });
 
   it("livro recém-aberto não aparece como 0%", () => {
-    render(Biblioteca, { livros: [livro({ fracao: 0.0013 })], ...semAcao });
+    render(Biblioteca, { livros: [livro({ fracao: 0.0013, situacao: "lendo" })], ...semAcao });
     expect(screen.getByText("menos de 1% lido")).toBeTruthy();
   });
 
-  it("livro lido até o fim aparece como Concluído", () => {
-    render(Biblioteca, { livros: [livro({ fracao: 1 })], ...semAcao });
+  it("livro concluído (situação vinda do core) aparece como Concluído", () => {
+    render(Biblioteca, { livros: [livro({ fracao: 0.997, situacao: "concluido" })], ...semAcao });
     expect(screen.getByRole("button", { name: /Dom Casmurro.*Concluído/ })).toBeTruthy();
   });
 
   it("mostra o formato no card e o progresso numa barra decorativa sobre a capa", () => {
     const { container } = render(Biblioteca, {
-      livros: [livro({ id: "a", fracao: 0.37 }), livro({ id: "b", formato: "pdf", fracao: null })],
+      livros: [
+        livro({ id: "a", fracao: 0.37, situacao: "lendo" }),
+        livro({ id: "b", formato: "pdf", fracao: null }),
+      ],
       ...semAcao,
     });
     expect(screen.getByRole("button", { name: /Dom Casmurro.*EPUB.*37% lido/ })).toBeTruthy();

@@ -14,6 +14,7 @@ function livro(titulo: string): Livro {
     adicionadoEm: 0,
     abertoEm: null,
     fracao: null,
+    situacao: "nao-iniciado",
   };
 }
 

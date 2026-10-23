@@ -97,9 +97,9 @@
   const porcento = new Intl.NumberFormat("pt-BR", { style: "percent" });
 
   function situacao(livro: Livro): string {
-    if (livro.fracao == null) return "Não iniciado";
-    // A última página de um EPUB raramente dá 1 exato: o que arredonda para 100% está concluído.
-    if (Math.round(livro.fracao * 100) >= 100) return "Concluído";
+    // A regra (inclusive "o que arredonda para 100% está concluído") fica no core.
+    if (livro.situacao === "nao-iniciado" || livro.fracao == null) return "Não iniciado";
+    if (livro.situacao === "concluido") return "Concluído";
     // Sem isso, um livro recém-aberto apareceria como "0% lido", igual a não iniciado.
     if (livro.fracao > 0 && livro.fracao < 0.01) return "menos de 1% lido";
     return `${porcento.format(livro.fracao)} lido`;
