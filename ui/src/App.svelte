@@ -2,6 +2,7 @@
   import { onMount, type Component } from "svelte";
   import { isTauri } from "@tauri-apps/api/core";
   import Atalhos from "./components/Atalhos.svelte";
+  import Avisos from "./components/Avisos.svelte";
   import Biblioteca from "./components/Biblioteca.svelte";
   import Confirmacao from "./components/Confirmacao.svelte";
   import Leitor from "./components/Leitor.svelte";
@@ -20,6 +21,7 @@
     type Progresso,
   } from "./lib/biblioteca";
   import { log } from "./lib/log";
+  import { avisar, mensagensDaImportacao } from "./lib/avisos.svelte";
   import { movimentoReduzido, sistema, temaEfetivo } from "./lib/ambiente.svelte";
   import { atualizarPreferencias, preferencias } from "./lib/preferencias.svelte";
   import { aplicarTema, resolverTema } from "./lib/temas";
@@ -48,7 +50,6 @@
       ajudaAberta = true;
     }
   }
-  let aviso = $state<string | null>(null);
 
   let pendente: { id: string; progresso: Progresso } | null = null;
   let temporizador: ReturnType<typeof setTimeout> | undefined;
@@ -77,7 +78,7 @@
     try {
       livros = await listarLivros();
     } catch (e) {
-      aviso = `Não foi possível carregar a biblioteca: ${e}`;
+      avisar(`Não foi possível carregar a biblioteca: ${e}`, "erro");
     }
   }
 
@@ -85,13 +86,7 @@
     importando = true;
     try {
       const resultado = await importarLivros(caminhos);
-      const n = resultado.importados.length;
-      const partes = [n === 1 ? "1 livro importado." : `${n} livros importados.`];
-      for (const falha of resultado.falhas) {
-        const nome = falha.caminho.split(/[\\/]/).pop();
-        partes.push(`Não foi possível importar ${nome}: ${falha.erro}`);
-      }
-      aviso = partes.join(" ");
+      for (const { texto, tipo } of mensagensDaImportacao(resultado)) avisar(texto, tipo);
       await recarregar();
       gerarCapasDePdfs();
       return resultado;
@@ -115,13 +110,13 @@
           ? import("./components/LeitorPdf.svelte").then((m) => (LeitorPdf = m.default))
           : null,
       ]);
-      aviso = null;
       await transicionar(livro.id, "abrir", () => {
         aberto = { livro, dados, inicio: progresso?.localizacao };
       });
     } catch (e) {
-      aviso = `Não foi possível abrir ${livro.titulo}: ${e}`;
-      log.warn(aviso);
+      const texto = `Não foi possível abrir ${livro.titulo}: ${e}`;
+      avisar(texto, "erro");
+      log.warn(texto);
     }
   }
 
@@ -173,10 +168,11 @@
     const vizinho = livros[i + 1] ?? livros[i - 1];
     try {
       await removerLivro(livro.id);
-      aviso = `${livro.titulo} foi removido da biblioteca.`;
+      avisar(`${livro.titulo} foi removido da biblioteca.`);
     } catch (e) {
-      aviso = `Não foi possível remover ${livro.titulo}: ${e}`;
-      log.warn(aviso);
+      const texto = `Não foi possível remover ${livro.titulo}: ${e}`;
+      avisar(texto, "erro");
+      log.warn(texto);
       return;
     }
     await recarregar();
@@ -201,6 +197,7 @@
 <svelte:window onkeydown={aoTeclar} />
 
 <Atalhos {contexto} aberto={ajudaAberta} onFechar={() => (ajudaAberta = false)} />
+<Avisos />
 
 <Confirmacao
   aberto={aRemover !== null}
@@ -239,7 +236,6 @@
   <Biblioteca
     {livros}
     {importando}
-    {aviso}
     onAbrir={abrir}
     onImportar={escolherEImportar}
     {preferencias}

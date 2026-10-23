@@ -85,10 +85,9 @@ describe("Biblioteca", () => {
     expect(screen.getByRole("heading", { name: "Sua biblioteca está vazia" })).toBeTruthy();
   });
 
-  it("desabilita o botão enquanto importa e anuncia o aviso", () => {
-    render(Biblioteca, { livros, importando: true, aviso: "2 livros importados", ...semAcao });
+  it("desabilita o botão enquanto importa", () => {
+    render(Biblioteca, { livros, importando: true, ...semAcao });
     expect(screen.getByRole("button", { name: "Importando…" }).hasAttribute("disabled")).toBe(true);
-    expect(screen.getByRole("status").textContent).toBe("2 livros importados");
   });
 
   it("com preferências, oferece o painel de tema", async () => {
@@ -178,7 +177,7 @@ describe("Biblioteca", () => {
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {
-    const { container } = render(Biblioteca, { livros, aviso: "ok", ...semAcao });
+    const { container } = render(Biblioteca, { livros, ...semAcao });
     const { violations } = await axe.run(container);
     expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
   });

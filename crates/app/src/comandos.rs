@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use leitor_core::biblioteca::{Biblioteca, LivroNaBiblioteca, Progresso};
+use leitor_core::biblioteca::{Biblioteca, Importado, LivroNaBiblioteca, Progresso};
 use leitor_core::epub::Capa;
 use leitor_core::preferencias::PreferenciasLeitura;
 use leitor_core::voz::{ConfigVoz, MotorDeVoz};
@@ -26,8 +26,11 @@ pub struct Falha {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Importacao {
     importados: Vec<LivroNaBiblioteca>,
+    /// Arquivos que já estavam na biblioteca (nada foi copiado).
+    ja_existentes: Vec<LivroNaBiblioteca>,
     falhas: Vec<Falha>,
 }
 
@@ -37,11 +40,13 @@ pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>)
     let bib = bib.lock().unwrap();
     let mut resultado = Importacao {
         importados: Vec::new(),
+        ja_existentes: Vec::new(),
         falhas: Vec::new(),
     };
     for caminho in caminhos {
         match bib.importar(&caminho) {
-            Ok(livro) => resultado.importados.push(livro),
+            Ok(Importado::Novo(livro)) => resultado.importados.push(livro),
+            Ok(Importado::JaExistia(livro)) => resultado.ja_existentes.push(livro),
             Err(e) => resultado.falhas.push(Falha {
                 erro: registrar(&e),
                 caminho,
