@@ -28,7 +28,7 @@ Cada marco precisa terminar em algo utilizável.
   `docs/design/redesign.md`). Igual para EPUB e PDF; contraste testado nos 4 temas; medidas em `rem`.
   - [x] M7a — tokens: superfícies (app, painel, card, hover), texto secundário/suave, divisória, sombra, raio e
     destaque no `Cores` de `lib/temas.ts`, com testes de contraste
-  - [ ] M7b — barras e painéis do leitor: botões de ícone, título centralizado, paginação compacta, barra de
+  - [x] M7b — barras e painéis do leitor: botões de ícone, título centralizado, paginação compacta, barra de
     progresso, índice com item ativo destacado, cabeçalho dos painéis
   - [ ] M7c — biblioteca: cards com progresso na capa, selo EPUB/PDF e "% lido", estado vazio, teclas (kbd) no F1
 - [ ] **M8+ — Features**: a definir. Cada uma traz seus componentes da proposta ("com a feature" na análise:

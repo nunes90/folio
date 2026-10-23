@@ -31,7 +31,7 @@
 </script>
 
 <div class="barra">
-  <div class="grupo" role="group" aria-label="Páginas">
+  <div class="grupo grupo-barra" role="group" aria-label="Páginas">
     <button type="button" onclick={() => onIrPara(pagina - 1)} disabled={pagina <= 1}>
       <Icone nome="anterior" /><span class="rotulo">Página anterior</span>
     </button>
@@ -45,7 +45,7 @@
     </button>
   </div>
 
-  <div class="grupo" role="group" aria-label="Zoom">
+  <div class="grupo grupo-barra" role="group" aria-label="Zoom">
     <button type="button" onclick={onZoomMenos} aria-label="Diminuir zoom">−</button>
     <output aria-live="polite">{porcento.format(zoom)}</output>
     <button type="button" onclick={onZoomMais} aria-label="Aumentar zoom">+</button>

@@ -265,7 +265,13 @@
   }
 </script>
 
-<MolduraLeitor bind:this={moldura} {titulo} {anuncio} {onFechar}>
+<MolduraLeitor
+  bind:this={moldura}
+  {titulo}
+  {anuncio}
+  progresso={total ? pagina / total : 0}
+  {onFechar}
+>
   {#snippet acoes()}
     <BuscaPdf resultado={resultadoBusca} onBuscar={buscar} bind:campo={campoBusca} />
   {/snippet}
@@ -322,7 +328,7 @@
     position: absolute;
     inset: 0;
     overflow: auto;
-    background: color-mix(in srgb, currentColor 10%, transparent);
+    background: var(--app);
   }
 
   .nota {

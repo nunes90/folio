@@ -14,6 +14,7 @@
   let {
     titulo,
     anuncio = "",
+    progresso = 0,
     indiceAberto = $bindable(true),
     aparenciaAberta = $bindable(false),
     onFechar,
@@ -26,6 +27,8 @@
     titulo: string;
     /** Texto para leitores de tela (região aria-live), ex.: "Seção: Capítulo 3". */
     anuncio?: string;
+    /** Fração lida (0 a 1), mostrada numa barra fina sob o cabeçalho. */
+    progresso?: number;
     indiceAberto?: boolean;
     aparenciaAberta?: boolean;
     onFechar: () => void;
@@ -73,6 +76,17 @@
       indiceAberto = false;
       botaoIndice.focus();
     }
+  }
+
+  /** Botão de fechar dos painéis: fecha e devolve o foco ao botão da barra. */
+  function fecharIndice() {
+    indiceAberto = false;
+    botaoIndice.focus();
+  }
+
+  function fecharAparencia() {
+    aparenciaAberta = false;
+    botaoAparencia.focus();
   }
 
   /** Leva o foco ao título: o leitor de tela anuncia qual livro foi aberto. */
@@ -131,33 +145,48 @@
 
 <div class="moldura" class:estreita {...{ [ATRIBUTO_TELA]: "" }}>
   <header>
-    <button
-      type="button"
-      bind:this={botaoIndice}
-      aria-expanded={indiceAberto}
-      aria-controls="indice"
-      onclick={() => alternar("indice")}
-    >
-      <Icone nome="indice" /><span class="rotulo">Índice</span>
-    </button>
+    <div class="lado inicio">
+      <button
+        type="button"
+        bind:this={botaoIndice}
+        aria-expanded={indiceAberto}
+        aria-controls="indice"
+        onclick={() => alternar("indice")}
+      >
+        <Icone nome="indice" /><span class="rotulo">Índice</span>
+      </button>
+    </div>
     <h1 tabindex="-1" bind:this={tituloEl}>{titulo}</h1>
-    {@render acoes?.()}
-    <button
-      type="button"
-      bind:this={botaoAparencia}
-      aria-expanded={aparenciaAberta}
-      aria-controls="aparencia"
-      onclick={() => alternar("aparencia")}
-    >
-      <Icone nome="aparencia" /><span class="rotulo">Aparência</span>
-    </button>
-    <button type="button" onclick={onFechar}>
-      <Icone nome="voltar" /><span class="rotulo">Voltar à biblioteca</span>
-    </button>
+    <div class="lado fim">
+      {@render acoes?.()}
+      <button
+        type="button"
+        bind:this={botaoAparencia}
+        aria-expanded={aparenciaAberta}
+        aria-controls="aparencia"
+        onclick={() => alternar("aparencia")}
+      >
+        <Icone nome="aparencia" /><span class="rotulo">Aparência</span>
+      </button>
+      <button type="button" onclick={onFechar}>
+        <Icone nome="voltar" /><span class="rotulo">Voltar à biblioteca</span>
+      </button>
+    </div>
+    <!-- Decorativa: a porcentagem lida está no rodapé, como texto. -->
+    <div class="progresso-leitura" aria-hidden="true">
+      <span style:transform="scaleX({Math.min(1, Math.max(0, progresso))})"></span>
+    </div>
   </header>
 
   <div class="area-indice">
-    <PainelLateral id="indice" rotulo="Índice" aberto={indiceAberto} lado="inicio" elemento="nav">
+    <PainelLateral
+      id="indice"
+      rotulo="Índice"
+      aberto={indiceAberto}
+      lado="inicio"
+      elemento="nav"
+      onFechar={fecharIndice}
+    >
       {@render indice()}
     </PainelLateral>
   </div>
@@ -179,7 +208,13 @@
   {/if}
 
   <div class="area-aparencia">
-    <PainelLateral id="aparencia" rotulo="Aparência" aberto={aparenciaAberta} lado="fim">
+    <PainelLateral
+      id="aparencia"
+      rotulo="Aparência"
+      aberto={aparenciaAberta}
+      lado="fim"
+      onFechar={fecharAparencia}
+    >
       {@render aparencia()}
     </PainelLateral>
   </div>
@@ -201,22 +236,76 @@
       "indice conteudo aparencia"
       "rodape rodape rodape";
     height: 100vh;
+    background: var(--app);
   }
 
+  /* Título centralizado quando cabe: as laterais dividem o resto por igual, mas nunca ficam
+     menores que o próprio conteúdo (no PDF, a busca deixa o lado direito mais largo). */
   header {
     grid-area: topo;
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(min-content, 1fr) minmax(3rem, auto) minmax(min-content, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.35rem 0.75rem;
+    background: var(--painel);
+    border-block-end: 1px solid var(--divisoria);
+  }
+
+  .lado {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.5rem 1rem;
-    border-block-end: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .lado.fim {
+    justify-content: flex-end;
+  }
+
+  /* Botões das barras: sem borda, fundo só sob o ponteiro (no alto contraste, com borda). */
+  header :global(button),
+  footer :global(button) {
+    flex-shrink: 0;
+    justify-content: center;
+    white-space: nowrap;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0.3rem 0.6rem;
+    border-color: transparent;
+    border-radius: var(--raio);
+    background: transparent;
+  }
+
+  header :global(button:hover:not(:disabled)),
+  footer :global(button:hover:not(:disabled)) {
+    background: var(--hover);
+  }
+
+  :global([data-tema="alto-contraste"]) :is(header, footer) :global(button) {
+    border-color: var(--borda);
+  }
+
+  .progresso-leitura {
+    position: absolute;
+    inset: auto 0 -1px;
+    height: 3px;
+  }
+
+  .progresso-leitura span {
+    display: block;
+    height: 100%;
+    background: var(--destaque);
+    transform-origin: left;
+    transition: transform var(--duracao-media) var(--curva);
   }
 
   h1 {
-    flex: 1;
-    min-width: 3rem;
+    min-width: 0;
     margin: 0;
     font-size: 1rem;
+    font-weight: 600;
     text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -275,8 +364,8 @@
   .estreita .area-aparencia {
     z-index: 2;
     max-width: 100%;
-    background: var(--fundo);
-    box-shadow: 0 0 1.5rem rgb(0 0 0 / 25%);
+    background: var(--painel);
+    box-shadow: var(--sombra);
   }
 
   .estreita .area-indice :global(.painel),
@@ -289,7 +378,8 @@
   }
 
   .estreita header {
-    gap: 0.5rem;
+    gap: 0.25rem;
+    padding-inline: 0.4rem;
   }
 
   footer {
@@ -299,7 +389,8 @@
     justify-content: center;
     align-items: center;
     gap: 1.5rem;
-    padding: 0.5rem 1rem;
-    border-block-start: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+    padding: 0.35rem 0.75rem;
+    background: var(--painel);
+    border-block-start: 1px solid var(--divisoria);
   }
 </style>

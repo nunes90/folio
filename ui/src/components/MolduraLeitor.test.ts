@@ -93,6 +93,27 @@ describe("MolduraLeitor", () => {
     expect(animar.mock.calls[0]![0]).toEqual([{ opacity: 0 }, { opacity: 1 }]);
   });
 
+  it("mostra o progresso numa barra decorativa (o leitor de tela usa a porcentagem do rodapé)", () => {
+    const { container } = renderizar({ progresso: 0.37 });
+    const barra = container.querySelector<HTMLElement>(".progresso-leitura")!;
+    expect(barra.getAttribute("aria-hidden")).toBe("true");
+    expect(barra.querySelector<HTMLElement>("span")!.style.transform).toBe("scaleX(0.37)");
+  });
+
+  it("cada painel tem título e botão de fechar, que devolve o foco ao botão da barra", async () => {
+    renderizar({ aparenciaAberta: true });
+    expect(screen.getByRole("heading", { name: "Aparência" })).toBeTruthy();
+    await fireEvent.click(screen.getByRole("button", { name: "Fechar Aparência" }));
+    const aparencia = screen.getByRole("button", { name: "Aparência" });
+    expect(aparencia.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(aparencia);
+
+    await fireEvent.click(screen.getByRole("button", { name: "Fechar Índice" }));
+    const indice = screen.getByRole("button", { name: "Índice" });
+    expect(indice.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(indice);
+  });
+
   describe("janela estreita", () => {
     afterEach(() => {
       sistema.estreita = false;

@@ -114,6 +114,18 @@ button:has(> .rotulo) {
   white-space: nowrap;
 }
 
+/* Grupo compacto numa barra (ex.: "‹ 12% ›", página e zoom do PDF): uma só caixa. */
+.grupo-barra {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.1rem;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--card);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Títulos focados por código (tabindex="-1") não precisam do contorno. */
 h1[tabindex="-1"]:focus {
   outline: none;
