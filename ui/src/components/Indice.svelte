@@ -43,11 +43,12 @@
   }
 
   button {
+    position: relative;
     display: block;
     width: 100%;
     padding: 0.4rem 0.75rem;
     border: 0;
-    border-radius: 0.25rem;
+    border-radius: var(--raio-pequeno);
     background: none;
     color: inherit;
     font: inherit;
@@ -56,11 +57,23 @@
   }
 
   button:hover {
-    background: color-mix(in srgb, currentColor 8%, transparent);
+    background: var(--hover);
   }
 
+  /* Capítulo atual: fundo suave e barra lateral no destaque (contraste testado em temas.ts). */
   button[aria-current] {
     font-weight: 600;
-    background: color-mix(in srgb, currentColor 12%, transparent);
+    color: var(--destaque);
+    background: var(--destaque-suave);
+  }
+
+  button[aria-current]::before {
+    content: "";
+    position: absolute;
+    inset-block: 0.35rem;
+    inset-inline-start: 0;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--destaque);
   }
 </style>

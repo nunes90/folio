@@ -267,7 +267,7 @@
   }
 </script>
 
-<MolduraLeitor bind:this={moldura} {titulo} {anuncio} {onFechar}>
+<MolduraLeitor bind:this={moldura} {titulo} {anuncio} {progresso} {onFechar}>
   {#snippet indice()}
     {#if itensIndice.length}
       <Indice itens={itensIndice} atual={hrefAtual} onNavegar={irParaSecao} />
@@ -301,13 +301,15 @@
         </button>
       {/if}
     </div>
-    <button type="button" onclick={anterior}>
-      <Icone nome="anterior" /><span class="rotulo">Anterior</span>
-    </button>
-    <span>{porcento.format(progresso)}</span>
-    <button type="button" onclick={proxima}>
-      <Icone nome="proxima" /><span class="rotulo">Próxima</span>
-    </button>
+    <div class="grupo-barra" role="group" aria-label="Páginas">
+      <button type="button" onclick={anterior}>
+        <Icone nome="anterior" /><span class="rotulo">Anterior</span>
+      </button>
+      <span class="porcento">{porcento.format(progresso)}</span>
+      <button type="button" onclick={proxima}>
+        <Icone nome="proxima" /><span class="rotulo">Próxima</span>
+      </button>
+    </div>
   {/snippet}
 
   <div class="palco" bind:this={palco}>
@@ -328,6 +330,11 @@
     display: block;
     width: 100%;
     height: 100%;
+  }
+
+  .porcento {
+    min-width: 3rem;
+    text-align: center;
   }
 
   /* Controles de voz à esquerda; a navegação continua no centro. */

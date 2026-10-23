@@ -137,5 +137,11 @@ docs/decisions/  # ADRs
   `destaque`, `sobreDestaque`, `destaqueSuave`, `sombra`), publicados por `aplicarTema` como `--app`, `--painel`,
   `--sobre-destaque` etc.; `fundo` continua sendo a página do livro. Contraste de cada combinação testado nos 4 temas.
   Raios `--raio-*` no `app.css`. Ainda sem uso visual: entram no M7b/M7c.
-- Próximo passo: **M7b** (barras e painéis do leitor). M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M7b** (branch `feat/m7b-leitor`): moldura dos leitores sobre `--app`, barras e painéis em `--painel` com
+  `--divisoria`; botões das barras sem borda (fundo `--hover` sob o ponteiro; borda no alto contraste); cabeçalho em grid
+  `minmax(min-content, 1fr) auto minmax(min-content, 1fr)` (título centralizado quando cabe); barra de progresso
+  decorativa (`progresso` da moldura, `scaleX`); `.grupo-barra` no `app.css` para grupos compactos ("‹ 12% ›", página e
+  zoom do PDF); índice com item atual em `--destaque-suave` + barra lateral; `PainelLateral` com cabeçalho (título e
+  botão "Fechar …" que devolve o foco).
+- Próximo passo: **M7c** (biblioteca). M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.
