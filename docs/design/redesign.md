@@ -35,8 +35,12 @@ Mas vários valores contrariam regras do projeto. Entra o que respeita essas reg
 | texto sobre o destaque | `#ffffff` | `#0d1626` | `#ffffff` | `#000000` |
 | destaque suave | `#e8effb` | `#1f2b40` | `#efdcc0` | `#000000` |
 
-O destaque é o mesmo azul que o app já usa em links e no foco. Ponto de partida do M7a: os valores definitivos
-são os que passarem nos testes.
+O destaque é o mesmo azul que o app já usa em links e no foco.
+
+**Como ficou no M7a** (`lib/temas.ts`): as superfícies, a divisória, o destaque (com texto e fundo suave) e a
+sombra entraram como campos de `Cores`, com os valores acima. Os textos não ganharam um terceiro nível: o `suave` que
+já existia passa de 4,5:1 em todas as superfícies e fica entre o "secundário" e o "suave" da tabela. A borda de
+controle continua sendo a `borda` atual. Os raios (`--raio-pequeno`, `--raio`, `--raio-grande`) ficam no `app.css`.
 
 ## Decisão por parte
 | # | Parte | Decisão | Motivo |

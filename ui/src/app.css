@@ -5,7 +5,14 @@
   --duracao-media: 200ms;
   --duracao-longa: 320ms;
   --curva: cubic-bezier(0.2, 0, 0, 1);
-  /* Cores vêm de lib/temas.ts (aplicarTema); os valores após a vírgula valem até o JS rodar. */
+  /* Raios dos cantos (não mudam com o tema). Em rem: acompanham a escala de texto. */
+  --raio-pequeno: 0.25rem;
+  --raio: 0.5rem;
+  --raio-grande: 0.75rem;
+  /* Cores vêm de lib/temas.ts (aplicarTema), uma variável por campo de `Cores`: --fundo,
+     --texto, --suave, --borda, --controle, --link, --foco e, desde o M7, as superfícies --app,
+     --painel, --card, --hover, mais --divisoria, --destaque, --sobre-destaque, --destaque-suave
+     e --sombra. Os valores após a vírgula valem até o JS rodar. */
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
   /* Escala de texto do sistema (definida por lib/escala.svelte.ts). Use rem na interface. */

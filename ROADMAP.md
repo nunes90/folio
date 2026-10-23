@@ -26,7 +26,7 @@ Cada marco precisa terminar em algo utilizável.
 ## v0.2
 - [ ] **M7 — Refinamento visual**: a parte adaptada do design system proposto (análise em
   `docs/design/redesign.md`). Igual para EPUB e PDF; contraste testado nos 4 temas; medidas em `rem`.
-  - [ ] M7a — tokens: superfícies (app, painel, card, hover), texto secundário/suave, divisória, sombra, raio e
+  - [x] M7a — tokens: superfícies (app, painel, card, hover), texto secundário/suave, divisória, sombra, raio e
     destaque no `Cores` de `lib/temas.ts`, com testes de contraste
   - [ ] M7b — barras e painéis do leitor: botões de ícone, título centralizado, paginação compacta, barra de
     progresso, índice com item ativo destacado, cabeçalho dos painéis

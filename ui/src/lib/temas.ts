@@ -17,6 +17,27 @@ export interface Cores {
   foco: string;
   /** `color-scheme` CSS: controles nativos (barras de rolagem, deslizantes) seguem o tema. */
   esquema: "light" | "dark";
+
+  // Superfícies em camadas (M7, ver docs/design/redesign.md). `fundo` continua sendo a página
+  // do livro; a interface ao redor usa estas.
+  /** Fundo geral da interface (atrás de painéis e cards). */
+  app: string;
+  /** Barras e painéis laterais. */
+  painel: string;
+  /** Cards e áreas elevadas (capas, diálogos). */
+  card: string;
+  /** Fundo de botões e itens sob o ponteiro ou selecionados. */
+  hover: string;
+  /** Linhas que só separam áreas (decorativas: sem exigência de contraste). Pode ter alfa. */
+  divisoria: string;
+  /** Cor de destaque (item ativo, botão primário, progresso). Também serve como texto. */
+  destaque: string;
+  /** Texto sobre um fundo `destaque`. */
+  sobreDestaque: string;
+  /** Fundo suave de itens destacados (ex.: capítulo atual no índice). */
+  destaqueSuave: string;
+  /** `box-shadow` de elementos elevados; "none" no alto contraste. */
+  sombra: string;
 }
 
 export const TEMAS: Record<TemaEfetivo, Cores> = {
@@ -29,6 +50,15 @@ export const TEMAS: Record<TemaEfetivo, Cores> = {
     link: "#0b57d0",
     foco: "#0b57d0",
     esquema: "light",
+    app: "#f6f5f2",
+    painel: "#ffffff",
+    card: "#ffffff",
+    hover: "#ecebe6",
+    divisoria: "rgb(28 26 23 / 10%)",
+    destaque: "#0b57d0",
+    sobreDestaque: "#ffffff",
+    destaqueSuave: "#e8effb",
+    sombra: "0 1px 2px rgb(28 26 23 / 6%), 0 4px 14px rgb(28 26 23 / 8%)",
   },
   escuro: {
     fundo: "#1b1b1b",
@@ -39,6 +69,15 @@ export const TEMAS: Record<TemaEfetivo, Cores> = {
     link: "#8ab4f8",
     foco: "#8ab4f8",
     esquema: "dark",
+    app: "#121214",
+    painel: "#1b1b1e",
+    card: "#232327",
+    hover: "#2d2d32",
+    divisoria: "rgb(255 255 255 / 9%)",
+    destaque: "#8ab4f8",
+    sobreDestaque: "#0d1626",
+    destaqueSuave: "#1f2b40",
+    sombra: "0 1px 2px rgb(0 0 0 / 40%), 0 6px 18px rgb(0 0 0 / 45%)",
   },
   sepia: {
     fundo: "#f4ecd8",
@@ -49,6 +88,15 @@ export const TEMAS: Record<TemaEfetivo, Cores> = {
     link: "#7a3a00",
     foco: "#7a3a00",
     esquema: "light",
+    app: "#efe5cc",
+    painel: "#f6eedb",
+    card: "#faf5e8",
+    hover: "#e8dcbf",
+    divisoria: "rgb(46 36 22 / 12%)",
+    destaque: "#7a3a00",
+    sobreDestaque: "#ffffff",
+    destaqueSuave: "#efdcc0",
+    sombra: "0 1px 2px rgb(46 36 22 / 8%), 0 4px 14px rgb(46 36 22 / 10%)",
   },
   "alto-contraste": {
     fundo: "#000000",
@@ -59,6 +107,15 @@ export const TEMAS: Record<TemaEfetivo, Cores> = {
     link: "#ffff00",
     foco: "#ffff00",
     esquema: "dark",
+    app: "#000000",
+    painel: "#000000",
+    card: "#000000",
+    hover: "#1a1a1a",
+    divisoria: "#ffffff",
+    destaque: "#ffff00",
+    sobreDestaque: "#000000",
+    destaqueSuave: "#000000",
+    sombra: "none",
   },
 };
 
@@ -79,8 +136,10 @@ export function aplicarTema(tema: TemaEfetivo, raiz = document.documentElement):
   const c = TEMAS[tema];
   raiz.dataset.tema = tema;
   raiz.style.colorScheme = c.esquema;
-  for (const nome of ["fundo", "texto", "suave", "borda", "controle", "link", "foco"] as const) {
-    raiz.style.setProperty(`--${nome}`, c[nome]);
+  for (const [nome, valor] of Object.entries(c)) {
+    if (nome === "esquema") continue;
+    // sobreDestaque → --sobre-destaque
+    raiz.style.setProperty(`--${nome.replace(/[A-Z]/g, (l) => `-${l.toLowerCase()}`)}`, valor);
   }
 }
 
