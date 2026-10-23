@@ -88,6 +88,25 @@ dialog.modal[open]::backdrop {
   border: 0;
 }
 
+/* Botões com ícone e rótulo (<Icone/><span class="rotulo">…</span>). Em janela estreita
+   (moldura do leitor), só o ícone aparece; o rótulo continua sendo o nome do botão para
+   leitores de tela, então nada muda para quem não enxerga a tela. */
+button:has(> .rotulo) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.estreita .rotulo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Títulos focados por código (tabindex="-1") não precisam do contorno. */
 h1[tabindex="-1"]:focus {
   outline: none;

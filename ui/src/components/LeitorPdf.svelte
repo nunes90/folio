@@ -6,6 +6,7 @@
   import BarraPdf from "./BarraPdf.svelte";
   import BuscaPdf from "./BuscaPdf.svelte";
   import Indice from "./Indice.svelte";
+  import Carregando from "./Carregando.svelte";
   import MolduraLeitor from "./MolduraLeitor.svelte";
   import PainelPdf from "./PainelPdf.svelte";
   import PainelTema from "./PainelTema.svelte";
@@ -304,6 +305,8 @@
 
   {#if erro}
     <p role="alert">{erro}</p>
+  {:else if !pronto}
+    <Carregando texto="Abrindo o PDF…" />
   {/if}
   <!-- O PDFViewer exige um contêiner com position: absolute e um filho .pdfViewer.
        Região rolável focável (tabindex) para rolar pelo teclado. -->

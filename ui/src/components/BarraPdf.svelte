@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icone from "./Icone.svelte";
+
   let {
     pagina,
     total,
@@ -31,7 +33,7 @@
 <div class="barra">
   <div class="grupo" role="group" aria-label="Páginas">
     <button type="button" onclick={() => onIrPara(pagina - 1)} disabled={pagina <= 1}>
-      Página anterior
+      <Icone nome="anterior" /><span class="rotulo">Página anterior</span>
     </button>
     <label>
       Página
@@ -39,7 +41,7 @@
       de {total}
     </label>
     <button type="button" onclick={() => onIrPara(pagina + 1)} disabled={pagina >= total}>
-      Próxima página
+      <Icone nome="proxima" /><span class="rotulo">Próxima página</span>
     </button>
   </div>
 
@@ -47,7 +49,9 @@
     <button type="button" onclick={onZoomMenos} aria-label="Diminuir zoom">−</button>
     <output aria-live="polite">{porcento.format(zoom)}</output>
     <button type="button" onclick={onZoomMais} aria-label="Aumentar zoom">+</button>
-    <button type="button" onclick={onAjustarLargura}>Ajustar à largura</button>
+    <button type="button" onclick={onAjustarLargura}>
+      <Icone nome="largura" /><span class="rotulo">Ajustar à largura</span>
+    </button>
   </div>
 </div>
 
@@ -57,6 +61,10 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 1.5rem;
+  }
+
+  :global(.estreita) .barra {
+    gap: 0.75rem;
   }
 
   .grupo {

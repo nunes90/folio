@@ -37,6 +37,7 @@
   {id}
   aria-label={rotulo}
   class="painel {lado}"
+  tabindex="-1"
   hidden={!aberto && !saindo}
 >
   {#if aberto}

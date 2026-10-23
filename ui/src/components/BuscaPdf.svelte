@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icone from "./Icone.svelte";
+
   let {
     resultado = "",
     onBuscar,
@@ -37,19 +39,33 @@
     bind:this={campo}
     onkeydown={aoTeclar}
   />
-  <button type="button" onclick={() => termo.trim() && onBuscar(termo, true)}>Anterior</button>
-  <button type="submit">Próxima</button>
+  <button type="button" onclick={() => termo.trim() && onBuscar(termo, true)}>
+    <Icone nome="acima" /><span class="rotulo">Anterior</span>
+  </button>
+  <button type="submit"><Icone nome="abaixo" /><span class="rotulo">Próxima</span></button>
   <span role="status">{resultado}</span>
 </form>
 
 <style>
+  /* Encolhe com a janela: o campo cede espaço antes de o cabeçalho cortar botões. */
   form {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-width: 0;
   }
 
-  span {
+  input {
+    flex: 1 1 12rem;
+    min-width: 5rem;
+    width: 12rem;
+  }
+
+  span[role="status"] {
     min-width: 6rem;
+  }
+
+  :global(.estreita) span[role="status"] {
+    min-width: 0;
   }
 </style>

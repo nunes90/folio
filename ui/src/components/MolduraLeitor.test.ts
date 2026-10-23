@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import axe from "axe-core";
-import { createRawSnippet } from "svelte";
-import { describe, expect, it, vi } from "vitest";
+import { createRawSnippet, tick } from "svelte";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { sistema } from "../lib/ambiente.svelte";
 import MolduraLeitor from "./MolduraLeitor.svelte";
 
 const trecho = (html: string) => createRawSnippet(() => ({ render: () => html }));
@@ -90,6 +91,89 @@ describe("MolduraLeitor", () => {
     expect(ordem).toEqual(["navegou", "animou"]);
     // Padrão: esmaecer.
     expect(animar.mock.calls[0]![0]).toEqual([{ opacity: 0 }, { opacity: 1 }]);
+  });
+
+  describe("janela estreita", () => {
+    afterEach(() => {
+      sistema.estreita = false;
+    });
+
+    it("o índice começa fechado e os painéis cobrem o livro (o livro não muda de tamanho)", async () => {
+      sistema.estreita = true;
+      const { container } = renderizar();
+      expect(container.querySelector(".moldura")!.classList.contains("estreita")).toBe(true);
+      const indice = screen.getByRole("button", { name: "Índice" });
+      expect(indice.getAttribute("aria-expanded")).toBe("false");
+      await fireEvent.click(indice);
+      expect(indice.getAttribute("aria-expanded")).toBe("true");
+      expect(container.querySelector(".veu")).toBeTruthy();
+    });
+
+    it("os botões do cabeçalho têm ícone e mantêm o nome (o texto fica para o leitor de tela)", () => {
+      sistema.estreita = true;
+      renderizar();
+      for (const nome of ["Índice", "Aparência", "Voltar à biblioteca"]) {
+        const botao = screen.getByRole("button", { name: nome });
+        expect(botao.querySelector("svg")).toBeTruthy();
+        expect(botao.querySelector(".rotulo")?.textContent).toBe(nome);
+      }
+    });
+
+    it("abrir um painel fecha o outro", async () => {
+      sistema.estreita = true;
+      renderizar();
+      const indice = screen.getByRole("button", { name: "Índice" });
+      const aparencia = screen.getByRole("button", { name: "Aparência" });
+      await fireEvent.click(indice);
+      await fireEvent.click(aparencia);
+      expect(indice.getAttribute("aria-expanded")).toBe("false");
+      expect(aparencia.getAttribute("aria-expanded")).toBe("true");
+      await fireEvent.click(indice);
+      expect(aparencia.getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("o foco vai para o painel aberto; clicar no véu fecha e devolve o foco ao botão", async () => {
+      sistema.estreita = true;
+      const { container } = renderizar();
+      const aparencia = screen.getByRole("button", { name: "Aparência" });
+      await fireEvent.click(aparencia);
+      await tick();
+      expect(document.activeElement).toBe(document.getElementById("aparencia"));
+      await fireEvent.click(container.querySelector(".veu")!);
+      expect(aparencia.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(aparencia);
+    });
+
+    it("Esc fecha o painel que cobre o livro, esteja o foco onde estiver", async () => {
+      sistema.estreita = true;
+      renderizar();
+      const indice = screen.getByRole("button", { name: "Índice" });
+      await fireEvent.click(indice);
+      const voltar = screen.getByRole("button", { name: "Voltar à biblioteca" });
+      voltar.focus();
+      await fireEvent.keyDown(voltar, { key: "Escape" });
+      expect(indice.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(indice);
+    });
+
+    it("ao estreitar a janela com os dois painéis abertos, fica só o último aberto", async () => {
+      renderizar({ aparenciaAberta: true });
+      sistema.estreita = true;
+      await tick();
+      expect(screen.getByRole("button", { name: "Índice" }).getAttribute("aria-expanded")).toBe(
+        "false",
+      );
+      expect(screen.getByRole("button", { name: "Aparência" }).getAttribute("aria-expanded")).toBe(
+        "true",
+      );
+    });
+
+    it("janela larga: os dois painéis podem ficar abertos lado a lado, sem véu", async () => {
+      const { container } = renderizar();
+      await fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+      expect(screen.getByRole("button", { name: "Índice" }).getAttribute("aria-expanded")).toBe("true");
+      expect(container.querySelector(".veu")).toBeNull();
+    });
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {
