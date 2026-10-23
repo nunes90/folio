@@ -55,6 +55,34 @@ const MIGRACOES: &[&str] = &[
 ",
 ];
 
+/// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.
+///
+/// Um enum em vez de `(LivroNaBiblioteca, bool)`: quem chama precisa decidir o que fazer em
+/// cada caso (o `match` não deixa esquecer um), e o nome diz o que o `bool` só sugeriria.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Importado {
+    /// O livro entrou agora: a cópia e a capa foram gravadas.
+    Novo(LivroNaBiblioteca),
+    /// O mesmo arquivo (mesmo SHA-256) já estava na biblioteca; nada foi copiado.
+    JaExistia(LivroNaBiblioteca),
+}
+
+impl Importado {
+    /// O livro, nos dois casos (emprestado).
+    pub fn livro(&self) -> &LivroNaBiblioteca {
+        match self {
+            Importado::Novo(livro) | Importado::JaExistia(livro) => livro,
+        }
+    }
+
+    /// O livro, nos dois casos (consome o `Importado`, sem clonar).
+    pub fn into_livro(self) -> LivroNaBiblioteca {
+        match self {
+            Importado::Novo(livro) | Importado::JaExistia(livro) => livro,
+        }
+    }
+}
+
 /// Um livro como a interface o vê.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -134,14 +162,15 @@ impl Biblioteca {
         })
     }
 
-    /// Importa um livro. Se ele já estiver na biblioteca, devolve o existente.
+    /// Importa um livro. Se ele já estiver na biblioteca, devolve o existente como
+    /// [`Importado::JaExistia`].
     #[instrument(skip(self), fields(origem = %origem.display()))]
-    pub fn importar(&self, origem: &Path) -> Resultado<LivroNaBiblioteca> {
+    pub fn importar(&self, origem: &Path) -> Resultado<Importado> {
         let livro = livro::abrir(origem)?;
         let id = hash(&livro.bytes);
         if let Some(existente) = self.obter(&id)? {
             tracing::info!(%id, "livro já estava na biblioteca");
-            return Ok(existente);
+            return Ok(Importado::JaExistia(existente));
         }
 
         // PDFs chegam sem capa: o frontend a gera com o pdf.js e chama `definir_capa`.
@@ -177,7 +206,8 @@ impl Biblioteca {
             ],
         )?;
         tracing::info!(%id, %titulo, "livro importado");
-        self.obter(&id)?.ok_or(ErroBiblioteca::NaoEncontrado(id))
+        let novo = self.obter(&id)?.ok_or(ErroBiblioteca::NaoEncontrado(id))?;
+        Ok(Importado::Novo(novo))
     }
 
     /// Livros por atividade recente: o último aberto (ou adicionado) primeiro.
@@ -440,7 +470,10 @@ mod tests {
     #[test]
     fn importa_com_metadados_capa_e_copia() {
         let (_dir, bib) = nova();
-        let livro = bib.importar(&fixture("dom-casmurro.epub")).unwrap();
+        let livro = bib
+            .importar(&fixture("dom-casmurro.epub"))
+            .unwrap()
+            .into_livro();
 
         assert_eq!(livro.titulo, "Dom Casmurro");
         assert_eq!(livro.autores, ["Machado de Assis"]);
@@ -460,14 +493,19 @@ mod tests {
         let (_dir, bib) = nova();
         let a = bib.importar(&fixture("minimo.epub")).unwrap();
         let b = bib.importar(&fixture("minimo.epub")).unwrap();
-        assert_eq!(a, b);
+        assert!(matches!(a, Importado::Novo(_)), "{a:?}");
+        assert!(matches!(b, Importado::JaExistia(_)), "{b:?}");
+        assert_eq!(a.livro(), b.livro());
         assert_eq!(bib.listar().unwrap().len(), 1);
     }
 
     #[test]
     fn importa_pdf_com_metadados_e_sem_capa() {
         let (_dir, bib) = nova();
-        let livro = bib.importar(&fixture("metadados-utf16.pdf")).unwrap();
+        let livro = bib
+            .importar(&fixture("metadados-utf16.pdf"))
+            .unwrap()
+            .into_livro();
         assert_eq!(livro.formato, Formato::Pdf);
         assert_eq!(livro.titulo, "Memórias Póstumas");
         assert_eq!(livro.autores, ["Machado de Assis", "Outro"]);
@@ -478,14 +516,14 @@ mod tests {
     #[test]
     fn pdf_sem_titulo_usa_nome_do_arquivo() {
         let (_dir, bib) = nova();
-        let livro = bib.importar(&fixture("minimo.pdf")).unwrap();
+        let livro = bib.importar(&fixture("minimo.pdf")).unwrap().into_livro();
         assert_eq!(livro.titulo, "minimo");
     }
 
     #[test]
     fn definir_capa_grava_e_atualiza() {
         let (_dir, bib) = nova();
-        let livro = bib.importar(&fixture("minimo.pdf")).unwrap();
+        let livro = bib.importar(&fixture("minimo.pdf")).unwrap().into_livro();
         let capa = Capa {
             tipo_midia: "image/jpeg".into(),
             bytes: vec![0xff, 0xd8, 0xff],
@@ -502,7 +540,7 @@ mod tests {
     #[test]
     fn arquivo_nao_marca_como_aberto() {
         let (_dir, bib) = nova();
-        let livro = bib.importar(&fixture("minimo.pdf")).unwrap();
+        let livro = bib.importar(&fixture("minimo.pdf")).unwrap().into_livro();
         bib.arquivo(&livro.id).unwrap();
         assert_eq!(bib.obter(&livro.id).unwrap().unwrap().aberto_em, None);
     }
@@ -518,9 +556,12 @@ mod tests {
     fn lista_por_atividade_recente() {
         let (_dir, mut bib) = nova();
         bib.relogio = || 100;
-        let antigo = bib.importar(&fixture("minimo.epub")).unwrap();
+        let antigo = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
         bib.relogio = || 200;
-        let novo = bib.importar(&fixture("capa-epub2.epub")).unwrap();
+        let novo = bib
+            .importar(&fixture("capa-epub2.epub"))
+            .unwrap()
+            .into_livro();
 
         let ids = |bib: &Biblioteca| -> Vec<String> {
             bib.listar().unwrap().into_iter().map(|l| l.id).collect()
@@ -535,7 +576,7 @@ mod tests {
     #[test]
     fn ler_devolve_bytes_e_marca_aberto() {
         let (_dir, bib) = nova();
-        let livro = bib.importar(&fixture("minimo.epub")).unwrap();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
         assert_eq!(livro.aberto_em, None);
         let bytes = bib.ler(&livro.id).unwrap();
         assert_eq!(bytes, std::fs::read(fixture("minimo.epub")).unwrap());
@@ -549,7 +590,7 @@ mod tests {
     #[test]
     fn progresso_salva_e_atualiza() {
         let (_dir, bib) = nova();
-        let livro = bib.importar(&fixture("minimo.epub")).unwrap();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
         assert_eq!(bib.progresso(&livro.id).unwrap(), None);
 
         let p1 = Progresso {
@@ -643,7 +684,10 @@ mod tests {
     #[test]
     fn remover_apaga_registro_progresso_copia_e_capa() {
         let (_dir, bib) = nova();
-        let livro = bib.importar(&fixture("dom-casmurro.epub")).unwrap();
+        let livro = bib
+            .importar(&fixture("dom-casmurro.epub"))
+            .unwrap()
+            .into_livro();
         let p = Progresso {
             localizacao: "epubcfi(/6/2)".into(),
             fracao: 0.3,
@@ -680,7 +724,7 @@ mod tests {
     #[test]
     fn remover_sem_capa_e_com_arquivo_ja_apagado_funciona() {
         let (_dir, bib) = nova();
-        let livro = bib.importar(&fixture("minimo.epub")).unwrap();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
         std::fs::remove_file(&livro.arquivo).unwrap();
         bib.remover(&livro.id).unwrap();
         assert!(bib.obter(&livro.id).unwrap().is_none());
@@ -689,9 +733,15 @@ mod tests {
     #[test]
     fn reimportar_depois_de_remover() {
         let (_dir, bib) = nova();
-        let id = bib.importar(&fixture("minimo.epub")).unwrap().id;
+        let id = bib
+            .importar(&fixture("minimo.epub"))
+            .unwrap()
+            .into_livro()
+            .id;
         bib.remover(&id).unwrap();
         let de_novo = bib.importar(&fixture("minimo.epub")).unwrap();
+        assert!(matches!(de_novo, Importado::Novo(_)), "{de_novo:?}");
+        let de_novo = de_novo.into_livro();
         assert_eq!(de_novo.id, id);
         assert!(de_novo.arquivo.exists());
     }
@@ -704,6 +754,7 @@ mod tests {
             .unwrap()
             .importar(&fixture("minimo.epub"))
             .unwrap()
+            .into_livro()
             .id;
         let bib = Biblioteca::abrir(&dados, &capas).unwrap();
         assert!(bib.obter(&id).unwrap().is_some());

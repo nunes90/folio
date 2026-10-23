@@ -1,0 +1,63 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { avisar, avisos, dispensar, mensagensDaImportacao } from "./avisos.svelte";
+import type { Livro } from "./biblioteca";
+
+function livro(titulo: string): Livro {
+  return {
+    id: titulo,
+    formato: "epub",
+    titulo,
+    autores: [],
+    idioma: null,
+    arquivo: "",
+    capa: null,
+    adicionadoEm: 0,
+    abertoEm: null,
+    fracao: null,
+  };
+}
+
+afterEach(() => avisos.splice(0));
+
+describe("avisar e dispensar", () => {
+  it("empilha avisos com id próprio e remove pelo id", () => {
+    const a = avisar("Dom Casmurro foi importado.");
+    const b = avisar("Não foi possível abrir x.epub.", "erro");
+    expect(avisos.map((x) => x.tipo)).toEqual(["sucesso", "erro"]);
+    dispensar(a);
+    expect(avisos.map((x) => x.id)).toEqual([b]);
+  });
+});
+
+describe("mensagensDaImportacao", () => {
+  const vazio = { importados: [], jaExistentes: [], falhas: [] };
+
+  it("um livro: diz qual; vários: diz quantos", () => {
+    expect(mensagensDaImportacao({ ...vazio, importados: [livro("Dom Casmurro")] })).toEqual([
+      { tipo: "sucesso", texto: "Dom Casmurro foi importado." },
+    ]);
+    expect(
+      mensagensDaImportacao({ ...vazio, importados: [livro("A"), livro("B"), livro("C")] }),
+    ).toEqual([{ tipo: "sucesso", texto: "3 livros importados." }]);
+  });
+
+  it("avisa quando o livro já estava na biblioteca", () => {
+    expect(mensagensDaImportacao({ ...vazio, jaExistentes: [livro("Dom Casmurro")] })).toEqual([
+      { tipo: "sucesso", texto: "Dom Casmurro já estava na biblioteca." },
+    ]);
+    expect(mensagensDaImportacao({ ...vazio, jaExistentes: [livro("A"), livro("B")] })).toEqual([
+      { tipo: "sucesso", texto: "2 livros já estavam na biblioteca." },
+    ]);
+  });
+
+  it("cada falha vira um aviso de erro com o nome do arquivo", () => {
+    const falhas = [{ caminho: "/home/l/Livros/quebrado.epub", erro: "não é um EPUB" }];
+    expect(mensagensDaImportacao({ ...vazio, falhas })).toEqual([
+      { tipo: "erro", texto: "Não foi possível importar quebrado.epub: não é um EPUB" },
+    ]);
+  });
+
+  it("nada importado e nada a dizer: nenhum aviso", () => {
+    expect(mensagensDaImportacao(vazio)).toEqual([]);
+  });
+});

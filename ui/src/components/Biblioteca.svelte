@@ -2,8 +2,6 @@
   import { urlDaCapa, type Livro } from "../lib/biblioteca";
   import type { Preferencias } from "../lib/preferencias.svelte";
   import type { TemaEfetivo } from "../lib/temas";
-  import { fade } from "svelte/transition";
-  import { curva, duracao } from "../lib/animacao";
   import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
   import Icone from "./Icone.svelte";
   import PainelTema from "./PainelTema.svelte";
@@ -11,7 +9,6 @@
   let {
     livros,
     importando = false,
-    aviso = null,
     onAbrir,
     onImportar,
     onRemover,
@@ -22,8 +19,6 @@
   }: {
     livros: Livro[];
     importando?: boolean;
-    /** Resultado da última importação ou erro, anunciado por leitores de tela. */
-    aviso?: string | null;
     onAbrir: (livro: Livro) => void;
     onImportar: () => void;
     /** Pedido de remoção (quem chama confirma antes de remover). */
@@ -154,13 +149,6 @@
       <PainelTema {preferencias} onMudar={onMudarPreferencias} {temaDoSistema} />
     </section>
   {/if}
-
-  <!-- Sempre no DOM: regiões aria-live só anunciam mudanças em elementos que já existiam. -->
-  <p class="aviso" role="status">
-    {#key aviso}
-      <span in:fade={{ duration: duracao("curta"), easing: curva }}>{aviso ?? ""}</span>
-    {/key}
-  </p>
 
   {#if livros.length === 0}
     <section class="vazia" aria-labelledby="titulo-vazia">
@@ -293,11 +281,6 @@
 
   #aparencia-biblioteca[hidden] {
     display: none;
-  }
-
-  /* Sem aviso, não ocupa espaço (o <span> existe sempre por causa da animação). */
-  .aviso:has(> span:empty) {
-    margin: 0;
   }
 
   .vazia {

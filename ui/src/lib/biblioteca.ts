@@ -24,6 +24,8 @@ export interface Progresso {
 
 export interface Importacao {
   importados: Livro[];
+  /** Arquivos que já estavam na biblioteca (mesmo conteúdo): nada foi copiado. */
+  jaExistentes: Livro[];
   falhas: { caminho: string; erro: string }[];
 }
 
@@ -43,7 +45,10 @@ export async function escolherArquivos(): Promise<string[]> {
 
 export async function importarLivros(caminhos: string[]): Promise<Importacao> {
   const resultado = await invoke<Importacao>("importar_livros", { caminhos });
-  log.info(`importados: ${resultado.importados.length}, falhas: ${resultado.falhas.length}`);
+  log.info(
+    `importados: ${resultado.importados.length}, já existentes: ${resultado.jaExistentes.length}, ` +
+      `falhas: ${resultado.falhas.length}`,
+  );
   return resultado;
 }
 

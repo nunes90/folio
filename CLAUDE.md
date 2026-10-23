@@ -148,5 +148,11 @@ docs/decisions/  # ADRs
   progresso decorativa na capa (`.progresso-capa`, cor de destaque, só se a leitura começou), selo EPUB/PDF e
   situação ("37% lido", "Concluído" quando arredonda para 100%); estado vazio com ícone, título e o único botão de
   importar. Painel de aparência da biblioteca em `--painel`. `dialog.modal` em `--card` com `--sombra`; `kbd` como tecla.
-- **M7 concluído.** Próximo passo: definir as features da v0.2 (M8+). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M7 concluído.**
+- **M8a** (branch `feat/m8a-toasts`): `Biblioteca::importar` devolve `Importado::{Novo, JaExistia}`; o comando
+  `importar_livros` separa `importados`/`jaExistentes`/`falhas`. Avisos (toasts) em `lib/avisos.svelte.ts`
+  (`avisar(texto, tipo)`, `mensagensDaImportacao`) e `Avisos.svelte` (montado no `App`): sucesso some após 6 s com pausa
+  sob ponteiro/foco, erro fica até fechar; regiões `status`/`alert` sempre no DOM. A antiga linha de aviso da
+  biblioteca saiu.
+- Próximo passo: **M8b** (situação do livro no core). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.
