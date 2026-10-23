@@ -66,6 +66,70 @@ describe("Biblioteca", () => {
     expect(barras[0]!.querySelector<HTMLElement>("span")!.style.transform).toBe("scaleX(0.37)");
   });
 
+  describe("busca e filtros", () => {
+    const estante = [
+      livro({ id: "a", titulo: "Dom Casmurro", fracao: 0.37, situacao: "lendo" }),
+      livro({ id: "b", titulo: "Memórias Póstumas", fracao: 1, situacao: "concluido" }),
+      livro({ id: "c", titulo: "O Cortiço", autores: ["Aluísio Azevedo"] }),
+    ];
+    // Itens da grade acessíveis (a lista vazia fica `hidden` e sai da árvore de acessibilidade).
+    const visiveis = () => screen.queryAllByRole("listitem").length;
+
+    it("a busca filtra por título ou autor e anuncia quantos livros sobraram", async () => {
+      render(Biblioteca, { livros: estante, ...semAcao });
+      const busca = screen.getByRole("searchbox", { name: "Buscar na biblioteca" });
+      await fireEvent.input(busca, { target: { value: "aluisio" } });
+      expect(visiveis()).toBe(1);
+      expect(screen.getByText("1 livro encontrado")).toBeTruthy();
+    });
+
+    it("filtros mostram a contagem, marcam o ativo com aria-pressed e combinam com a busca", async () => {
+      render(Biblioteca, { livros: estante, ...semAcao });
+      const todos = screen.getByRole("button", { name: "Todos 3" });
+      const concluidos = screen.getByRole("button", { name: "Concluídos 1" });
+      expect(todos.getAttribute("aria-pressed")).toBe("true");
+      await fireEvent.click(concluidos);
+      expect(concluidos.getAttribute("aria-pressed")).toBe("true");
+      expect(todos.getAttribute("aria-pressed")).toBe("false");
+      expect(visiveis()).toBe(1);
+      expect(screen.getByRole("button", { name: /Memórias Póstumas/ })).toBeTruthy();
+    });
+
+    it("sem resultado, explica e oferece limpar a busca", async () => {
+      render(Biblioteca, { livros: estante, ...semAcao });
+      const busca = screen.getByRole("searchbox", { name: "Buscar na biblioteca" });
+      await fireEvent.input(busca, { target: { value: "tolstói" } });
+      expect(visiveis()).toBe(0);
+      expect(screen.getByText(/Nenhum livro encontrado/)).toBeTruthy();
+      await fireEvent.click(screen.getByRole("button", { name: "Limpar busca" }));
+      expect(visiveis()).toBe(3);
+      expect(document.activeElement).toBe(busca);
+    });
+
+    it("as setas andam só entre os livros visíveis", async () => {
+      render(Biblioteca, { livros: estante, ...semAcao });
+      await fireEvent.click(screen.getByRole("button", { name: /^Lendo/ }));
+      await fireEvent.click(screen.getByRole("button", { name: "Todos 3" }));
+      await fireEvent.input(screen.getByRole("searchbox"), { target: { value: "o" } });
+      // "o" aparece em Dom Casmurro, Memórias Póstumas e O Cortiço; com "cortico", só um.
+      await fireEvent.input(screen.getByRole("searchbox"), { target: { value: "cortico" } });
+      const unico = screen.getByRole("button", { name: /O Cortiço/ });
+      expect(unico.getAttribute("tabindex")).toBe("0");
+    });
+
+    it("Ctrl+F leva à busca", async () => {
+      render(Biblioteca, { livros: estante, ...semAcao });
+      await fireEvent.keyDown(window, { key: "f", ctrlKey: true });
+      expect(document.activeElement).toBe(screen.getByRole("searchbox"));
+    });
+
+    it("biblioteca vazia não mostra busca nem filtros", () => {
+      render(Biblioteca, { livros: [], ...semAcao });
+      expect(screen.queryByRole("searchbox")).toBeNull();
+      expect(screen.queryByRole("button", { name: /^Todos/ })).toBeNull();
+    });
+  });
+
   it("abre o livro clicado", async () => {
     const onAbrir = vi.fn();
     render(Biblioteca, { livros, onAbrir, onImportar: () => {} });

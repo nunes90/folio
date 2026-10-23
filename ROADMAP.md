@@ -35,7 +35,7 @@ Cada marco precisa terminar em algo utilizável.
   - [x] M8a — avisos (toasts): sucesso em `role="status"`, erro em `role="alert"`, pausa sob o ponteiro ou o foco;
     importar avisa quando o livro já estava na biblioteca (`Importado::JaExistia` no core)
   - [x] M8b — situação do livro no core (não iniciado / lendo / concluído)
-  - [ ] M8c — busca (título e autor) e filtros Todos · Lendo · Concluídos
+  - [x] M8c — busca (título e autor) e filtros Todos · Lendo · Concluídos
   - [ ] M8d — arrastar arquivos para importar (o botão "Importar livros…" continua)
 - [ ] **M9+**: a definir (coleções, menu de contexto, paleta de comandos, slider de páginas, modo foco, destaques…).
 
