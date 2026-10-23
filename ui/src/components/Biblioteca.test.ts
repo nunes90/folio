@@ -43,6 +43,25 @@ describe("Biblioteca", () => {
     expect(screen.getByText("menos de 1% lido")).toBeTruthy();
   });
 
+  it("livro lido até o fim aparece como Concluído", () => {
+    render(Biblioteca, { livros: [livro({ fracao: 1 })], ...semAcao });
+    expect(screen.getByRole("button", { name: /Dom Casmurro.*Concluído/ })).toBeTruthy();
+  });
+
+  it("mostra o formato no card e o progresso numa barra decorativa sobre a capa", () => {
+    const { container } = render(Biblioteca, {
+      livros: [livro({ id: "a", fracao: 0.37 }), livro({ id: "b", formato: "pdf", fracao: null })],
+      ...semAcao,
+    });
+    expect(screen.getByRole("button", { name: /Dom Casmurro.*EPUB.*37% lido/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /PDF.*Não iniciado/ })).toBeTruthy();
+    // Só o livro iniciado tem barra; ela é decorativa (o texto "37% lido" já informa).
+    const barras = container.querySelectorAll<HTMLElement>(".progresso-capa");
+    expect(barras).toHaveLength(1);
+    expect(barras[0]!.getAttribute("aria-hidden")).toBe("true");
+    expect(barras[0]!.querySelector<HTMLElement>("span")!.style.transform).toBe("scaleX(0.37)");
+  });
+
   it("abre o livro clicado", async () => {
     const onAbrir = vi.fn();
     render(Biblioteca, { livros, onAbrir, onImportar: () => {} });
@@ -56,6 +75,14 @@ describe("Biblioteca", () => {
     expect(screen.getByText(/biblioteca está vazia/)).toBeTruthy();
     await fireEvent.click(screen.getByRole("button", { name: "Importar livros…" }));
     expect(onImportar).toHaveBeenCalled();
+  });
+
+  it("estado vazio: um só botão de importar, no centro (o do cabeçalho some)", () => {
+    const { container } = render(Biblioteca, { livros: [], ...semAcao });
+    const botoes = screen.getAllByRole("button", { name: /Importar/ });
+    expect(botoes).toHaveLength(1);
+    expect(container.querySelector(".vazia")!.contains(botoes[0]!)).toBe(true);
+    expect(screen.getByRole("heading", { name: "Sua biblioteca está vazia" })).toBeTruthy();
   });
 
   it("desabilita o botão enquanto importa e anuncia o aviso", () => {

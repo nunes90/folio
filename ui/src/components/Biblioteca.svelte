@@ -103,6 +103,8 @@
 
   function situacao(livro: Livro): string {
     if (livro.fracao == null) return "Não iniciado";
+    // A última página de um EPUB raramente dá 1 exato: o que arredonda para 100% está concluído.
+    if (Math.round(livro.fracao * 100) >= 100) return "Concluído";
     // Sem isso, um livro recém-aberto apareceria como "0% lido", igual a não iniciado.
     if (livro.fracao > 0 && livro.fracao < 0.01) return "menos de 1% lido";
     return `${porcento.format(livro.fracao)} lido`;
@@ -119,6 +121,12 @@
   }
 </script>
 
+{#snippet botaoImportar()}
+  <button type="button" class="primario" onclick={onImportar} disabled={importando}>
+    <Icone nome="mais" /><span class="rotulo">{importando ? "Importando…" : "Importar livros…"}</span>
+  </button>
+{/snippet}
+
 <main {...{ [ATRIBUTO_TELA]: "" }}>
   <header>
     <h1>Biblioteca</h1>
@@ -126,16 +134,18 @@
       {#if preferencias}
         <button
           type="button"
+          class="secundario"
           aria-expanded={aparenciaAberta}
           aria-controls="aparencia-biblioteca"
           onclick={() => (aparenciaAberta = !aparenciaAberta)}
         >
-          Aparência
+          <Icone nome="aparencia" /><span class="rotulo">Aparência</span>
         </button>
       {/if}
-      <button type="button" onclick={onImportar} disabled={importando}>
-        {importando ? "Importando…" : "Importar livros…"}
-      </button>
+      <!-- Biblioteca vazia: o botão de importar fica só no centro, junto da explicação. -->
+      {#if livros.length}
+        {@render botaoImportar()}
+      {/if}
     </div>
   </header>
 
@@ -153,7 +163,12 @@
   </p>
 
   {#if livros.length === 0}
-    <p class="vazia">Sua biblioteca está vazia. Importe um EPUB ou PDF para começar.</p>
+    <section class="vazia" aria-labelledby="titulo-vazia">
+      <span class="icone-vazia"><Icone nome="livro" /></span>
+      <h2 id="titulo-vazia">Sua biblioteca está vazia</h2>
+      <p>Importe um EPUB ou PDF para começar. O arquivo original fica onde está: a biblioteca guarda uma cópia.</p>
+      {@render botaoImportar()}
+    </section>
   {:else}
     <!-- As setas são tratadas no <ul> (delegação): o evento sobe do botão focado. -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -169,27 +184,38 @@
             onfocus={() => (ativo = i)}
             onclick={() => onAbrir(livro)}
           >
-            {#if capa}
-              <!-- alt vazio: o título logo abaixo já identifica o livro. -->
-              <img
-                src={capa}
-                alt=""
-                loading="lazy"
-                {...{ [ATRIBUTO_CAPA]: livro.id }}
-              />
-            {:else}
-              <span
-                class="capa-substituta"
-                aria-hidden="true"
-                {...{ [ATRIBUTO_CAPA]: livro.id }}
-                >{iniciais(livro.titulo)}</span
-              >
-            {/if}
+            <span class="capa">
+              {#if capa}
+                <!-- alt vazio: o título logo abaixo já identifica o livro. -->
+                <img
+                  src={capa}
+                  alt=""
+                  loading="lazy"
+                  {...{ [ATRIBUTO_CAPA]: livro.id }}
+                />
+              {:else}
+                <span
+                  class="capa-substituta"
+                  aria-hidden="true"
+                  {...{ [ATRIBUTO_CAPA]: livro.id }}
+                  >{iniciais(livro.titulo)}</span
+                >
+              {/if}
+              {#if livro.fracao}
+                <!-- Decorativa: a situação ("37% lido") está escrita logo abaixo. -->
+                <span class="progresso-capa" aria-hidden="true">
+                  <span style:transform="scaleX({Math.min(1, livro.fracao)})"></span>
+                </span>
+              {/if}
+            </span>
             <span class="titulo">{livro.titulo}</span>
             {#if livro.autores.length}
               <span class="autores">{livro.autores.join(", ")}</span>
             {/if}
-            <span class="situacao">{situacao(livro)}</span>
+            <span class="meta">
+              <span class="selo">{livro.formato.toUpperCase()}</span>
+              <span class="situacao">{situacao(livro)}</span>
+            </span>
           </button>
           {#if onRemover}
             <!-- Fora da ordem do Tab (o teclado usa Delete no livro focado); para o mouse. -->
@@ -210,7 +236,9 @@
 
 <style>
   main {
+    min-height: 100vh;
     padding: 1rem 1.5rem;
+    background: var(--app);
   }
 
   header {
@@ -230,12 +258,40 @@
     gap: 0.5rem;
   }
 
-  section {
-    max-width: 24rem;
-    margin-block-start: 1rem;
+  .acoes button,
+  .vazia button {
+    min-height: 2.25rem;
+    border-radius: var(--raio);
   }
 
-  section[hidden] {
+  .secundario {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .secundario:hover {
+    background: var(--hover);
+  }
+
+  /* Ação principal da tela, na cor de destaque (contraste testado em temas.ts). */
+  .primario {
+    border-color: var(--destaque);
+    background: var(--destaque);
+    color: var(--sobre-destaque);
+    font-weight: 600;
+  }
+
+  #aparencia-biblioteca {
+    max-width: 24rem;
+    margin-block-start: 1rem;
+    padding: 0.75rem;
+    border: 1px solid var(--divisoria);
+    border-radius: var(--raio-grande);
+    background: var(--painel);
+    box-shadow: var(--sombra);
+  }
+
+  #aparencia-biblioteca[hidden] {
     display: none;
   }
 
@@ -245,8 +301,28 @@
   }
 
   .vazia {
-    margin-top: 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 26rem;
+    margin: 4rem auto 0;
     text-align: center;
+  }
+
+  .vazia h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  .vazia p {
+    margin: 0 0 0.5rem;
+    color: var(--suave);
+  }
+
+  .icone-vazia {
+    font-size: 2.5rem;
+    color: var(--suave);
   }
 
   ul {
@@ -289,7 +365,7 @@
     width: 100%;
     padding: 0.5rem;
     border: 0;
-    border-radius: 0.5rem;
+    border-radius: var(--raio-grande);
     background: none;
     color: inherit;
     text-align: start;
@@ -310,16 +386,28 @@
   }
 
   li button.livro:hover {
-    background: color-mix(in srgb, currentColor 8%, transparent);
+    background: var(--hover);
+  }
+
+  /* A barra de progresso fica presa à capa e sobe com ela no hover. */
+  .capa {
+    position: relative;
+    display: block;
+    margin-block-end: 0.35rem;
   }
 
   img,
   .capa-substituta {
+    display: block;
     width: 100%;
     aspect-ratio: 2 / 3;
-    border-radius: 0.25rem;
+    border-radius: var(--raio-pequeno);
     object-fit: cover;
-    box-shadow: 0 0.1rem 0.4rem rgb(0 0 0 / 30%);
+    box-shadow: var(--sombra);
+  }
+
+  :global([data-tema="alto-contraste"]) :is(img, .capa-substituta) {
+    outline: 1px solid var(--borda);
   }
 
   .capa-substituta {
@@ -327,16 +415,61 @@
     place-items: center;
     font-size: 2rem;
     font-weight: 600;
-    background: color-mix(in srgb, currentColor 12%, transparent);
+    background: var(--card);
+  }
+
+  .progresso-capa {
+    position: absolute;
+    inset: auto 0 0;
+    height: 0.25rem;
+    overflow: hidden;
+    border-radius: 0 0 var(--raio-pequeno) var(--raio-pequeno);
+    background: rgb(0 0 0 / 25%);
+    transition: transform var(--duracao-curta) var(--curva);
+  }
+
+  /* Na cor de destaque: aparece tanto sobre capas escuras quanto sobre as substitutas claras. */
+  .progresso-capa span {
+    display: block;
+    height: 100%;
+    background: var(--destaque);
+    transform-origin: left;
+  }
+
+  li button.livro:hover .progresso-capa,
+  li button.livro:focus-visible .progresso-capa {
+    transform: translateY(-0.25rem);
   }
 
   .titulo {
     font-weight: 600;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
-  .autores,
-  .situacao {
+  .autores {
     font-size: 0.875rem;
-    opacity: 0.8;
+    color: var(--suave);
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--suave);
+  }
+
+  .selo {
+    padding: 0 0.3rem;
+    border: 1px solid var(--borda);
+    border-radius: var(--raio-pequeno);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
   }
 </style>

@@ -51,10 +51,16 @@ button:disabled {
 
 /* Diálogos modais (atalhos, confirmação): mesma aparência e mesma entrada em toda a interface. */
 dialog.modal {
-  border: 1px solid var(--borda);
-  border-radius: 0.5rem;
-  background: var(--fundo);
+  border: 1px solid var(--divisoria);
+  border-radius: var(--raio-grande);
+  background: var(--card);
   color: var(--texto);
+  box-shadow: var(--sombra);
+}
+
+/* No alto contraste, a borda volta a ser a forte (a divisória é decorativa nos outros temas). */
+[data-tema="alto-contraste"] dialog.modal {
+  border-color: var(--borda);
 }
 
 dialog.modal[open] {
