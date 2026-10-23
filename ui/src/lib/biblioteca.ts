@@ -4,6 +4,9 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { log } from "./log";
 
 /** Espelha `LivroNaBiblioteca` do core (serializado em camelCase). */
+/** Em que pé está a leitura (calculada no core, a partir da fração lida). */
+export type Situacao = "nao-iniciado" | "lendo" | "concluido";
+
 export interface Livro {
   id: string;
   formato: "epub" | "pdf";
@@ -15,6 +18,7 @@ export interface Livro {
   adicionadoEm: number;
   abertoEm: number | null;
   fracao: number | null;
+  situacao: Situacao;
 }
 
 export interface Progresso {
