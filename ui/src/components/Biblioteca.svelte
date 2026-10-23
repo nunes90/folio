@@ -1,5 +1,6 @@
 <script lang="ts">
   import { urlDaCapa, type Livro } from "../lib/biblioteca";
+  import { contarPorFiltro, filtrarLivros, type Filtro } from "../lib/filtro";
   import type { Preferencias } from "../lib/preferencias.svelte";
   import type { TemaEfetivo } from "../lib/temas";
   import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
@@ -33,6 +34,41 @@
 
   let aparenciaAberta = $state(false);
 
+  // Busca e filtros: a grade mostra só `visiveis`; as setas, o Delete e o foco seguem ela.
+  let termo = $state("");
+  let filtro = $state<Filtro>("todos");
+  let campoBusca = $state<HTMLInputElement>();
+  const visiveis = $derived(filtrarLivros(livros, termo, filtro));
+  const contagens = $derived(contarPorFiltro(livros, termo));
+  const filtrando = $derived(termo.trim() !== "" || filtro !== "todos");
+  const FILTROS: { valor: Filtro; nome: string }[] = [
+    { valor: "todos", nome: "Todos" },
+    { valor: "lendo", nome: "Lendo" },
+    { valor: "concluidos", nome: "Concluídos" },
+  ];
+  /** Para o leitor de tela: quantos livros a busca ou o filtro deixaram na grade. */
+  const anuncioBusca = $derived(
+    !filtrando
+      ? ""
+      : visiveis.length === 1
+        ? "1 livro encontrado"
+        : `${visiveis.length} livros encontrados`,
+  );
+
+  function limparBusca() {
+    termo = "";
+    campoBusca?.focus();
+  }
+
+  // Ctrl+F leva à busca (na biblioteca; nos leitores, o Ctrl+F é deles).
+  function aoTeclarJanela(e: KeyboardEvent) {
+    if (e.ctrlKey && !e.altKey && e.key.toLowerCase() === "f" && campoBusca) {
+      e.preventDefault();
+      campoBusca.focus();
+      campoBusca.select();
+    }
+  }
+
   // Roving tabindex: a grade é uma só parada de Tab; as setas movem entre os livros.
   let ativo = $state(0);
   let lista = $state<HTMLUListElement>();
@@ -59,9 +95,9 @@
   }
 
   function aoTeclar(e: KeyboardEvent) {
-    if (e.key === "Delete" && onRemover && livros[ativo]) {
+    if (e.key === "Delete" && onRemover && visiveis[ativo]) {
       e.preventDefault();
-      onRemover(livros[ativo]);
+      onRemover(visiveis[ativo]);
       return;
     }
     const destinos: Record<string, () => number> = {
@@ -70,7 +106,7 @@
       ArrowDown: () => ativo + porLinha(),
       ArrowUp: () => ativo - porLinha(),
       Home: () => 0,
-      End: () => livros.length - 1,
+      End: () => visiveis.length - 1,
     };
     const destino = destinos[e.key];
     if (!destino) return;
@@ -83,7 +119,7 @@
   // sozinha (ex.: capas de PDF geradas) e não deve puxar o foco de outro controle.
   $effect(() => {
     if (!focarLivro || !lista) return;
-    const indice = livros.findIndex((l) => l.id === focarLivro);
+    const indice = visiveis.findIndex((l) => l.id === focarLivro);
     const atual = document.activeElement;
     const focoPerdido = !atual || atual === document.body || lista.contains(atual);
     if (indice >= 0 && focoPerdido) focar(indice);
@@ -91,7 +127,7 @@
 
   // Se a lista encolher, o índice ativo continua válido.
   $effect(() => {
-    if (ativo >= livros.length) ativo = Math.max(0, livros.length - 1);
+    if (ativo >= visiveis.length) ativo = Math.max(0, visiveis.length - 1);
   });
 
   const porcento = new Intl.NumberFormat("pt-BR", { style: "percent" });
@@ -122,9 +158,24 @@
   </button>
 {/snippet}
 
+<svelte:window onkeydown={aoTeclarJanela} />
+
 <main {...{ [ATRIBUTO_TELA]: "" }}>
   <header>
     <h1>Biblioteca</h1>
+    {#if livros.length}
+      <search class="busca">
+        <Icone nome="buscar" />
+        <input
+          type="search"
+          bind:this={campoBusca}
+          bind:value={termo}
+          aria-label="Buscar na biblioteca"
+          aria-keyshortcuts="Control+F"
+          placeholder="Título ou autor"
+        />
+      </search>
+    {/if}
     <div class="acoes">
       {#if preferencias}
         <button
@@ -158,10 +209,35 @@
       {@render botaoImportar()}
     </section>
   {:else}
+    <div class="filtros" role="group" aria-label="Mostrar">
+      {#each FILTROS as f (f.valor)}
+        <button
+          type="button"
+          aria-pressed={filtro === f.valor}
+          onclick={() => (filtro = f.valor)}
+        >
+          {f.nome} <span class="contagem">{contagens[f.valor]}</span>
+        </button>
+      {/each}
+    </div>
+    <p class="so-leitor-de-tela" role="status">{anuncioBusca}</p>
+
+    {#if visiveis.length === 0}
+      <div class="sem-resultado">
+        {#if termo.trim()}
+          <p>Nenhum livro encontrado para “{termo.trim()}”.</p>
+          <button type="button" onclick={limparBusca}>Limpar busca</button>
+        {:else}
+          <p>Nenhum livro nesta lista ainda.</p>
+          <button type="button" onclick={() => (filtro = "todos")}>Mostrar todos</button>
+        {/if}
+      </div>
+    {/if}
+
     <!-- As setas são tratadas no <ul> (delegação): o evento sobe do botão focado. -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <ul bind:this={lista} onkeydown={aoTeclar} aria-label="Livros">
-      {#each livros as livro, i (livro.id)}
+    <ul bind:this={lista} onkeydown={aoTeclar} aria-label="Livros" hidden={!visiveis.length}>
+      {#each visiveis as livro, i (livro.id)}
         {@const capa = urlDaCapa(livro)}
         <li>
           <button
@@ -244,6 +320,95 @@
   .acoes {
     display: flex;
     gap: 0.5rem;
+  }
+
+  header {
+    flex-wrap: wrap;
+  }
+
+  /* Busca: ocupa o espaço entre o título e as ações, encolhe em janelas estreitas. */
+  .busca {
+    flex: 1 1 14rem;
+    max-width: 24rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.25rem;
+    padding-inline: 0.6rem;
+    border: 1px solid var(--borda);
+    border-radius: var(--raio);
+    background: var(--card);
+    color: var(--suave);
+  }
+
+  .busca:focus-within {
+    outline: 3px solid var(--foco);
+    outline-offset: 2px;
+  }
+
+  .busca input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--texto);
+  }
+
+  /* O contorno de foco fica na caixa inteira (acima), não só no campo. */
+  .busca input:focus-visible {
+    outline: none;
+  }
+
+  .busca input::placeholder {
+    color: var(--suave);
+    opacity: 1;
+  }
+
+  .filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-block-start: 1rem;
+  }
+
+  .filtros button {
+    border-radius: 2rem;
+    padding-inline: 0.85rem;
+  }
+
+  .filtros button[aria-pressed="true"] {
+    border-color: var(--destaque);
+    background: var(--destaque-suave);
+    color: var(--destaque);
+    font-weight: 600;
+  }
+
+  .contagem {
+    margin-inline-start: 0.2rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--suave);
+  }
+
+  [aria-pressed="true"] .contagem {
+    color: inherit;
+  }
+
+  .sem-resultado {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    margin-block-start: 3rem;
+    text-align: center;
+  }
+
+  .sem-resultado p {
+    margin: 0;
+    color: var(--suave);
+  }
+
+  ul[hidden] {
+    display: none;
   }
 
   .acoes button,

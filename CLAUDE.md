@@ -157,5 +157,10 @@ docs/decisions/  # ADRs
 - **M8b** (branch `feat/m8b-situacao`): `enum Situacao { NaoIniciado, Lendo, Concluido }` no core
   (`Situacao::da_fracao`: `None` → não iniciado; ≥ 0,995 → concluído), campo `situacao` em `LivroNaBiblioteca`
   (JSON em kebab-case). O card da biblioteca usa a situação do core.
-- Próximo passo: **M8c** (busca e filtros). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M8c** (branch `feat/m8c-busca`): `lib/filtro.ts` (funções puras: `normalizar` sem acentos/maiúsculas,
+  `filtrarLivros` com todas as palavras em título ou autores, `contarPorFiltro`). Na biblioteca: campo de busca
+  (`<search>`, Ctrl+F, registrado em `atalhos.ts`), filtros Todos · Lendo · Concluídos com `aria-pressed` e contagem,
+  anúncio "N livros encontrados" (`role="status"`), mensagem sem resultado com "Limpar busca"/"Mostrar todos"; setas,
+  Delete e foco seguem só os livros visíveis.
+- Próximo passo: **M8d** (arrastar para importar). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.
