@@ -369,8 +369,11 @@
   }
 
   /* Cor da página (lib/paginaPdf.ts): só efeitos sobre a página já desenhada. */
+  /* O pdf.js usa este mesmo ::after para o ícone de carregando e o esconde fora do
+     carregamento (`.page:not(.loading)::after { display: none }`): daí o display explícito. */
   .conteiner.camada :global(.page)::after {
     content: "";
+    display: block;
     position: absolute;
     inset: 0;
     background: var(--papel-pdf);
