@@ -6,7 +6,7 @@
   import Icone from "./Icone.svelte";
 
   /** O que dá para fazer com um livro (quem recebe decide como, ex.: confirmar apagar). */
-  export type AcaoLivro = "para-ler" | "lido" | "lixeira" | "restaurar" | "apagar";
+  export type AcaoLivro = "favorito" | "para-ler" | "lido" | "lixeira" | "restaurar" | "apagar";
 
   // Menu "Mais ações" de um livro, no padrão ARIA de menu: o botão ⋯ abre; o foco vai ao
   // primeiro item; ↑↓/Home/End andam; Enter escolhe; Esc e Tab fecham. Quem envolve controla
@@ -34,6 +34,7 @@
       ];
     }
     const lista: { acao: AcaoLivro; nome: string }[] = [
+      { acao: "favorito", nome: livro.favoritoEm !== null ? "Tirar dos favoritos" : "Favoritar" },
       {
         acao: "para-ler",
         nome: livro.paraLerEm !== null ? "Tirar de Para ler" : "Adicionar a Para ler",
@@ -122,10 +123,10 @@
 </div>
 
 <style>
+  /* Na linha de ações do card; o menu abre acima, alinhado à direita (o card fica no fim
+     da página quando é a última linha da grade). */
   .menu-livro {
-    position: absolute;
-    inset-block-start: 1rem;
-    inset-inline-end: 1rem;
+    position: relative;
   }
 
   .mais {
@@ -134,24 +135,29 @@
     width: 2rem;
     height: 2rem;
     padding: 0;
-    border-radius: 50%;
+    border-color: transparent;
+    border-radius: var(--raio);
+    background: transparent;
+    color: var(--suave);
     font-size: 1.1rem;
-    opacity: 0.85;
-    transition: opacity var(--duracao-curta) var(--curva);
+  }
+
+  .mais:hover {
+    background: var(--hover);
+    color: var(--texto);
+  }
+
+  :global([data-tema="alto-contraste"]) .mais {
+    border-color: var(--borda);
   }
 
   .mais :global(svg) {
     stroke-width: 3.5;
   }
 
-  .mais:hover,
-  .mais[aria-expanded="true"] {
-    opacity: 1;
-  }
-
   ul {
     position: absolute;
-    inset-block-start: calc(100% + 0.25rem);
+    inset-block-end: calc(100% + 0.25rem);
     inset-inline-end: 0;
     z-index: 3;
     min-width: 13rem;

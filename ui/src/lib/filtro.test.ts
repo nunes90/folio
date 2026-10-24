@@ -8,6 +8,7 @@ function livro(
   situacao: Situacao,
   paraLer = false,
   naLixeira = false,
+  favorito = false,
 ): Livro {
   return {
     id: titulo,
@@ -24,11 +25,12 @@ function livro(
     paraLerEm: paraLer ? 1 : null,
     lidoEm: null,
     removidoEm: naLixeira ? 9 : null,
+    favoritoEm: favorito ? 3 : null,
   };
 }
 
 const estante = [
-  livro("Dom Casmurro", ["Machado de Assis"], "lendo"),
+  livro("Dom Casmurro", ["Machado de Assis"], "lendo", false, false, true),
   livro("Memórias Póstumas de Brás Cubas", ["Machado de Assis"], "concluido"),
   livro("O Cortiço", ["Aluísio Azevedo"], "nao-iniciado", true),
   livro("The Rust Programming Language", ["Steve Klabnik", "Carol Nichols"], "lendo"),
@@ -73,6 +75,7 @@ describe("filtrarLivros", () => {
       "The Rust Programming Language",
     ]);
     expect(titulos(filtrarLivros(estante, "", "para-ler"))).toEqual(["O Cortiço"]);
+    expect(titulos(filtrarLivros(estante, "", "favoritos"))).toEqual(["Dom Casmurro"]);
     // A lixeira só aparece na estante dela.
     expect(titulos(filtrarLivros(estante, "", "lixeira"))).toEqual(["Quincas Borba"]);
     expect(titulos(filtrarLivros(estante, "quincas", "todos"))).toEqual([]);
@@ -87,6 +90,7 @@ describe("contarPorFiltro", () => {
   it("conta cada filtro respeitando a busca", () => {
     expect(contarPorFiltro(estante, "")).toEqual({
       todos: 4,
+      favoritos: 1,
       lendo: 2,
       "para-ler": 1,
       lidos: 1,
@@ -94,6 +98,7 @@ describe("contarPorFiltro", () => {
     });
     expect(contarPorFiltro(estante, "machado")).toEqual({
       todos: 2,
+      favoritos: 1,
       lendo: 1,
       "para-ler": 0,
       lidos: 1,
