@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { inverter, inverterPixels, PAGINAS_PDF, type PaginaPdf } from "./paginaPdf";
+import { describe, expect, it, vi } from "vitest";
+import {
+  inverter,
+  inverterCanvas,
+  inverterPixels,
+  PAGINAS_PDF,
+  type PaginaPdf,
+} from "./paginaPdf";
 import { contraste } from "./temas";
 
 const presets = Object.keys(PAGINAS_PDF) as PaginaPdf[];
@@ -35,6 +41,19 @@ describe("presets da página do PDF", () => {
     expect(r).toBeGreaterThan(g! + 60);
     expect(Math.abs(g! - b!)).toBeLessThanOrEqual(1);
     expect(px[11]).toBe(255);
+  });
+
+  it("inverterCanvas marca o canvas como invertido (o CSS só o mostra depois disso)", () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const imagem = { data: new Uint8ClampedArray([255, 255, 255, 255]) };
+    const ctx = { getImageData: vi.fn(() => imagem), putImageData: vi.fn() };
+    vi.spyOn(canvas, "getContext").mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+    expect(canvas.hasAttribute("data-invertida")).toBe(false);
+    inverterCanvas(canvas);
+    expect(ctx.putImageData).toHaveBeenCalledWith(imagem, 0, 0);
+    expect(canvas.hasAttribute("data-invertida")).toBe(true);
   });
 
   it("as cores da noite são as que o filtro produz (a amostra do painel bate com a página)", () => {

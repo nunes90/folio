@@ -383,6 +383,12 @@
 
   /* Noite: os pixels são invertidos ao desenhar (lib/paginaPdf.ts). Antes disso, a página
      já aparece na cor final, sem clarão branco. */
+  /* Canvas ainda não invertido (desenho parcial de página lenta, ou o antigo durante o
+     redesenho ao entrar na noite): escondido até a inversão, para não clarear a tela. */
+  .conteiner.invertida :global(.page canvas:not([data-invertida])) {
+    visibility: hidden;
+  }
+
   .conteiner.invertida :global(.page) {
     background-color: var(--papel-pdf);
   }
