@@ -19,6 +19,12 @@ export interface Livro {
   abertoEm: number | null;
   fracao: number | null;
   situacao: Situacao;
+  /** Marcado "para ler" em (segundos desde 1970); sai ao abrir o livro. */
+  paraLerEm: number | null;
+  /** Marcado como lido à mão em; vence o progresso na situação. */
+  lidoEm: number | null;
+  /** Na lixeira desde; livros na lixeira não vêm em `listarLivros`. */
+  removidoEm: number | null;
 }
 
 export interface Progresso {
@@ -30,6 +36,8 @@ export interface Importacao {
   importados: Livro[];
   /** Arquivos que já estavam na biblioteca (mesmo conteúdo): nada foi copiado. */
   jaExistentes: Livro[];
+  /** Estavam na lixeira e voltaram para a estante. */
+  restaurados: Livro[];
   falhas: { caminho: string; erro: string }[];
 }
 

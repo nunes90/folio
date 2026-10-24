@@ -53,6 +53,12 @@ const MIGRACOES: &[&str] = &[
         valor TEXT NOT NULL
     );
 ",
+    "
+    -- Vistas e lixeira (M9). Datas em vez de 0/1: ordenam as vistas; NULL quer dizer \"não\".
+    ALTER TABLE livros ADD COLUMN para_ler_em INTEGER;  -- marcado \"para ler\" em
+    ALTER TABLE livros ADD COLUMN lido_em     INTEGER;  -- marcado como lido à mão em (vence o progresso)
+    ALTER TABLE livros ADD COLUMN removido_em INTEGER;  -- na lixeira desde
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.
@@ -65,20 +71,26 @@ pub enum Importado {
     Novo(LivroNaBiblioteca),
     /// O mesmo arquivo (mesmo SHA-256) já estava na biblioteca; nada foi copiado.
     JaExistia(LivroNaBiblioteca),
+    /// O livro estava na lixeira e voltou para a estante (com o progresso que tinha).
+    Restaurado(LivroNaBiblioteca),
 }
 
 impl Importado {
     /// O livro, nos dois casos (emprestado).
     pub fn livro(&self) -> &LivroNaBiblioteca {
         match self {
-            Importado::Novo(livro) | Importado::JaExistia(livro) => livro,
+            Importado::Novo(livro) | Importado::JaExistia(livro) | Importado::Restaurado(livro) => {
+                livro
+            }
         }
     }
 
     /// O livro, nos dois casos (consome o `Importado`, sem clonar).
     pub fn into_livro(self) -> LivroNaBiblioteca {
         match self {
-            Importado::Novo(livro) | Importado::JaExistia(livro) => livro,
+            Importado::Novo(livro) | Importado::JaExistia(livro) | Importado::Restaurado(livro) => {
+                livro
+            }
         }
     }
 }
@@ -106,6 +118,16 @@ impl Situacao {
             Some(_) => Situacao::Lendo,
         }
     }
+
+    /// Com o "lido" marcado à mão: ele vence o progresso (um livro largado em 80% pode ser
+    /// dado como lido); sem ele, vale [`Situacao::da_fracao`].
+    pub fn do_livro(fracao: Option<f64>, lido_manual: bool) -> Self {
+        if lido_manual {
+            Situacao::Concluido
+        } else {
+            Self::da_fracao(fracao)
+        }
+    }
 }
 
 /// Um livro como a interface o vê.
@@ -123,8 +145,14 @@ pub struct LivroNaBiblioteca {
     pub aberto_em: Option<i64>,
     /// Quanto já foi lido (0.0 a 1.0), se o livro já foi aberto.
     pub fracao: Option<f64>,
-    /// Derivada de `fracao` (ver [`Situacao::da_fracao`]); vai pronta para a interface.
+    /// Derivada de `fracao` e `lido_em` (ver [`Situacao::do_livro`]); vai pronta para a interface.
     pub situacao: Situacao,
+    /// Marcado "para ler" em (sai ao abrir o livro).
+    pub para_ler_em: Option<i64>,
+    /// Marcado como lido à mão em.
+    pub lido_em: Option<i64>,
+    /// Na lixeira desde. Livros na lixeira não aparecem em [`Biblioteca::listar`].
+    pub removido_em: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, serde::Deserialize)]
@@ -196,6 +224,12 @@ impl Biblioteca {
         let livro = livro::abrir(origem)?;
         let id = hash(&livro.bytes);
         if let Some(existente) = self.obter(&id)? {
+            if existente.removido_em.is_some() {
+                self.restaurar(&id)?;
+                tracing::info!(%id, "livro restaurado da lixeira ao importar");
+                let restaurado = self.obter(&id)?.ok_or(ErroBiblioteca::NaoEncontrado(id))?;
+                return Ok(Importado::Restaurado(restaurado));
+            }
             tracing::info!(%id, "livro já estava na biblioteca");
             return Ok(Importado::JaExistia(existente));
         }
@@ -237,11 +271,23 @@ impl Biblioteca {
         Ok(Importado::Novo(novo))
     }
 
-    /// Livros por atividade recente: o último aberto (ou adicionado) primeiro.
+    /// Livros da estante (fora da lixeira) por atividade recente: o último aberto (ou
+    /// adicionado) primeiro.
     pub fn listar(&self) -> Resultado<Vec<LivroNaBiblioteca>> {
-        let sql = format!(
-            "{SELECT_LIVRO} ORDER BY COALESCE(l.aberto_em, l.adicionado_em) DESC, l.titulo"
-        );
+        self.consultar(
+            "WHERE l.removido_em IS NULL
+             ORDER BY COALESCE(l.aberto_em, l.adicionado_em) DESC, l.titulo",
+        )
+    }
+
+    /// Livros na lixeira, o removido por último primeiro.
+    pub fn listar_lixeira(&self) -> Resultado<Vec<LivroNaBiblioteca>> {
+        self.consultar("WHERE l.removido_em IS NOT NULL ORDER BY l.removido_em DESC, l.titulo")
+    }
+
+    /// `SELECT_LIVRO` + `resto` (WHERE/ORDER BY), uma linha por livro.
+    fn consultar(&self, resto: &str) -> Resultado<Vec<LivroNaBiblioteca>> {
+        let sql = format!("{SELECT_LIVRO} {resto}");
         let mut consulta = self.conexao.prepare(&sql)?;
         let livros = consulta
             .query_map([], |linha| self.livro_da_linha(linha))?
@@ -294,10 +340,11 @@ impl Biblioteca {
         Ok(nome)
     }
 
-    /// Remove o livro da biblioteca: o registro, o progresso (`ON DELETE CASCADE`), a cópia do
+    /// Apaga o livro de vez: o registro, o progresso (`ON DELETE CASCADE`), a cópia do
     /// arquivo e a capa em cache. O arquivo original, de onde foi importado, não é tocado.
+    /// Para algo reversível, use [`Biblioteca::mover_para_lixeira`].
     #[instrument(skip(self))]
-    pub fn remover(&self, id: &str) -> Resultado<()> {
+    pub fn apagar_de_vez(&self, id: &str) -> Resultado<()> {
         let livro = self
             .obter(id)?
             .ok_or_else(|| ErroBiblioteca::NaoEncontrado(id.to_owned()))?;
@@ -314,17 +361,81 @@ impl Biblioteca {
                 }
             }
         }
-        tracing::info!(%id, titulo = %livro.titulo, "livro removido");
+        tracing::info!(%id, titulo = %livro.titulo, "livro apagado de vez");
         Ok(())
     }
 
-    /// Registra que o livro foi aberto agora (para a ordenação por leitura recente).
-    pub fn marcar_aberto(&self, id: &str) -> Resultado<()> {
-        let alterados = self.conexao.execute(
-            "UPDATE livros SET aberto_em = ?1 WHERE id = ?2",
+    /// Manda o livro para a lixeira: some da estante, mas a cópia, a capa e o progresso
+    /// ficam até [`Biblioteca::restaurar`] ou [`Biblioteca::esvaziar_lixeira`].
+    #[instrument(skip(self))]
+    pub fn mover_para_lixeira(&self, id: &str) -> Resultado<()> {
+        self.atualizar(
+            "UPDATE livros SET removido_em = ?1 WHERE id = ?2",
             params![(self.relogio)(), id],
-        )?;
-        if alterados == 0 {
+            id,
+        )
+    }
+
+    #[instrument(skip(self))]
+    pub fn restaurar(&self, id: &str) -> Resultado<()> {
+        self.atualizar(
+            "UPDATE livros SET removido_em = NULL WHERE id = ?1",
+            params![id],
+            id,
+        )
+    }
+
+    /// Apaga de vez todos os livros da lixeira; devolve quantos foram.
+    #[instrument(skip(self))]
+    pub fn esvaziar_lixeira(&self) -> Resultado<usize> {
+        let lixeira = self.listar_lixeira()?;
+        for livro in &lixeira {
+            self.apagar_de_vez(&livro.id)?;
+        }
+        Ok(lixeira.len())
+    }
+
+    /// Marca ou desmarca "para ler".
+    pub fn definir_para_ler(&self, id: &str, para_ler: bool) -> Resultado<()> {
+        let quando = para_ler.then(self.relogio);
+        self.atualizar(
+            "UPDATE livros SET para_ler_em = ?1 WHERE id = ?2",
+            params![quando, id],
+            id,
+        )
+    }
+
+    /// Marca ou desmarca o livro como lido, à mão. Marcar tira de "para ler"; o progresso
+    /// salvo não é tocado (desmarcar volta à situação dele).
+    pub fn definir_lido(&self, id: &str, lido: bool) -> Resultado<()> {
+        if lido {
+            self.atualizar(
+                "UPDATE livros SET lido_em = ?1, para_ler_em = NULL WHERE id = ?2",
+                params![(self.relogio)(), id],
+                id,
+            )
+        } else {
+            self.atualizar(
+                "UPDATE livros SET lido_em = NULL WHERE id = ?1",
+                params![id],
+                id,
+            )
+        }
+    }
+
+    /// Registra que o livro foi aberto agora (para a ordenação por leitura recente). Começar
+    /// a ler tira o livro de "para ler".
+    pub fn marcar_aberto(&self, id: &str) -> Resultado<()> {
+        self.atualizar(
+            "UPDATE livros SET aberto_em = ?1, para_ler_em = NULL WHERE id = ?2",
+            params![(self.relogio)(), id],
+            id,
+        )
+    }
+
+    /// Executa um UPDATE de um livro só; nenhuma linha alterada vira `NaoEncontrado`.
+    fn atualizar(&self, sql: &str, parametros: impl rusqlite::Params, id: &str) -> Resultado<()> {
+        if self.conexao.execute(sql, parametros)? == 0 {
             return Err(ErroBiblioteca::NaoEncontrado(id.to_owned()));
         }
         Ok(())
@@ -408,6 +519,7 @@ impl Biblioteca {
         let arquivo: String = linha.get("arquivo")?;
         let capa: Option<String> = linha.get("capa")?;
         let fracao: Option<f64> = linha.get("fracao")?;
+        let lido_em: Option<i64> = linha.get("lido_em")?;
         Ok(LivroNaBiblioteca {
             id: linha.get("id")?,
             formato: Formato::de_texto(&formato).unwrap_or(Formato::Epub),
@@ -419,14 +531,17 @@ impl Biblioteca {
             adicionado_em: linha.get("adicionado_em")?,
             aberto_em: linha.get("aberto_em")?,
             fracao,
-            situacao: Situacao::da_fracao(fracao),
+            situacao: Situacao::do_livro(fracao, lido_em.is_some()),
+            para_ler_em: linha.get("para_ler_em")?,
+            lido_em,
+            removido_em: linha.get("removido_em")?,
         })
     }
 }
 
 const SELECT_LIVRO: &str = "
     SELECT l.id, l.formato, l.titulo, l.autores, l.idioma, l.arquivo, l.capa,
-           l.adicionado_em, l.aberto_em, p.fracao
+           l.adicionado_em, l.aberto_em, l.para_ler_em, l.lido_em, l.removido_em, p.fracao
     FROM livros l LEFT JOIN progresso p ON p.livro_id = l.id";
 
 fn migrar(conexao: &mut Connection) -> rusqlite::Result<()> {
@@ -752,7 +867,7 @@ mod tests {
     }
 
     #[test]
-    fn remover_apaga_registro_progresso_copia_e_capa() {
+    fn apagar_de_vez_apaga_registro_progresso_copia_e_capa() {
         let (_dir, bib) = nova();
         let livro = bib
             .importar(&fixture("dom-casmurro.epub"))
@@ -765,7 +880,7 @@ mod tests {
         bib.salvar_progresso(&livro.id, &p).unwrap();
         let capa = livro.capa.clone().expect("tem capa");
 
-        bib.remover(&livro.id).unwrap();
+        bib.apagar_de_vez(&livro.id).unwrap();
 
         assert!(bib.obter(&livro.id).unwrap().is_none());
         assert!(bib.listar().unwrap().is_empty());
@@ -783,37 +898,168 @@ mod tests {
     }
 
     #[test]
-    fn remover_livro_inexistente() {
+    fn apagar_de_vez_livro_inexistente() {
         let (_dir, bib) = nova();
         assert!(matches!(
-            bib.remover("nao-existe").unwrap_err(),
+            bib.apagar_de_vez("nao-existe").unwrap_err(),
             ErroBiblioteca::NaoEncontrado(_)
         ));
     }
 
     #[test]
-    fn remover_sem_capa_e_com_arquivo_ja_apagado_funciona() {
+    fn apagar_de_vez_sem_capa_e_com_arquivo_ja_apagado_funciona() {
         let (_dir, bib) = nova();
         let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
         std::fs::remove_file(&livro.arquivo).unwrap();
-        bib.remover(&livro.id).unwrap();
+        bib.apagar_de_vez(&livro.id).unwrap();
         assert!(bib.obter(&livro.id).unwrap().is_none());
     }
 
     #[test]
-    fn reimportar_depois_de_remover() {
+    fn reimportar_depois_de_apagar_de_vez() {
         let (_dir, bib) = nova();
         let id = bib
             .importar(&fixture("minimo.epub"))
             .unwrap()
             .into_livro()
             .id;
-        bib.remover(&id).unwrap();
+        bib.apagar_de_vez(&id).unwrap();
         let de_novo = bib.importar(&fixture("minimo.epub")).unwrap();
         assert!(matches!(de_novo, Importado::Novo(_)), "{de_novo:?}");
         let de_novo = de_novo.into_livro();
         assert_eq!(de_novo.id, id);
         assert!(de_novo.arquivo.exists());
+    }
+
+    #[test]
+    fn para_ler_marca_e_sai_ao_abrir() {
+        let (_dir, mut bib) = nova();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        assert_eq!(livro.para_ler_em, None);
+
+        bib.relogio = || 500;
+        bib.definir_para_ler(&livro.id, true).unwrap();
+        assert_eq!(
+            bib.obter(&livro.id).unwrap().unwrap().para_ler_em,
+            Some(500)
+        );
+        bib.definir_para_ler(&livro.id, false).unwrap();
+        assert_eq!(bib.obter(&livro.id).unwrap().unwrap().para_ler_em, None);
+
+        // Começar a ler tira o livro de "Para ler".
+        bib.definir_para_ler(&livro.id, true).unwrap();
+        bib.marcar_aberto(&livro.id).unwrap();
+        assert_eq!(bib.obter(&livro.id).unwrap().unwrap().para_ler_em, None);
+    }
+
+    #[test]
+    fn lido_manual_vence_o_progresso_e_pode_ser_desfeito() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        let p = Progresso {
+            localizacao: "epubcfi(/6/2)".into(),
+            fracao: 0.3,
+        };
+        bib.salvar_progresso(&livro.id, &p).unwrap();
+        bib.definir_para_ler(&livro.id, true).unwrap();
+
+        bib.definir_lido(&livro.id, true).unwrap();
+        let lido = bib.obter(&livro.id).unwrap().unwrap();
+        assert_eq!(lido.situacao, Situacao::Concluido);
+        assert!(lido.lido_em.is_some());
+        assert_eq!(lido.para_ler_em, None, "lido sai de \"para ler\"");
+        assert_eq!(lido.fracao, Some(0.3), "o progresso não é tocado");
+
+        bib.definir_lido(&livro.id, false).unwrap();
+        assert_eq!(
+            bib.obter(&livro.id).unwrap().unwrap().situacao,
+            Situacao::Lendo,
+            "desmarcar volta à situação do progresso"
+        );
+    }
+
+    #[test]
+    fn situacao_com_lido_manual() {
+        assert_eq!(Situacao::do_livro(None, true), Situacao::Concluido);
+        assert_eq!(Situacao::do_livro(Some(0.1), true), Situacao::Concluido);
+        assert_eq!(Situacao::do_livro(Some(0.1), false), Situacao::Lendo);
+        assert_eq!(Situacao::do_livro(None, false), Situacao::NaoIniciado);
+    }
+
+    #[test]
+    fn lixeira_tira_da_lista_e_restaura_sem_perder_nada() {
+        let (_dir, mut bib) = nova();
+        let livro = bib
+            .importar(&fixture("dom-casmurro.epub"))
+            .unwrap()
+            .into_livro();
+        let p = Progresso {
+            localizacao: "epubcfi(/6/2)".into(),
+            fracao: 0.3,
+        };
+        bib.salvar_progresso(&livro.id, &p).unwrap();
+
+        bib.relogio = || 700;
+        bib.mover_para_lixeira(&livro.id).unwrap();
+        assert!(bib.listar().unwrap().is_empty());
+        let lixeira = bib.listar_lixeira().unwrap();
+        assert_eq!(lixeira.len(), 1);
+        assert_eq!(lixeira[0].removido_em, Some(700));
+        assert!(livro.arquivo.exists(), "na lixeira, a cópia continua");
+
+        bib.restaurar(&livro.id).unwrap();
+        assert!(bib.listar_lixeira().unwrap().is_empty());
+        let de_volta = bib.listar().unwrap().pop().unwrap();
+        assert_eq!(de_volta.removido_em, None);
+        assert_eq!(
+            bib.progresso(&livro.id).unwrap(),
+            Some(p),
+            "progresso intacto"
+        );
+    }
+
+    #[test]
+    fn esvaziar_lixeira_apaga_so_o_que_esta_nela() {
+        let (_dir, bib) = nova();
+        let fica = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        let vai = bib
+            .importar(&fixture("dom-casmurro.epub"))
+            .unwrap()
+            .into_livro();
+        bib.mover_para_lixeira(&vai.id).unwrap();
+
+        assert_eq!(bib.esvaziar_lixeira().unwrap(), 1);
+        assert!(bib.obter(&vai.id).unwrap().is_none());
+        assert!(!vai.arquivo.exists(), "cópia apagada");
+        assert_eq!(bib.listar().unwrap().len(), 1);
+        assert!(fica.arquivo.exists());
+        assert_eq!(
+            bib.esvaziar_lixeira().unwrap(),
+            0,
+            "lixeira vazia: nada a fazer"
+        );
+    }
+
+    #[test]
+    fn importar_livro_que_esta_na_lixeira_o_restaura() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        bib.mover_para_lixeira(&livro.id).unwrap();
+
+        let de_novo = bib.importar(&fixture("minimo.epub")).unwrap();
+        assert!(matches!(de_novo, Importado::Restaurado(_)), "{de_novo:?}");
+        assert_eq!(de_novo.livro().removido_em, None);
+        assert_eq!(bib.listar().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn operacoes_em_livro_inexistente() {
+        let (_dir, bib) = nova();
+        let nao_encontrado = |r: Resultado<()>| matches!(r, Err(ErroBiblioteca::NaoEncontrado(_)));
+        assert!(nao_encontrado(bib.definir_para_ler("x", true)));
+        assert!(nao_encontrado(bib.definir_lido("x", true)));
+        assert!(nao_encontrado(bib.mover_para_lixeira("x")));
+        assert!(nao_encontrado(bib.restaurar("x")));
     }
 
     #[test]

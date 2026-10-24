@@ -15,6 +15,9 @@ function livro(titulo: string, autores: string[], situacao: Situacao): Livro {
     abertoEm: null,
     fracao: situacao === "nao-iniciado" ? null : 0.5,
     situacao,
+    paraLerEm: null,
+    lidoEm: null,
+    removidoEm: null,
   };
 }
 

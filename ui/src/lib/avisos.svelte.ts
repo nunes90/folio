@@ -68,6 +68,15 @@ export function mensagensDaImportacao(r: Importacao): Omit<Aviso, "id">[] {
       texto: `${r.jaExistentes.length} livros já estavam na biblioteca.`,
     });
   }
+  const [restaurado] = r.restaurados;
+  if (r.restaurados.length === 1 && restaurado) {
+    mensagens.push({ tipo: "sucesso", texto: `${restaurado.titulo} voltou da lixeira.` });
+  } else if (r.restaurados.length > 1) {
+    mensagens.push({
+      tipo: "sucesso",
+      texto: `${r.restaurados.length} livros voltaram da lixeira.`,
+    });
+  }
   for (const falha of r.falhas) {
     const nome = falha.caminho.split(/[\\/]/).pop();
     mensagens.push({ tipo: "erro", texto: `Não foi possível importar ${nome}: ${falha.erro}` });

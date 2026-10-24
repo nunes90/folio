@@ -21,6 +21,9 @@ function livro(titulo: string): Livro {
     abertoEm: null,
     fracao: null,
     situacao: "nao-iniciado",
+    paraLerEm: null,
+    lidoEm: null,
+    removidoEm: null,
   };
 }
 
@@ -76,7 +79,7 @@ describe("avisarSeDemorar", () => {
 });
 
 describe("mensagensDaImportacao", () => {
-  const vazio = { importados: [], jaExistentes: [], falhas: [] };
+  const vazio = { importados: [], jaExistentes: [], restaurados: [], falhas: [] };
 
   it("um livro: diz qual; vários: diz quantos", () => {
     expect(
@@ -106,6 +109,15 @@ describe("mensagensDaImportacao", () => {
       }),
     ).toEqual([
       { tipo: "sucesso", texto: "2 livros já estavam na biblioteca." },
+    ]);
+  });
+
+  it("avisa quando o livro estava na lixeira e voltou para a estante", () => {
+    expect(mensagensDaImportacao({ ...vazio, restaurados: [livro("Dom Casmurro")] })).toEqual([
+      { tipo: "sucesso", texto: "Dom Casmurro voltou da lixeira." },
+    ]);
+    expect(mensagensDaImportacao({ ...vazio, restaurados: [livro("A"), livro("B")] })).toEqual([
+      { tipo: "sucesso", texto: "2 livros voltaram da lixeira." },
     ]);
   });
 

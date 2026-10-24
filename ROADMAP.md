@@ -39,7 +39,26 @@ Cada marco precisa terminar em algo utilizável.
   - [x] M8b — situação do livro no core (não iniciado / lendo / concluído)
   - [x] M8c — busca (título e autor) e filtros Todos · Lendo · Concluídos
   - [x] M8d — arrastar arquivos para importar (o botão "Importar livros…" continua)
-- [ ] **M9+**: a definir (coleções, menu de contexto, paleta de comandos, slider de páginas, modo foco, destaques…).
+
+## v0.3 — navegação da biblioteca
+Barra lateral com listas e destinos, não abas (8 destinos não cabem em abas, nem no teclado nem em janela estreita).
+"Vistas" (Todos, Lendo, Para ler, Lidos) são listas inteligentes; "navegação" (Coleções, Autores, Séries) agrupa;
+a Lixeira é outro estado do livro. A busca continua no topo e filtra a vista atual.
+
+- [ ] **M9 — Vistas e lixeira**
+  - [x] M9a — core: migração 3 com `para_ler`, `lido_em` (lido manual, vence o progresso) e `removido_em`
+    (lixeira); marcar para ler / lido, mover para a lixeira, restaurar, apagar de vez, esvaziar. `Situacao`
+    considera o lido manual. Abrir um livro tira "Para ler". Importar um livro que está na lixeira o restaura.
+  - [ ] M9b — barra lateral: Todos · Lendo · Para ler · Lidos · Lixeira, com contagem, setas e `aria-current`
+    (substitui os filtros do M8c); drawer em janela estreita
+  - [ ] M9c — ações do livro: menu "Mais ações" sempre visível (e tecla Menu / Shift+F10) com Para ler, Marcar
+    como lido e Mover para a lixeira; vista da lixeira com Restaurar, Apagar de vez e Esvaziar (só esses pedem
+    confirmação); aviso com "Desfazer"
+  - Decisões: a lixeira nunca se esvazia sozinha; "Para ler" sai ao abrir o livro; a lista se chama "Lidos".
+- [ ] **M10 — Coleções**: criar, renomear, apagar; adicionar e remover livros (pelo menu de ações).
+- [ ] **M11 — Autores e Séries**: agrupar por autor (metadados que já existem); séries só se valer a pena
+  (metadado frágil em PDF e em muitos EPUBs).
+- [ ] **Depois**: paleta de comandos, slider de páginas, modo foco, destaques…
 
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
