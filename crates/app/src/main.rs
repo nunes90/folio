@@ -53,6 +53,7 @@ fn main() -> anyhow::Result<()> {
             comandos::listar_livros,
             comandos::importar_livros,
             comandos::listar_lixeira,
+            comandos::definir_favorito,
             comandos::definir_para_ler,
             comandos::definir_lido,
             comandos::mover_para_lixeira,

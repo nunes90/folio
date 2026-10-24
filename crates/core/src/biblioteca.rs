@@ -59,6 +59,9 @@ const MIGRACOES: &[&str] = &[
     ALTER TABLE livros ADD COLUMN lido_em     INTEGER;  -- marcado como lido à mão em (vence o progresso)
     ALTER TABLE livros ADD COLUMN removido_em INTEGER;  -- na lixeira desde
 ",
+    "
+    ALTER TABLE livros ADD COLUMN favorito_em INTEGER;  -- favoritado em (NULL = não)
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.
@@ -153,6 +156,8 @@ pub struct LivroNaBiblioteca {
     pub lido_em: Option<i64>,
     /// Na lixeira desde. Livros na lixeira não aparecem em [`Biblioteca::listar`].
     pub removido_em: Option<i64>,
+    /// Favoritado em.
+    pub favorito_em: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, serde::Deserialize)]
@@ -395,6 +400,16 @@ impl Biblioteca {
         Ok(lixeira.len())
     }
 
+    /// Marca ou desmarca o livro como favorito.
+    pub fn definir_favorito(&self, id: &str, favorito: bool) -> Resultado<()> {
+        let quando = favorito.then(self.relogio);
+        self.atualizar(
+            "UPDATE livros SET favorito_em = ?1 WHERE id = ?2",
+            params![quando, id],
+            id,
+        )
+    }
+
     /// Marca ou desmarca "para ler".
     pub fn definir_para_ler(&self, id: &str, para_ler: bool) -> Resultado<()> {
         let quando = para_ler.then(self.relogio);
@@ -535,13 +550,15 @@ impl Biblioteca {
             para_ler_em: linha.get("para_ler_em")?,
             lido_em,
             removido_em: linha.get("removido_em")?,
+            favorito_em: linha.get("favorito_em")?,
         })
     }
 }
 
 const SELECT_LIVRO: &str = "
     SELECT l.id, l.formato, l.titulo, l.autores, l.idioma, l.arquivo, l.capa,
-           l.adicionado_em, l.aberto_em, l.para_ler_em, l.lido_em, l.removido_em, p.fracao
+           l.adicionado_em, l.aberto_em, l.para_ler_em, l.lido_em, l.removido_em,
+           l.favorito_em, p.fracao
     FROM livros l LEFT JOIN progresso p ON p.livro_id = l.id";
 
 fn migrar(conexao: &mut Connection) -> rusqlite::Result<()> {
@@ -950,6 +967,32 @@ mod tests {
         bib.definir_para_ler(&livro.id, true).unwrap();
         bib.marcar_aberto(&livro.id).unwrap();
         assert_eq!(bib.obter(&livro.id).unwrap().unwrap().para_ler_em, None);
+    }
+
+    #[test]
+    fn favorito_marca_e_desmarca() {
+        let (_dir, mut bib) = nova();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        assert_eq!(livro.favorito_em, None);
+
+        bib.relogio = || 800;
+        bib.definir_favorito(&livro.id, true).unwrap();
+        assert_eq!(
+            bib.obter(&livro.id).unwrap().unwrap().favorito_em,
+            Some(800)
+        );
+        // Abrir o livro não mexe no favorito (só em "para ler").
+        bib.marcar_aberto(&livro.id).unwrap();
+        assert_eq!(
+            bib.obter(&livro.id).unwrap().unwrap().favorito_em,
+            Some(800)
+        );
+        bib.definir_favorito(&livro.id, false).unwrap();
+        assert_eq!(bib.obter(&livro.id).unwrap().unwrap().favorito_em, None);
+        assert!(matches!(
+            bib.definir_favorito("x", true),
+            Err(ErroBiblioteca::NaoEncontrado(_))
+        ));
     }
 
     #[test]

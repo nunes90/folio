@@ -17,6 +17,7 @@
     listarLivros,
     progressoDoLivro,
     apagarLivro,
+    definirFavorito,
     definirLido,
     definirParaLer,
     esvaziarLixeira,
@@ -226,6 +227,15 @@
   async function aoAcao(livro: Livro, acao: AcaoLivro) {
     const t = livro.titulo;
     switch (acao) {
+      case "favorito": {
+        const marcar = livro.favoritoEm === null;
+        await executar(
+          () => definirFavorito(livro.id, marcar),
+          marcar ? `${t} está nos Favoritos.` : `${t} saiu dos Favoritos.`,
+          `Não foi possível mudar ${t}`,
+        );
+        return;
+      }
       case "para-ler": {
         const marcar = livro.paraLerEm === null;
         await executar(

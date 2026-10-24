@@ -15,9 +15,10 @@
     onEscolher: (estante: Filtro) => void;
   } = $props();
 
-  type IconeEstante = "grade" | "livro" | "marcador" | "lido" | "lixeira";
+  type IconeEstante = "grade" | "estrela" | "livro" | "marcador" | "lido" | "lixeira";
   const ESTANTES: { valor: Filtro; nome: string; icone: IconeEstante }[] = [
     { valor: "todos", nome: "Todos", icone: "grade" },
+    { valor: "favoritos", nome: "Favoritos", icone: "estrela" },
     { valor: "lendo", nome: "Lendo", icone: "livro" },
     { valor: "para-ler", nome: "Para ler", icone: "marcador" },
     { valor: "lidos", nome: "Lidos", icone: "lido" },

@@ -22,10 +22,19 @@
     lido: "M5 12.5l4.5 4.5L19 7",
     lixeira: "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6",
     reticencias: "M5 12h.01M12 12h.01M19 12h.01",
+    estrela:
+      "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z",
     livro: "M12 6.5C10.5 5.3 8.2 4.8 4 5v13c4.2-.2 6.5.3 8 1.5 1.5-1.2 3.8-1.7 8-1.5V5c-4.2-.2-6.5.3-8 1.5zM12 6.5v13",
   } as const;
 
-  let { nome }: { nome: keyof typeof CAMINHOS } = $props();
+  let {
+    nome,
+    preenchido = false,
+  }: {
+    nome: keyof typeof CAMINHOS;
+    /** Forma cheia (ex.: estrela de favorito marcada); o traço continua. */
+    preenchido?: boolean;
+  } = $props();
 </script>
 
 <svg
@@ -34,7 +43,7 @@
   height="1em"
   aria-hidden="true"
   focusable="false"
-  fill="none"
+  fill={preenchido ? "currentColor" : "none"}
   stroke="currentColor"
   stroke-width="2.25"
   stroke-linejoin="round"

@@ -191,5 +191,10 @@ docs/decisions/  # ADRs
   outras estantes excluem `removidoEm`). Delete: na estante, vai para a lixeira sem confirmar (aviso com "Desfazer",
   `avisar(texto, tipo, acao)`); na lixeira, "Apagar de vez" com confirmação. "Esvaziar lixeira…" confirma. `App.aoAcao`
   + `executar` (faz, recarrega, avisa). Abrir pelo sistema abre o livro mesmo se já estava na biblioteca.
+- **M9d** (branch `feat/m9d-icones-card`): migração 4 (`favorito_em`), `definir_favorito` e comando
+  `definir_favorito`; estante "Favoritos" (entre Todos e Lendo). No card, linha de ações no pé (alinhada entre cards):
+  ☆ Favorito, 🔖 Para ler e ✓ Lido como botões `aria-pressed` (fora do Tab; marcados com cor, fundo suave e forma
+  cheia; o ✓ fica `aria-disabled` quando o livro está lido pelo progresso) e o ⋯ no fim. `Icone` ganhou `preenchido`.
+  "Favoritar" também no menu (teclado).
 - **M9 concluído.** Próximo passo: **M10** (coleções) ou marcar a v0.3.0. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

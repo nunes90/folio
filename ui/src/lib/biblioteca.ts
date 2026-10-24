@@ -25,6 +25,8 @@ export interface Livro {
   lidoEm: number | null;
   /** Na lixeira desde; livros na lixeira não vêm em `listarLivros`. */
   removidoEm: number | null;
+  /** Favoritado em. */
+  favoritoEm: number | null;
 }
 
 export interface Progresso {
@@ -72,6 +74,10 @@ export function carregarLivro(livro: Livro): Promise<ArrayBuffer> {
 /** Remove da biblioteca a cópia do livro, a capa e o progresso; o arquivo original fica. */
 export function listarLixeira(): Promise<Livro[]> {
   return invoke<Livro[]>("listar_lixeira");
+}
+
+export function definirFavorito(id: string, favorito: boolean): Promise<void> {
+  return invoke("definir_favorito", { id, favorito });
 }
 
 export function definirParaLer(id: string, paraLer: boolean): Promise<void> {

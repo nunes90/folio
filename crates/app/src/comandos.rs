@@ -82,6 +82,18 @@ pub fn listar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<LivroNaBib
 }
 
 #[tauri::command]
+pub fn definir_favorito(
+    bib: State<'_, EstadoBiblioteca>,
+    id: String,
+    favorito: bool,
+) -> Result<(), String> {
+    bib.lock()
+        .unwrap()
+        .definir_favorito(&id, favorito)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
 pub fn definir_para_ler(
     bib: State<'_, EstadoBiblioteca>,
     id: String,

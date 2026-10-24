@@ -54,6 +54,8 @@ a Lixeira é outro estado do livro. A busca continua no topo e filtra a vista at
   - [x] M9c — Lixeira na barra lateral e ações do livro: menu "Mais ações" sempre visível (e tecla Menu / Shift+F10) com Para ler, Marcar
     como lido e Mover para a lixeira; vista da lixeira com Restaurar, Apagar de vez e Esvaziar (só esses pedem
     confirmação); aviso com "Desfazer"
+  - [x] M9d — ícones no card: ☆ Favorito, 🔖 Para ler e ✓ Lido como botões liga/desliga (aviso a cada ação), ⋯ no
+    fim da linha; estante "Favoritos" (migração 4, `favorito_em`); "Favoritar" também no menu (teclado)
   - Decisões: a lixeira nunca se esvazia sozinha; "Para ler" sai ao abrir o livro; a lista se chama "Lidos".
 - [ ] **M10 — Coleções**: criar, renomear, apagar; adicionar e remover livros (pelo menu de ações).
 - [ ] **M11 — Autores e Séries**: agrupar por autor (metadados que já existem); séries só se valer a pena

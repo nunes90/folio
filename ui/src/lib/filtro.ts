@@ -3,11 +3,12 @@
 import type { Livro } from "./biblioteca";
 
 /** As estantes da barra lateral (vistas da biblioteca). */
-export type Filtro = "todos" | "lendo" | "para-ler" | "lidos" | "lixeira";
+export type Filtro = "todos" | "favoritos" | "lendo" | "para-ler" | "lidos" | "lixeira";
 
 // Um livro na lixeira só aparece na estante "lixeira".
 const NA_ESTANTE: Record<Filtro, (livro: Livro) => boolean> = {
   todos: (l) => l.removidoEm === null,
+  favoritos: (l) => l.removidoEm === null && l.favoritoEm !== null,
   lendo: (l) => l.removidoEm === null && l.situacao === "lendo",
   "para-ler": (l) => l.removidoEm === null && l.paraLerEm !== null,
   lidos: (l) => l.removidoEm === null && l.situacao === "concluido",
@@ -47,6 +48,7 @@ export function contarPorFiltro(livros: Livro[], termo: string): Record<Filtro, 
   const achados = buscar(livros, termo);
   return {
     todos: naSituacao(achados, "todos").length,
+    favoritos: naSituacao(achados, "favoritos").length,
     lendo: naSituacao(achados, "lendo").length,
     "para-ler": naSituacao(achados, "para-ler").length,
     lidos: naSituacao(achados, "lidos").length,

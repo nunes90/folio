@@ -417,13 +417,38 @@
               </span>
             </button>
             {#if onAcao}
-              <MenuLivro
-                {livro}
-                aberto={menuDe === livro.id}
-                onAlternar={() => (menuDe = menuDe === livro.id ? null : livro.id)}
-                onFechar={fecharMenu}
-                onAcao={(acao) => onAcao(livro, acao)}
-              />
+              <!-- Ícones para o mouse (fora do Tab); no teclado, as mesmas ações estão no menu. -->
+              <div class="acoes-card">
+                {#if !naLixeira}
+                  {@const lidoPeloProgresso = livro.situacao === "concluido" && livro.lidoEm === null}
+                  {#each [
+                    { acao: "favorito" as const, nome: "Favorito", icone: "estrela" as const, ativo: livro.favoritoEm !== null },
+                    { acao: "para-ler" as const, nome: "Para ler", icone: "marcador" as const, ativo: livro.paraLerEm !== null },
+                    { acao: "lido" as const, nome: "Lido", icone: "lido" as const, ativo: livro.situacao === "concluido" },
+                  ] as marca (marca.acao)}
+                    {@const travado = marca.acao === "lido" && lidoPeloProgresso}
+                    <button
+                      type="button"
+                      class="marca"
+                      tabindex="-1"
+                      aria-label={marca.nome}
+                      aria-pressed={marca.ativo}
+                      aria-disabled={travado || undefined}
+                      title={travado ? "Lido (pelo progresso)" : marca.nome}
+                      onclick={() => !travado && onAcao(livro, marca.acao)}
+                    >
+                      <Icone nome={marca.icone} preenchido={marca.ativo && marca.acao !== "lido"} />
+                    </button>
+                  {/each}
+                {/if}
+                <MenuLivro
+                  {livro}
+                  aberto={menuDe === livro.id}
+                  onAlternar={() => (menuDe = menuDe === livro.id ? null : livro.id)}
+                  onFechar={fecharMenu}
+                  onAcao={(acao) => onAcao(livro, acao)}
+                />
+              </div>
             {/if}
           </li>
         {/each}
@@ -664,8 +689,58 @@
     list-style: none;
   }
 
+  /* Coluna: a linha de ações fica no pé do card, alinhada com a dos vizinhos mesmo quando o
+     título de um ocupa duas linhas. */
   li {
     position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Linha de ações do card: marcas à esquerda, ⋯ no fim. */
+  .acoes-card {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    margin-block-start: auto;
+    padding-inline: 0.25rem;
+  }
+
+  .acoes-card :global(.menu-livro) {
+    margin-inline-start: auto;
+  }
+
+  .marca {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border-color: transparent;
+    border-radius: var(--raio);
+    background: transparent;
+    color: var(--suave);
+    font-size: 1.05rem;
+  }
+
+  .marca:hover:not([aria-disabled="true"]) {
+    background: var(--hover);
+    color: var(--texto);
+  }
+
+  /* Marcada: cor de destaque, fundo suave e, quando o ícone tem, a forma cheia. A cor não é a
+     única pista (WCAG 1.4.1). */
+  .marca[aria-pressed="true"] {
+    background: var(--destaque-suave);
+    color: var(--destaque);
+  }
+
+  .marca[aria-disabled="true"] {
+    cursor: default;
+  }
+
+  :global([data-tema="alto-contraste"]) .marca[aria-pressed="true"] {
+    border-color: var(--destaque);
   }
 
   .aviso-lixeira {

@@ -21,6 +21,7 @@ function livro(parcial: Partial<Livro> = {}): Livro {
     paraLerEm: null,
     lidoEm: null,
     removidoEm: null,
+    favoritoEm: null,
     ...parcial,
   };
 }
@@ -44,17 +45,27 @@ describe("MenuLivro", () => {
 
   it("na estante: para ler, marcar como lido e mover para a lixeira", () => {
     renderizar();
-    expect(itens()).toEqual(["Adicionar a Para ler", "Marcar como lido", "Mover para a lixeira"]);
+    expect(itens()).toEqual([
+      "Favoritar",
+      "Adicionar a Para ler",
+      "Marcar como lido",
+      "Mover para a lixeira",
+    ]);
   });
 
   it("os textos acompanham o estado do livro", () => {
-    renderizar({ paraLerEm: 1, lidoEm: 2, situacao: "concluido" });
-    expect(itens()).toEqual(["Tirar de Para ler", "Desmarcar como lido", "Mover para a lixeira"]);
+    renderizar({ paraLerEm: 1, lidoEm: 2, situacao: "concluido", favoritoEm: 3 });
+    expect(itens()).toEqual([
+      "Tirar dos favoritos",
+      "Tirar de Para ler",
+      "Desmarcar como lido",
+      "Mover para a lixeira",
+    ]);
   });
 
   it("lido pelo progresso (sem marca manual): não oferece marcar nem desmarcar", () => {
     renderizar({ fracao: 1, situacao: "concluido" });
-    expect(itens()).toEqual(["Adicionar a Para ler", "Mover para a lixeira"]);
+    expect(itens()).toEqual(["Favoritar", "Adicionar a Para ler", "Mover para a lixeira"]);
   });
 
   it("na lixeira: restaurar e apagar de vez", () => {

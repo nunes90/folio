@@ -23,6 +23,7 @@ function livro(parcial: Partial<Livro>): Livro {
     paraLerEm: null,
     lidoEm: null,
     removidoEm: null,
+    favoritoEm: null,
     ...parcial,
   };
 }
@@ -126,7 +127,7 @@ describe("Biblioteca", () => {
       expect(naBarra(/^Lendo/).getAttribute("tabindex")).toBe("-1");
       todos.focus();
       await fireEvent.keyDown(todos, { key: "ArrowDown" });
-      expect(document.activeElement).toBe(naBarra(/^Lendo/));
+      expect(document.activeElement).toBe(naBarra(/^Favoritos/));
       await fireEvent.keyDown(document.activeElement!, { key: "End" });
       expect(document.activeElement).toBe(naBarra(/^Lixeira/));
       await fireEvent.keyDown(document.activeElement!, { key: "Home" });
@@ -350,6 +351,45 @@ describe("Biblioteca", () => {
       render(Biblioteca, props({ livros: [] }));
       expect(naBarra(/^Lixeira 1$/)).toBeTruthy();
       expect(screen.queryByRole("heading", { name: "Sua biblioteca está vazia" })).toBeNull();
+    });
+
+    it("ícones no card: Favorito, Para ler e Lido, botões liga/desliga que repassam a ação", async () => {
+      const p = props({ livros: [livro({ id: "a", favoritoEm: 4 })] });
+      render(Biblioteca, p);
+      const card = itensDaGrade()[0]!;
+      const favorito = within(card).getByRole("button", { name: "Favorito" });
+      const paraLer = within(card).getByRole("button", { name: "Para ler" });
+      const lido = within(card).getByRole("button", { name: "Lido" });
+      expect(favorito.getAttribute("aria-pressed")).toBe("true");
+      expect(paraLer.getAttribute("aria-pressed")).toBe("false");
+      expect(lido.getAttribute("aria-pressed")).toBe("false");
+      // Fora da ordem do Tab: no teclado, as mesmas ações estão no menu (Shift+F10).
+      expect(favorito.tabIndex).toBe(-1);
+      await fireEvent.click(paraLer);
+      expect(p.onAcao).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), "para-ler");
+      await fireEvent.click(favorito);
+      expect(p.onAcao).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), "favorito");
+    });
+
+    it("lido pelo progresso: o ✓ aparece marcado e desativado (não há o que desmarcar)", () => {
+      render(Biblioteca, props({ livros: [livro({ fracao: 1, situacao: "concluido" })] }));
+      const lido = within(itensDaGrade()[0]!).getByRole("button", { name: "Lido" });
+      expect(lido.getAttribute("aria-pressed")).toBe("true");
+      expect(lido.getAttribute("aria-disabled")).toBe("true");
+    });
+
+    it("na lixeira, o card não tem os ícones (só as ações da lixeira)", async () => {
+      render(Biblioteca, props());
+      await fireEvent.click(naBarra(/^Lixeira/));
+      expect(within(itensDaGrade()[0]!).queryByRole("button", { name: "Favorito" })).toBeNull();
+    });
+
+    it("a estante Favoritos fica entre Todos e Lendo", () => {
+      render(Biblioteca, props({ livros: [livro({ id: "a", favoritoEm: 4 }), livros[1]] }));
+      const nomes = within(screen.getByRole("navigation", { name: "Estantes" }))
+        .getAllByRole("button")
+        .map((b) => b.textContent?.replace(/\s+/g, " ").trim());
+      expect(nomes.slice(0, 3)).toEqual(["Todos 2", "Favoritos 1", "Lendo 0"]);
     });
 
     it("sem onAcao, não há menu nem atalhos de ação", () => {
