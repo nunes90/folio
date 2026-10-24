@@ -34,14 +34,19 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
   epub: [
     { teclas: [["←"], ["→"]], acao: "Página à esquerda ou à direita" },
     { teclas: [["Page Up"], ["Page Down"]], acao: "Página anterior ou seguinte" },
+    { teclas: [["Ctrl", "Shift", "F"]], acao: "Modo foco: só o livro na tela (Esc sai)" },
     ...GERAIS,
   ],
   pdf: [
-    { teclas: [["←"], ["→"]], acao: "Página anterior ou seguinte" },
+    {
+      teclas: [["←"], ["→"]],
+      acao: "Página anterior ou seguinte (com a página inteira na tela, ↑ e ↓ também)",
+    },
     { teclas: [["Ctrl", "F"]], acao: "Buscar no documento" },
     { teclas: [["Enter"], ["Shift", "Enter"]], acao: "Na busca: próxima ou anterior ocorrência" },
     { teclas: [["Ctrl", "+"], ["Ctrl", "−"]], acao: "Aumentar ou diminuir o zoom" },
     { teclas: [["Ctrl", "0"]], acao: "Ajustar à largura" },
+    { teclas: [["Ctrl", "Shift", "F"]], acao: "Modo foco: só o livro na tela (Esc sai)" },
     ...GERAIS,
   ],
 };

@@ -17,6 +17,7 @@
     progresso = 0,
     indiceAberto = $bindable(true),
     aparenciaAberta = $bindable(false),
+    modoFoco = $bindable(false),
     onFechar,
     acoes,
     indice,
@@ -31,6 +32,8 @@
     progresso?: number;
     indiceAberto?: boolean;
     aparenciaAberta?: boolean;
+    /** Modo foco: só o livro na tela; as barras aparecem por cima quando chamadas. */
+    modoFoco?: boolean;
     onFechar: () => void;
     /** Ações próprias do formato no cabeçalho (ex.: busca do PDF). */
     acoes?: Snippet;
@@ -57,6 +60,8 @@
 
   async function alternar(painel: "indice" | "aparencia") {
     const abrir = painel === "indice" ? !indiceAberto : !aparenciaAberta;
+    // Abrir um painel (pela barra revelada) sai do modo foco: ele não cabe sobre as barras.
+    if (abrir && modoFoco) sairDoFoco(false);
     if (painel === "indice") indiceAberto = abrir;
     else aparenciaAberta = abrir;
     if (!estreita || !abrir) return;
@@ -69,6 +74,7 @@
 
   /** Abre um painel (se fechado) e leva o foco a ele (paleta de comandos). */
   export async function mostrarPainel(painel: "indice" | "aparencia") {
+    if (modoFoco) sairDoFoco(false);
     const aberto = painel === "indice" ? indiceAberto : aparenciaAberta;
     if (!aberto) await alternar(painel);
     await tick();
@@ -97,19 +103,95 @@
     botaoAparencia.focus();
   }
 
+  // Modo foco: o cabeçalho e o rodapé saem do grid e ficam por cima do livro, escondidos
+  // (transform + opacity). O livro cresce uma vez, ao entrar e ao sair; revelar as barras não
+  // o repagina. Elas continuam no DOM e no Tab: o foco nelas as revela (nada só no ponteiro).
+  // Com o ponteiro, as faixas finas nas bordas (sensores) as revelam, e elas somem um pouco
+  // depois de o ponteiro sair. Os painéis abertos fecham ao entrar e voltam ao sair.
+  let focoNasBarras = $state(false);
+  let ponteiroNasBarras = $state(false);
+  const revelada = $derived(modoFoco && (focoNasBarras || ponteiroNasBarras));
+  let anuncioFoco = $state("");
+  let paineisAntes: { indice: boolean; aparencia: boolean } | null = null;
+  let esconder: ReturnType<typeof setTimeout> | undefined;
+  /** Quanto as barras esperam, depois de o ponteiro sair, para sumir. */
+  const ESPERA_ESCONDER_MS = 700;
+
+  /** Entra ou sai do modo foco (botão, Ctrl+Shift+F e paleta de comandos). */
+  export function alternarFoco() {
+    if (modoFoco) {
+      sairDoFoco();
+      return;
+    }
+    paineisAntes = { indice: indiceAberto, aparencia: aparenciaAberta };
+    indiceAberto = false;
+    aparenciaAberta = false;
+    modoFoco = true;
+    ponteiroNasBarras = false;
+    anuncioFoco = "Modo foco ativado. Esc para sair.";
+    // O foco estava numa barra que vai sumir (ex.: o botão): passa para o livro.
+    const foco = document.activeElement;
+    if (foco instanceof HTMLElement && foco.closest(".moldura > header, .moldura > footer")) {
+      focoNasBarras = false;
+      areaEl.focus({ preventScroll: true });
+    }
+  }
+
+  /** Sai do modo foco; `restaurar` reabre os painéis que estavam abertos ao entrar. */
+  function sairDoFoco(restaurar = true) {
+    modoFoco = false;
+    clearTimeout(esconder);
+    ponteiroNasBarras = false;
+    if (restaurar && paineisAntes) {
+      indiceAberto = paineisAntes.indice;
+      aparenciaAberta = paineisAntes.aparencia;
+    }
+    paineisAntes = null;
+    anuncioFoco = "Modo foco desativado.";
+  }
+
+  function aoEntrarNasBarras() {
+    clearTimeout(esconder);
+    if (modoFoco) ponteiroNasBarras = true;
+  }
+
+  function aoSairDasBarras() {
+    clearTimeout(esconder);
+    esconder = setTimeout(() => (ponteiroNasBarras = false), ESPERA_ESCONDER_MS);
+  }
+
+  function aoFocarBarra() {
+    focoNasBarras = true;
+  }
+
+  function aoDesfocarBarra(e: FocusEvent) {
+    const destino = e.relatedTarget;
+    const nasBarras =
+      destino instanceof Element && !!destino.closest(".moldura > header, .moldura > footer");
+    if (!nasBarras) focoNasBarras = false;
+  }
+
   // Os avisos (Avisos.svelte) ficam acima do rodapé enquanto um livro está aberto: a altura
   // real dele vai para --rodape-leitor (em janela estreita, o rodapé quebra em duas linhas).
+  // No modo foco, com o rodapé escondido, os avisos descem até a borda.
   let rodapeEl: HTMLElement;
+  function publicarRodape() {
+    const altura = modoFoco && !revelada ? 0 : rodapeEl.getBoundingClientRect().height;
+    document.documentElement.style.setProperty("--rodape-leitor", `${altura}px`);
+  }
+  $effect(() => {
+    void modoFoco;
+    void revelada;
+    publicarRodape();
+  });
   onMount(() => {
-    const raiz = document.documentElement;
-    const publicar = () =>
-      raiz.style.setProperty("--rodape-leitor", `${rodapeEl.getBoundingClientRect().height}px`);
-    publicar();
-    const observador = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publicar);
+    const observador =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => publicarRodape());
     observador?.observe(rodapeEl);
     return () => {
       observador?.disconnect();
-      raiz.style.removeProperty("--rodape-leitor");
+      clearTimeout(esconder);
+      document.documentElement.style.removeProperty("--rodape-leitor");
     };
   });
 
@@ -140,9 +222,21 @@
   }
 
   function aoTeclar(e: KeyboardEvent) {
-    if (e.key !== "Escape" || e.defaultPrevented) return;
-    // Com um diálogo aberto (ex.: atalhos), o Esc é dele.
+    if (e.defaultPrevented) return;
+    // Com um diálogo aberto (ex.: atalhos), as teclas são dele.
     if (e.target instanceof Element && e.target.closest("dialog")) return;
+    if (e.ctrlKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
+      e.preventDefault();
+      alternarFoco();
+      return;
+    }
+    if (e.key !== "Escape") return;
+    // No modo foco não há painel aberto: o Esc sai dele.
+    if (modoFoco) {
+      e.preventDefault();
+      sairDoFoco();
+      return;
+    }
     const foco = document.activeElement;
     // Painel cobrindo o livro (janela estreita): o Esc sempre o fecha.
     if (cobrindo) {
@@ -167,8 +261,20 @@
 
 <svelte:window onkeydown={aoTeclar} />
 
-<div class="moldura" class:estreita {...{ [ATRIBUTO_TELA]: "" }}>
-  <header>
+<div
+  class="moldura"
+  class:estreita
+  class:foco={modoFoco}
+  class:revelada
+  {...{ [ATRIBUTO_TELA]: "" }}
+>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <header
+    onfocusin={aoFocarBarra}
+    onfocusout={aoDesfocarBarra}
+    onpointerenter={aoEntrarNasBarras}
+    onpointerleave={aoSairDasBarras}
+  >
     <div class="lado inicio">
       <button
         type="button"
@@ -183,6 +289,14 @@
     <h1 tabindex="-1" bind:this={tituloEl}>{titulo}</h1>
     <div class="lado fim">
       {@render acoes?.()}
+      <button
+        type="button"
+        aria-pressed={modoFoco}
+        aria-keyshortcuts="Control+Shift+F"
+        onclick={alternarFoco}
+      >
+        <Icone nome="foco" /><span class="rotulo">Modo foco</span>
+      </button>
       <button
         type="button"
         bind:this={botaoAparencia}
@@ -216,9 +330,18 @@
   </div>
 
   <!-- Destino (e origem, ao fechar) da capa na transição com a biblioteca (lib/transicao.ts). -->
-  <div class="conteudo" bind:this={areaEl} {...{ [ATRIBUTO_AREA]: "" }}>
+  <!-- tabindex -1: recebe o foco ao entrar no modo foco pelo botão (a barra some). -->
+  <div class="conteudo" tabindex="-1" bind:this={areaEl} {...{ [ATRIBUTO_AREA]: "" }}>
     {@render children()}
   </div>
+
+  {#if modoFoco}
+    <!-- Faixas nas bordas: o ponteiro nelas revela as barras (no teclado, o Tab as revela). -->
+    <div class="sensor topo" aria-hidden="true" onpointerenter={aoEntrarNasBarras}></div>
+    <div class="sensor base" aria-hidden="true" onpointerenter={aoEntrarNasBarras}></div>
+    <!-- Decorativo: a porcentagem lida continua no rodapé, como texto. -->
+    <span class="progresso-canto" aria-hidden="true">{Math.round(progresso * 100)}%</span>
+  {/if}
 
   {#if cobrindo}
     <!-- Só para o mouse: no teclado, Esc fecha o painel. -->
@@ -243,11 +366,19 @@
     </PainelLateral>
   </div>
 
-  <footer bind:this={rodapeEl}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <footer
+    bind:this={rodapeEl}
+    onfocusin={aoFocarBarra}
+    onfocusout={aoDesfocarBarra}
+    onpointerenter={aoEntrarNasBarras}
+    onpointerleave={aoSairDasBarras}
+  >
     {@render rodape()}
   </footer>
 
   <p class="so-leitor-de-tela" aria-live="polite">{anuncio}</p>
+  <p class="so-leitor-de-tela" aria-live="polite">{anuncioFoco}</p>
 </div>
 
 <style>
@@ -261,6 +392,10 @@
       "rodape rodape rodape";
     height: 100vh;
     background: var(--app);
+    /* clip, não hidden: nada aqui é rolável, nem pelo teclado. No WebKitGTK, as setas rolavam
+       a página inteira pela sobra das barras escondidas do modo foco (transform conta como
+       conteúdo) e rolariam um contêiner com overflow: hidden. */
+    overflow: clip;
   }
 
   /* Título centralizado quando cabe: as laterais dividem o resto por igual, mas nunca ficam
@@ -365,7 +500,7 @@
     position: relative;
     min-width: 0;
     min-height: 0;
-    overflow: hidden;
+    overflow: clip;
   }
 
   /* Janela estreita: os painéis ficam na mesma célula do livro, por cima dele. */
@@ -403,6 +538,86 @@
   .estreita header {
     gap: 0.25rem;
     padding-inline: 0.4rem;
+  }
+
+  /* Modo foco: só o livro no grid; as barras flutuam por cima, escondidas até serem chamadas. */
+  .foco {
+    position: relative;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    grid-template-areas: "conteudo";
+  }
+
+  .foco .area-indice,
+  .foco .area-aparencia {
+    display: none;
+  }
+
+  header,
+  footer {
+    transition:
+      transform var(--duracao-media) var(--curva),
+      opacity var(--duracao-media) var(--curva);
+  }
+
+  .foco header,
+  .foco footer {
+    position: absolute;
+    inset-inline: 0;
+    z-index: 3;
+    box-shadow: var(--sombra);
+  }
+
+  .foco header {
+    top: 0;
+  }
+
+  .foco footer {
+    bottom: 0;
+  }
+
+  .foco:not(.revelada) header {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  .foco:not(.revelada) footer {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  .conteudo:focus {
+    outline: none;
+  }
+
+  .sensor {
+    position: absolute;
+    inset-inline: 0;
+    z-index: 2;
+    height: 0.75rem;
+  }
+
+  .sensor.topo {
+    top: 0;
+  }
+
+  .sensor.base {
+    bottom: 0;
+  }
+
+  .progresso-canto {
+    position: absolute;
+    inset: auto 1rem 0.6rem auto;
+    z-index: 2;
+    color: var(--suave);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    transition: opacity var(--duracao-media) var(--curva);
+  }
+
+  .revelada .progresso-canto {
+    opacity: 0;
   }
 
   footer {

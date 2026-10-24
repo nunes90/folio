@@ -28,7 +28,14 @@ describe("MolduraLeitor", () => {
     const nomes = Array.from(cabecalho.querySelectorAll("button, h1"), (el) =>
       el.textContent?.trim(),
     );
-    expect(nomes).toEqual(["Índice", "Dom Casmurro", "Buscar", "Aparência", "Voltar à biblioteca"]);
+    expect(nomes).toEqual([
+      "Índice",
+      "Dom Casmurro",
+      "Buscar",
+      "Modo foco",
+      "Aparência",
+      "Voltar à biblioteca",
+    ]);
   });
 
   it("botões controlam os painéis (aria-expanded e aria-controls)", async () => {
@@ -214,6 +221,70 @@ describe("MolduraLeitor", () => {
       await fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
       expect(screen.getByRole("button", { name: "Índice" }).getAttribute("aria-expanded")).toBe("true");
       expect(container.querySelector(".veu")).toBeNull();
+    });
+  });
+
+  describe("modo foco", () => {
+    const moldura = () => document.querySelector<HTMLElement>(".moldura")!;
+    const botaoFoco = () => screen.getByRole("button", { name: "Modo foco" });
+
+    it("o botão liga e desliga (aria-pressed), fecha os painéis e os devolve ao sair", async () => {
+      renderizar({ aparenciaAberta: true });
+      expect(botaoFoco().getAttribute("aria-pressed")).toBe("false");
+      await fireEvent.click(botaoFoco());
+      expect(botaoFoco().getAttribute("aria-pressed")).toBe("true");
+      expect(moldura().classList.contains("foco")).toBe(true);
+      expect(screen.queryByRole("navigation", { name: "Índice" })).toBeNull();
+      expect(screen.queryByRole("complementary", { name: "Aparência" })).toBeNull();
+      await fireEvent.click(botaoFoco());
+      expect(moldura().classList.contains("foco")).toBe(false);
+      expect(screen.getByRole("navigation", { name: "Índice" })).toBeTruthy();
+      expect(screen.getByRole("complementary", { name: "Aparência" })).toBeTruthy();
+    });
+
+    it("anuncia ao entrar e ao sair", async () => {
+      renderizar();
+      await fireEvent.click(botaoFoco());
+      expect(screen.getByText("Modo foco ativado. Esc para sair.")).toBeTruthy();
+      await fireEvent.click(botaoFoco());
+      expect(screen.getByText("Modo foco desativado.")).toBeTruthy();
+    });
+
+    it("Ctrl+Shift+F entra e sai; Esc sai", async () => {
+      renderizar();
+      await fireEvent.keyDown(window, { key: "F", ctrlKey: true, shiftKey: true });
+      expect(moldura().classList.contains("foco")).toBe(true);
+      await fireEvent.keyDown(window, { key: "F", ctrlKey: true, shiftKey: true });
+      expect(moldura().classList.contains("foco")).toBe(false);
+      await fireEvent.keyDown(window, { key: "f", ctrlKey: true, shiftKey: true });
+      await fireEvent.keyDown(window, { key: "Escape" });
+      expect(moldura().classList.contains("foco")).toBe(false);
+    });
+
+    it("as barras continuam no teclado: o foco nelas as revela", async () => {
+      renderizar();
+      await fireEvent.click(botaoFoco());
+      expect(moldura().classList.contains("revelada")).toBe(false);
+      const voltar = screen.getByRole("button", { name: "Voltar à biblioteca" });
+      voltar.focus();
+      await fireEvent.focusIn(voltar);
+      expect(moldura().classList.contains("revelada")).toBe(true);
+      await fireEvent.focusOut(voltar, { relatedTarget: document.body });
+      expect(moldura().classList.contains("revelada")).toBe(false);
+    });
+
+    it("mostrarPainel() sai do modo foco", async () => {
+      const { component } = renderizar();
+      await fireEvent.click(botaoFoco());
+      await component.mostrarPainel("aparencia");
+      expect(moldura().classList.contains("foco")).toBe(false);
+      expect(document.activeElement?.id).toBe("aparencia");
+    });
+
+    it("alternarFoco() é exposto (paleta de comandos) e o estado é bindable", async () => {
+      const { component } = renderizar();
+      await component.alternarFoco();
+      expect(moldura().classList.contains("foco")).toBe(true);
     });
   });
 

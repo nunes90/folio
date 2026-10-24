@@ -72,6 +72,7 @@
   let progresso = $state(0);
   let erro = $state<string | null>(null);
   let pronto = $state(false);
+  let modoFoco = $state(false);
 
   // Leitura em voz alta: um bloco (parágrafo) por vez; ao terminar, o próximo.
   let voz = $state<"parado" | "falando" | "pausado">("parado");
@@ -276,6 +277,14 @@
         executar: () => void anterior(),
       },
       {
+        id: "modo-foco",
+        titulo: modoFoco ? "Sair do modo foco" : "Entrar no modo foco",
+        grupo: "Leitura",
+        teclas: [["Ctrl", "Shift", "F"]],
+        palavras: "tela cheia esconder barras",
+        executar: () => moldura.alternarFoco(),
+      },
+      {
         id: "mostrar-indice",
         titulo: "Mostrar o índice",
         grupo: "Leitura",
@@ -341,7 +350,7 @@
   }
 </script>
 
-<MolduraLeitor bind:this={moldura} {titulo} {anuncio} {progresso} {onFechar}>
+<MolduraLeitor bind:this={moldura} bind:modoFoco {titulo} {anuncio} {progresso} {onFechar}>
   {#snippet indice()}
     {#if itensIndice.length}
       <Indice itens={itensIndice} atual={hrefAtual} onNavegar={irParaSecao} />

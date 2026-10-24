@@ -98,7 +98,10 @@ Release como pre-release.
     biblioteca (importar, buscar, estantes, coleções, lixeira), aparência da interface, atalhos e abrir livro.
   - [x] **M14b**: comandos do leitor: páginas, painéis, capítulos do índice, cor da página e virada (EPUB e PDF);
     texto e voz (EPUB); busca, zoom, exibição e "Ir para a página N" digitando o número (PDF).
-- [ ] **Depois**: slider de páginas, modo foco, destaques…
+- [x] **M15 — Modo foco**: só o livro na tela (botão, Ctrl+Shift+F ou paleta; Esc sai). As barras flutuam por cima
+  quando chamadas (ponteiro na borda ou Tab), sem repaginar o livro; progresso discreto no canto. Igual no EPUB e no
+  PDF. Não é lembrado entre as sessões.
+- [ ] **Depois**: slider de páginas, destaques…
 
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
