@@ -124,9 +124,7 @@ docs/decisions/  # ADRs
 - Rodar: `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`.
   No dev, a página vem de `http://localhost:5173` e o WebKitGTK não carrega `asset://`: as capas vêm do próprio Vite
   (`/__capas/`, plugin `capasNoDev` em `ui/vite.config.ts`). Na build de produção, `asset://` normal.
-- Pendências: regerar capas se o cache for limpo;
-  progresso gravado com debounce de 1 s (fechar a janela nesse intervalo perde a última página);
-  origem dos logs do frontend aponta para o wrapper.
+- Pendências: origem dos logs do frontend aponta para o wrapper.
 - Roteiro do Orca executado (out/2026): navegação funcional. A voz do sistema (espeak-ng) é muito robótica:
   afeta o Orca e a leitura em voz alta. Alternativas (Piper no speech-dispatcher, voz neural local) em aberto.
 - **v0.1.0** (out/2026): tag assinada `v0.1.0` (M0–M5) e Release no GitHub como pre-release.
@@ -245,5 +243,11 @@ docs/decisions/  # ADRs
   "Interface" (cores e animações), `PainelPagina` = seção "Página" (cor com amostras, frase EPUB × PDF, aviso do alto
   contraste no EPUB, virada e, no PDF, exibição; substitui o `PainelPdf`), `PainelLeitura` = seção "Texto" (só EPUB).
   Na biblioteca, só Interface.
+- **Capas e progresso** (branch `fix/capas-e-progresso`): `Biblioteca::abrir` chama `conferir_capas`, que conserta
+  as capas que sumiram do cache (EPUB: extrai de novo da cópia do livro; PDF: apaga a referência e o frontend a gera
+  de novo com o pdf.js, como ao importar); erro ali só vai para o log. O progresso é gravado a cada mudança de página,
+  sem espera (um upsert no SQLite, < 1 ms; os comandos rodam na ordem): a espera de 1 s perdia a última página ao
+  fechar a janela. **Não interceptar o fechamento da janela** (`onCloseRequested`): com o tratador registrado, o Tauri
+  segura o fechamento até o JS liberar, e em testes o JS às vezes não recebia o pedido (janela impossível de fechar).
 - Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.
