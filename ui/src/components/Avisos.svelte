@@ -62,6 +62,17 @@
         out:fade={{ duration: duracao("curta"), easing: curva }}
       >
         <p>{aviso.texto}</p>
+        {#if aviso.acao}
+          {@const acao = aviso.acao}
+          <button
+            type="button"
+            class="acao"
+            onclick={() => {
+              dispensar(aviso.id);
+              acao.executar();
+            }}>{acao.rotulo}</button
+          >
+        {/if}
         <button type="button" aria-label="Fechar aviso" onclick={() => dispensar(aviso.id)}>
           <Icone nome="fechar" />
         </button>
@@ -143,5 +154,12 @@
   button:hover {
     background: var(--hover);
     color: var(--texto);
+  }
+
+  /* "Desfazer" e afins: texto na cor de destaque, como um link de ação. */
+  button.acao {
+    padding-inline: 0.6rem;
+    color: var(--destaque);
+    font-weight: 600;
   }
 </style>

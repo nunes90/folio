@@ -5,6 +5,7 @@
   import Avisos from "./components/Avisos.svelte";
   import Biblioteca from "./components/Biblioteca.svelte";
   import Confirmacao from "./components/Confirmacao.svelte";
+  import type { AcaoLivro } from "./components/MenuLivro.svelte";
   import Leitor from "./components/Leitor.svelte";
   import {
     arquivoDoLivro,
@@ -15,7 +16,13 @@
     importarLivros,
     listarLivros,
     progressoDoLivro,
-    removerLivro,
+    apagarLivro,
+    definirLido,
+    definirParaLer,
+    esvaziarLixeira,
+    listarLixeira,
+    moverParaLixeira,
+    restaurarLivro,
     salvarProgresso,
     type Livro,
     type Progresso,
@@ -38,8 +45,9 @@
   let ajudaAberta = $state(false);
   /** Leitor de PDF, importado sob demanda (o pdf.js é grande) antes de a transição começar. */
   let LeitorPdf = $state<Component<any> | null>(null);
-  /** Livro esperando confirmação de remoção. */
-  let aRemover = $state<Livro | null>(null);
+  let lixeira = $state<Livro[]>([]);
+  /** O que espera confirmação: apagar um livro de vez ou esvaziar a lixeira. */
+  let confirmar = $state<{ tipo: "apagar"; livro: Livro } | { tipo: "esvaziar" } | null>(null);
   /** Livro fechado por último: recebe o foco ao voltar para a biblioteca. */
   let ultimoAberto = $state<string>();
   const contexto = $derived(aberto ? aberto.livro.formato : "biblioteca");
@@ -87,14 +95,16 @@
     gerarCapasDePdfs();
     const caminho = await caminhoInicial();
     if (caminho) {
-      const { importados } = await importar([caminho]);
-      if (importados[0]) await abrir(importados[0]);
+      // Aberto pelo sistema ("Abrir com"): abre o livro mesmo que já estivesse na biblioteca.
+      const r = await importar([caminho]);
+      const livro = r.importados[0] ?? r.jaExistentes[0] ?? r.restaurados[0];
+      if (livro) await abrir(livro);
     }
   });
 
   async function recarregar() {
     try {
-      livros = await listarLivros();
+      [livros, lixeira] = await Promise.all([listarLivros(), listarLixeira()]);
     } catch (e) {
       avisar(`Não foi possível carregar a biblioteca: ${e}`, "erro");
     }
@@ -184,21 +194,113 @@
     }
   }
 
-  async function remover(livro: Livro) {
-    // O foco vai para o vizinho (o seguinte ou, se era o último, o anterior).
-    const i = livros.findIndex((l) => l.id === livro.id);
-    const vizinho = livros[i + 1] ?? livros[i - 1];
+  /**
+   * Faz `trabalho`, recarrega a biblioteca e avisa. `sucesso` é o texto do aviso (com uma
+   * ação opcional, ex.: Desfazer); um erro vira aviso de erro com `falha` como começo.
+   */
+  async function executar(
+    trabalho: () => Promise<unknown>,
+    sucesso: string,
+    falha: string,
+    acao?: { rotulo: string; executar: () => void },
+  ): Promise<boolean> {
     try {
-      await removerLivro(livro.id);
-      avisar(`${livro.titulo} foi removido da biblioteca.`);
+      await trabalho();
     } catch (e) {
-      const texto = `Não foi possível remover ${livro.titulo}: ${e}`;
+      const texto = `${falha}: ${e}`;
       avisar(texto, "erro");
       log.warn(texto);
-      return;
+      return false;
     }
     await recarregar();
-    ultimoAberto = vizinho?.id;
+    avisar(sucesso, "sucesso", acao);
+    return true;
+  }
+
+  /** O livro que recebe o foco quando `livro` sai da lista em que está (o seguinte ou o anterior). */
+  function vizinhoDe(livro: Livro, lista: Livro[]): string | undefined {
+    const i = lista.findIndex((l) => l.id === livro.id);
+    return (lista[i + 1] ?? lista[i - 1])?.id;
+  }
+
+  async function aoAcao(livro: Livro, acao: AcaoLivro) {
+    const t = livro.titulo;
+    switch (acao) {
+      case "para-ler": {
+        const marcar = livro.paraLerEm === null;
+        await executar(
+          () => definirParaLer(livro.id, marcar),
+          marcar ? `${t} está em Para ler.` : `${t} saiu de Para ler.`,
+          `Não foi possível mudar ${t}`,
+        );
+        return;
+      }
+      case "lido": {
+        const marcar = livro.lidoEm === null;
+        await executar(
+          () => definirLido(livro.id, marcar),
+          marcar ? `${t} foi marcado como lido.` : `${t} não está mais marcado como lido.`,
+          `Não foi possível mudar ${t}`,
+        );
+        return;
+      }
+      case "lixeira": {
+        const vizinho = vizinhoDe(livro, livros);
+        // Sem confirmação: dá para desfazer pelo aviso ou restaurar pela Lixeira.
+        const ok = await executar(
+          () => moverParaLixeira(livro.id),
+          `${t} foi para a lixeira.`,
+          `Não foi possível mover ${t} para a lixeira`,
+          {
+            rotulo: "Desfazer",
+            executar: () =>
+              void executar(
+                () => restaurarLivro(livro.id),
+                `${t} voltou para a estante.`,
+                `Não foi possível restaurar ${t}`,
+              ),
+          },
+        );
+        if (ok) ultimoAberto = vizinho;
+        return;
+      }
+      case "restaurar": {
+        const vizinho = vizinhoDe(livro, lixeira);
+        const ok = await executar(
+          () => restaurarLivro(livro.id),
+          `${t} voltou para a estante.`,
+          `Não foi possível restaurar ${t}`,
+        );
+        if (ok) ultimoAberto = vizinho;
+        return;
+      }
+      case "apagar":
+        // Irreversível: só depois de confirmar.
+        confirmar = { tipo: "apagar", livro };
+        return;
+    }
+  }
+
+  async function confirmado() {
+    const pedido = confirmar;
+    confirmar = null;
+    if (pedido?.tipo === "apagar") {
+      const { livro } = pedido;
+      const vizinho = vizinhoDe(livro, lixeira);
+      const ok = await executar(
+        () => apagarLivro(livro.id),
+        `${livro.titulo} foi apagado de vez.`,
+        `Não foi possível apagar ${livro.titulo}`,
+      );
+      if (ok) ultimoAberto = vizinho;
+    } else if (pedido?.tipo === "esvaziar") {
+      const n = lixeira.length;
+      await executar(
+        () => esvaziarLixeira(),
+        n === 1 ? "1 livro apagado de vez." : `${n} livros apagados de vez.`,
+        "Não foi possível esvaziar a lixeira",
+      );
+    }
   }
 
   async function fechar() {
@@ -222,18 +324,23 @@
 <Avisos />
 
 <Confirmacao
-  aberto={aRemover !== null}
-  titulo="Remover {aRemover?.titulo ?? ''} da biblioteca?"
-  rotuloConfirmar="Remover"
-  onConfirmar={() => {
-    const livro = aRemover;
-    aRemover = null;
-    if (livro) remover(livro);
-  }}
-  onCancelar={() => (aRemover = null)}
+  aberto={confirmar !== null}
+  titulo={confirmar?.tipo === "esvaziar"
+    ? "Esvaziar a lixeira?"
+    : `Apagar ${confirmar?.livro.titulo ?? ""} de vez?`}
+  rotuloConfirmar={confirmar?.tipo === "esvaziar" ? "Esvaziar" : "Apagar de vez"}
+  onConfirmar={confirmado}
+  onCancelar={() => (confirmar = null)}
 >
-  <p>O arquivo original, de onde o livro foi importado, não é afetado.</p>
-  <p>O progresso de leitura deste livro será perdido.</p>
+  {#if confirmar?.tipo === "esvaziar"}
+    <p>
+      {lixeira.length === 1 ? "O livro da lixeira será apagado" : `Os ${lixeira.length} livros da lixeira serão apagados`}
+      de vez, com o progresso de leitura. Não dá para desfazer.
+    </p>
+  {:else}
+    <p>O livro e o progresso de leitura serão apagados de vez. Não dá para desfazer.</p>
+  {/if}
+  <p>Os arquivos originais, de onde os livros foram importados, não são afetados.</p>
 </Confirmacao>
 
 {#if aberto?.livro.formato === "pdf"}
@@ -265,6 +372,8 @@
     onMudarPreferencias={atualizarPreferencias}
     temaDoSistema={resolverTema("sistema", sistema)}
     focarLivro={ultimoAberto}
-    onRemover={(livro) => (aRemover = livro)}
+    {lixeira}
+    onAcao={aoAcao}
+    onEsvaziar={() => (confirmar = { tipo: "esvaziar" })}
   />
 {/if}

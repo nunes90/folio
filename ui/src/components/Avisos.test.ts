@@ -44,6 +44,16 @@ describe("Avisos", () => {
     expect(avisos.map((a) => a.tipo)).toEqual(["erro"]);
   });
 
+  it("aviso com ação (ex.: Desfazer): o botão executa e fecha o aviso", async () => {
+    render(Avisos);
+    const desfazer = vi.fn();
+    avisar("Dom Casmurro foi para a lixeira.", "sucesso", { rotulo: "Desfazer", executar: desfazer });
+    await tick();
+    await fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
+    expect(desfazer).toHaveBeenCalledOnce();
+    expect(avisos).toHaveLength(0);
+  });
+
   it("progresso vai para a região de status e não some sozinho", async () => {
     render(Avisos);
     avisar("Importando 3 livros…", "progresso");

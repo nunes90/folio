@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { Livro, Situacao } from "./biblioteca";
 import { contarPorFiltro, filtrarLivros, normalizar } from "./filtro";
 
-function livro(titulo: string, autores: string[], situacao: Situacao, paraLer = false): Livro {
+function livro(
+  titulo: string,
+  autores: string[],
+  situacao: Situacao,
+  paraLer = false,
+  naLixeira = false,
+): Livro {
   return {
     id: titulo,
     formato: "epub",
@@ -17,7 +23,7 @@ function livro(titulo: string, autores: string[], situacao: Situacao, paraLer = 
     situacao,
     paraLerEm: paraLer ? 1 : null,
     lidoEm: null,
-    removidoEm: null,
+    removidoEm: naLixeira ? 9 : null,
   };
 }
 
@@ -26,6 +32,7 @@ const estante = [
   livro("Memórias Póstumas de Brás Cubas", ["Machado de Assis"], "concluido"),
   livro("O Cortiço", ["Aluísio Azevedo"], "nao-iniciado", true),
   livro("The Rust Programming Language", ["Steve Klabnik", "Carol Nichols"], "lendo"),
+  livro("Quincas Borba", ["Machado de Assis"], "lendo", false, true),
 ];
 const titulos = (livros: Livro[]) => livros.map((l) => l.titulo);
 
@@ -37,8 +44,8 @@ describe("normalizar", () => {
 });
 
 describe("filtrarLivros", () => {
-  it("sem termo e em Todos, mostra tudo na ordem original", () => {
-    expect(titulos(filtrarLivros(estante, "", "todos"))).toEqual(titulos(estante));
+  it("sem termo e em Todos, mostra tudo (menos a lixeira) na ordem original", () => {
+    expect(titulos(filtrarLivros(estante, "", "todos"))).toEqual(titulos(estante.slice(0, 4)));
     expect(filtrarLivros(estante, "   ", "todos")).toHaveLength(4);
   });
 
@@ -66,6 +73,9 @@ describe("filtrarLivros", () => {
       "The Rust Programming Language",
     ]);
     expect(titulos(filtrarLivros(estante, "", "para-ler"))).toEqual(["O Cortiço"]);
+    // A lixeira só aparece na estante dela.
+    expect(titulos(filtrarLivros(estante, "", "lixeira"))).toEqual(["Quincas Borba"]);
+    expect(titulos(filtrarLivros(estante, "quincas", "todos"))).toEqual([]);
     expect(titulos(filtrarLivros(estante, "", "lidos"))).toEqual([
       "Memórias Póstumas de Brás Cubas",
     ]);
@@ -75,12 +85,19 @@ describe("filtrarLivros", () => {
 
 describe("contarPorFiltro", () => {
   it("conta cada filtro respeitando a busca", () => {
-    expect(contarPorFiltro(estante, "")).toEqual({ todos: 4, lendo: 2, "para-ler": 1, lidos: 1 });
+    expect(contarPorFiltro(estante, "")).toEqual({
+      todos: 4,
+      lendo: 2,
+      "para-ler": 1,
+      lidos: 1,
+      lixeira: 1,
+    });
     expect(contarPorFiltro(estante, "machado")).toEqual({
       todos: 2,
       lendo: 1,
       "para-ler": 0,
       lidos: 1,
+      lixeira: 1,
     });
   });
 });

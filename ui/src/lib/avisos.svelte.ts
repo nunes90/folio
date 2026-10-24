@@ -6,10 +6,17 @@ import type { Importacao } from "./biblioteca";
 /** `progresso`: algo em andamento ("Importando…"); some quando o trabalho termina. */
 export type TipoAviso = "sucesso" | "erro" | "progresso";
 
+/** Botão dentro do aviso (ex.: "Desfazer"); executar também fecha o aviso. */
+export interface AcaoDoAviso {
+  rotulo: string;
+  executar: () => void;
+}
+
 export interface Aviso {
   id: number;
   tipo: TipoAviso;
   texto: string;
+  acao?: AcaoDoAviso;
 }
 
 /** Quanto tempo um aviso de sucesso fica na tela (sem contar as pausas). */
@@ -20,9 +27,9 @@ export const avisos = $state<Aviso[]>([]);
 let proximoId = 1;
 
 /** Mostra um aviso e devolve o id dele. */
-export function avisar(texto: string, tipo: TipoAviso = "sucesso"): number {
+export function avisar(texto: string, tipo: TipoAviso = "sucesso", acao?: AcaoDoAviso): number {
   const id = proximoId++;
-  avisos.push({ id, tipo, texto });
+  avisos.push({ id, tipo, texto, ...(acao && { acao }) });
   return id;
 }
 

@@ -70,8 +70,36 @@ export function carregarLivro(livro: Livro): Promise<ArrayBuffer> {
 }
 
 /** Remove da biblioteca a cópia do livro, a capa e o progresso; o arquivo original fica. */
-export function removerLivro(id: string): Promise<void> {
-  return invoke("remover_livro", { id });
+export function listarLixeira(): Promise<Livro[]> {
+  return invoke<Livro[]>("listar_lixeira");
+}
+
+export function definirParaLer(id: string, paraLer: boolean): Promise<void> {
+  return invoke("definir_para_ler", { id, paraLer });
+}
+
+/** Lido à mão: vence o progresso. Desmarcar volta à situação do progresso. */
+export function definirLido(id: string, lido: boolean): Promise<void> {
+  return invoke("definir_lido", { id, lido });
+}
+
+/** Reversível: o livro fica na lixeira, com cópia, capa e progresso, até restaurar ou esvaziar. */
+export function moverParaLixeira(id: string): Promise<void> {
+  return invoke("mover_para_lixeira", { id });
+}
+
+export function restaurarLivro(id: string): Promise<void> {
+  return invoke("restaurar_livro", { id });
+}
+
+/** Apaga de vez a cópia, a capa e o progresso; o arquivo original fica. */
+export function apagarLivro(id: string): Promise<void> {
+  return invoke("apagar_livro", { id });
+}
+
+/** Apaga de vez tudo o que está na lixeira; devolve quantos livros foram. */
+export function esvaziarLixeira(): Promise<number> {
+  return invoke<number>("esvaziar_lixeira");
 }
 
 /** Bytes do livro sem registrar abertura (para gerar a capa de PDFs). */
