@@ -56,6 +56,7 @@
   let links: PDFLinkService | undefined;
   let tarefa: PDFDocumentLoadingTask | undefined;
 
+  let modoFoco = $state(false);
   let pagina = $state(1);
   let total = $state(0);
   let zoom = $state(1);
@@ -114,8 +115,25 @@
       erro = `Não foi possível abrir o PDF: ${e}`;
       log.error(erro);
     });
+    // A área do documento muda de tamanho (modo foco, painéis, janela): os zooms "página
+    // inteira" e "largura" são recalculados, uma vez por quadro.
+    let quadro = 0;
+    const observador =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            cancelAnimationFrame(quadro);
+            quadro = requestAnimationFrame(() => {
+              const valor = visor?.currentScaleValue;
+              if (visor && (valor === "page-fit" || valor === "page-width"))
+                visor.currentScaleValue = valor;
+            });
+          });
+    observador?.observe(conteiner);
     return () => {
       window.removeEventListener("keydown", aoTeclar);
+      observador?.disconnect();
+      cancelAnimationFrame(quadro);
       tarefa?.destroy();
     };
   });
@@ -318,6 +336,14 @@
         executar: () => campoBusca?.focus(),
       },
       {
+        id: "modo-foco",
+        titulo: modoFoco ? "Sair do modo foco" : "Entrar no modo foco",
+        grupo: "Leitura",
+        teclas: [["Ctrl", "Shift", "F"]],
+        palavras: "tela cheia esconder barras",
+        executar: () => moldura.alternarFoco(),
+      },
+      {
         id: "mostrar-indice",
         titulo: "Mostrar o índice",
         grupo: "Leitura",
@@ -373,7 +399,8 @@
     if (e.target instanceof Element && e.target.closest("dialog")) return;
     if (!visor) return;
     const ctrl = e.ctrlKey || e.metaKey;
-    if (ctrl && e.key === "f") {
+    // Sem Shift: Ctrl+Shift+F é o modo foco (da moldura).
+    if (ctrl && !e.shiftKey && e.key.toLowerCase() === "f") {
       e.preventDefault();
       campoBusca?.focus();
       return;
@@ -396,13 +423,21 @@
     // Setas trocam de página, exceto quando o foco está num campo de texto.
     const emCampo = e.target instanceof HTMLInputElement;
     if (emCampo || ctrl || e.altKey) return;
-    if (e.key === "ArrowLeft") irPara(pagina - 1);
-    else if (e.key === "ArrowRight") irPara(pagina + 1);
+    // As setas viram a página e não rolam: no modo página a página, o pdf.js deixa uma sobra
+    // de alguns pixels, e rolá-la deslocava a página. Com a página inteira na tela, ↑ e ↓
+    // também viram; com zoom maior, rolam a página (o que não cabe).
+    const inteira = preferencias.modoPdf === "paginas" && visor.currentScaleValue === "page-fit";
+    const voltar = e.key === "ArrowLeft" || (inteira && e.key === "ArrowUp");
+    const avancar = e.key === "ArrowRight" || (inteira && e.key === "ArrowDown");
+    if (!voltar && !avancar) return;
+    e.preventDefault();
+    irPara(voltar ? pagina - 1 : pagina + 1);
   }
 </script>
 
 <MolduraLeitor
   bind:this={moldura}
+  bind:modoFoco
   {titulo}
   {anuncio}
   progresso={total ? pagina / total : 0}

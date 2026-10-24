@@ -61,6 +61,9 @@ docs/decisions/  # ADRs
   A escala de texto do sistema é anulada no zoom e reaplicada via CSS (ADR 0004). Interface em `rem`.
 - **Não usar a View Transitions API**: o WebKitGTK 2.54 a anuncia (`document.startViewTransition` existe), mas o
   `WebKitWebProcess` aborta (SIGABRT) ao capturar a tela, mesmo numa transição mínima. Transições são feitas à mão.
+- **Setas rolam o que transborda**: no WebKitGTK, ↓/→ rolam a página inteira se algo passar da janela (inclusive um
+  elemento só deslocado por `transform`) e rolam contêineres com `overflow: hidden`. A moldura e a área do livro usam
+  `overflow: clip` (não é contêiner de rolagem). O Chromium não reproduz: testar no app.
 - foliate-js tem alterações locais marcadas com `LEITOR:` e listadas em `ui/src/vendor/foliate-js/PATCHES.md`.
 - Empacotamento: Flatpak (preferido) / AppImage. (`.dmg` quando o macOS voltar.)
 
@@ -272,5 +275,15 @@ docs/decisions/  # ADRs
   exibição, índice, página. `MolduraLeitor.mostrarPainel(painel)` abre (sem alternar) e foca o painel. O campo da
   paleta muda o texto de exemplo conforme a tela (`textoDoCampo`).
 - **M14 concluído.**
+- **M15** (branch `feat/m15-modo-foco`): modo foco na `MolduraLeitor` (`modoFoco` bindable, `alternarFoco()`
+  exposto; botão "Modo foco" com `aria-pressed`, Ctrl+Shift+F, paleta; Esc sai). Ao entrar, os painéis fecham (e
+  voltam ao sair; abrir um painel sai do foco) e o grid fica só com o livro: cabeçalho e rodapé viram `position:
+  absolute` por cima, escondidos com transform/opacity (`.foco:not(.revelada)`), então revelar não repagina.
+  Revelam com o foco dentro deles (`focusin`/`focusout`; continuam no Tab e no leitor de tela) ou com o ponteiro nas
+  faixas `.sensor` das bordas (necessárias: o iframe do EPUB engole o ponteiro), somem 700 ms depois de ele sair.
+  Entrar pelo botão leva o foco a `.conteudo` (`tabindex="-1"`). Anúncio próprio (`aria-live`). `--rodape-leitor` vai a
+  0 com o rodapé escondido. Progresso decorativo no canto. No PDF, um `ResizeObserver` refaz o zoom "página
+  inteira"/"largura" quando a área muda (foco, painéis, janela); as setas não rolam (→/← viram e, com a página
+  inteira na tela, ↑/↓ também), e a busca (Ctrl+F) ignora Ctrl+Shift+F. Não é lembrado entre as sessões.
 - Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.

@@ -15,6 +15,7 @@
     continuar: "M7 5l12 7-12 7z",
     parar: "M7 7h10v10H7z",
     largura: "M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4",
+    foco: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5",
     mais: "M12 5v14M5 12h14",
     buscar: "M11 18a7 7 0 100-14 7 7 0 000 14zM20 20l-4-4",
     grade: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
