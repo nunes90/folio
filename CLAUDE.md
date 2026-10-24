@@ -263,5 +263,14 @@ docs/decisions/  # ADRs
   monta a lista conforme a tela: na biblioteca, importar, buscar, estantes, coleções, nova coleção, esvaziar
   lixeira e "Abrir <livro>" (dica = autores); no leitor, voltar à biblioteca; em ambas, interface, animações e
   atalhos. A `Biblioteca` expõe `mostrar(filtro)` e `buscar()` (via `bind:this`).
+- **M14b** (branch `feat/m14b-comandos-leitor`): os leitores publicam comandos para a paleta por `onComandos`
+  (`ComandosDoLeitor`: `comandos` e `porTermo`, num `$effect`; o `App` guarda em `doLeitor` e zera ao fechar).
+  Geradores puros em `lib/comandos.ts`: `comandosDoIndice` ("Ir para: <seção>", atual marcado), `comandosDaPagina`
+  (página e virada), `comandosDoTexto` (tamanho ± 0,1, some no limite; fontes, alinhamento, hifenização, restaurar)
+  e `irParaPagina` ("42", "página 42" → "Ir para a página 42", só no PDF, via `porTermo`, que vem antes da lista).
+  EPUB: páginas, painéis, voz conforme o estado, índice, página, texto. PDF: páginas, primeira/última, busca, zoom,
+  exibição, índice, página. `MolduraLeitor.mostrarPainel(painel)` abre (sem alternar) e foca o painel. O campo da
+  paleta muda o texto de exemplo conforme a tela (`textoDoCampo`).
+- **M14 concluído.**
 - Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.
