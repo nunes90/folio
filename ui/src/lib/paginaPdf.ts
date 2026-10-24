@@ -64,13 +64,19 @@ export function inverterPixels(px: Uint8ClampedArray, p = INVERSAO): void {
   }
 }
 
-/** Inverte a página já desenhada pelo pdf.js (uma vez por desenho). */
+/**
+ * Inverte a página já desenhada pelo pdf.js (uma vez por desenho) e marca o canvas com
+ * `data-invertida`: na noite, o CSS esconde canvas sem a marca. Assim nunca aparece um
+ * canvas claro (o desenho parcial que o pdf.js mostra em páginas lentas, ou o canvas antigo
+ * durante o redesenho ao entrar na noite); no lugar, a cor do papel.
+ */
 export function inverterCanvas(canvas: HTMLCanvasElement): void {
   const ctx = canvas.getContext("2d");
   if (!ctx || !canvas.width || !canvas.height) return;
   const imagem = ctx.getImageData(0, 0, canvas.width, canvas.height);
   inverterPixels(imagem.data);
   ctx.putImageData(imagem, 0, 0);
+  canvas.dataset.invertida = "";
 }
 
 export const PAGINAS_PDF: Record<PaginaPdf, EstiloPagina> = {
