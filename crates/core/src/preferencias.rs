@@ -84,6 +84,23 @@ pub enum ModoPdf {
     Rolagem,
 }
 
+/// Cor da página do PDF. O PDF é um desenho (canvas): não dá para trocar as cores do texto
+/// como no EPUB, então cada opção é um efeito sobre a página já desenhada (ver
+/// `ui/src/lib/paginaPdf.ts`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PaginaPdf {
+    /// Como o PDF foi feito.
+    #[default]
+    Original,
+    /// Papel creme: o branco vira creme, o preto continua preto.
+    Creme,
+    /// Papel sépia, mais amarelado.
+    Sepia,
+    /// Claro e escuro invertidos, sem trocar as cores.
+    Noite,
+}
+
 /// Limites (mínimo, máximo) de cada valor numérico.
 pub mod limites {
     pub const TAMANHO: (f64, f64) = (0.75, 3.0);
@@ -120,6 +137,7 @@ pub struct PreferenciasLeitura {
     pub velocidade_voz: i8,
     pub virada: Virada,
     pub modo_pdf: ModoPdf,
+    pub pagina_pdf: PaginaPdf,
 }
 
 impl Default for PreferenciasLeitura {
@@ -139,6 +157,7 @@ impl Default for PreferenciasLeitura {
             velocidade_voz: 0,
             virada: Virada::Esmaecer,
             modo_pdf: ModoPdf::Paginas,
+            pagina_pdf: PaginaPdf::Original,
         }
     }
 }
@@ -303,6 +322,30 @@ mod tests {
         .para_json();
         assert!(json.contains(r#""virada":"virar""#), "{json}");
         assert!(json.contains(r#""modoPdf":"rolagem""#), "{json}");
+    }
+
+    #[test]
+    fn pagina_do_pdf_tem_padrao_original_e_vai_no_json() {
+        // Preferências salvas antes do M12 (sem o campo) mantêm o PDF como foi feito.
+        let p = PreferenciasLeitura::de_json(r#"{"tamanho": 1.2}"#);
+        assert_eq!(p.pagina_pdf, PaginaPdf::Original);
+
+        for (pagina, texto) in [
+            (PaginaPdf::Creme, "creme"),
+            (PaginaPdf::Sepia, "sepia"),
+            (PaginaPdf::Noite, "noite"),
+        ] {
+            let json = PreferenciasLeitura {
+                pagina_pdf: pagina,
+                ..Default::default()
+            }
+            .para_json();
+            assert!(
+                json.contains(&format!(r#""paginaPdf":"{texto}""#)),
+                "{json}"
+            );
+            assert_eq!(PreferenciasLeitura::de_json(&json).pagina_pdf, pagina);
+        }
     }
 
     #[test]

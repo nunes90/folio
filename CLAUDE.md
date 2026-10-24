@@ -84,7 +84,7 @@ docs/decisions/  # ADRs
 - **M4b**: temas claro/escuro/sépia/alto contraste (cores em `ui/src/lib/temas.ts`, fonte
   única para interface e livro; testes de contraste WCAG) e opção "sempre reduzir animações". Padrão: seguir o sistema
   (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`; reativo em `lib/ambiente.svelte.ts`).
-  Foco visível global (`:focus-visible`). Painel de tema na biblioteca e no leitor de EPUB. Páginas de PDF não mudam de cor.
+  Foco visível global (`:focus-visible`). Painel de tema na biblioteca e no leitor de EPUB. Páginas de PDF não seguem o tema (presets próprios no M12).
 - **M4c**: F1 abre os atalhos do contexto (`ui/src/lib/atalhos.ts` é a fonte; evitar
   atalhos de uma letra, WCAG 2.1.4); setas/Home/End na grade da biblioteca (roving tabindex); foco gerenciado (título
   ao abrir, livro de volta ao fechar, texto ao escolher capítulo); mudança de capítulo anunciada por `aria-live`;
@@ -217,5 +217,14 @@ docs/decisions/  # ADRs
   depois de Lidos (atual também dentro de um autor). `ListaAutores.svelte` (roving ↑↓/Home/End; ao voltar, foco no
   autor de onde se saiu). Vista do autor com "‹ Autores" e o nome (foco no título ao abrir).
 - **v0.3.0** (out/2026): tag assinada `v0.3.0` (M9 + M10 + M11) e Release no GitHub como pre-release.
+- **M12** (branch `feat/m12-pagina-pdf`): `PaginaPdf` (original | creme | sepia | noite) em
+  `core::preferencias` (`paginaPdf` no JSON; padrão original). `lib/paginaPdf.ts`: `PAGINAS_PDF` (papel/tinta para a
+  amostra e o teste de contraste ≥ 7:1; `camada` multiply em creme/sépia; noite = `invert(0.9) hue-rotate(180deg)`),
+  `inverter`, `inverterPixels` e `inverterCanvas`. No `LeitorPdf`: creme/sépia via `.page::after` com
+  `mix-blend-mode: multiply`; noite inverte os pixels no `pagerendered` (registrado antes da espera da virada; ignora
+  `cssTransform`) e `visor.refresh()` ao entrar ou sair da noite. **Não usar `filter` CSS no canvas do PDF**: o
+  WebKitGTK o recalcula a cada quadro (esmaecer caiu de ~60 para ~30 qps; `will-change` piora). `ctx.filter` é aceito
+  mas não tem efeito no WebKitGTK 2.54. Inverter custa ~60 ms por página de 1492×1932, uma vez por desenho.
+  "Exibição do PDF" ganhou o grupo "Página" com amostras.
 - Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.
