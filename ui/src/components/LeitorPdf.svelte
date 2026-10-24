@@ -13,6 +13,7 @@
   import { sistema } from "../lib/ambiente.svelte";
   import type { ItemIndice } from "../lib/foliate";
   import { log } from "../lib/log";
+  import { inverterCanvas, PAGINAS_PDF } from "../lib/paginaPdf";
   import { carregarPdf, carregarVisor } from "../lib/pdf";
   import { atualizarPreferencias, preferencias } from "../lib/preferencias.svelte";
   import { achatar, converterSumario, itemAtual, type ItemSumarioPdf } from "../lib/sumario";
@@ -55,6 +56,19 @@
   let destinos = new Map<string, string | unknown[]>();
   let paginasDoIndice = $state(new Map<string, number>());
   const hrefAtual = $derived(itemAtual(paginasDoIndice, pagina));
+  // Cor da página escolhida no painel Aparência.
+  const paginaPdf = $derived(PAGINAS_PDF[preferencias.paginaPdf]);
+  const invertida = $derived(preferencias.paginaPdf === "noite");
+
+  // Entrar ou sair da noite muda os pixels das páginas: o pdf.js as redesenha (as já
+  // invertidas voltam ao original, e vice-versa). Creme e sépia são só uma camada por cima.
+  let estavaInvertida = false;
+  $effect(() => {
+    const agora = invertida;
+    if (!pronto || !visor || agora === estavaInvertida) return;
+    estavaInvertida = agora;
+    visor.refresh();
+  });
 
   /** Texto da região aria-live: anuncia a mudança de seção (não cada página). */
   let anuncio = $state("");
@@ -106,6 +120,20 @@
     l.setViewer(v);
     visor = v;
     links = l;
+
+    // Noite: inverte os pixels de cada página assim que o pdf.js a desenha (uma vez por
+    // desenho). Registrado antes de qualquer outro "pagerendered": a virada (paginaRenderizada)
+    // só começa depois, já com a página invertida. `cssTransform` é só um reescalonamento por
+    // CSS, sem desenho novo: os pixels já estão invertidos.
+    eventos.on(
+      "pagerendered",
+      ({ source, cssTransform, error }: { source: { canvas?: HTMLCanvasElement | null }; cssTransform: boolean; error: unknown }) => {
+        if (preferencias.paginaPdf === "noite" && !cssTransform && !error && source.canvas) {
+          inverterCanvas(source.canvas);
+        }
+      },
+    );
+    estavaInvertida = invertida;
 
     eventos.on("pagesinit", () => {
       pronto = true; // o efeito acima aplica o modo e o zoom
@@ -318,7 +346,16 @@
        Região rolável focável (tabindex) para rolar pelo teclado. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex: o WCAG exige que áreas roláveis
        sejam alcançáveis pelo teclado (regra scrollable-region-focusable do axe). -->
-  <div class="conteiner" bind:this={conteiner} tabindex="0" role="region" aria-label={titulo}>
+  <div
+    class="conteiner"
+    class:camada={!!paginaPdf.camada}
+    class:invertida
+    style:--papel-pdf={paginaPdf.papel}
+    bind:this={conteiner}
+    tabindex="0"
+    role="region"
+    aria-label={titulo}
+  >
     <div class="pdfViewer"></div>
   </div>
 </MolduraLeitor>
@@ -329,6 +366,22 @@
     inset: 0;
     overflow: auto;
     background: var(--app);
+  }
+
+  /* Cor da página (lib/paginaPdf.ts): só efeitos sobre a página já desenhada. */
+  .conteiner.camada :global(.page)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--papel-pdf);
+    mix-blend-mode: multiply;
+    pointer-events: none;
+  }
+
+  /* Noite: os pixels são invertidos ao desenhar (lib/paginaPdf.ts). Antes disso, a página
+     já aparece na cor final, sem clarão branco. */
+  .conteiner.invertida :global(.page) {
+    background-color: var(--papel-pdf);
   }
 
   .nota {

@@ -72,6 +72,10 @@ a Lixeira é outro estado do livro. A busca continua no topo e filtra a vista at
   diferem em acentos ou maiúsculas contam como o mesmo autor; livros sem autor em "Autor desconhecido".
 - [ ] **Séries** (adiado, decisão de out/2026): ler `calibre:series` (EPUB 2) e `belongs-to-collection` (EPUB 3) no
   core, migração e releitura dos livros já importados. Só se fizer falta: PDFs e muitos EPUBs não trazem série.
+- [x] **M12 — Página do PDF**: presets Original (padrão), Creme, Sépia e Noite no painel Aparência do PDF, com
+  amostra. Creme e sépia: camada `multiply` (o preto continua preto). Noite: `invert(0.9) hue-rotate(180deg)` aplicado
+  nos pixels de cada página desenhada (filtro CSS derrubava a virada para ~30 qps no WebKitGTK; o `ctx.filter` não
+  funciona nele). A área ao redor das páginas segue o tema (M7).
 - [ ] **Depois**: paleta de comandos, slider de páginas, modo foco, destaques…
 
 ## Futuro
