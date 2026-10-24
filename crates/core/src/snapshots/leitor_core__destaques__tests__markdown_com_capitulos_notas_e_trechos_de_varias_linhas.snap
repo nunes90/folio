@@ -1,0 +1,23 @@
+---
+source: crates/core/src/destaques.rs
+expression: "para_markdown(\"Dom Casmurro\", &[\"Machado de Assis\".into()], &destaques)"
+---
+# Dom Casmurro
+
+Machado de Assis
+
+> Sem capítulo, no começo.
+
+## III. A denúncia
+
+> Ia a entrar na sala de visitas,
+>
+> quando ouvi proferir o meu nome
+
+O narrador escuta escondido.
+
+> escondi-me atrás da porta
+
+## VI. Tio Cosme
+
+> Tio Cosme vivia com minha mãe

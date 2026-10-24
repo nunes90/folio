@@ -103,8 +103,11 @@ Release como pre-release.
   PDF. Não é lembrado entre as sessões.
 **v0.5.0** (out/2026): M14 (paleta de comandos) e M15 (modo foco). Tag `v0.5.0`, Release como pre-release.
 
-- [ ] **M16 — Destaques e notas**: M16a core (tabela, funções, exportar Markdown); M16b EPUB (barra de seleção,
-  painel Destaques, paleta); M16c PDF (camada própria sobre o pdf.js, sem alterar o arquivo).
+- [ ] **M16 — Destaques e notas**
+  - [x] **M16a**: core. Tabela `destaques` (migração 6), criar/listar/cor/nota/apagar/restaurar, contagem no livro,
+    exportar em Markdown. Comandos finos e tipos TS.
+  - [ ] **M16b**: EPUB (barra de seleção, painel Destaques, paleta).
+  - [ ] **M16c**: PDF (camada própria sobre o pdf.js, sem alterar o arquivo).
 - [ ] **Depois**: slider de páginas…
 
 ## Futuro

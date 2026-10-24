@@ -21,6 +21,7 @@ function livro(titulo: string, autores: string[], naLixeira = false): Livro {
     removidoEm: naLixeira ? 1 : null,
     favoritoEm: null,
     colecoes: [],
+    destaques: 0,
   };
 }
 

@@ -29,6 +29,38 @@ export interface Livro {
   favoritoEm: number | null;
   /** Ids das coleções em que o livro está. */
   colecoes: number[];
+  /** Quantos destaques o livro tem. */
+  destaques: number;
+}
+
+/** Cor do marca-texto (`Cor` no core). Nunca é a única informação: o nome vai junto. */
+export type CorDestaque = "amarelo" | "verde" | "azul" | "rosa";
+
+/** Espelha `Destaque` do core (crates/core/src/destaques.rs). */
+export interface Destaque {
+  id: number;
+  livroId: string;
+  /** Onde o trecho está: no EPUB, um CFI de intervalo. */
+  local: string;
+  trecho: string;
+  cor: CorDestaque;
+  nota: string | null;
+  /** Título da seção (do índice) em que o trecho está. */
+  capitulo: string | null;
+  /** 0 a 1 no livro: a ordem de leitura. */
+  posicao: number;
+  criadoEm: number;
+  atualizadoEm: number;
+}
+
+/** O que o leitor manda para criar um destaque (`NovoDestaque` no core). */
+export interface NovoDestaque {
+  local: string;
+  trecho: string;
+  cor?: CorDestaque;
+  nota?: string | null;
+  capitulo?: string | null;
+  posicao: number;
 }
 
 /** Coleção criada pelo usuário, com quantos livros (fora da lixeira) ela tem. */
@@ -105,6 +137,37 @@ export function adicionarAColecao(colecao: number, livro: string): Promise<void>
 
 export function removerDaColecao(colecao: number, livro: string): Promise<void> {
   return invoke("remover_da_colecao", { colecao, livro });
+}
+
+export function listarDestaques(livro: string): Promise<Destaque[]> {
+  return invoke<Destaque[]>("listar_destaques", { livro });
+}
+
+export function criarDestaque(livro: string, novo: NovoDestaque): Promise<Destaque> {
+  return invoke<Destaque>("criar_destaque", { livro, novo });
+}
+
+export function definirCorDestaque(id: number, cor: CorDestaque): Promise<Destaque> {
+  return invoke<Destaque>("definir_cor_destaque", { id, cor });
+}
+
+/** `null` ou só espaços apagam a nota. */
+export function definirNotaDestaque(id: number, nota: string | null): Promise<Destaque> {
+  return invoke<Destaque>("definir_nota_destaque", { id, nota });
+}
+
+/** Devolve o destaque apagado, para o "Desfazer" (`restaurarDestaque`). */
+export function apagarDestaque(id: number): Promise<Destaque> {
+  return invoke<Destaque>("apagar_destaque", { id });
+}
+
+export function restaurarDestaque(destaque: Destaque): Promise<Destaque> {
+  return invoke<Destaque>("restaurar_destaque", { destaque });
+}
+
+/** Grava os destaques em Markdown no caminho escolhido; devolve quantos foram. */
+export function exportarDestaques(livro: string, caminho: string): Promise<number> {
+  return invoke<number>("exportar_destaques", { livro, caminho });
 }
 
 export function listarLixeira(): Promise<Livro[]> {

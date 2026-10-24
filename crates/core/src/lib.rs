@@ -1,6 +1,7 @@
 //! Núcleo do Leitor: lógica pura, sem dependência de Tauri.
 
 pub mod biblioteca;
+pub mod destaques;
 pub mod epub;
 pub mod formato;
 pub mod livro;

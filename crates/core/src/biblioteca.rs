@@ -77,6 +77,22 @@ const MIGRACOES: &[&str] = &[
     );
     CREATE INDEX livros_colecoes_por_livro ON livros_colecoes (livro_id);
 ",
+    "
+    -- Destaques e notas (M16, ver destaques.rs).
+    CREATE TABLE destaques (
+        id            INTEGER PRIMARY KEY,
+        livro_id      TEXT    NOT NULL REFERENCES livros(id) ON DELETE CASCADE,
+        local         TEXT    NOT NULL,  -- EPUB: CFI de intervalo
+        trecho        TEXT    NOT NULL,
+        cor           TEXT    NOT NULL,  -- amarelo | verde | azul | rosa
+        nota          TEXT,
+        capitulo      TEXT,              -- título da seção no índice
+        posicao       REAL    NOT NULL,  -- 0.0 a 1.0 no livro: a ordem de leitura
+        criado_em     INTEGER NOT NULL,
+        atualizado_em INTEGER NOT NULL
+    );
+    CREATE INDEX destaques_por_livro ON destaques (livro_id, posicao);
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.
@@ -175,6 +191,8 @@ pub struct LivroNaBiblioteca {
     pub favorito_em: Option<i64>,
     /// Ids das coleções em que o livro está.
     pub colecoes: Vec<i64>,
+    /// Quantos destaques o livro tem.
+    pub destaques: usize,
 }
 
 /// Uma coleção criada pelo usuário, com quantos livros (fora da lixeira) ela tem.
@@ -210,6 +228,12 @@ pub enum ErroBiblioteca {
     NomeDeColecaoVazio,
     #[error("já existe uma coleção chamada “{0}”")]
     ColecaoJaExiste(String),
+    #[error("destaque não encontrado: {0}")]
+    DestaqueNaoEncontrado(i64),
+    #[error("o destaque precisa de um trecho")]
+    DestaqueSemTrecho,
+    #[error("o destaque precisa de um local no livro")]
+    DestaqueSemLocal,
     #[error("não foi possível gravar {}", caminho.display())]
     Io {
         caminho: PathBuf,
@@ -218,14 +242,16 @@ pub enum ErroBiblioteca {
     },
 }
 
-type Resultado<T> = Result<T, ErroBiblioteca>;
+pub(crate) type Resultado<T> = Result<T, ErroBiblioteca>;
 
+/// `pub(crate)`: os outros módulos do core (ex.: destaques.rs, com o seu próprio `impl
+/// Biblioteca`) usam estes campos; quem usa o crate, não.
 pub struct Biblioteca {
-    conexao: Connection,
+    pub(crate) conexao: Connection,
     dir_livros: PathBuf,
     dir_capas: PathBuf,
     /// Fonte do "agora"; trocável nos testes.
-    relogio: fn() -> i64,
+    pub(crate) relogio: fn() -> i64,
 }
 
 fn agora() -> i64 {
@@ -756,6 +782,7 @@ impl Biblioteca {
             removido_em: linha.get("removido_em")?,
             favorito_em: linha.get("favorito_em")?,
             colecoes,
+            destaques: linha.get::<_, i64>("destaques")? as usize,
         })
     }
 }
@@ -765,7 +792,8 @@ const SELECT_LIVRO: &str = "
            l.adicionado_em, l.aberto_em, l.para_ler_em, l.lido_em, l.removido_em,
            l.favorito_em, p.fracao,
            (SELECT group_concat(lc.colecao_id) FROM livros_colecoes lc
-            WHERE lc.livro_id = l.id) AS colecoes
+            WHERE lc.livro_id = l.id) AS colecoes,
+           (SELECT COUNT(*) FROM destaques d WHERE d.livro_id = l.id) AS destaques
     FROM livros l LEFT JOIN progresso p ON p.livro_id = l.id";
 
 fn migrar(conexao: &mut Connection) -> rusqlite::Result<()> {
@@ -808,7 +836,7 @@ fn criar_dir(dir: &Path) -> Resultado<()> {
 }
 
 /// Grava num arquivo temporário e renomeia: quem lê nunca vê um arquivo pela metade.
-fn gravar(destino: &Path, bytes: &[u8]) -> Resultado<()> {
+pub(crate) fn gravar(destino: &Path, bytes: &[u8]) -> Resultado<()> {
     let temporario = destino.with_extension("parcial");
     std::fs::write(&temporario, bytes)
         .and_then(|()| std::fs::rename(&temporario, destino))
