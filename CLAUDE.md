@@ -196,5 +196,11 @@ docs/decisions/  # ADRs
   ☆ Favorito, 🔖 Para ler e ✓ Lido como botões `aria-pressed` (fora do Tab; marcados com cor, fundo suave e forma
   cheia; o ✓ fica `aria-disabled` quando o livro está lido pelo progresso) e o ⋯ no fim. `Icone` ganhou `preenchido`.
   "Favoritar" também no menu (teclado).
-- **M9 concluído.** Próximo passo: **M10** (coleções) ou marcar a v0.3.0. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M9 concluído.**
+- **M10a** (branch `feat/m10a-colecoes-core`): migração 5 (`colecoes` e `livros_colecoes`, com `ON DELETE CASCADE` dos
+  dois lados). `Biblioteca`: `listar_colecoes` (ordem alfabética, `quantidade` sem a lixeira), `criar_colecao`,
+  `renomear_colecao`, `apagar_colecao`, `adicionar_a_colecao` (idempotente), `remover_da_colecao`. Nome aparado; vazio
+  → `NomeDeColecaoVazio`; repetido → `ColecaoJaExiste` (comparação com `to_lowercase` no Rust: o `NOCASE` do SQLite
+  só cobre ASCII). `LivroNaBiblioteca.colecoes` vem de um `group_concat`. Comandos finos e tipos TS prontos.
+- Próximo passo: **M10b** (coleções na interface). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

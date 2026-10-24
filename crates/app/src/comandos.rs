@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use leitor_core::biblioteca::{Biblioteca, Importado, LivroNaBiblioteca, Progresso};
+use leitor_core::biblioteca::{Biblioteca, Colecao, Importado, LivroNaBiblioteca, Progresso};
 use leitor_core::epub::Capa;
 use leitor_core::preferencias::PreferenciasLeitura;
 use leitor_core::voz::{ConfigVoz, MotorDeVoz};
@@ -70,6 +70,68 @@ pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>)
 pub fn abrir_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Response, String> {
     let bytes = bib.lock().unwrap().ler(&id).map_err(|e| registrar(&e))?;
     Ok(Response::new(bytes))
+}
+
+#[tauri::command]
+pub fn listar_colecoes(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<Colecao>, String> {
+    bib.lock()
+        .unwrap()
+        .listar_colecoes()
+        .map_err(|e| registrar(&e))
+}
+
+/// Nome vazio ou repetido volta como erro com a mensagem para o usuário.
+#[tauri::command]
+pub fn criar_colecao(bib: State<'_, EstadoBiblioteca>, nome: String) -> Result<Colecao, String> {
+    bib.lock()
+        .unwrap()
+        .criar_colecao(&nome)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn renomear_colecao(
+    bib: State<'_, EstadoBiblioteca>,
+    id: i64,
+    nome: String,
+) -> Result<(), String> {
+    bib.lock()
+        .unwrap()
+        .renomear_colecao(id, &nome)
+        .map_err(|e| registrar(&e))
+}
+
+/// Os livros continuam na biblioteca.
+#[tauri::command]
+pub fn apagar_colecao(bib: State<'_, EstadoBiblioteca>, id: i64) -> Result<(), String> {
+    bib.lock()
+        .unwrap()
+        .apagar_colecao(id)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn adicionar_a_colecao(
+    bib: State<'_, EstadoBiblioteca>,
+    colecao: i64,
+    livro: String,
+) -> Result<(), String> {
+    bib.lock()
+        .unwrap()
+        .adicionar_a_colecao(colecao, &livro)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn remover_da_colecao(
+    bib: State<'_, EstadoBiblioteca>,
+    colecao: i64,
+    livro: String,
+) -> Result<(), String> {
+    bib.lock()
+        .unwrap()
+        .remover_da_colecao(colecao, &livro)
+        .map_err(|e| registrar(&e))
 }
 
 /// Livros na lixeira, o removido por último primeiro.

@@ -62,6 +62,21 @@ const MIGRACOES: &[&str] = &[
     "
     ALTER TABLE livros ADD COLUMN favorito_em INTEGER;  -- favoritado em (NULL = não)
 ",
+    "
+    -- Coleções (M10): criadas pelo usuário; um livro pode estar em várias.
+    CREATE TABLE colecoes (
+        id        INTEGER PRIMARY KEY,
+        nome      TEXT NOT NULL,       -- único sem diferenciar maiúsculas (verificado no Rust)
+        criada_em INTEGER NOT NULL
+    );
+    CREATE TABLE livros_colecoes (
+        colecao_id    INTEGER NOT NULL REFERENCES colecoes(id) ON DELETE CASCADE,
+        livro_id      TEXT    NOT NULL REFERENCES livros(id)   ON DELETE CASCADE,
+        adicionado_em INTEGER NOT NULL,
+        PRIMARY KEY (colecao_id, livro_id)
+    );
+    CREATE INDEX livros_colecoes_por_livro ON livros_colecoes (livro_id);
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.
@@ -158,6 +173,17 @@ pub struct LivroNaBiblioteca {
     pub removido_em: Option<i64>,
     /// Favoritado em.
     pub favorito_em: Option<i64>,
+    /// Ids das coleções em que o livro está.
+    pub colecoes: Vec<i64>,
+}
+
+/// Uma coleção criada pelo usuário, com quantos livros (fora da lixeira) ela tem.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Colecao {
+    pub id: i64,
+    pub nome: String,
+    pub quantidade: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, serde::Deserialize)]
@@ -178,6 +204,12 @@ pub enum ErroBiblioteca {
     Pdf(#[from] ErroPdf),
     #[error("livro não encontrado na biblioteca: {0}")]
     NaoEncontrado(String),
+    #[error("coleção não encontrada: {0}")]
+    ColecaoNaoEncontrada(i64),
+    #[error("o nome da coleção não pode ficar vazio")]
+    NomeDeColecaoVazio,
+    #[error("já existe uma coleção chamada “{0}”")]
+    ColecaoJaExiste(String),
     #[error("não foi possível gravar {}", caminho.display())]
     Io {
         caminho: PathBuf,
@@ -400,6 +432,119 @@ impl Biblioteca {
         Ok(lixeira.len())
     }
 
+    /// Coleções em ordem alfabética, com a quantidade de livros fora da lixeira.
+    pub fn listar_colecoes(&self) -> Resultado<Vec<Colecao>> {
+        let mut consulta = self.conexao.prepare(
+            "SELECT c.id, c.nome,
+                    (SELECT COUNT(*) FROM livros_colecoes lc JOIN livros l ON l.id = lc.livro_id
+                     WHERE lc.colecao_id = c.id AND l.removido_em IS NULL)
+             FROM colecoes c ORDER BY c.nome COLLATE NOCASE, c.id",
+        )?;
+        let colecoes = consulta
+            .query_map([], |linha| {
+                Ok(Colecao {
+                    id: linha.get(0)?,
+                    nome: linha.get(1)?,
+                    quantidade: linha.get::<_, i64>(2)? as usize,
+                })
+            })?
+            .collect::<Result<_, _>>()?;
+        Ok(colecoes)
+    }
+
+    /// Cria uma coleção. O nome é aparado; vazio ou repetido (sem diferenciar maiúsculas) é
+    /// recusado.
+    #[instrument(skip(self))]
+    pub fn criar_colecao(&self, nome: &str) -> Resultado<Colecao> {
+        let nome = self.validar_nome_de_colecao(nome, None)?;
+        self.conexao.execute(
+            "INSERT INTO colecoes (nome, criada_em) VALUES (?1, ?2)",
+            params![nome, (self.relogio)()],
+        )?;
+        Ok(Colecao {
+            id: self.conexao.last_insert_rowid(),
+            nome,
+            quantidade: 0,
+        })
+    }
+
+    #[instrument(skip(self))]
+    pub fn renomear_colecao(&self, id: i64, nome: &str) -> Resultado<()> {
+        let nome = self.validar_nome_de_colecao(nome, Some(id))?;
+        let alterados = self.conexao.execute(
+            "UPDATE colecoes SET nome = ?1 WHERE id = ?2",
+            params![nome, id],
+        )?;
+        if alterados == 0 {
+            return Err(ErroBiblioteca::ColecaoNaoEncontrada(id));
+        }
+        Ok(())
+    }
+
+    /// Apaga a coleção; os livros continuam na biblioteca.
+    #[instrument(skip(self))]
+    pub fn apagar_colecao(&self, id: i64) -> Resultado<()> {
+        if self
+            .conexao
+            .execute("DELETE FROM colecoes WHERE id = ?1", [id])?
+            == 0
+        {
+            return Err(ErroBiblioteca::ColecaoNaoEncontrada(id));
+        }
+        Ok(())
+    }
+
+    /// Põe o livro na coleção (se já estiver, nada muda).
+    pub fn adicionar_a_colecao(&self, colecao: i64, livro: &str) -> Resultado<()> {
+        self.exigir_colecao(colecao)?;
+        if self.obter(livro)?.is_none() {
+            return Err(ErroBiblioteca::NaoEncontrado(livro.to_owned()));
+        }
+        self.conexao.execute(
+            "INSERT OR IGNORE INTO livros_colecoes (colecao_id, livro_id, adicionado_em)
+             VALUES (?1, ?2, ?3)",
+            params![colecao, livro, (self.relogio)()],
+        )?;
+        Ok(())
+    }
+
+    /// Tira o livro da coleção (se não estiver, nada muda).
+    pub fn remover_da_colecao(&self, colecao: i64, livro: &str) -> Resultado<()> {
+        self.exigir_colecao(colecao)?;
+        self.conexao.execute(
+            "DELETE FROM livros_colecoes WHERE colecao_id = ?1 AND livro_id = ?2",
+            params![colecao, livro],
+        )?;
+        Ok(())
+    }
+
+    fn exigir_colecao(&self, id: i64) -> Resultado<()> {
+        let existe = self
+            .conexao
+            .query_row("SELECT 1 FROM colecoes WHERE id = ?1", [id], |_| Ok(()))
+            .optional()?;
+        existe.ok_or(ErroBiblioteca::ColecaoNaoEncontrada(id))
+    }
+
+    /// Nome aparado, não vazio e sem repetir o de outra coleção. A comparação é em Rust
+    /// (`to_lowercase`): o `COLLATE NOCASE` do SQLite só ignora a caixa em ASCII, e "Ficção"
+    /// e "FICÇÃO" seriam nomes diferentes para ele. `exceto` é a própria coleção, ao renomear.
+    fn validar_nome_de_colecao(&self, nome: &str, exceto: Option<i64>) -> Resultado<String> {
+        let nome = nome.trim();
+        if nome.is_empty() {
+            return Err(ErroBiblioteca::NomeDeColecaoVazio);
+        }
+        let procurado = nome.to_lowercase();
+        if let Some(existente) = self
+            .listar_colecoes()?
+            .into_iter()
+            .find(|c| Some(c.id) != exceto && c.nome.to_lowercase() == procurado)
+        {
+            return Err(ErroBiblioteca::ColecaoJaExiste(existente.nome));
+        }
+        Ok(nome.to_owned())
+    }
+
     /// Marca ou desmarca o livro como favorito.
     pub fn definir_favorito(&self, id: &str, favorito: bool) -> Resultado<()> {
         let quando = favorito.then(self.relogio);
@@ -535,6 +680,13 @@ impl Biblioteca {
         let capa: Option<String> = linha.get("capa")?;
         let fracao: Option<f64> = linha.get("fracao")?;
         let lido_em: Option<i64> = linha.get("lido_em")?;
+        // "3,7" (GROUP_CONCAT) → [3, 7]; sem coleções, NULL.
+        let colecoes: Option<String> = linha.get("colecoes")?;
+        let colecoes = colecoes
+            .iter()
+            .flat_map(|texto| texto.split(','))
+            .filter_map(|id| id.parse().ok())
+            .collect();
         Ok(LivroNaBiblioteca {
             id: linha.get("id")?,
             formato: Formato::de_texto(&formato).unwrap_or(Formato::Epub),
@@ -551,6 +703,7 @@ impl Biblioteca {
             lido_em,
             removido_em: linha.get("removido_em")?,
             favorito_em: linha.get("favorito_em")?,
+            colecoes,
         })
     }
 }
@@ -558,7 +711,9 @@ impl Biblioteca {
 const SELECT_LIVRO: &str = "
     SELECT l.id, l.formato, l.titulo, l.autores, l.idioma, l.arquivo, l.capa,
            l.adicionado_em, l.aberto_em, l.para_ler_em, l.lido_em, l.removido_em,
-           l.favorito_em, p.fracao
+           l.favorito_em, p.fracao,
+           (SELECT group_concat(lc.colecao_id) FROM livros_colecoes lc
+            WHERE lc.livro_id = l.id) AS colecoes
     FROM livros l LEFT JOIN progresso p ON p.livro_id = l.id";
 
 fn migrar(conexao: &mut Connection) -> rusqlite::Result<()> {
@@ -1103,6 +1258,123 @@ mod tests {
         assert!(nao_encontrado(bib.definir_lido("x", true)));
         assert!(nao_encontrado(bib.mover_para_lixeira("x")));
         assert!(nao_encontrado(bib.restaurar("x")));
+    }
+
+    #[test]
+    fn colecoes_criar_listar_renomear_apagar() {
+        let (_dir, bib) = nova();
+        let ficcao = bib.criar_colecao("  Ficção ").unwrap();
+        assert_eq!(ficcao.nome, "Ficção", "o nome é aparado");
+        let trabalho = bib.criar_colecao("Trabalho").unwrap();
+        let nomes = |bib: &Biblioteca| -> Vec<String> {
+            bib.listar_colecoes()
+                .unwrap()
+                .into_iter()
+                .map(|c| c.nome)
+                .collect()
+        };
+        assert_eq!(nomes(&bib), ["Ficção", "Trabalho"]);
+
+        bib.renomear_colecao(trabalho.id, "Estudo").unwrap();
+        assert_eq!(nomes(&bib), ["Estudo", "Ficção"], "em ordem alfabética");
+        // Renomear para o mesmo nome com outra caixa é permitido.
+        bib.renomear_colecao(ficcao.id, "FICÇÃO").unwrap();
+
+        bib.apagar_colecao(trabalho.id).unwrap();
+        assert_eq!(nomes(&bib), ["FICÇÃO"]);
+    }
+
+    #[test]
+    fn nome_de_colecao_vazio_ou_repetido_e_recusado() {
+        let (_dir, bib) = nova();
+        let ficcao = bib.criar_colecao("Ficção").unwrap();
+        let outra = bib.criar_colecao("Outra").unwrap();
+        assert!(matches!(
+            bib.criar_colecao("   "),
+            Err(ErroBiblioteca::NomeDeColecaoVazio)
+        ));
+        // Repetido sem diferenciar maiúsculas (inclusive com acento).
+        assert!(matches!(
+            bib.criar_colecao("ficção"),
+            Err(ErroBiblioteca::ColecaoJaExiste(nome)) if nome == "Ficção"
+        ));
+        assert!(matches!(
+            bib.criar_colecao("FICÇÃO"),
+            Err(ErroBiblioteca::ColecaoJaExiste(_))
+        ));
+        assert!(matches!(
+            bib.renomear_colecao(outra.id, " ficção "),
+            Err(ErroBiblioteca::ColecaoJaExiste(_))
+        ));
+        assert!(matches!(
+            bib.renomear_colecao(ficcao.id, ""),
+            Err(ErroBiblioteca::NomeDeColecaoVazio)
+        ));
+    }
+
+    #[test]
+    fn livros_entram_e_saem_de_colecoes() {
+        let (_dir, bib) = nova();
+        let a = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        let b = bib
+            .importar(&fixture("dom-casmurro.epub"))
+            .unwrap()
+            .into_livro();
+        let ficcao = bib.criar_colecao("Ficção").unwrap();
+        let classicos = bib.criar_colecao("Clássicos").unwrap();
+
+        bib.adicionar_a_colecao(ficcao.id, &a.id).unwrap();
+        bib.adicionar_a_colecao(ficcao.id, &b.id).unwrap();
+        bib.adicionar_a_colecao(ficcao.id, &b.id).unwrap(); // de novo: nada muda
+        bib.adicionar_a_colecao(classicos.id, &b.id).unwrap();
+
+        let colecoes_de = |id: &str| bib.obter(id).unwrap().unwrap().colecoes;
+        assert_eq!(colecoes_de(&a.id), [ficcao.id]);
+        let mut de_b = colecoes_de(&b.id);
+        de_b.sort();
+        assert_eq!(de_b, [ficcao.id, classicos.id]);
+
+        let quantidade = |id: i64| {
+            bib.listar_colecoes()
+                .unwrap()
+                .into_iter()
+                .find(|c| c.id == id)
+                .unwrap()
+                .quantidade
+        };
+        assert_eq!(quantidade(ficcao.id), 2);
+
+        bib.remover_da_colecao(ficcao.id, &a.id).unwrap();
+        assert!(colecoes_de(&a.id).is_empty());
+        assert_eq!(quantidade(ficcao.id), 1);
+
+        // Na lixeira, o livro continua na coleção, mas não conta.
+        bib.mover_para_lixeira(&b.id).unwrap();
+        assert_eq!(quantidade(ficcao.id), 0);
+        bib.restaurar(&b.id).unwrap();
+        assert_eq!(quantidade(ficcao.id), 1);
+
+        // Apagar a coleção não apaga os livros; apagar o livro de vez o tira das coleções.
+        bib.apagar_colecao(classicos.id).unwrap();
+        assert_eq!(colecoes_de(&b.id), [ficcao.id]);
+        bib.apagar_de_vez(&b.id).unwrap();
+        assert_eq!(quantidade(ficcao.id), 0);
+    }
+
+    #[test]
+    fn colecao_ou_livro_inexistente() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        let colecao = bib.criar_colecao("Ficção").unwrap();
+        let sem_colecao =
+            |r: Resultado<()>| matches!(r, Err(ErroBiblioteca::ColecaoNaoEncontrada(99)));
+        assert!(sem_colecao(bib.renomear_colecao(99, "x")));
+        assert!(sem_colecao(bib.apagar_colecao(99)));
+        assert!(sem_colecao(bib.adicionar_a_colecao(99, &livro.id)));
+        assert!(matches!(
+            bib.adicionar_a_colecao(colecao.id, "nao-existe"),
+            Err(ErroBiblioteca::NaoEncontrado(_))
+        ));
     }
 
     #[test]

@@ -26,6 +26,7 @@ function livro(
     lidoEm: null,
     removidoEm: naLixeira ? 9 : null,
     favoritoEm: favorito ? 3 : null,
+    colecoes: [],
   };
 }
 

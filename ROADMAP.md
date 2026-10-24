@@ -57,7 +57,13 @@ a Lixeira é outro estado do livro. A busca continua no topo e filtra a vista at
   - [x] M9d — ícones no card: ☆ Favorito, 🔖 Para ler e ✓ Lido como botões liga/desliga (aviso a cada ação), ⋯ no
     fim da linha; estante "Favoritos" (migração 4, `favorito_em`); "Favoritar" também no menu (teclado)
   - Decisões: a lixeira nunca se esvazia sozinha; "Para ler" sai ao abrir o livro; a lista se chama "Lidos".
-- [ ] **M10 — Coleções**: criar, renomear, apagar; adicionar e remover livros (pelo menu de ações).
+- [ ] **M10 — Coleções**
+  - [x] M10a — core: migração 5 (`colecoes`, `livros_colecoes`); criar, renomear, apagar (os livros ficam), listar
+    com quantidade (fora da lixeira); adicionar e tirar livros; `LivroNaBiblioteca.colecoes`; nomes vazios ou
+    repetidos (sem diferenciar maiúsculas, inclusive com acento) recusados. Comandos finos no app.
+  - [ ] M10b — interface: seção "Coleções" na barra lateral (contagem, "Nova coleção"); na vista da coleção,
+    Renomear e Apagar; no menu do livro, "Adicionar à coleção…" (diálogo com caixas de seleção e criar ali mesmo) e
+    "Tirar desta coleção"
 - [ ] **M11 — Autores e Séries**: agrupar por autor (metadados que já existem); séries só se valer a pena
   (metadado frágil em PDF e em muitos EPUBs).
 - [ ] **Depois**: paleta de comandos, slider de páginas, modo foco, destaques…

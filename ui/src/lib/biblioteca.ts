@@ -27,6 +27,15 @@ export interface Livro {
   removidoEm: number | null;
   /** Favoritado em. */
   favoritoEm: number | null;
+  /** Ids das coleções em que o livro está. */
+  colecoes: number[];
+}
+
+/** Coleção criada pelo usuário, com quantos livros (fora da lixeira) ela tem. */
+export interface Colecao {
+  id: number;
+  nome: string;
+  quantidade: number;
 }
 
 export interface Progresso {
@@ -72,6 +81,32 @@ export function carregarLivro(livro: Livro): Promise<ArrayBuffer> {
 }
 
 /** Remove da biblioteca a cópia do livro, a capa e o progresso; o arquivo original fica. */
+export function listarColecoes(): Promise<Colecao[]> {
+  return invoke<Colecao[]>("listar_colecoes");
+}
+
+/** Falha (com a mensagem para o usuário) se o nome for vazio ou já existir. */
+export function criarColecao(nome: string): Promise<Colecao> {
+  return invoke<Colecao>("criar_colecao", { nome });
+}
+
+export function renomearColecao(id: number, nome: string): Promise<void> {
+  return invoke("renomear_colecao", { id, nome });
+}
+
+/** Os livros continuam na biblioteca. */
+export function apagarColecao(id: number): Promise<void> {
+  return invoke("apagar_colecao", { id });
+}
+
+export function adicionarAColecao(colecao: number, livro: string): Promise<void> {
+  return invoke("adicionar_a_colecao", { colecao, livro });
+}
+
+export function removerDaColecao(colecao: number, livro: string): Promise<void> {
+  return invoke("remover_da_colecao", { colecao, livro });
+}
+
 export function listarLixeira(): Promise<Livro[]> {
   return invoke<Livro[]>("listar_lixeira");
 }
