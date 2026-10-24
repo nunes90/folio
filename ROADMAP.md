@@ -41,6 +41,9 @@ Cada marco precisa terminar em algo utilizável.
   - [x] M8d — arrastar arquivos para importar (o botão "Importar livros…" continua)
 
 ## v0.3 — navegação da biblioteca
+
+**v0.3.0** (out/2026): M9 (estantes, lixeira, favoritos, ícones no card), M10 (coleções) e M11 (autores). Tag
+`v0.3.0`, Release como pre-release.
 Barra lateral com listas e destinos, não abas (8 destinos não cabem em abas, nem no teclado nem em janela estreita).
 "Vistas" (Todos, Lendo, Para ler, Lidos) são listas inteligentes; "navegação" (Coleções, Autores, Séries) agrupa;
 a Lixeira é outro estado do livro. A busca continua no topo e filtra a vista atual.
