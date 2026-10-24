@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick, untrack, type Snippet } from "svelte";
+  import { onMount, tick, untrack, type Snippet } from "svelte";
   import { fade } from "svelte/transition";
   import { sistema } from "../lib/ambiente.svelte";
   import Icone from "./Icone.svelte";
@@ -88,6 +88,22 @@
     aparenciaAberta = false;
     botaoAparencia.focus();
   }
+
+  // Os avisos (Avisos.svelte) ficam acima do rodapé enquanto um livro está aberto: a altura
+  // real dele vai para --rodape-leitor (em janela estreita, o rodapé quebra em duas linhas).
+  let rodapeEl: HTMLElement;
+  onMount(() => {
+    const raiz = document.documentElement;
+    const publicar = () =>
+      raiz.style.setProperty("--rodape-leitor", `${rodapeEl.getBoundingClientRect().height}px`);
+    publicar();
+    const observador = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publicar);
+    observador?.observe(rodapeEl);
+    return () => {
+      observador?.disconnect();
+      raiz.style.removeProperty("--rodape-leitor");
+    };
+  });
 
   /** Leva o foco ao título: o leitor de tela anuncia qual livro foi aberto. */
   export function focarTitulo() {
@@ -219,7 +235,7 @@
     </PainelLateral>
   </div>
 
-  <footer>
+  <footer bind:this={rodapeEl}>
     {@render rodape()}
   </footer>
 

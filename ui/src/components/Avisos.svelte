@@ -90,7 +90,8 @@
   /* Canto de baixo, por cima de tudo, sem bloquear cliques fora dos avisos. */
   .avisos {
     position: fixed;
-    inset-block-end: 1rem;
+    /* Com um livro aberto, acima do rodapé do leitor (MolduraLeitor publica a altura). */
+    inset-block-end: calc(var(--rodape-leitor, 0px) + 1rem);
     inset-inline-end: 1rem;
     z-index: 10;
     width: min(24rem, calc(100vw - 2rem));
