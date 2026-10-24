@@ -81,8 +81,8 @@ docs/decisions/  # ADRs
   JSON na tabela `preferencias`, migração 2). Fontes OFL embutidas via Fontsource (Literata, Atkinson Hyperlegible,
   Lexend, OpenDyslexic; `ui/src/lib/fontes.ts`), tamanho × escala do sistema, entrelinha, espaçamentos, largura,
   colunas, alinhamento, hifenização. Painel "Aparência" no leitor de EPUB (prévia ao vivo; Esc fecha e devolve o foco).
-- **M4b**: temas claro/escuro/sépia/alto contraste (cores em `ui/src/lib/temas.ts`, fonte
-  única para interface e livro; testes de contraste WCAG) e opção "sempre reduzir animações". Padrão: seguir o sistema
+- **M4b**: temas claro/escuro/sépia/alto contraste (cores em `ui/src/lib/temas.ts`; desde o M13, só da interface,
+  e sépia virou página; testes de contraste WCAG) e opção "sempre reduzir animações". Padrão: seguir o sistema
   (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`; reativo em `lib/ambiente.svelte.ts`).
   Foco visível global (`:focus-visible`). Painel de tema na biblioteca e no leitor de EPUB. Páginas de PDF não seguem o tema (presets próprios no M12).
 - **M4c**: F1 abre os atalhos do contexto (`ui/src/lib/atalhos.ts` é a fonte; evitar
@@ -218,7 +218,7 @@ docs/decisions/  # ADRs
   autor de onde se saiu). Vista do autor com "‹ Autores" e o nome (foco no título ao abrir).
 - **v0.3.0** (out/2026): tag assinada `v0.3.0` (M9 + M10 + M11) e Release no GitHub como pre-release.
 - **M12** (branch `feat/m12-pagina-pdf`): `PaginaPdf` (original | creme | sepia | noite) em
-  `core::preferencias` (`paginaPdf` no JSON; padrão original). `lib/paginaPdf.ts`: `PAGINAS_PDF` (papel/tinta para a
+  `core::preferencias` (`paginaPdf` no JSON; padrão original). `lib/paginaPdf.ts` (hoje `lib/pagina.ts`): `PAGINAS_PDF` (hoje `PAGINAS`) (papel/tinta para a
   amostra e o teste de contraste ≥ 7:1; `camada` multiply em creme/sépia; noite = `invert(0.9) hue-rotate(180deg)`),
   `inverter`, `inverterPixels` e `inverterCanvas`. No `LeitorPdf`: creme/sépia via `.page::after` com
   `mix-blend-mode: multiply`; noite inverte os pixels no `pagerendered` (registrado antes da espera da virada; ignora
@@ -235,5 +235,15 @@ docs/decisions/  # ADRs
   rodapé em `--rodape-leitor` (no `<html>`, com `ResizeObserver`; removida ao fechar o livro) e os avisos ficam
   `calc(var(--rodape-leitor, 0px) + 1rem)` acima da borda: não cobrem mais a barra de páginas.
 - **v0.3.1** (out/2026): tag assinada `v0.3.1` (M12 + correções) e Release no GitHub como pre-release.
+- **M13** (branch `feat/m13-aparencia`): aparência em três seções, iguais nos dois formatos. Core: `Tema` (interface:
+  sistema | claro | escuro | alto-contraste; sem sépia) e `Pagina` (automatica | original | creme | sepia | noite,
+  padrão automática) no lugar de `PaginaPdf`; `migrar` converte o JSON antigo antes de ler (tema sépia → claro +
+  página sépia; `paginaPdf` → `pagina`, e o "original" dele → automática). `lib/pagina.ts` (antes `paginaPdf.ts`):
+  tabela única `PAGINAS` (papel, tinta, link, esquema; camada/filtro para o PDF), `resolverPagina` (automática:
+  interface clara → original, escura ou alto contraste → noite) e `cssDaPagina` (CSS do EPUB; interface em alto
+  contraste força branco sobre preto). `lib/temas.ts` só da interface. Painel Aparência: `PainelTema` = seção
+  "Interface" (cores e animações), `PainelPagina` = seção "Página" (cor com amostras, frase EPUB × PDF, aviso do alto
+  contraste no EPUB, virada e, no PDF, exibição; substitui o `PainelPdf`), `PainelLeitura` = seção "Texto" (só EPUB).
+  Na biblioteca, só Interface.
 - Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.

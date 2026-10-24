@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aplicarTema, contraste, cssDoTema, resolverTema, TEMAS, type TemaEfetivo } from "./temas";
+import { aplicarTema, contraste, resolverTema, TEMAS, type TemaEfetivo } from "./temas";
 
 const nomes = Object.keys(TEMAS) as TemaEfetivo[];
 
@@ -58,13 +58,13 @@ describe.each(nomes)("superfícies do tema %s (M7: refinamento visual)", (nome) 
 describe("aplicarTema", () => {
   it("publica as cores como variáveis CSS (nomes em kebab-case)", () => {
     const raiz = document.createElement("div");
-    aplicarTema("sepia", raiz);
-    expect(raiz.style.getPropertyValue("--fundo")).toBe(TEMAS.sepia.fundo);
-    expect(raiz.style.getPropertyValue("--painel")).toBe(TEMAS.sepia.painel);
-    expect(raiz.style.getPropertyValue("--sobre-destaque")).toBe(TEMAS.sepia.sobreDestaque);
-    expect(raiz.style.getPropertyValue("--destaque-suave")).toBe(TEMAS.sepia.destaqueSuave);
-    expect(raiz.style.getPropertyValue("--sombra")).toBe(TEMAS.sepia.sombra);
-    expect(raiz.dataset.tema).toBe("sepia");
+    aplicarTema("escuro", raiz);
+    expect(raiz.style.getPropertyValue("--fundo")).toBe(TEMAS.escuro.fundo);
+    expect(raiz.style.getPropertyValue("--painel")).toBe(TEMAS.escuro.painel);
+    expect(raiz.style.getPropertyValue("--sobre-destaque")).toBe(TEMAS.escuro.sobreDestaque);
+    expect(raiz.style.getPropertyValue("--destaque-suave")).toBe(TEMAS.escuro.destaqueSuave);
+    expect(raiz.style.getPropertyValue("--sombra")).toBe(TEMAS.escuro.sombra);
+    expect(raiz.dataset.tema).toBe("escuro");
   });
 
   it("alto contraste não usa sombras: o contorno faz esse papel", () => {
@@ -76,26 +76,12 @@ describe("resolverTema", () => {
   const sistema = { escuro: false, contraste: false };
 
   it("escolha explícita vence o sistema", () => {
-    expect(resolverTema("sepia", { escuro: true, contraste: true })).toBe("sepia");
+    expect(resolverTema("claro", { escuro: true, contraste: true })).toBe("claro");
   });
 
   it("sistema: claro, escuro ou alto contraste", () => {
     expect(resolverTema("sistema", sistema)).toBe("claro");
     expect(resolverTema("sistema", { ...sistema, escuro: true })).toBe("escuro");
     expect(resolverTema("sistema", { escuro: true, contraste: true })).toBe("alto-contraste");
-  });
-});
-
-describe("cssDoTema (livro)", () => {
-  it("aplica fundo, texto e links do tema", () => {
-    const css = cssDoTema("escuro");
-    expect(css).toContain(`color: ${TEMAS.escuro.texto} !important`);
-    expect(css).toContain(`background: ${TEMAS.escuro.fundo} !important`);
-    expect(css).toContain(`color: ${TEMAS.escuro.link} !important`);
-  });
-
-  it("alto contraste também neutraliza cores e fundos do próprio livro", () => {
-    expect(cssDoTema("alto-contraste")).toContain("background-color: transparent !important");
-    expect(cssDoTema("claro")).not.toContain("background-color: transparent");
   });
 });

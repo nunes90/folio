@@ -1,7 +1,8 @@
-// Temas de cores. Fonte única: daqui saem as variáveis CSS da interface (aplicarTema) e o CSS
-// injetado no livro (cssDoTema). temas.test.ts verifica o contraste WCAG de cada tema.
+// Cores da interface (barras, painéis, biblioteca): daqui saem as variáveis CSS (aplicarTema).
+// A cor do papel do livro é outra escolha, a página (lib/pagina.ts). temas.test.ts verifica o
+// contraste WCAG de cada tema.
 
-export type TemaEscolhido = "sistema" | "claro" | "escuro" | "sepia" | "alto-contraste";
+export type TemaEscolhido = "sistema" | "claro" | "escuro" | "alto-contraste";
 export type TemaEfetivo = Exclude<TemaEscolhido, "sistema">;
 
 export interface Cores {
@@ -79,25 +80,6 @@ export const TEMAS: Record<TemaEfetivo, Cores> = {
     destaqueSuave: "#1f2b40",
     sombra: "0 1px 2px rgb(0 0 0 / 40%), 0 6px 18px rgb(0 0 0 / 45%)",
   },
-  sepia: {
-    fundo: "#f4ecd8",
-    texto: "#2e2416",
-    suave: "#5a4730",
-    borda: "#8c7a5b",
-    controle: "#e9dec2",
-    link: "#7a3a00",
-    foco: "#7a3a00",
-    esquema: "light",
-    app: "#efe5cc",
-    painel: "#f6eedb",
-    card: "#faf5e8",
-    hover: "#e8dcbf",
-    divisoria: "rgb(46 36 22 / 12%)",
-    destaque: "#7a3a00",
-    sobreDestaque: "#ffffff",
-    destaqueSuave: "#efdcc0",
-    sombra: "0 1px 2px rgb(46 36 22 / 8%), 0 4px 14px rgb(46 36 22 / 10%)",
-  },
   "alto-contraste": {
     fundo: "#000000",
     texto: "#ffffff",
@@ -141,26 +123,6 @@ export function aplicarTema(tema: TemaEfetivo, raiz = document.documentElement):
     // sobreDestaque → --sobre-destaque
     raiz.style.setProperty(`--${nome.replace(/[A-Z]/g, (l) => `-${l.toLowerCase()}`)}`, valor);
   }
-}
-
-/** CSS injetado em cada capítulo do livro (iframe: não herda as variáveis da interface). */
-export function cssDoTema(tema: TemaEfetivo): string {
-  const c = TEMAS[tema];
-  const regras = [
-    `html { color-scheme: ${c.esquema}; }`,
-    `html, body { color: ${c.texto} !important; background: ${c.fundo} !important; }`,
-    `a:link, a:visited { color: ${c.link} !important; }`,
-  ];
-  if (tema === "alto-contraste") {
-    // O livro pode pintar texto de cinza ou pôr fundos coloridos: em alto contraste, tudo
-    // herda o branco sobre preto. Imagens continuam como estão.
-    regras.push(
-      `body * { color: inherit !important; background-color: transparent !important; ` +
-        `border-color: ${c.borda} !important; }`,
-      `a:link *, a:visited * { color: ${c.link} !important; }`,
-    );
-  }
-  return regras.join("\n");
 }
 
 // --- contraste WCAG 2 -------------------------------------------------------------------

@@ -240,7 +240,7 @@ describe("Biblioteca", () => {
     expect(botao.getAttribute("aria-expanded")).toBe("false");
     await fireEvent.click(botao);
     expect(botao.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByRole("radio", { name: "Sépia" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Alto contraste" })).toBeTruthy();
   });
 
   describe("teclado (roving tabindex)", () => {

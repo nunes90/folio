@@ -14,10 +14,18 @@ function renderizar(mudancas = {}, temaDoSistema: "claro" | "escuro" = "escuro")
   return { onMudar, container };
 }
 
-describe("PainelTema", () => {
+describe("PainelTema (seção Interface)", () => {
+  it("é a seção Interface: só as cores do app (sépia é uma página, não um tema)", () => {
+    renderizar();
+    expect(screen.getByRole("heading", { name: "Interface" })).toBeTruthy();
+    expect(screen.queryByRole("radio", { name: "Sépia" })).toBeNull();
+    // A virada de página fica na seção Página.
+    expect(screen.queryByRole("radio", { name: /Esmaecer/ })).toBeNull();
+  });
+
   it("lista os temas e diz qual o sistema está usando", () => {
     renderizar();
-    for (const nome of ["Claro", "Escuro", "Sépia", "Alto contraste"]) {
+    for (const nome of ["Claro", "Escuro", "Alto contraste"]) {
       expect(screen.getByRole("radio", { name: nome })).toBeTruthy();
     }
     expect(
@@ -34,20 +42,11 @@ describe("PainelTema", () => {
   });
 
   it("marca as escolhas atuais", () => {
-    renderizar({ tema: "sepia", movimento: "reduzido" });
-    expect((screen.getByRole("radio", { name: "Sépia" }) as HTMLInputElement).checked).toBe(true);
+    renderizar({ tema: "escuro", movimento: "reduzido" });
+    expect((screen.getByRole("radio", { name: "Escuro" }) as HTMLInputElement).checked).toBe(true);
     expect(
       (screen.getByRole("radio", { name: "Sempre reduzir animações" }) as HTMLInputElement).checked,
     ).toBe(true);
-  });
-
-  it("virada de página: esmaecer é o padrão sugerido; as outras são opções", async () => {
-    const { onMudar } = renderizar();
-    expect((screen.getByRole("radio", { name: "Esmaecer (sugerido)" }) as HTMLInputElement).checked).toBe(
-      true,
-    );
-    await fireEvent.click(screen.getByRole("radio", { name: "Virar a folha" }));
-    expect(onMudar).toHaveBeenCalledWith({ virada: "virar" });
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {

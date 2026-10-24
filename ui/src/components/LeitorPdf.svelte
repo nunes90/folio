@@ -8,12 +8,12 @@
   import Indice from "./Indice.svelte";
   import Carregando from "./Carregando.svelte";
   import MolduraLeitor from "./MolduraLeitor.svelte";
-  import PainelPdf from "./PainelPdf.svelte";
+  import PainelPagina from "./PainelPagina.svelte";
   import PainelTema from "./PainelTema.svelte";
-  import { sistema } from "../lib/ambiente.svelte";
+  import { sistema, temaEfetivo } from "../lib/ambiente.svelte";
   import type { ItemIndice } from "../lib/foliate";
   import { log } from "../lib/log";
-  import { inverterCanvas, PAGINAS_PDF } from "../lib/paginaPdf";
+  import { inverterCanvas, PAGINAS, resolverPagina } from "../lib/pagina";
   import { carregarPdf, carregarVisor } from "../lib/pdf";
   import { atualizarPreferencias, preferencias } from "../lib/preferencias.svelte";
   import { achatar, converterSumario, itemAtual, type ItemSumarioPdf } from "../lib/sumario";
@@ -57,8 +57,10 @@
   let paginasDoIndice = $state(new Map<string, number>());
   const hrefAtual = $derived(itemAtual(paginasDoIndice, pagina));
   // Cor da página escolhida no painel Aparência.
-  const paginaPdf = $derived(PAGINAS_PDF[preferencias.paginaPdf]);
-  const invertida = $derived(preferencias.paginaPdf === "noite");
+  // A página escolhida (a automática segue a interface), igual à do EPUB.
+  const paginaEfetiva = $derived(resolverPagina(preferencias.pagina, temaEfetivo()));
+  const estiloPagina = $derived(PAGINAS[paginaEfetiva]);
+  const invertida = $derived(paginaEfetiva === "noite");
 
   // Entrar ou sair da noite muda os pixels das páginas: o pdf.js as redesenha (as já
   // invertidas voltam ao original, e vice-versa). Creme e sépia são só uma camada por cima.
@@ -128,7 +130,7 @@
     eventos.on(
       "pagerendered",
       ({ source, cssTransform, error }: { source: { canvas?: HTMLCanvasElement | null }; cssTransform: boolean; error: unknown }) => {
-        if (preferencias.paginaPdf === "noite" && !cssTransform && !error && source.canvas) {
+        if (invertida && !cssTransform && !error && source.canvas) {
           inverterCanvas(source.canvas);
         }
       },
@@ -318,11 +320,14 @@
       onMudar={atualizarPreferencias}
       temaDoSistema={resolverTema("sistema", sistema)}
     />
-    <PainelPdf {preferencias} onMudar={atualizarPreferencias} />
-    <p class="nota">
-      Fonte, espaçamentos e colunas valem só para EPUB: o PDF tem layout fixo. Para ler maior,
-      use o zoom (Ctrl + ou Ctrl −).
-    </p>
+    <PainelPagina
+      {preferencias}
+      onMudar={atualizarPreferencias}
+      formato="pdf"
+      interface={temaEfetivo()}
+    />
+    <!-- A seção Texto não existe no PDF (layout fixo): só a dica do zoom. -->
+    <p class="nota">Para ler maior, use o zoom (Ctrl + ou Ctrl −).</p>
   {/snippet}
 
   {#snippet rodape()}
@@ -348,9 +353,9 @@
        sejam alcançáveis pelo teclado (regra scrollable-region-focusable do axe). -->
   <div
     class="conteiner"
-    class:camada={!!paginaPdf.camada}
+    class:camada={!!estiloPagina.camada}
     class:invertida
-    style:--papel-pdf={paginaPdf.papel}
+    style:--papel-pdf={estiloPagina.papel}
     bind:this={conteiner}
     tabindex="0"
     role="region"
@@ -368,7 +373,7 @@
     background: var(--app);
   }
 
-  /* Cor da página (lib/paginaPdf.ts): só efeitos sobre a página já desenhada. */
+  /* Cor da página (lib/pagina.ts): só efeitos sobre a página já desenhada. */
   /* O pdf.js usa este mesmo ::after para o ícone de carregando e o esconde fora do
      carregamento (`.page:not(.loading)::after { display: none }`): daí o display explícito. */
   .conteiner.camada :global(.page)::after {
@@ -381,7 +386,7 @@
     pointer-events: none;
   }
 
-  /* Noite: os pixels são invertidos ao desenhar (lib/paginaPdf.ts). Antes disso, a página
+  /* Noite: os pixels são invertidos ao desenhar (lib/pagina.ts). Antes disso, a página
      já aparece na cor final, sem clarão branco. */
   /* Canvas ainda não invertido (desenho parcial de página lenta, ou o antigo durante o
      redesenho ao entrar na noite): escondido até a inversão, para não clarear a tela. */

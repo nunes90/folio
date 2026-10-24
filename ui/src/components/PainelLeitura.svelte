@@ -70,7 +70,7 @@
 </script>
 
 <div class="painel">
-  <h2>Aparência do texto</h2>
+  <h2>Texto</h2>
 
   <fieldset>
     <legend>Fonte</legend>

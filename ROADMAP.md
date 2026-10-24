@@ -80,6 +80,11 @@ a Lixeira é outro estado do livro. A busca continua no topo e filtra a vista at
 **v0.3.1** (out/2026): M12 (cor da página do PDF) e correções (camada de creme/sépia, avisos acima do rodapé, noite sem
 clarão). Tag `v0.3.1`, Release como pre-release.
 
+- [x] **M13 — Aparência: Interface · Página · Texto**: "tema" deixou de significar três coisas. **Interface**
+  (claro, escuro, alto contraste, do sistema) só pinta o app; **Página** (automática, original, creme, sépia, noite)
+  é o papel do livro, com os mesmos nomes e amostras no EPUB e no PDF; **Texto** é a tipografia (só EPUB). Página
+  automática segue a interface (escura → noite); interface em alto contraste força a página do EPUB. Preferências
+  antigas migradas no core (tema sépia → interface clara + página sépia; `paginaPdf` → `pagina`).
 - [ ] **Depois**: paleta de comandos, slider de páginas, modo foco, destaques…
 
 ## Futuro
