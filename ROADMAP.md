@@ -64,8 +64,11 @@ a Lixeira é outro estado do livro. A busca continua no topo e filtra a vista at
   - [x] M10b — interface: seção "Coleções" na barra lateral (contagem, "Nova coleção"); na vista da coleção,
     Renomear e Apagar; no menu do livro, "Adicionar à coleção…" (diálogo com caixas de seleção e criar ali mesmo) e
     "Tirar desta coleção"; ícone de pasta "Coleções" na linha de ícones do card
-- [ ] **M11 — Autores e Séries**: agrupar por autor (metadados que já existem); séries só se valer a pena
-  (metadado frágil em PDF e em muitos EPUBs).
+- [x] **M11 — Autores**: item "Autores" na barra lateral abre a lista de autores (com quantos livros cada um tem e a
+  busca filtrando); escolher um autor mostra os livros dele. Tudo no frontend (`lib/autores.ts`): grafias que só
+  diferem em acentos ou maiúsculas contam como o mesmo autor; livros sem autor em "Autor desconhecido".
+- [ ] **Séries** (adiado, decisão de out/2026): ler `calibre:series` (EPUB 2) e `belongs-to-collection` (EPUB 3) no
+  core, migração e releitura dos livros já importados. Só se fizer falta: PDFs e muitos EPUBs não trazem série.
 - [ ] **Depois**: paleta de comandos, slider de páginas, modo foco, destaques…
 
 ## Futuro

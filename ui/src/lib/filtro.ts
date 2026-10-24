@@ -1,12 +1,21 @@
 // Busca e filtros da biblioteca. Funções puras: a lista inteira já está na memória da
 // interface, então filtrar a cada tecla é instantâneo, sem ir ao core.
+import { chavesDoLivro } from "./autores";
 import type { Livro } from "./biblioteca";
 
 /** As vistas fixas da barra lateral. */
 export type Vista = "todos" | "favoritos" | "lendo" | "para-ler" | "lidos" | "lixeira";
 
-/** O que a grade mostra: uma vista fixa ou uma coleção (`colecao:<id>`). */
-export type Filtro = Vista | `colecao:${number}`;
+/**
+ * O que a área principal mostra: uma vista fixa, a lista de autores (`autores`), os livros de
+ * um autor (`autor:<chave>`, ver lib/autores.ts) ou os de uma coleção (`colecao:<id>`).
+ */
+export type Filtro = Vista | "autores" | `autor:${string}` | `colecao:${number}`;
+
+/** Chave do autor, se o filtro for de um autor ("" = livros sem autor). */
+export function chaveDoAutor(filtro: Filtro): string | null {
+  return filtro.startsWith("autor:") ? filtro.slice("autor:".length) : null;
+}
 
 /** Id da coleção, se o filtro for de coleção. */
 export function idDaColecao(filtro: Filtro): number | null {
@@ -46,9 +55,18 @@ function naColecao(id: number): (livro: Livro) => boolean {
   return (l) => l.removidoEm === null && l.colecoes.includes(id);
 }
 
+function doAutor(chave: string): (livro: Livro) => boolean {
+  return (l) => l.removidoEm === null && chavesDoLivro(l).includes(chave);
+}
+
 function naSituacao(livros: Livro[], filtro: Filtro): Livro[] {
+  // A lista de autores não é uma estante de livros.
+  if (filtro === "autores") return [];
   const colecao = idDaColecao(filtro);
-  return livros.filter(colecao === null ? NA_ESTANTE[filtro as Vista] : naColecao(colecao));
+  if (colecao !== null) return livros.filter(naColecao(colecao));
+  const autor = chaveDoAutor(filtro);
+  if (autor !== null) return livros.filter(doAutor(autor));
+  return livros.filter(NA_ESTANTE[filtro as Vista]);
 }
 
 /** O que a grade mostra: a busca e o filtro juntos, na ordem original (atividade recente). */

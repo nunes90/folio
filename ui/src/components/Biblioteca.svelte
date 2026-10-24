@@ -4,9 +4,12 @@
     contarPorColecao,
     contarPorFiltro,
     filtrarLivros,
+    chaveDoAutor,
     idDaColecao,
     type Filtro,
   } from "../lib/filtro";
+  import { agruparPorAutor } from "../lib/autores";
+  import ListaAutores from "./ListaAutores.svelte";
   import type { Preferencias } from "../lib/preferencias.svelte";
   import type { TemaEfetivo } from "../lib/temas";
   import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
@@ -83,6 +86,34 @@
     ),
   );
   // Coleção aberta (se o filtro for de coleção).
+  // Autores: a lista (com a busca) e o autor aberto, pela chave do filtro.
+  const autores = $derived(agruparPorAutor(todos, termo));
+  const naListaDeAutores = $derived(filtro === "autores");
+  const autorAtual = $derived.by(() => {
+    const chave = chaveDoAutor(filtro);
+    return chave === null ? null : (agruparPorAutor(todos).find((a) => a.chave === chave) ?? null);
+  });
+  /** Autor de onde se voltou para a lista: recebe o foco nela. */
+  let voltandoDe = $state<string | null>(null);
+  let tituloAutor = $state<HTMLHeadingElement>();
+
+  async function abrirAutor(chave: string) {
+    voltandoDe = null;
+    filtro = `autor:${chave}`;
+    await tick();
+    tituloAutor?.focus();
+  }
+
+  function voltarParaAutores() {
+    voltandoDe = chaveDoAutor(filtro);
+    filtro = "autores";
+  }
+
+  // O autor aberto sumiu (ex.: os livros dele foram para a lixeira): volta para a lista.
+  $effect(() => {
+    if (chaveDoAutor(filtro) !== null && !autorAtual) filtro = "autores";
+  });
+
   const colecaoAtual = $derived.by(() => {
     const id = idDaColecao(filtro);
     return id === null ? null : (colecoes.find((c) => c.id === id) ?? null);
@@ -133,11 +164,15 @@
   }
   /** Para o leitor de tela: quantos livros a busca ou o filtro deixaram na grade. */
   const anuncioBusca = $derived(
-    !filtrando
+    !filtrando || (naListaDeAutores && !termo.trim())
       ? ""
-      : visiveis.length === 1
-        ? "1 livro encontrado"
-        : `${visiveis.length} livros encontrados`,
+      : naListaDeAutores
+        ? autores.length === 1
+          ? "1 autor encontrado"
+          : `${autores.length} autores encontrados`
+        : visiveis.length === 1
+          ? "1 livro encontrado"
+          : `${visiveis.length} livros encontrados`,
   );
 
   function limparBusca() {
@@ -286,6 +321,7 @@
         {contagens}
         {colecoes}
         {contagensColecoes}
+        quantidadeAutores={autores.length}
         onEscolher={escolher}
         {onNovaColecao}
       />
@@ -317,6 +353,7 @@
         {contagens}
         {colecoes}
         {contagensColecoes}
+        quantidadeAutores={autores.length}
         onEscolher={escolher}
         {onNovaColecao}
       />
@@ -388,6 +425,27 @@
     {:else}
       <p class="so-leitor-de-tela" role="status">{anuncioBusca}</p>
 
+      {#if naListaDeAutores}
+        <div class="cabeca-colecao"><h2>Autores</h2></div>
+        {#if autores.length}
+          <ListaAutores {autores} focar={voltandoDe} onEscolher={abrirAutor} />
+        {:else}
+          <div class="sem-resultado">
+            <p>Nenhum autor encontrado para “{termo.trim()}”.</p>
+            <button type="button" onclick={limparBusca}>Limpar busca</button>
+          </div>
+        {/if}
+      {/if}
+
+      {#if autorAtual}
+        <div class="cabeca-colecao">
+          <button type="button" class="voltar" aria-label="Voltar para Autores" onclick={voltarParaAutores}>
+            <Icone nome="anterior" /><span>Autores</span>
+          </button>
+          <h2 tabindex="-1" bind:this={tituloAutor}>{autorAtual.nome}</h2>
+        </div>
+      {/if}
+
       {#if colecaoAtual}
         <div class="cabeca-colecao">
           <h2>{colecaoAtual.nome}</h2>
@@ -407,7 +465,7 @@
         </div>
       {/if}
 
-      {#if visiveis.length === 0}
+      {#if visiveis.length === 0 && !naListaDeAutores}
         <div class="sem-resultado">
           {#if termo.trim()}
             <p>Nenhum livro encontrado para “{termo.trim()}”.</p>
@@ -840,6 +898,25 @@
 
   .cabeca-colecao button {
     border-radius: var(--raio);
+  }
+
+  .cabeca-colecao h2:focus {
+    outline: none;
+  }
+
+  .voltar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    order: -1;
+    flex: none;
+    border-color: transparent;
+    background: transparent;
+    color: var(--destaque);
+  }
+
+  .voltar:hover {
+    background: var(--hover);
   }
 
   .aviso-lixeira {
