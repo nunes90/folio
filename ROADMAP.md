@@ -76,6 +76,10 @@ a Lixeira é outro estado do livro. A busca continua no topo e filtra a vista at
   amostra. Creme e sépia: camada `multiply` (o preto continua preto). Noite: `invert(0.9) hue-rotate(180deg)` aplicado
   nos pixels de cada página desenhada (filtro CSS derrubava a virada para ~30 qps no WebKitGTK; o `ctx.filter` não
   funciona nele). A área ao redor das páginas segue o tema (M7).
+
+**v0.3.1** (out/2026): M12 (cor da página do PDF) e correções (camada de creme/sépia, avisos acima do rodapé, noite sem
+clarão). Tag `v0.3.1`, Release como pre-release.
+
 - [ ] **Depois**: paleta de comandos, slider de páginas, modo foco, destaques…
 
 ## Futuro
