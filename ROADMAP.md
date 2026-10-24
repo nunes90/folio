@@ -101,7 +101,11 @@ Release como pre-release.
 - [x] **M15 — Modo foco**: só o livro na tela (botão, Ctrl+Shift+F ou paleta; Esc sai). As barras flutuam por cima
   quando chamadas (ponteiro na borda ou Tab), sem repaginar o livro; progresso discreto no canto. Igual no EPUB e no
   PDF. Não é lembrado entre as sessões.
-- [ ] **Depois**: slider de páginas, destaques…
+**v0.5.0** (out/2026): M14 (paleta de comandos) e M15 (modo foco). Tag `v0.5.0`, Release como pre-release.
+
+- [ ] **M16 — Destaques e notas**: M16a core (tabela, funções, exportar Markdown); M16b EPUB (barra de seleção,
+  painel Destaques, paleta); M16c PDF (camada própria sobre o pdf.js, sem alterar o arquivo).
+- [ ] **Depois**: slider de páginas…
 
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.

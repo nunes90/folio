@@ -285,5 +285,6 @@ docs/decisions/  # ADRs
   0 com o rodapé escondido. Progresso decorativo no canto. No PDF, um `ResizeObserver` refaz o zoom "página
   inteira"/"largura" quando a área muda (foco, painéis, janela); as setas não rolam (→/← viram e, com a página
   inteira na tela, ↑/↓ também), e a busca (Ctrl+F) ignora Ctrl+Shift+F. Não é lembrado entre as sessões.
-- Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
+- **v0.5.0** (out/2026): tag assinada `v0.5.0` (M14 + M15) e Release no GitHub como pre-release.
+- Próximo passo: M16 (destaques e notas): M16a core, M16b EPUB, M16c PDF. (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.
