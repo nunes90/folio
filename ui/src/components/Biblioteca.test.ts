@@ -469,6 +469,58 @@ describe("Biblioteca", () => {
       });
     });
 
+    describe("autores", () => {
+      const comAutores = () => ({
+        ...props(),
+        livros: [
+          livro({ id: "a", titulo: "Dom Casmurro", autores: ["Machado de Assis"] }),
+          livro({ id: "b", titulo: "Quincas Borba", autores: ["Machado de Assis"] }),
+          livro({ id: "c", titulo: "O Cortiço", autores: ["Aluísio Azevedo"] }),
+        ],
+        lixeira: [],
+      });
+      const listaDeAutores = () => screen.getByRole("list", { name: "Autores" });
+
+      it("o item Autores fica na barra (depois de Lidos) e abre a lista com quantos livros cada um tem", async () => {
+        render(Biblioteca, comAutores());
+        await fireEvent.click(naBarra(/^Autores 2$/));
+        const nomes = within(listaDeAutores())
+          .getAllByRole("button")
+          .map((b) => b.textContent?.replace(/\s+/g, " ").trim());
+        expect(nomes).toEqual(["Aluísio Azevedo 1", "Machado de Assis 2"]);
+        expect(itensDaGrade()).toHaveLength(0);
+      });
+
+      it("escolher um autor mostra os livros dele; Voltar devolve o foco ao autor na lista", async () => {
+        render(Biblioteca, comAutores());
+        await fireEvent.click(naBarra(/^Autores/));
+        await fireEvent.click(within(listaDeAutores()).getByRole("button", { name: /^Machado/ }));
+        expect(screen.getByRole("heading", { name: "Machado de Assis" })).toBeTruthy();
+        expect(itensDaGrade()).toHaveLength(2);
+        // Navegando dentro de Autores, o item da barra continua o atual.
+        expect(naBarra(/^Autores/).getAttribute("aria-current")).toBe("page");
+        await fireEvent.click(screen.getByRole("button", { name: "Voltar para Autores" }));
+        await tick();
+        expect(document.activeElement).toBe(
+          within(listaDeAutores()).getByRole("button", { name: /^Machado/ }),
+        );
+      });
+
+      it("setas andam pela lista de autores; a busca filtra os autores", async () => {
+        render(Biblioteca, comAutores());
+        await fireEvent.click(naBarra(/^Autores/));
+        const [primeiro, segundo] = within(listaDeAutores()).getAllByRole("button");
+        expect(primeiro!.tabIndex).toBe(0);
+        expect(segundo!.tabIndex).toBe(-1);
+        primeiro!.focus();
+        await fireEvent.keyDown(primeiro!, { key: "ArrowDown" });
+        expect(document.activeElement).toBe(segundo);
+        await fireEvent.input(screen.getByRole("searchbox"), { target: { value: "aluisio" } });
+        expect(within(listaDeAutores()).getAllByRole("button")).toHaveLength(1);
+        expect(screen.getByText("1 autor encontrado")).toBeTruthy();
+      });
+    });
+
     it("sem onAcao, não há menu nem atalhos de ação", () => {
       render(Biblioteca, { livros, ...semAcao });
       expect(screen.queryByRole("button", { name: /^Mais ações/ })).toBeNull();

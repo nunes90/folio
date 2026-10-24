@@ -11,6 +11,7 @@
     contagens,
     colecoes = [],
     contagensColecoes = {},
+    quantidadeAutores,
     onEscolher,
     onNovaColecao,
   }: {
@@ -19,12 +20,22 @@
     colecoes?: Colecao[];
     /** Livros de cada coleção com a busca atual (por id). */
     contagensColecoes?: Record<number, number>;
+    /** Se presente, mostra o item "Autores" (com o número de autores). */
+    quantidadeAutores?: number;
     onEscolher: (estante: Filtro) => void;
     /** Se presente, mostra "Nova coleção" (pede o nome). */
     onNovaColecao?: () => void;
   } = $props();
 
-  type IconeEstante = "grade" | "estrela" | "livro" | "marcador" | "lido" | "lixeira" | "pasta";
+  type IconeEstante =
+    | "grade"
+    | "estrela"
+    | "livro"
+    | "marcador"
+    | "lido"
+    | "lixeira"
+    | "pasta"
+    | "pessoa";
   type Item = { valor: Filtro; nome: string; icone: IconeEstante; contagem: number };
   const VISTAS: { valor: Vista; nome: string; icone: IconeEstante }[] = [
     { valor: "todos", nome: "Todos", icone: "grade" },
@@ -50,11 +61,19 @@
     icone: "lixeira",
     contagem: contagens.lixeira,
   });
-  const todos = $derived([...vistas, ...itensColecoes, lixeira]);
+  // "Autores" abre a lista de autores; dentro dela (um autor aberto), o item continua o atual.
+  const autores = $derived<Item[]>(
+    quantidadeAutores === undefined
+      ? []
+      : [{ valor: "autores", nome: "Autores", icone: "pessoa", contagem: quantidadeAutores }],
+  );
+  const naVista = (item: Item) =>
+    item.valor === atual || (item.valor === "autores" && atual.startsWith("autor:"));
+  const todos = $derived([...vistas, ...autores, ...itensColecoes, lixeira]);
 
   let lista: HTMLUListElement;
   // A parada de Tab acompanha a estante atual.
-  let foco = $derived(Math.max(0, todos.findIndex((e) => e.valor === atual)));
+  let foco = $derived(Math.max(0, todos.findIndex(naVista)));
 
   function aoTeclar(e: KeyboardEvent) {
     // "Nova coleção" é uma ação, não uma estante: tem parada de Tab própria e fica fora das setas.
@@ -78,7 +97,7 @@
     type="button"
     class="estante"
     tabindex={i === foco ? 0 : -1}
-    aria-current={item.valor === atual ? "page" : undefined}
+    aria-current={naVista(item) ? "page" : undefined}
     onfocus={() => (foco = i)}
     onclick={() => onEscolher(item.valor)}
   >
@@ -95,10 +114,14 @@
     <li>{@render estante(item, i)}</li>
   {/each}
 
+  {#each autores as item (item.valor)}
+    <li>{@render estante(item, vistas.length)}</li>
+  {/each}
+
   {#if colecoes.length || onNovaColecao}
     <li class="separada"><h2 class="titulo-secao">Coleções</h2></li>
     {#each itensColecoes as item, i (item.valor)}
-      <li>{@render estante(item, vistas.length + i)}</li>
+      <li>{@render estante(item, vistas.length + autores.length + i)}</li>
     {/each}
     {#if onNovaColecao}
       <li>

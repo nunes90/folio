@@ -210,5 +210,10 @@ docs/decisions/  # ADRs
   adicionar"). Menu do livro: "Adicionar à coleção…" e, dentro de uma coleção, "Tirar desta coleção" (aviso com
   Desfazer). Na linha de ícones do card, a pasta "Coleções" abre o mesmo diálogo (`aria-haspopup="dialog"`, não é
   liga/desliga; destacada e cheia se o livro está em alguma coleção, `title` com a quantidade).
-- **M10 concluído.** Próximo passo: marcar a v0.3.0 (M9 + M10) ou o M11 (autores e séries). M6 (empacotamento) em
-  aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o destaque da frase lida.
+- **M10 concluído.**
+- **M11** (branch `feat/m11-autores`): só Autores (Séries adiado). `lib/autores.ts`: `agruparPorAutor` (chave =
+  `normalizar(nome)`; grafia mais comum; "Autor desconhecido" no fim; lixeira fora; `termo` filtra) e
+  `chavesDoLivro`. `Filtro` ganha `autores` (a lista) e `autor:<chave>` (os livros do autor). Barra: item "Autores"
+  depois de Lidos (atual também dentro de um autor). `ListaAutores.svelte` (roving ↑↓/Home/End; ao voltar, foco no
+  autor de onde se saiu). Vista do autor com "‹ Autores" e o nome (foco no título ao abrir).
+- Próximo passo: marcar a v0.3.0 (M9 + M10 + M11). M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o destaque da frase lida.
