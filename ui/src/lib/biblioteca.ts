@@ -1,6 +1,6 @@
 // Acesso à biblioteca (crates/core/src/biblioteca.rs) pelos comandos do Tauri.
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { log } from "./log";
 
 /** Espelha `LivroNaBiblioteca` do core (serializado em camelCase). */
@@ -137,6 +137,15 @@ export function adicionarAColecao(colecao: number, livro: string): Promise<void>
 
 export function removerDaColecao(colecao: number, livro: string): Promise<void> {
   return invoke("remover_da_colecao", { colecao, livro });
+}
+
+/** Diálogo "Salvar como" para o Markdown dos destaques; null se cancelado. */
+export function escolherDestinoMarkdown(nomeSugerido: string): Promise<string | null> {
+  return save({
+    title: "Exportar destaques",
+    defaultPath: nomeSugerido,
+    filters: [{ name: "Markdown", extensions: ["md"] }],
+  });
 }
 
 export function listarDestaques(livro: string): Promise<Destaque[]> {

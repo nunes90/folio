@@ -42,6 +42,14 @@ export interface Paginador extends HTMLElement {
   prev(): Promise<void>;
 }
 
+/** Anotação do foliate-js: `value` é o CFI do trecho (os destaques, M16). */
+export interface Anotacao {
+  value: string;
+}
+
+/** Desenho de um destaque (ex.: `Overlayer.highlight`): recebe os retângulos do trecho. */
+export type Desenho = (retangulos: DOMRectList, opcoes: { color: string }) => SVGElement;
+
 export interface FoliateView extends HTMLElement {
   book: Livro;
   renderer: Paginador;
@@ -52,10 +60,26 @@ export interface FoliateView extends HTMLElement {
   init(opcoes: { lastLocation?: string | null; showTextStart?: boolean }): Promise<void>;
   close(): void;
   goTo(alvo: string | number): Promise<void>;
+  /** CFI de um trecho (`range`) da seção `indice`. */
+  getCFI(indice: number, range: Range): string;
+  /** Item do índice em que o trecho está. */
+  getProgressOf(indice: number, range: Range): { tocItem?: { label: string; href: string } };
+  /** Onde cada seção começa no livro (0 a 1). */
+  getSectionFractions(): number[];
+  /** Desenha (ou redesenha) a anotação, se a seção dela estiver carregada: dispara "draw-annotation". */
+  addAnnotation(anotacao: Anotacao): Promise<unknown>;
+  deleteAnnotation(anotacao: Anotacao): Promise<unknown>;
   goLeft(): Promise<void>;
   goRight(): Promise<void>;
   prev(): Promise<void>;
   next(): Promise<void>;
+}
+
+/** O marca-texto do foliate-js (`Overlayer.highlight`). */
+export async function desenhoMarcaTexto(): Promise<Desenho> {
+  // @ts-expect-error -- o foliate-js não publica tipos (o view.js é importado só pelo efeito).
+  const { Overlayer } = await import("../vendor/foliate-js/overlayer.js");
+  return Overlayer.highlight as Desenho;
 }
 
 /** Registra o elemento <foliate-view> (import com efeito colateral) e cria uma instância. */

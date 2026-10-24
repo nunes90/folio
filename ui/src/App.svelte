@@ -626,6 +626,7 @@
 {:else if aberto}
   <Leitor
     arquivo={new File([aberto.dados], `${aberto.livro.id}.epub`, { type: "application/epub+zip" })}
+    livroId={aberto.livro.id}
     inicio={aberto.inicio}
     onFechar={fechar}
     onProgresso={aoProgredir}
