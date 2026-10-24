@@ -23,6 +23,7 @@ function livro(parcial: Partial<Livro> = {}): Livro {
     removidoEm: null,
     favoritoEm: null,
     colecoes: [],
+    destaques: 0,
     ...parcial,
   };
 }

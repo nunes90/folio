@@ -286,5 +286,14 @@ docs/decisions/  # ADRs
   inteira"/"largura" quando a área muda (foco, painéis, janela); as setas não rolam (→/← viram e, com a página
   inteira na tela, ↑/↓ também), e a busca (Ctrl+F) ignora Ctrl+Shift+F. Não é lembrado entre as sessões.
 - **v0.5.0** (out/2026): tag assinada `v0.5.0` (M14 + M15) e Release no GitHub como pre-release.
-- Próximo passo: M16 (destaques e notas): M16a core, M16b EPUB, M16c PDF. (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
+- **M16a** (branch `feat/m16a-destaques-core`): `core::destaques` com um segundo `impl Biblioteca` (campos `conexao` e
+  `relogio` e `gravar` viraram `pub(crate)`). Migração 6: `destaques` (livro, `local` = CFI de intervalo no EPUB,
+  trecho, cor, nota, capítulo, `posicao` 0–1 para a ordem de leitura, datas; `ON DELETE CASCADE`). `Cor` (amarelo |
+  verde | azul | rosa, kebab-case; texto desconhecido → amarelo). `criar_destaque` (trecho/nota/capítulo aparados;
+  trecho ou local vazio → erro; posição cortada em 0–1, NaN → 0), `listar_destaques` (posição, criação),
+  `definir_cor_do_destaque`, `definir_nota_do_destaque` (vazia apaga), `apagar_destaque` (devolve o apagado) e
+  `restaurar_destaque` (mesmo id e datas: Desfazer), `exportar_destaques` / `para_markdown` (puro; `##` quando o
+  capítulo muda, trecho em citação, nota abaixo; snapshot). `LivroNaBiblioteca.destaques` (contagem). Comandos finos
+  e tipos TS (`Destaque`, `NovoDestaque`, `CorDestaque`) prontos.
+- Próximo passo: M16b (destaques no EPUB), depois M16c (PDF). (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.

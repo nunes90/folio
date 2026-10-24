@@ -27,6 +27,7 @@ function livro(
     removidoEm: naLixeira ? 9 : null,
     favoritoEm: favorito ? 3 : null,
     colecoes: [],
+    destaques: 0,
   };
 }
 

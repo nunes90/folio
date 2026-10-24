@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use leitor_core::biblioteca::{Biblioteca, Colecao, Importado, LivroNaBiblioteca, Progresso};
+use leitor_core::destaques::{Cor, Destaque, NovoDestaque};
 use leitor_core::epub::Capa;
 use leitor_core::preferencias::PreferenciasLeitura;
 use leitor_core::voz::{ConfigVoz, MotorDeVoz};
@@ -131,6 +132,88 @@ pub fn remover_da_colecao(
     bib.lock()
         .unwrap()
         .remover_da_colecao(colecao, &livro)
+        .map_err(|e| registrar(&e))
+}
+
+/// Destaques do livro na ordem de leitura.
+#[tauri::command]
+pub fn listar_destaques(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+) -> Result<Vec<Destaque>, String> {
+    bib.lock()
+        .unwrap()
+        .listar_destaques(&livro)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn criar_destaque(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+    novo: NovoDestaque,
+) -> Result<Destaque, String> {
+    bib.lock()
+        .unwrap()
+        .criar_destaque(&livro, novo)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn definir_cor_destaque(
+    bib: State<'_, EstadoBiblioteca>,
+    id: i64,
+    cor: Cor,
+) -> Result<Destaque, String> {
+    bib.lock()
+        .unwrap()
+        .definir_cor_do_destaque(id, cor)
+        .map_err(|e| registrar(&e))
+}
+
+/// `nota` nula ou só com espaços apaga a nota.
+#[tauri::command]
+pub fn definir_nota_destaque(
+    bib: State<'_, EstadoBiblioteca>,
+    id: i64,
+    nota: Option<String>,
+) -> Result<Destaque, String> {
+    bib.lock()
+        .unwrap()
+        .definir_nota_do_destaque(id, nota.as_deref())
+        .map_err(|e| registrar(&e))
+}
+
+/// Devolve o destaque apagado, para o "Desfazer" (`restaurar_destaque`).
+#[tauri::command]
+pub fn apagar_destaque(bib: State<'_, EstadoBiblioteca>, id: i64) -> Result<Destaque, String> {
+    bib.lock()
+        .unwrap()
+        .apagar_destaque(id)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn restaurar_destaque(
+    bib: State<'_, EstadoBiblioteca>,
+    destaque: Destaque,
+) -> Result<Destaque, String> {
+    bib.lock()
+        .unwrap()
+        .restaurar_destaque(&destaque)
+        .map_err(|e| registrar(&e))
+}
+
+/// Grava os destaques do livro em Markdown no caminho escolhido; devolve quantos foram.
+#[tauri::command]
+pub fn exportar_destaques(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+    caminho: PathBuf,
+) -> Result<usize, String> {
+    bib.lock()
+        .unwrap()
+        .exportar_destaques(&livro, &caminho)
         .map_err(|e| registrar(&e))
 }
 

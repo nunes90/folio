@@ -26,6 +26,7 @@ function livro(titulo: string): Livro {
     removidoEm: null,
     favoritoEm: null,
     colecoes: [],
+    destaques: 0,
   };
 }
 
