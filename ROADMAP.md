@@ -85,6 +85,14 @@ clarão). Tag `v0.3.1`, Release como pre-release.
   é o papel do livro, com os mesmos nomes e amostras no EPUB e no PDF; **Texto** é a tipografia (só EPUB). Página
   automática segue a interface (escura → noite); interface em alto contraste força a página do EPUB. Preferências
   antigas migradas no core (tema sépia → interface clara + página sépia; `paginaPdf` → `pagina`).
+- [x] **Correções**: capas que sumiram do cache são refeitas ao abrir a biblioteca; o progresso é gravado a cada
+  mudança de página (a espera de 1 s perdia a última página ao fechar a janela).
+- [x] **Painéis flutuantes**: painéis do leitor e barra de estantes viram cartões com margem, cantos arredondados e
+  sombra leve.
+
+**v0.4.0** (out/2026): M13 (Interface · Página · Texto), capas e progresso, painéis flutuantes. Tag `v0.4.0`,
+Release como pre-release.
+
 - [ ] **Depois**: paleta de comandos, slider de páginas, modo foco, destaques…
 
 ## Futuro
