@@ -1,12 +1,15 @@
 // Busca e filtros da biblioteca. Funções puras: a lista inteira já está na memória da
 // interface, então filtrar a cada tecla é instantâneo, sem ir ao core.
-import type { Livro, Situacao } from "./biblioteca";
+import type { Livro } from "./biblioteca";
 
-export type Filtro = "todos" | "lendo" | "concluidos";
+/** As estantes da barra lateral (vistas da biblioteca). */
+export type Filtro = "todos" | "lendo" | "para-ler" | "lidos";
 
-const SITUACAO_DO_FILTRO: Record<Exclude<Filtro, "todos">, Situacao> = {
-  lendo: "lendo",
-  concluidos: "concluido",
+const NA_ESTANTE: Record<Filtro, (livro: Livro) => boolean> = {
+  todos: () => true,
+  lendo: (l) => l.situacao === "lendo",
+  "para-ler": (l) => l.paraLerEm !== null,
+  lidos: (l) => l.situacao === "concluido",
 };
 
 /** Minúsculas, sem acentos e sem espaços nas pontas: "Aluísio" e "aluisio" se encontram. */
@@ -29,8 +32,7 @@ function buscar(livros: Livro[], termo: string): Livro[] {
 }
 
 function naSituacao(livros: Livro[], filtro: Filtro): Livro[] {
-  if (filtro === "todos") return livros;
-  return livros.filter((l) => l.situacao === SITUACAO_DO_FILTRO[filtro]);
+  return filtro === "todos" ? livros : livros.filter(NA_ESTANTE[filtro]);
 }
 
 /** O que a grade mostra: a busca e o filtro juntos, na ordem original (atividade recente). */
@@ -44,6 +46,7 @@ export function contarPorFiltro(livros: Livro[], termo: string): Record<Filtro, 
   return {
     todos: achados.length,
     lendo: naSituacao(achados, "lendo").length,
-    concluidos: naSituacao(achados, "concluidos").length,
+    "para-ler": naSituacao(achados, "para-ler").length,
+    lidos: naSituacao(achados, "lidos").length,
   };
 }

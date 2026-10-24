@@ -6,7 +6,11 @@
   import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
   import { fade } from "svelte/transition";
   import { curva, duracao } from "../lib/animacao";
+  import { tick } from "svelte";
+  import { sistema } from "../lib/ambiente.svelte";
+  import Estantes from "./Estantes.svelte";
   import Icone from "./Icone.svelte";
+  import PainelLateral from "./PainelLateral.svelte";
   import PainelTema from "./PainelTema.svelte";
 
   let {
@@ -46,11 +50,29 @@
   const visiveis = $derived(filtrarLivros(livros, termo, filtro));
   const contagens = $derived(contarPorFiltro(livros, termo));
   const filtrando = $derived(termo.trim() !== "" || filtro !== "todos");
-  const FILTROS: { valor: Filtro; nome: string }[] = [
-    { valor: "todos", nome: "Todos" },
-    { valor: "lendo", nome: "Lendo" },
-    { valor: "concluidos", nome: "Concluídos" },
-  ];
+
+  // Estantes: barra lateral; na janela estreita, um painel aberto pelo botão "Estantes"
+  // (como os painéis do leitor, M5d).
+  const estreita = $derived(sistema.estreita);
+  let estantesAbertas = $state(false);
+  let botaoEstantes = $state<HTMLButtonElement>();
+
+  async function alternarEstantes() {
+    estantesAbertas = !estantesAbertas;
+    if (!estantesAbertas) return;
+    await tick();
+    document.getElementById("estantes")?.focus();
+  }
+
+  function fecharEstantes() {
+    estantesAbertas = false;
+    botaoEstantes?.focus();
+  }
+
+  function escolher(estante: Filtro) {
+    filtro = estante;
+    if (estreita && estantesAbertas) fecharEstantes();
+  }
   /** Para o leitor de tela: quantos livros a busca ou o filtro deixaram na grade. */
   const anuncioBusca = $derived(
     !filtrando
@@ -67,6 +89,11 @@
 
   // Ctrl+F leva à busca e Ctrl+O importa (na biblioteca; nos leitores, o Ctrl+F é deles).
   function aoTeclarJanela(e: KeyboardEvent) {
+    if (e.key === "Escape" && estantesAbertas && !e.defaultPrevented) {
+      e.preventDefault();
+      fecharEstantes();
+      return;
+    }
     if (!e.ctrlKey || e.altKey) return;
     const tecla = e.key.toLowerCase();
     if (tecla === "f" && campoBusca) {
@@ -145,7 +172,7 @@
   function situacao(livro: Livro): string {
     // A regra (inclusive "o que arredonda para 100% está concluído") fica no core.
     if (livro.situacao === "nao-iniciado" || livro.fracao == null) return "Não iniciado";
-    if (livro.situacao === "concluido") return "Concluído";
+    if (livro.situacao === "concluido") return "Lido";
     // Sem isso, um livro recém-aberto apareceria como "0% lido", igual a não iniciado.
     if (livro.fracao > 0 && livro.fracao < 0.01) return "menos de 1% lido";
     return `${porcento.format(livro.fracao)} lido`;
@@ -186,149 +213,227 @@
     </div>
   {/if}
 
-  <header>
-    <h1>Biblioteca</h1>
-    {#if livros.length}
-      <search class="busca">
-        <Icone nome="buscar" />
-        <input
-          type="search"
-          bind:this={campoBusca}
-          bind:value={termo}
-          aria-label="Buscar na biblioteca"
-          aria-keyshortcuts="Control+F"
-          placeholder="Título ou autor"
-        />
-      </search>
+  {#if livros.length && !estreita}
+    <nav class="barra" aria-label="Estantes">
+      <Estantes atual={filtro} {contagens} onEscolher={escolher} />
+    </nav>
+  {/if}
+
+  {#if livros.length && estreita}
+    {#if estantesAbertas}
+      <!-- Só para o mouse: no teclado, Esc fecha o painel. -->
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+      <div
+        class="veu"
+        aria-hidden="true"
+        onclick={fecharEstantes}
+        transition:fade={{ duration: duracao("media"), easing: curva }}
+      ></div>
     {/if}
-    <div class="acoes">
-      {#if preferencias}
+    <div class="gaveta">
+      <PainelLateral
+        id="estantes"
+        rotulo="Estantes"
+        aberto={estantesAbertas}
+        lado="inicio"
+        elemento="nav"
+        onFechar={fecharEstantes}
+      >
+        <Estantes atual={filtro} {contagens} onEscolher={escolher} />
+      </PainelLateral>
+    </div>
+  {/if}
+
+  <div class="principal">
+    <header>
+      {#if livros.length && estreita}
         <button
           type="button"
           class="secundario"
-          aria-expanded={aparenciaAberta}
-          aria-controls="aparencia-biblioteca"
-          onclick={() => (aparenciaAberta = !aparenciaAberta)}
+          bind:this={botaoEstantes}
+          aria-expanded={estantesAbertas}
+          aria-controls="estantes"
+          onclick={alternarEstantes}
         >
-          <Icone nome="aparencia" /><span class="rotulo">Aparência</span>
+          <Icone nome="grade" /><span class="rotulo">Estantes</span>
         </button>
       {/if}
-      <!-- Biblioteca vazia: o botão de importar fica só no centro, junto da explicação. -->
-      <!-- (Ctrl+O importa de qualquer lugar da biblioteca.) -->
+      <h1>Biblioteca</h1>
       {#if livros.length}
-        {@render botaoImportar()}
+        <search class="busca">
+          <Icone nome="buscar" />
+          <input
+            type="search"
+            bind:this={campoBusca}
+            bind:value={termo}
+            aria-label="Buscar na biblioteca"
+            aria-keyshortcuts="Control+F"
+            placeholder="Título ou autor"
+          />
+        </search>
       {/if}
-    </div>
-  </header>
-
-  {#if preferencias && onMudarPreferencias}
-    <section id="aparencia-biblioteca" aria-label="Aparência" hidden={!aparenciaAberta}>
-      <PainelTema {preferencias} onMudar={onMudarPreferencias} {temaDoSistema} />
-    </section>
-  {/if}
-
-  {#if livros.length === 0}
-    <section class="vazia" aria-labelledby="titulo-vazia">
-      <span class="icone-vazia"><Icone nome="livro" /></span>
-      <h2 id="titulo-vazia">Sua biblioteca está vazia</h2>
-      <p>Importe um EPUB ou PDF para começar. O arquivo original fica onde está: a biblioteca guarda uma cópia.</p>
-      {@render botaoImportar()}
-    </section>
-  {:else}
-    <div class="filtros" role="group" aria-label="Mostrar">
-      {#each FILTROS as f (f.valor)}
-        <button
-          type="button"
-          aria-pressed={filtro === f.valor}
-          onclick={() => (filtro = f.valor)}
-        >
-          {f.nome} <span class="contagem">{contagens[f.valor]}</span>
-        </button>
-      {/each}
-    </div>
-    <p class="so-leitor-de-tela" role="status">{anuncioBusca}</p>
-
-    {#if visiveis.length === 0}
-      <div class="sem-resultado">
-        {#if termo.trim()}
-          <p>Nenhum livro encontrado para “{termo.trim()}”.</p>
-          <button type="button" onclick={limparBusca}>Limpar busca</button>
-        {:else}
-          <p>Nenhum livro nesta lista ainda.</p>
-          <button type="button" onclick={() => (filtro = "todos")}>Mostrar todos</button>
-        {/if}
-      </div>
-    {/if}
-
-    <!-- As setas são tratadas no <ul> (delegação): o evento sobe do botão focado. -->
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <ul bind:this={lista} onkeydown={aoTeclar} aria-label="Livros" hidden={!visiveis.length}>
-      {#each visiveis as livro, i (livro.id)}
-        {@const capa = urlDaCapa(livro)}
-        <li>
+      <div class="acoes">
+        {#if preferencias}
           <button
             type="button"
-            class="livro"
-            tabindex={i === ativo ? 0 : -1}
-            aria-keyshortcuts={onRemover ? "Delete" : undefined}
-            onfocus={() => (ativo = i)}
-            onclick={() => onAbrir(livro)}
+            class="secundario"
+            aria-expanded={aparenciaAberta}
+            aria-controls="aparencia-biblioteca"
+            onclick={() => (aparenciaAberta = !aparenciaAberta)}
           >
-            <span class="capa">
-              {#if capa}
-                <!-- alt vazio: o título logo abaixo já identifica o livro. -->
-                <img
-                  src={capa}
-                  alt=""
-                  loading="lazy"
-                  {...{ [ATRIBUTO_CAPA]: livro.id }}
-                />
-              {:else}
-                <span
-                  class="capa-substituta"
-                  aria-hidden="true"
-                  {...{ [ATRIBUTO_CAPA]: livro.id }}
-                  >{iniciais(livro.titulo)}</span
-                >
-              {/if}
-              {#if livro.fracao}
-                <!-- Decorativa: a situação ("37% lido") está escrita logo abaixo. -->
-                <span class="progresso-capa" aria-hidden="true">
-                  <span style:transform="scaleX({Math.min(1, livro.fracao)})"></span>
-                </span>
-              {/if}
-            </span>
-            <span class="titulo">{livro.titulo}</span>
-            {#if livro.autores.length}
-              <span class="autores">{livro.autores.join(", ")}</span>
-            {/if}
-            <span class="meta">
-              <span class="selo">{livro.formato.toUpperCase()}</span>
-              <span class="situacao">{situacao(livro)}</span>
-            </span>
+            <Icone nome="aparencia" /><span class="rotulo">Aparência</span>
           </button>
-          {#if onRemover}
-            <!-- Fora da ordem do Tab (o teclado usa Delete no livro focado); para o mouse. -->
+        {/if}
+        <!-- Biblioteca vazia: o botão de importar fica só no centro, junto da explicação. -->
+        <!-- (Ctrl+O importa de qualquer lugar da biblioteca.) -->
+        {#if livros.length}
+          {@render botaoImportar()}
+        {/if}
+      </div>
+    </header>
+
+    {#if preferencias && onMudarPreferencias}
+      <section id="aparencia-biblioteca" aria-label="Aparência" hidden={!aparenciaAberta}>
+        <PainelTema {preferencias} onMudar={onMudarPreferencias} {temaDoSistema} />
+      </section>
+    {/if}
+
+    {#if livros.length === 0}
+      <section class="vazia" aria-labelledby="titulo-vazia">
+        <span class="icone-vazia"><Icone nome="livro" /></span>
+        <h2 id="titulo-vazia">Sua biblioteca está vazia</h2>
+        <p>Importe um EPUB ou PDF para começar. O arquivo original fica onde está: a biblioteca guarda uma cópia.</p>
+        {@render botaoImportar()}
+      </section>
+    {:else}
+      <p class="so-leitor-de-tela" role="status">{anuncioBusca}</p>
+
+      {#if visiveis.length === 0}
+        <div class="sem-resultado">
+          {#if termo.trim()}
+            <p>Nenhum livro encontrado para “{termo.trim()}”.</p>
+            <button type="button" onclick={limparBusca}>Limpar busca</button>
+          {:else}
+            <p>Nenhum livro nesta lista ainda.</p>
+            <button type="button" onclick={() => (filtro = "todos")}>Mostrar todos</button>
+          {/if}
+        </div>
+      {/if}
+
+      <!-- As setas são tratadas no <ul> (delegação): o evento sobe do botão focado. -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <ul bind:this={lista} onkeydown={aoTeclar} aria-label="Livros" hidden={!visiveis.length}>
+        {#each visiveis as livro, i (livro.id)}
+          {@const capa = urlDaCapa(livro)}
+          <li>
             <button
               type="button"
-              class="remover"
-              tabindex="-1"
-              aria-label="Remover {livro.titulo}"
-              title="Remover da biblioteca"
-              onclick={() => onRemover(livro)}><Icone nome="fechar" /></button
+              class="livro"
+              tabindex={i === ativo ? 0 : -1}
+              aria-keyshortcuts={onRemover ? "Delete" : undefined}
+              onfocus={() => (ativo = i)}
+              onclick={() => onAbrir(livro)}
             >
-          {/if}
-        </li>
-      {/each}
-    </ul>
-  {/if}
+              <span class="capa">
+                {#if capa}
+                  <!-- alt vazio: o título logo abaixo já identifica o livro. -->
+                  <img
+                    src={capa}
+                    alt=""
+                    loading="lazy"
+                    {...{ [ATRIBUTO_CAPA]: livro.id }}
+                  />
+                {:else}
+                  <span
+                    class="capa-substituta"
+                    aria-hidden="true"
+                    {...{ [ATRIBUTO_CAPA]: livro.id }}
+                    >{iniciais(livro.titulo)}</span
+                  >
+                {/if}
+                {#if livro.fracao}
+                  <!-- Decorativa: a situação ("37% lido") está escrita logo abaixo. -->
+                  <span class="progresso-capa" aria-hidden="true">
+                    <span style:transform="scaleX({Math.min(1, livro.fracao)})"></span>
+                  </span>
+                {/if}
+              </span>
+              <span class="titulo">{livro.titulo}</span>
+              {#if livro.autores.length}
+                <span class="autores">{livro.autores.join(", ")}</span>
+              {/if}
+              <span class="meta">
+                <span class="selo">{livro.formato.toUpperCase()}</span>
+                <span class="situacao">{situacao(livro)}</span>
+              </span>
+            </button>
+            {#if onRemover}
+              <!-- Fora da ordem do Tab (o teclado usa Delete no livro focado); para o mouse. -->
+              <button
+                type="button"
+                class="remover"
+                tabindex="-1"
+                aria-label="Remover {livro.titulo}"
+                title="Remover da biblioteca"
+                onclick={() => onRemover(livro)}><Icone nome="fechar" /></button
+              >
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
 </main>
 
 <style>
+  /* Barra lateral (estantes) + área principal. Na janela estreita, só a área principal. */
   main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     min-height: 100vh;
-    padding: 1rem 1.5rem;
     background: var(--app);
+  }
+
+  .principal {
+    grid-column: 2;
+    min-width: 0;
+    padding: 1rem 1.5rem;
+  }
+
+  .barra {
+    grid-column: 1;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    width: 14rem;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 4.25rem 0.75rem 1rem;
+    border-inline-end: 1px solid var(--divisoria);
+    background: var(--painel);
+  }
+
+  /* Janela estreita: as estantes num painel por cima, com véu (padrão do M5d). */
+  .gaveta {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 4;
+    display: flex;
+    max-width: 100%;
+  }
+
+  .gaveta :global(.painel) {
+    width: 16rem;
+    max-width: 100vw;
+    box-shadow: var(--sombra);
+  }
+
+  .veu {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    background: rgb(0 0 0 / 30%);
   }
 
   header {
@@ -421,35 +526,6 @@
   .busca input::placeholder {
     color: var(--suave);
     opacity: 1;
-  }
-
-  .filtros {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-block-start: 1rem;
-  }
-
-  .filtros button {
-    border-radius: 2rem;
-    padding-inline: 0.85rem;
-  }
-
-  .filtros button[aria-pressed="true"] {
-    border-color: var(--destaque);
-    background: var(--destaque-suave);
-    color: var(--destaque);
-    font-weight: 600;
-  }
-
-  .contagem {
-    margin-inline-start: 0.2rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--suave);
-  }
-
-  [aria-pressed="true"] .contagem {
-    color: inherit;
   }
 
   .sem-resultado {
