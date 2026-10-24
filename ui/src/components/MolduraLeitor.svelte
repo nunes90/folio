@@ -376,12 +376,11 @@
     justify-self: end;
   }
 
+  /* O cartão (PainelLateral) já tem fundo, borda e sombra: aqui só a camada. */
   .estreita .area-indice,
   .estreita .area-aparencia {
     z-index: 2;
     max-width: 100%;
-    background: var(--painel);
-    box-shadow: var(--sombra);
   }
 
   .estreita .area-indice :global(.painel),

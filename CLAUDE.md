@@ -243,6 +243,10 @@ docs/decisions/  # ADRs
   "Interface" (cores e animações), `PainelPagina` = seção "Página" (cor com amostras, frase EPUB × PDF, aviso do alto
   contraste no EPUB, virada e, no PDF, exibição; substitui o `PainelPdf`), `PainelLeitura` = seção "Texto" (só EPUB).
   Na biblioteca, só Interface.
+- **Painéis flutuantes** (branch `feat/paineis-flutuantes`): os painéis laterais do leitor e a barra de estantes da
+  biblioteca são cartões com margem de 0,75rem da borda: `--painel`, borda `--divisoria` (`--borda` no alto contraste),
+  `--raio-grande` e `--sombra`. No `PainelLateral`, `.painel` é só a margem (transparente) e `.conteudo` é o cartão
+  (é ele que anima); na janela estreita, a moldura não põe fundo nem sombra na área do painel.
 - **Capas e progresso** (branch `fix/capas-e-progresso`): `Biblioteca::abrir` chama `conferir_capas`, que conserta
   as capas que sumiram do cache (EPUB: extrai de novo da cópia do livro; PDF: apaga a referência e o frontend a gera
   de novo com o pdf.js, como ao importar); erro ali só vai para o log. O progresso é gravado a cada mudança de página,
