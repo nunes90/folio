@@ -24,6 +24,8 @@ Cada marco precisa terminar em algo utilizável.
 **v0.1.0** (out/2026): M0–M5. Tag `v0.1.0`, Release como pre-release no GitHub.
 
 ## v0.2
+
+**v0.2.0** (out/2026): M7 (refinamento visual) e M8 (biblioteca que escala). Tag `v0.2.0`, Release como pre-release.
 - [x] **M7 — Refinamento visual**: a parte adaptada do design system proposto (análise em
   `docs/design/redesign.md`). Igual para EPUB e PDF; contraste testado nos 4 temas; medidas em `rem`.
   - [x] M7a — tokens: superfícies (app, painel, card, hover), texto secundário/suave, divisória, sombra, raio e
