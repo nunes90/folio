@@ -64,28 +64,35 @@
 </svelte:element>
 
 <style>
+  /* Painel flutuante: o elemento de fora só dá a margem em relação à janela; o cartão (fundo,
+     borda, raio e sombra) é o conteúdo, que é quem desliza ao abrir e fechar. Assim o cartão
+     sai inteiro, sem deixar uma moldura vazia para trás. */
   .painel {
-    overflow-y: auto;
-    background: var(--painel);
-    border-color: var(--divisoria);
-    border-style: solid;
-    border-width: 0;
+    display: flex;
+    box-sizing: border-box;
+    height: 100%;
+    min-height: 0;
+    padding: 0.75rem;
   }
 
   .painel[hidden] {
     display: none;
   }
 
-  .inicio {
-    border-inline-end-width: 1px;
-  }
-
-  .fim {
-    border-inline-start-width: 1px;
-  }
-
   .conteudo {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
     padding: 0 0.75rem 0.75rem;
+    border: 1px solid var(--divisoria);
+    border-radius: var(--raio-grande);
+    background: var(--painel);
+    box-shadow: var(--sombra);
+  }
+
+  /* Alto contraste: sem sombra; a borda forte é o que separa o cartão. */
+  :global([data-tema="alto-contraste"]) .conteudo {
+    border-color: var(--borda);
   }
 
   /* Fica visível enquanto o conteúdo do painel rola. */

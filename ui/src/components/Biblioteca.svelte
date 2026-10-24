@@ -609,17 +609,27 @@
     padding: 1rem 1.5rem;
   }
 
+  /* Barra lateral como painel flutuante (igual ao PainelLateral): margem em relação à janela,
+     cantos arredondados, borda suave e sombra. */
   .barra {
     grid-column: 1;
     position: sticky;
-    top: 0;
+    top: 0.75rem;
     align-self: start;
+    box-sizing: border-box;
     width: 14rem;
-    height: 100vh;
+    height: calc(100vh - 1.5rem);
+    margin: 0.75rem 0 0.75rem 0.75rem;
     overflow-y: auto;
-    padding: 4.25rem 0.75rem 1rem;
-    border-inline-end: 1px solid var(--divisoria);
+    padding: 0.75rem 0.5rem;
+    border: 1px solid var(--divisoria);
+    border-radius: var(--raio-grande);
     background: var(--painel);
+    box-shadow: var(--sombra);
+  }
+
+  :global([data-tema="alto-contraste"]) .barra {
+    border-color: var(--borda);
   }
 
   /* Janela estreita: as estantes num painel por cima, com véu (padrão do M5d). */
@@ -635,7 +645,6 @@
   .gaveta :global(.painel) {
     width: 16rem;
     max-width: 100vw;
-    box-shadow: var(--sombra);
   }
 
   .veu {
