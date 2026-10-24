@@ -234,5 +234,6 @@ docs/decisions/  # ADRs
 - **Avisos acima do rodapé** (branch `fix/avisos-acima-do-rodape`): a `MolduraLeitor` publica a altura real do
   rodapé em `--rodape-leitor` (no `<html>`, com `ResizeObserver`; removida ao fechar o livro) e os avisos ficam
   `calc(var(--rodape-leitor, 0px) + 1rem)` acima da borda: não cobrem mais a barra de páginas.
+- **v0.3.1** (out/2026): tag assinada `v0.3.1` (M12 + correções) e Release no GitHub como pre-release.
 - Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.
