@@ -174,5 +174,10 @@ docs/decisions/  # ADRs
 - **M8 concluído.**
 - **v0.2.0** (out/2026): tag assinada `v0.2.0` (M7 + M8) e Release no GitHub como pre-release. Versão nos 4 lugares:
   `Cargo.toml` (workspace), `crates/app/tauri.conf.json`, `ui/package.json` e os lockfiles.
-- Próximo passo: definir o M9 (ou o M6, empacotamento). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M9a** (branch `feat/m9a-estantes-core`): migração 3 (`para_ler_em`, `lido_em`, `removido_em` em `livros`; datas,
+  NULL = não). `Biblioteca`: `definir_para_ler`, `definir_lido` (lido manual vence o progresso:
+  `Situacao::do_livro`), `mover_para_lixeira`, `restaurar`, `apagar_de_vez` (o antigo `remover`), `esvaziar_lixeira`,
+  `listar_lixeira`; `listar` exclui a lixeira; `marcar_aberto` tira "para ler"; importar um livro da lixeira devolve
+  `Importado::Restaurado` ("… voltou da lixeira."). O comando `remover_livro` ainda apaga de vez até o M9c.
+- Próximo passo: **M9b** (barra lateral). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

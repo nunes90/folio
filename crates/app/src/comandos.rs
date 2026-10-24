@@ -35,6 +35,8 @@ pub struct Importacao {
     importados: Vec<LivroNaBiblioteca>,
     /// Arquivos que já estavam na biblioteca (nada foi copiado).
     ja_existentes: Vec<LivroNaBiblioteca>,
+    /// Estavam na lixeira e voltaram para a estante.
+    restaurados: Vec<LivroNaBiblioteca>,
     falhas: Vec<Falha>,
 }
 
@@ -45,12 +47,14 @@ pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>)
     let mut resultado = Importacao {
         importados: Vec::new(),
         ja_existentes: Vec::new(),
+        restaurados: Vec::new(),
         falhas: Vec::new(),
     };
     for caminho in caminhos {
         match bib.importar(&caminho) {
             Ok(Importado::Novo(livro)) => resultado.importados.push(livro),
             Ok(Importado::JaExistia(livro)) => resultado.ja_existentes.push(livro),
+            Ok(Importado::Restaurado(livro)) => resultado.restaurados.push(livro),
             Err(e) => resultado.falhas.push(Falha {
                 erro: registrar(&e),
                 caminho,
@@ -71,7 +75,11 @@ pub fn abrir_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Respo
 /// Remove o livro da biblioteca (a cópia do app; o arquivo original não é tocado).
 #[tauri::command]
 pub fn remover_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
-    bib.lock().unwrap().remover(&id).map_err(|e| registrar(&e))
+    // Até o M9c (lixeira na interface), remover continua apagando de vez, com confirmação.
+    bib.lock()
+        .unwrap()
+        .apagar_de_vez(&id)
+        .map_err(|e| registrar(&e))
 }
 
 /// Bytes do livro sem marcá-lo como aberto (usado para gerar a capa de PDFs).

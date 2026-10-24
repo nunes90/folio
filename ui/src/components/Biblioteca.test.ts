@@ -18,6 +18,9 @@ function livro(parcial: Partial<Livro>): Livro {
     abertoEm: null,
     fracao: null,
     situacao: "nao-iniciado",
+    paraLerEm: null,
+    lidoEm: null,
+    removidoEm: null,
     ...parcial,
   };
 }
