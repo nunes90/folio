@@ -114,6 +114,14 @@ describe("MolduraLeitor", () => {
     expect(document.activeElement).toBe(indice);
   });
 
+  it("publica a altura do rodapé (--rodape-leitor) para os avisos ficarem acima dele; ao sair, remove", () => {
+    const raiz = document.documentElement;
+    const { unmount } = renderizar();
+    expect(raiz.style.getPropertyValue("--rodape-leitor")).toMatch(/^\d+(\.\d+)?px$/);
+    unmount();
+    expect(raiz.style.getPropertyValue("--rodape-leitor")).toBe("");
+  });
+
   describe("janela estreita", () => {
     afterEach(() => {
       sistema.estreita = false;

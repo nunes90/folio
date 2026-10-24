@@ -226,5 +226,8 @@ docs/decisions/  # ADRs
   WebKitGTK o recalcula a cada quadro (esmaecer caiu de ~60 para ~30 qps; `will-change` piora). `ctx.filter` é aceito
   mas não tem efeito no WebKitGTK 2.54. Inverter custa ~60 ms por página de 1492×1932, uma vez por desenho.
   "Exibição do PDF" ganhou o grupo "Página" com amostras.
+- **Avisos acima do rodapé** (branch `fix/avisos-acima-do-rodape`): a `MolduraLeitor` publica a altura real do
+  rodapé em `--rodape-leitor` (no `<html>`, com `ResizeObserver`; removida ao fechar o livro) e os avisos ficam
+  `calc(var(--rodape-leitor, 0px) + 1rem)` acima da borda: não cobrem mais a barra de páginas.
 - Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.
