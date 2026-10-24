@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import axe from "axe-core";
+import { tick } from "svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sistema } from "../lib/ambiente.svelte";
 import type { Livro } from "../lib/biblioteca";
@@ -127,7 +128,7 @@ describe("Biblioteca", () => {
       await fireEvent.keyDown(todos, { key: "ArrowDown" });
       expect(document.activeElement).toBe(naBarra(/^Lendo/));
       await fireEvent.keyDown(document.activeElement!, { key: "End" });
-      expect(document.activeElement).toBe(naBarra(/^Lidos/));
+      expect(document.activeElement).toBe(naBarra(/^Lixeira/));
       await fireEvent.keyDown(document.activeElement!, { key: "Home" });
       expect(document.activeElement).toBe(todos);
     });
@@ -272,29 +273,88 @@ describe("Biblioteca", () => {
     });
   });
 
-  describe("remover", () => {
-    it("Delete no livro focado pede a remoção dele", async () => {
-      const onRemover = vi.fn();
-      render(Biblioteca, { livros, ...semAcao, onRemover });
+  describe("ações do livro e lixeira", () => {
+    const naLixeira = livro({ id: "z", titulo: "Quincas Borba", removidoEm: 9 });
+    const props = (extra = {}) => ({
+      livros,
+      lixeira: [naLixeira],
+      ...semAcao,
+      onAbrir: vi.fn(),
+      onAcao: vi.fn(),
+      onEsvaziar: vi.fn(),
+      ...extra,
+    });
+    const naBarra = (nome: RegExp) =>
+      within(screen.getByRole("navigation", { name: "Estantes" })).getByRole("button", {
+        name: nome,
+      });
+
+    it("Delete manda o livro focado para a lixeira (sem confirmar: dá para desfazer)", async () => {
+      const p = props();
+      render(Biblioteca, p);
       const segundo = screen.getByRole("button", { name: /^Memórias Póstumas/ });
-      expect(segundo.getAttribute("aria-keyshortcuts")).toBe("Delete");
+      expect(segundo.getAttribute("aria-keyshortcuts")).toContain("Delete");
       segundo.focus();
       await fireEvent.keyDown(segundo, { key: "Delete" });
-      expect(onRemover).toHaveBeenCalledWith(livros[1]);
+      expect(p.onAcao).toHaveBeenCalledWith(livros[1], "lixeira");
     });
 
-    it("o botão × de cada capa pede a remoção, fora da ordem do Tab", async () => {
-      const onRemover = vi.fn();
-      render(Biblioteca, { livros, ...semAcao, onRemover });
-      const remover = screen.getByRole("button", { name: "Remover Dom Casmurro" });
-      expect(remover.tabIndex).toBe(-1);
-      await fireEvent.click(remover);
-      expect(onRemover).toHaveBeenCalledWith(livros[0]);
+    it("Shift+F10 (ou a tecla Menu) abre o menu do livro focado; Esc devolve o foco ao livro", async () => {
+      render(Biblioteca, props());
+      const primeiro = screen.getByRole("button", { name: /^Dom Casmurro/ });
+      primeiro.focus();
+      await fireEvent.keyDown(primeiro, { key: "F10", shiftKey: true });
+      await tick();
+      const menu = screen.getByRole("menu", { name: "Ações para Dom Casmurro" });
+      expect(document.activeElement).toBe(within(menu).getAllByRole("menuitem")[0]);
+      await fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(document.activeElement).toBe(primeiro);
     });
 
-    it("sem onRemover, não há botão × nem atalho", () => {
+    it("o botão ⋯ abre o menu; escolher uma ação a repassa com o livro", async () => {
+      const p = props();
+      render(Biblioteca, p);
+      await fireEvent.click(screen.getByRole("button", { name: "Mais ações para Dom Casmurro" }));
+      await fireEvent.click(screen.getByRole("menuitem", { name: "Adicionar a Para ler" }));
+      expect(p.onAcao).toHaveBeenCalledWith(livros[0], "para-ler");
+      expect(screen.queryByRole("menu")).toBeNull();
+    });
+
+    it("a Lixeira fica na barra; nela, clicar no livro abre as ações (não abre o livro)", async () => {
+      const p = props();
+      render(Biblioteca, p);
+      await fireEvent.click(naBarra(/^Lixeira 1$/));
+      expect(itensDaGrade()).toHaveLength(1);
+      await fireEvent.click(screen.getByRole("button", { name: /^Quincas Borba/ }));
+      expect(p.onAbrir).not.toHaveBeenCalled();
+      expect(screen.getAllByRole("menuitem").map((i) => i.textContent?.trim())).toEqual([
+        "Restaurar",
+        "Apagar de vez…",
+      ]);
+    });
+
+    it("na lixeira, Delete pede para apagar de vez e há o botão de esvaziar", async () => {
+      const p = props();
+      render(Biblioteca, p);
+      await fireEvent.click(naBarra(/^Lixeira/));
+      const livroNaLixeira = screen.getByRole("button", { name: /^Quincas Borba/ });
+      livroNaLixeira.focus();
+      await fireEvent.keyDown(livroNaLixeira, { key: "Delete" });
+      expect(p.onAcao).toHaveBeenCalledWith(naLixeira, "apagar");
+      await fireEvent.click(screen.getByRole("button", { name: "Esvaziar lixeira…" }));
+      expect(p.onEsvaziar).toHaveBeenCalledOnce();
+    });
+
+    it("só com livros na lixeira, a barra continua lá (para poder restaurá-los)", () => {
+      render(Biblioteca, props({ livros: [] }));
+      expect(naBarra(/^Lixeira 1$/)).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Sua biblioteca está vazia" })).toBeNull();
+    });
+
+    it("sem onAcao, não há menu nem atalhos de ação", () => {
       render(Biblioteca, { livros, ...semAcao });
-      expect(screen.queryByRole("button", { name: /^Remover/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: /^Mais ações/ })).toBeNull();
     });
 
     it("cada capa é marcada com o id do livro (origem da transição para o leitor)", () => {
@@ -305,7 +365,7 @@ describe("Biblioteca", () => {
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {
-      const { container } = render(Biblioteca, { livros, ...semAcao, onRemover: () => {} });
+      const { container } = render(Biblioteca, props());
       const { violations } = await axe.run(container);
       expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
     });

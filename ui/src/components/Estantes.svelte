@@ -15,11 +15,13 @@
     onEscolher: (estante: Filtro) => void;
   } = $props();
 
-  const ESTANTES: { valor: Filtro; nome: string; icone: "grade" | "livro" | "marcador" | "lido" }[] = [
+  type IconeEstante = "grade" | "livro" | "marcador" | "lido" | "lixeira";
+  const ESTANTES: { valor: Filtro; nome: string; icone: IconeEstante }[] = [
     { valor: "todos", nome: "Todos", icone: "grade" },
     { valor: "lendo", nome: "Lendo", icone: "livro" },
     { valor: "para-ler", nome: "Para ler", icone: "marcador" },
     { valor: "lidos", nome: "Lidos", icone: "lido" },
+    { valor: "lixeira", nome: "Lixeira", icone: "lixeira" },
   ];
 
   let lista: HTMLUListElement;
@@ -45,7 +47,7 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <ul bind:this={lista} onkeydown={aoTeclar}>
   {#each ESTANTES as estante, i (estante.valor)}
-    <li>
+    <li class:separada={estante.valor === "lixeira"}>
       <button
         type="button"
         tabindex={i === foco ? 0 : -1}
@@ -68,6 +70,13 @@
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  /* A lixeira é outro tipo de lugar (um estado do livro): fica separada das vistas. */
+  .separada {
+    margin-block-start: 0.6rem;
+    padding-block-start: 0.6rem;
+    border-block-start: 1px solid var(--divisoria);
   }
 
   button {

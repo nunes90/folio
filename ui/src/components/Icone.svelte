@@ -20,6 +20,8 @@
     grade: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
     marcador: "M6 4h12v16l-6-4-6 4z",
     lido: "M5 12.5l4.5 4.5L19 7",
+    lixeira: "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6",
+    reticencias: "M5 12h.01M12 12h.01M19 12h.01",
     livro: "M12 6.5C10.5 5.3 8.2 4.8 4 5v13c4.2-.2 6.5.3 8 1.5 1.5-1.2 3.8-1.7 8-1.5V5c-4.2-.2-6.5.3-8 1.5zM12 6.5v13",
   } as const;
 

@@ -21,7 +21,11 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
     { teclas: [["←"], ["→"], ["↑"], ["↓"]], acao: "Mover entre os livros" },
     { teclas: [["Home"], ["End"]], acao: "Ir para o primeiro ou o último livro" },
     { teclas: [["Enter"]], acao: "Abrir o livro selecionado" },
-    { teclas: [["Delete"]], acao: "Remover o livro selecionado (pede confirmação)" },
+    { teclas: [["Shift", "F10"], ["Menu"]], acao: "Ações do livro selecionado (para ler, lido, lixeira)" },
+    {
+      teclas: [["Delete"]],
+      acao: "Mover o livro selecionado para a lixeira (na Lixeira: apagar de vez, pede confirmação)",
+    },
     { teclas: [["Ctrl", "F"]], acao: "Buscar na biblioteca" },
     { teclas: [["Ctrl", "O"]], acao: "Importar livros (também dá para arrastar os arquivos para a janela)" },
     ...GERAIS,

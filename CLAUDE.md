@@ -184,5 +184,12 @@ docs/decisions/  # ADRs
   esquerda da biblioteca; em janela estreita, botão "Estantes" abre um `PainelLateral` com véu (Esc/véu/escolher fecham
   e devolvem o foco). `lib/filtro.ts`: `Filtro` = `todos | lendo | para-ler | lidos`. Os filtros em pílula do M8c
   saíram; o card diz "Lido".
-- Próximo passo: **M9c** (Lixeira na barra e ações do livro). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M9c** (branch `feat/m9c-acoes-lixeira`): comandos finos `listar_lixeira`, `definir_para_ler`, `definir_lido`,
+  `mover_para_lixeira`, `restaurar_livro`, `apagar_livro` (async; substitui `remover_livro`), `esvaziar_lixeira`
+  (async). `MenuLivro.svelte` (padrão ARIA de menu: ⋯ no card, tecla Menu/Shift+F10, clique direito; ↑↓/Home/End,
+  Esc/Tab fecham e devolvem o foco ao livro). Lixeira na barra (separada das vistas; `Filtro` ganha `lixeira`; as
+  outras estantes excluem `removidoEm`). Delete: na estante, vai para a lixeira sem confirmar (aviso com "Desfazer",
+  `avisar(texto, tipo, acao)`); na lixeira, "Apagar de vez" com confirmação. "Esvaziar lixeira…" confirma. `App.aoAcao`
+  + `executar` (faz, recarrega, avisa). Abrir pelo sistema abre o livro mesmo se já estava na biblioteca.
+- **M9 concluído.** Próximo passo: **M10** (coleções) ou marcar a v0.3.0. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

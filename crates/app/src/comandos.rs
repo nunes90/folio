@@ -72,13 +72,71 @@ pub fn abrir_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Respo
     Ok(Response::new(bytes))
 }
 
-/// Remove o livro da biblioteca (a cópia do app; o arquivo original não é tocado).
+/// Livros na lixeira, o removido por último primeiro.
 #[tauri::command]
-pub fn remover_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
-    // Até o M9c (lixeira na interface), remover continua apagando de vez, com confirmação.
+pub fn listar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<LivroNaBiblioteca>, String> {
+    bib.lock()
+        .unwrap()
+        .listar_lixeira()
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn definir_para_ler(
+    bib: State<'_, EstadoBiblioteca>,
+    id: String,
+    para_ler: bool,
+) -> Result<(), String> {
+    bib.lock()
+        .unwrap()
+        .definir_para_ler(&id, para_ler)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn definir_lido(
+    bib: State<'_, EstadoBiblioteca>,
+    id: String,
+    lido: bool,
+) -> Result<(), String> {
+    bib.lock()
+        .unwrap()
+        .definir_lido(&id, lido)
+        .map_err(|e| registrar(&e))
+}
+
+/// Reversível: a cópia, a capa e o progresso ficam até restaurar ou esvaziar a lixeira.
+#[tauri::command]
+pub fn mover_para_lixeira(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
+    bib.lock()
+        .unwrap()
+        .mover_para_lixeira(&id)
+        .map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn restaurar_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
+    bib.lock()
+        .unwrap()
+        .restaurar(&id)
+        .map_err(|e| registrar(&e))
+}
+
+/// Apaga de vez (a cópia do app; o arquivo original não é tocado).
+#[tauri::command(async)]
+pub fn apagar_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
     bib.lock()
         .unwrap()
         .apagar_de_vez(&id)
+        .map_err(|e| registrar(&e))
+}
+
+/// Apaga de vez tudo o que está na lixeira; devolve quantos livros foram.
+#[tauri::command(async)]
+pub fn esvaziar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<usize, String> {
+    bib.lock()
+        .unwrap()
+        .esvaziar_lixeira()
         .map_err(|e| registrar(&e))
 }
 

@@ -10,6 +10,7 @@
   import { sistema } from "../lib/ambiente.svelte";
   import Estantes from "./Estantes.svelte";
   import Icone from "./Icone.svelte";
+  import MenuLivro, { type AcaoLivro } from "./MenuLivro.svelte";
   import PainelLateral from "./PainelLateral.svelte";
   import PainelTema from "./PainelTema.svelte";
 
@@ -19,7 +20,9 @@
     arrastando = false,
     onAbrir,
     onImportar,
-    onRemover,
+    lixeira = [],
+    onAcao,
+    onEsvaziar,
     preferencias,
     onMudarPreferencias,
     temaDoSistema,
@@ -31,8 +34,11 @@
     arrastando?: boolean;
     onAbrir: (livro: Livro) => void;
     onImportar: () => void;
-    /** Pedido de remoção (quem chama confirma antes de remover). */
-    onRemover?: (livro: Livro) => void;
+    /** Livros na lixeira (aparecem só na estante "Lixeira"). */
+    lixeira?: Livro[];
+    /** Ação pedida pelo menu ou pelo teclado (quem chama confirma o que for irreversível). */
+    onAcao?: (livro: Livro, acao: AcaoLivro) => void;
+    onEsvaziar?: () => void;
     /** Se presentes, a biblioteca oferece o painel de tema e movimento. */
     preferencias?: Preferencias;
     onMudarPreferencias?: (mudancas: Partial<Preferencias>) => void;
@@ -47,8 +53,28 @@
   let termo = $state("");
   let filtro = $state<Filtro>("todos");
   let campoBusca = $state<HTMLInputElement>();
-  const visiveis = $derived(filtrarLivros(livros, termo, filtro));
-  const contagens = $derived(contarPorFiltro(livros, termo));
+  // A estante e a lixeira numa lista só: cada estante filtra a parte dela (lib/filtro.ts).
+  const todos = $derived([...livros, ...lixeira]);
+  const temLivros = $derived(todos.length > 0);
+  const visiveis = $derived(filtrarLivros(todos, termo, filtro));
+  const contagens = $derived(contarPorFiltro(todos, termo));
+  const naLixeira = $derived(filtro === "lixeira");
+
+  // Menu "Mais ações": de qual livro está aberto (um por vez).
+  let menuDe = $state<string | null>(null);
+
+  /** Fecha o menu e devolve o foco ao livro dele (se ainda estiver na grade). */
+  function fecharMenu() {
+    const id = menuDe;
+    menuDe = null;
+    const i = visiveis.findIndex((l) => l.id === id);
+    if (i >= 0) focar(i);
+  }
+
+  // Clique fora do menu o fecha, sem mexer no foco.
+  function aoApontar(e: PointerEvent) {
+    if (menuDe && !(e.target instanceof Element && e.target.closest(".menu-livro"))) menuDe = null;
+  }
   const filtrando = $derived(termo.trim() !== "" || filtro !== "todos");
 
   // Estantes: barra lateral; na janela estreita, um painel aberto pelo botão "Estantes"
@@ -132,9 +158,17 @@
   }
 
   function aoTeclar(e: KeyboardEvent) {
-    if (e.key === "Delete" && onRemover && visiveis[ativo]) {
+    const livro = visiveis[ativo];
+    // Delete: na estante, vai para a lixeira (reversível); na lixeira, apagar de vez (confirma).
+    if (e.key === "Delete" && onAcao && livro) {
       e.preventDefault();
-      onRemover(visiveis[ativo]);
+      onAcao(livro, naLixeira ? "apagar" : "lixeira");
+      return;
+    }
+    // Tecla Menu ou Shift+F10: o menu de ações do livro focado (como o clique direito).
+    if (onAcao && livro && (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))) {
+      e.preventDefault();
+      menuDe = livro.id;
       return;
     }
     const destinos: Record<string, () => number> = {
@@ -201,7 +235,7 @@
   </button>
 {/snippet}
 
-<svelte:window onkeydown={aoTeclarJanela} />
+<svelte:window onkeydown={aoTeclarJanela} onpointerdown={aoApontar} />
 
 <main {...{ [ATRIBUTO_TELA]: "" }}>
   {#if arrastando}
@@ -213,13 +247,13 @@
     </div>
   {/if}
 
-  {#if livros.length && !estreita}
+  {#if temLivros && !estreita}
     <nav class="barra" aria-label="Estantes">
       <Estantes atual={filtro} {contagens} onEscolher={escolher} />
     </nav>
   {/if}
 
-  {#if livros.length && estreita}
+  {#if temLivros && estreita}
     {#if estantesAbertas}
       <!-- Só para o mouse: no teclado, Esc fecha o painel. -->
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
@@ -246,7 +280,7 @@
 
   <div class="principal">
     <header>
-      {#if livros.length && estreita}
+      {#if temLivros && estreita}
         <button
           type="button"
           class="secundario"
@@ -259,7 +293,7 @@
         </button>
       {/if}
       <h1>Biblioteca</h1>
-      {#if livros.length}
+      {#if temLivros}
         <search class="busca">
           <Icone nome="buscar" />
           <input
@@ -286,7 +320,7 @@
         {/if}
         <!-- Biblioteca vazia: o botão de importar fica só no centro, junto da explicação. -->
         <!-- (Ctrl+O importa de qualquer lugar da biblioteca.) -->
-        {#if livros.length}
+        {#if temLivros}
           {@render botaoImportar()}
         {/if}
       </div>
@@ -298,7 +332,7 @@
       </section>
     {/if}
 
-    {#if livros.length === 0}
+    {#if !temLivros}
       <section class="vazia" aria-labelledby="titulo-vazia">
         <span class="icone-vazia"><Icone nome="livro" /></span>
         <h2 id="titulo-vazia">Sua biblioteca está vazia</h2>
@@ -308,11 +342,21 @@
     {:else}
       <p class="so-leitor-de-tela" role="status">{anuncioBusca}</p>
 
+      {#if naLixeira && visiveis.length && onEsvaziar}
+        <div class="aviso-lixeira">
+          <p>Os livros ficam na lixeira até você esvaziá-la. Para trazer um de volta, use Restaurar.</p>
+          <button type="button" onclick={onEsvaziar}>Esvaziar lixeira…</button>
+        </div>
+      {/if}
+
       {#if visiveis.length === 0}
         <div class="sem-resultado">
           {#if termo.trim()}
             <p>Nenhum livro encontrado para “{termo.trim()}”.</p>
             <button type="button" onclick={limparBusca}>Limpar busca</button>
+          {:else if naLixeira}
+            <p>A lixeira está vazia.</p>
+            <button type="button" onclick={() => (filtro = "todos")}>Mostrar todos</button>
           {:else}
             <p>Nenhum livro nesta lista ainda.</p>
             <button type="button" onclick={() => (filtro = "todos")}>Mostrar todos</button>
@@ -330,9 +374,14 @@
               type="button"
               class="livro"
               tabindex={i === ativo ? 0 : -1}
-              aria-keyshortcuts={onRemover ? "Delete" : undefined}
+              aria-keyshortcuts={onAcao ? "Delete Shift+F10" : undefined}
               onfocus={() => (ativo = i)}
-              onclick={() => onAbrir(livro)}
+              onclick={() => (naLixeira && onAcao ? (menuDe = livro.id) : onAbrir(livro))}
+              oncontextmenu={(e) => {
+                if (!onAcao) return;
+                e.preventDefault();
+                menuDe = livro.id;
+              }}
             >
               <span class="capa">
                 {#if capa}
@@ -367,16 +416,14 @@
                 <span class="situacao">{situacao(livro)}</span>
               </span>
             </button>
-            {#if onRemover}
-              <!-- Fora da ordem do Tab (o teclado usa Delete no livro focado); para o mouse. -->
-              <button
-                type="button"
-                class="remover"
-                tabindex="-1"
-                aria-label="Remover {livro.titulo}"
-                title="Remover da biblioteca"
-                onclick={() => onRemover(livro)}><Icone nome="fechar" /></button
-              >
+            {#if onAcao}
+              <MenuLivro
+                {livro}
+                aberto={menuDe === livro.id}
+                onAlternar={() => (menuDe = menuDe === livro.id ? null : livro.id)}
+                onFechar={fecharMenu}
+                onAcao={(acao) => onAcao(livro, acao)}
+              />
             {/if}
           </li>
         {/each}
@@ -621,24 +668,26 @@
     position: relative;
   }
 
-  .remover {
-    position: absolute;
-    inset-block-start: 1rem;
-    inset-inline-end: 1rem;
-    width: 2rem;
-    height: 2rem;
-    padding: 0;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    font-size: 1rem;
-    opacity: 0.75;
-    transition: opacity var(--duracao-curta) var(--curva);
+  .aviso-lixeira {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-block-start: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--divisoria);
+    border-radius: var(--raio-grande);
+    background: var(--painel);
   }
 
-  .remover:hover,
-  li:hover .remover {
-    opacity: 1;
+  .aviso-lixeira p {
+    margin: 0;
+    color: var(--suave);
+  }
+
+  .aviso-lixeira button {
+    border-radius: var(--raio);
   }
 
   li button.livro {
