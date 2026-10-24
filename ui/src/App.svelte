@@ -2,6 +2,7 @@
   import { onMount, type Component } from "svelte";
   import { isTauri } from "@tauri-apps/api/core";
   import Atalhos from "./components/Atalhos.svelte";
+  import Paleta from "./components/Paleta.svelte";
   import Avisos from "./components/Avisos.svelte";
   import Biblioteca from "./components/Biblioteca.svelte";
   import Confirmacao from "./components/Confirmacao.svelte";
@@ -44,12 +45,19 @@
   import { aplicarTema, resolverTema } from "./lib/temas";
   import { aplicarAnimacao } from "./lib/animacao";
   import { transicionar } from "./lib/transicao";
+  import type { Comando } from "./lib/comandos";
+  import type { Filtro } from "./lib/filtro";
+  import type { TemaEscolhido } from "./lib/temas";
+  import type { Movimento } from "./lib/preferencias.svelte";
 
 
   let livros = $state<Livro[]>([]);
   let aberto = $state<{ livro: Livro; dados: ArrayBuffer; inicio?: string } | null>(null);
   let importando = $state(false);
   let ajudaAberta = $state(false);
+  let paletaAberta = $state(false);
+  /** A biblioteca na tela (para a paleta trocar de estante ou levar à busca). */
+  let biblioteca = $state<ReturnType<typeof Biblioteca>>();
   /** Leitor de PDF, importado sob demanda (o pdf.js é grande) antes de a transição começar. */
   let LeitorPdf = $state<Component<any> | null>(null);
   let lixeira = $state<Livro[]>([]);
@@ -70,13 +78,130 @@
   let ultimoAberto = $state<string>();
   const contexto = $derived(aberto ? aberto.livro.formato : "biblioteca");
 
-  // F1 em qualquer tela (no EPUB, o Leitor reenvia à janela as teclas do capítulo).
+  // F1 e Ctrl+K em qualquer tela (no EPUB, o Leitor reenvia à janela as teclas do capítulo).
   function aoTeclar(e: KeyboardEvent) {
     if (e.key === "F1") {
       e.preventDefault();
       ajudaAberta = true;
+    } else if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      // Não abre por cima de outro diálogo (confirmação, atalhos…).
+      if (!document.querySelector("dialog[open]")) paletaAberta = true;
     }
   }
+
+  const NOMES_TEMA: [TemaEscolhido, string][] = [
+    ["sistema", "do sistema"],
+    ["claro", "claro"],
+    ["escuro", "escuro"],
+    ["alto-contraste", "alto contraste"],
+  ];
+  const NOMES_MOVIMENTO: [Movimento, string][] = [
+    ["sistema", "seguir o sistema"],
+    ["reduzido", "sempre reduzir"],
+  ];
+  const ESTANTES: [Filtro, string][] = [
+    ["todos", "Todos"],
+    ["favoritos", "Favoritos"],
+    ["lendo", "Lendo"],
+    ["para-ler", "Para ler"],
+    ["lidos", "Lidos"],
+    ["autores", "Autores"],
+    ["lixeira", "Lixeira"],
+  ];
+
+  /** O que a paleta oferece agora: depende da tela (biblioteca ou leitor). */
+  const comandos = $derived.by((): Comando[] => {
+    const lista: Comando[] = [];
+    const naBiblioteca = !aberto;
+    if (naBiblioteca) {
+      if (!importando)
+        lista.push({
+          id: "importar",
+          titulo: "Importar livros…",
+          grupo: "Biblioteca",
+          teclas: [["Ctrl", "O"]],
+          executar: escolherEImportar,
+        });
+      lista.push({
+        id: "buscar",
+        titulo: "Buscar na biblioteca",
+        grupo: "Biblioteca",
+        teclas: [["Ctrl", "F"]],
+        executar: () => biblioteca?.buscar(),
+      });
+      for (const [filtro, nome] of ESTANTES)
+        lista.push({
+          id: `estante-${filtro}`,
+          titulo: `Estante: ${nome}`,
+          grupo: "Estantes",
+          executar: () => void biblioteca?.mostrar(filtro),
+        });
+      for (const colecao of colecoes)
+        lista.push({
+          id: `colecao-${colecao.id}`,
+          titulo: `Coleção: ${colecao.nome}`,
+          grupo: "Coleções",
+          executar: () => void biblioteca?.mostrar(`colecao:${colecao.id}`),
+        });
+      lista.push({
+        id: "nova-colecao",
+        titulo: "Nova coleção…",
+        grupo: "Coleções",
+        executar: () => (pedirNome = { colecao: null, erro: null }),
+      });
+      if (lixeira.length)
+        lista.push({
+          id: "esvaziar",
+          titulo: "Esvaziar lixeira…",
+          grupo: "Lixeira",
+          executar: () => (confirmar = { tipo: "esvaziar" }),
+        });
+    } else {
+      lista.push({
+        id: "voltar",
+        titulo: "Voltar à biblioteca",
+        grupo: "Leitura",
+        executar: () => void fechar(),
+      });
+    }
+    for (const [tema, nome] of NOMES_TEMA)
+      lista.push({
+        id: `tema-${tema}`,
+        titulo: `Interface: ${nome}`,
+        grupo: "Aparência",
+        dica: preferencias.tema === tema ? "atual" : undefined,
+        palavras: "tema cores",
+        executar: () => atualizarPreferencias({ tema }),
+      });
+    for (const [movimento, nome] of NOMES_MOVIMENTO)
+      lista.push({
+        id: `movimento-${movimento}`,
+        titulo: `Animações: ${nome}`,
+        grupo: "Aparência",
+        dica: preferencias.movimento === movimento ? "atual" : undefined,
+        palavras: "movimento reduzir",
+        executar: () => atualizarPreferencias({ movimento }),
+      });
+    lista.push({
+      id: "atalhos",
+      titulo: "Mostrar atalhos de teclado",
+      grupo: "Ajuda",
+      teclas: [["F1"]],
+      executar: () => (ajudaAberta = true),
+    });
+    // Livros por último: são muitos, e o nome do comando costuma ser o que se procura.
+    if (naBiblioteca)
+      for (const livro of livros)
+        lista.push({
+          id: `livro-${livro.id}`,
+          titulo: `Abrir ${livro.titulo}`,
+          grupo: livro.formato.toUpperCase(),
+          dica: livro.autores.join(", ") || undefined,
+          executar: () => void abrir(livro),
+        });
+    return lista;
+  });
 
 
   // Tema e movimento da interface: reagem às preferências e às mudanças do sistema.
@@ -419,6 +544,7 @@
 <svelte:window onkeydown={aoTeclar} />
 
 <Atalhos {contexto} aberto={ajudaAberta} onFechar={() => (ajudaAberta = false)} />
+<Paleta aberto={paletaAberta} {comandos} onFechar={() => (paletaAberta = false)} />
 <Avisos />
 
 <Confirmacao
@@ -491,6 +617,7 @@
   />
 {:else}
   <Biblioteca
+    bind:this={biblioteca}
     {livros}
     {importando}
     {arrastando}

@@ -12,6 +12,7 @@ export interface Atalho {
 
 const GERAIS: Atalho[] = [
   { teclas: [["F1"]], acao: "Mostrar estes atalhos" },
+  { teclas: [["Ctrl", "K"]], acao: "Paleta de comandos: buscar uma ação ou um livro pelo nome" },
   { teclas: [["Tab"], ["Shift", "Tab"]], acao: "Ir para o próximo ou o anterior controle" },
   { teclas: [["Esc"]], acao: "Fechar o painel ou o diálogo aberto" },
 ];

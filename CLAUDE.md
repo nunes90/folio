@@ -255,5 +255,13 @@ docs/decisions/  # ADRs
   segura o fechamento até o JS liberar, e em testes o JS às vezes não recebia o pedido (janela impossível de fechar).
 - **v0.4.0** (out/2026): tag assinada `v0.4.0` (M13 + capas e progresso + painéis flutuantes) e Release no GitHub
   como pre-release.
+- **M14a** (branch `feat/m14a-paleta`): paleta de comandos com Ctrl+K em qualquer tela (não abre sobre outro
+  diálogo; no F1). `lib/comandos.ts`: `Comando` (id, título, grupo, dica, palavras, teclas, executar) e
+  `filtrarComandos` (todas as palavras em título, dica ou palavras, sem acentos; o que começa com o termo primeiro).
+  `Paleta.svelte`: `dialog.modal` com combobox + listbox (`aria-activedescendant`; ↑↓, PageUp/PageDown, Enter,
+  clique) e contagem em `role="status"`; o comando só roda depois de o diálogo fechar e devolver o foco. O `App`
+  monta a lista conforme a tela: na biblioteca, importar, buscar, estantes, coleções, nova coleção, esvaziar
+  lixeira e "Abrir <livro>" (dica = autores); no leitor, voltar à biblioteca; em ambas, interface, animações e
+  atalhos. A `Biblioteca` expõe `mostrar(filtro)` e `buscar()` (via `bind:this`).
 - Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.
