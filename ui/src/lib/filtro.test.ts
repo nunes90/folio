@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Livro, Situacao } from "./biblioteca";
-import { contarPorFiltro, filtrarLivros, normalizar } from "./filtro";
+import { contarPorColecao, contarPorFiltro, filtrarLivros, normalizar } from "./filtro";
 
 function livro(
   titulo: string,
@@ -84,6 +84,26 @@ describe("filtrarLivros", () => {
       "Memórias Póstumas de Brás Cubas",
     ]);
     expect(titulos(filtrarLivros(estante, "machado", "lendo"))).toEqual(["Dom Casmurro"]);
+  });
+});
+
+describe("coleções", () => {
+  const colecionados = [
+    { ...livro("Dom Casmurro", ["Machado de Assis"], "lendo"), colecoes: [1, 2] },
+    { ...livro("O Cortiço", ["Aluísio Azevedo"], "nao-iniciado"), colecoes: [1] },
+    { ...livro("Quincas Borba", ["Machado de Assis"], "lendo", false, true), colecoes: [1] },
+  ];
+
+  it("a estante de uma coleção mostra os livros dela, fora da lixeira, e combina com a busca", () => {
+    expect(titulos(filtrarLivros(colecionados, "", "colecao:1"))).toEqual(["Dom Casmurro", "O Cortiço"]);
+    expect(titulos(filtrarLivros(colecionados, "", "colecao:2"))).toEqual(["Dom Casmurro"]);
+    expect(titulos(filtrarLivros(colecionados, "azevedo", "colecao:1"))).toEqual(["O Cortiço"]);
+    expect(filtrarLivros(colecionados, "", "colecao:9")).toEqual([]);
+  });
+
+  it("conta os livros de cada coleção com a busca", () => {
+    expect(contarPorColecao(colecionados, "", [1, 2, 3])).toEqual({ 1: 2, 2: 1, 3: 0 });
+    expect(contarPorColecao(colecionados, "machado", [1, 2])).toEqual({ 1: 1, 2: 1 });
   });
 });
 

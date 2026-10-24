@@ -50,6 +50,7 @@ describe("MenuLivro", () => {
       "Favoritar",
       "Adicionar a Para ler",
       "Marcar como lido",
+      "Adicionar à coleção…",
       "Mover para a lixeira",
     ]);
   });
@@ -60,13 +61,32 @@ describe("MenuLivro", () => {
       "Tirar dos favoritos",
       "Tirar de Para ler",
       "Desmarcar como lido",
+      "Adicionar à coleção…",
       "Mover para a lixeira",
     ]);
   });
 
   it("lido pelo progresso (sem marca manual): não oferece marcar nem desmarcar", () => {
     renderizar({ fracao: 1, situacao: "concluido" });
-    expect(itens()).toEqual(["Favoritar", "Adicionar a Para ler", "Mover para a lixeira"]);
+    expect(itens()).toEqual([
+      "Favoritar",
+      "Adicionar a Para ler",
+      "Adicionar à coleção…",
+      "Mover para a lixeira",
+    ]);
+  });
+
+  it("dentro de uma coleção, também dá para tirar o livro dela", () => {
+    const onAcao = vi.fn();
+    render(MenuLivro, {
+      livro: livro(),
+      aberto: true,
+      naColecao: true,
+      onAcao,
+      onFechar: () => {},
+      onAlternar: () => {},
+    });
+    expect(itens()).toContain("Tirar desta coleção");
   });
 
   it("na lixeira: restaurar e apagar de vez", () => {

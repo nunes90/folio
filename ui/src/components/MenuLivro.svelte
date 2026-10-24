@@ -6,7 +6,15 @@
   import Icone from "./Icone.svelte";
 
   /** O que dá para fazer com um livro (quem recebe decide como, ex.: confirmar apagar). */
-  export type AcaoLivro = "favorito" | "para-ler" | "lido" | "lixeira" | "restaurar" | "apagar";
+  export type AcaoLivro =
+    | "favorito"
+    | "para-ler"
+    | "lido"
+    | "colecoes"
+    | "tirar-da-colecao"
+    | "lixeira"
+    | "restaurar"
+    | "apagar";
 
   // Menu "Mais ações" de um livro, no padrão ARIA de menu: o botão ⋯ abre; o foco vai ao
   // primeiro item; ↑↓/Home/End andam; Enter escolhe; Esc e Tab fecham. Quem envolve controla
@@ -17,9 +25,12 @@
     onAlternar,
     onFechar,
     onAcao,
+    naColecao = false,
   }: {
     livro: Livro;
     aberto: boolean;
+    /** Na vista de uma coleção: oferece "Tirar desta coleção". */
+    naColecao?: boolean;
     onAlternar: () => void;
     /** Fechar devolve o foco a quem abriu (decisão de quem envolve). */
     onFechar: () => void;
@@ -43,6 +54,8 @@
     // Lido pelo progresso (sem marca manual): já está em "Lidos"; não há o que marcar.
     if (livro.lidoEm !== null) lista.push({ acao: "lido", nome: "Desmarcar como lido" });
     else if (livro.situacao !== "concluido") lista.push({ acao: "lido", nome: "Marcar como lido" });
+    lista.push({ acao: "colecoes", nome: "Adicionar à coleção…" });
+    if (naColecao) lista.push({ acao: "tirar-da-colecao", nome: "Tirar desta coleção" });
     lista.push({ acao: "lixeira", nome: "Mover para a lixeira" });
     return lista;
   });
