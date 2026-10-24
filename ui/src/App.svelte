@@ -21,7 +21,8 @@
     type Progresso,
   } from "./lib/biblioteca";
   import { log } from "./lib/log";
-  import { avisar, mensagensDaImportacao } from "./lib/avisos.svelte";
+  import { avisar, avisarSeDemorar, mensagensDaImportacao } from "./lib/avisos.svelte";
+  import { ouvirArraste } from "./lib/arrastar";
   import { movimentoReduzido, sistema, temaEfetivo } from "./lib/ambiente.svelte";
   import { atualizarPreferencias, preferencias } from "./lib/preferencias.svelte";
   import { aplicarTema, resolverTema } from "./lib/temas";
@@ -62,6 +63,23 @@
     aplicarAnimacao(reduzido);
   });
 
+  // Arrastar arquivos para a janela importa, mas só com a biblioteca na tela (lendo, não).
+  let arrastando = $state(false);
+  onMount(() => {
+    if (!isTauri()) return;
+    let pararDeOuvir: (() => void) | undefined;
+    ouvirArraste({
+      entrar: () => (arrastando = !aberto),
+      sair: () => (arrastando = false),
+      soltar: (caminhos) => {
+        if (!aberto) importar(caminhos);
+      },
+    })
+      .then((f) => (pararDeOuvir = f))
+      .catch((e) => log.warn(`arrastar para importar indisponível: ${e}`));
+    return () => pararDeOuvir?.();
+  });
+
   onMount(async () => {
     // Fora do Tauri (testes) não há biblioteca: fica a tela vazia.
     if (!isTauri()) return;
@@ -85,7 +103,11 @@
   async function importar(caminhos: string[]) {
     importando = true;
     try {
-      const resultado = await importarLivros(caminhos);
+      const n = caminhos.length;
+      const resultado = await avisarSeDemorar(
+        importarLivros(caminhos),
+        n === 1 ? "Importando 1 livro…" : `Importando ${n} livros…`,
+      );
       for (const { texto, tipo } of mensagensDaImportacao(resultado)) avisar(texto, tipo);
       await recarregar();
       gerarCapasDePdfs();
@@ -236,6 +258,7 @@
   <Biblioteca
     {livros}
     {importando}
+    {arrastando}
     onAbrir={abrir}
     onImportar={escolherEImportar}
     {preferencias}

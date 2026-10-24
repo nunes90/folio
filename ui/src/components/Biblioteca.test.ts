@@ -130,6 +130,23 @@ describe("Biblioteca", () => {
     });
   });
 
+  it("Ctrl+O importa (o mesmo que o botão), exceto durante uma importação", async () => {
+    const onImportar = vi.fn();
+    const { rerender } = render(Biblioteca, { livros, onAbrir: () => {}, onImportar });
+    await fireEvent.keyDown(window, { key: "o", ctrlKey: true });
+    expect(onImportar).toHaveBeenCalledOnce();
+    rerender({ livros, onAbrir: () => {}, onImportar, importando: true });
+    await fireEvent.keyDown(window, { key: "o", ctrlKey: true });
+    expect(onImportar).toHaveBeenCalledOnce();
+  });
+
+  it("arrastando arquivos, mostra onde soltar (inclusive com a biblioteca vazia)", () => {
+    const { rerender } = render(Biblioteca, { livros, arrastando: false, ...semAcao });
+    expect(screen.queryByText("Solte para importar")).toBeNull();
+    rerender({ livros: [], arrastando: true, ...semAcao });
+    expect(screen.getByText("Solte para importar")).toBeTruthy();
+  });
+
   it("abre o livro clicado", async () => {
     const onAbrir = vi.fn();
     render(Biblioteca, { livros, onAbrir, onImportar: () => {} });

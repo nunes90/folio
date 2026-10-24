@@ -12,3 +12,18 @@ leitor-core = { path = "crates/core" }
 anyhow = "1"
 thiserror = "2"
 tracing = "0.1"
+
+# No `cargo tauri dev` o Rust vem sem otimização, e o SHA-256 de um livro grande, a leitura
+# de PDF (lopdf) e a descompressão do EPUB ficam várias vezes mais lentos. Só estas
+# dependências são otimizadas no perfil dev (compilam uma vez; o resto continua rápido de compilar).
+[profile.dev.package.sha2]
+opt-level = 3
+
+[profile.dev.package.lopdf]
+opt-level = 3
+
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+
+[profile.dev.package.zip]
+opt-level = 3

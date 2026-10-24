@@ -4,12 +4,15 @@
   import type { Preferencias } from "../lib/preferencias.svelte";
   import type { TemaEfetivo } from "../lib/temas";
   import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
+  import { fade } from "svelte/transition";
+  import { curva, duracao } from "../lib/animacao";
   import Icone from "./Icone.svelte";
   import PainelTema from "./PainelTema.svelte";
 
   let {
     livros,
     importando = false,
+    arrastando = false,
     onAbrir,
     onImportar,
     onRemover,
@@ -20,6 +23,8 @@
   }: {
     livros: Livro[];
     importando?: boolean;
+    /** Arquivos sendo arrastados sobre a janela: mostra onde soltar. */
+    arrastando?: boolean;
     onAbrir: (livro: Livro) => void;
     onImportar: () => void;
     /** Pedido de remoção (quem chama confirma antes de remover). */
@@ -60,12 +65,17 @@
     campoBusca?.focus();
   }
 
-  // Ctrl+F leva à busca (na biblioteca; nos leitores, o Ctrl+F é deles).
+  // Ctrl+F leva à busca e Ctrl+O importa (na biblioteca; nos leitores, o Ctrl+F é deles).
   function aoTeclarJanela(e: KeyboardEvent) {
-    if (e.ctrlKey && !e.altKey && e.key.toLowerCase() === "f" && campoBusca) {
+    if (!e.ctrlKey || e.altKey) return;
+    const tecla = e.key.toLowerCase();
+    if (tecla === "f" && campoBusca) {
       e.preventDefault();
       campoBusca.focus();
       campoBusca.select();
+    } else if (tecla === "o") {
+      e.preventDefault();
+      if (!importando) onImportar();
     }
   }
 
@@ -153,7 +163,13 @@
 </script>
 
 {#snippet botaoImportar()}
-  <button type="button" class="primario" onclick={onImportar} disabled={importando}>
+  <button
+    type="button"
+    class="primario"
+    onclick={onImportar}
+    disabled={importando}
+    aria-keyshortcuts="Control+O"
+  >
     <Icone nome="mais" /><span class="rotulo">{importando ? "Importando…" : "Importar livros…"}</span>
   </button>
 {/snippet}
@@ -161,6 +177,15 @@
 <svelte:window onkeydown={aoTeclarJanela} />
 
 <main {...{ [ATRIBUTO_TELA]: "" }}>
+  {#if arrastando}
+    <!-- Só para quem arrasta com o mouse; o teclado usa "Importar livros…". -->
+    <div class="soltar" aria-hidden="true" transition:fade={{ duration: duracao("curta"), easing: curva }}>
+      <span class="icone-soltar"><Icone nome="mais" /></span>
+      <p>Solte para importar</p>
+      <p class="formatos">EPUB ou PDF; o arquivo original fica onde está.</p>
+    </div>
+  {/if}
+
   <header>
     <h1>Biblioteca</h1>
     {#if livros.length}
@@ -189,6 +214,7 @@
         </button>
       {/if}
       <!-- Biblioteca vazia: o botão de importar fica só no centro, junto da explicação. -->
+      <!-- (Ctrl+O importa de qualquer lugar da biblioteca.) -->
       {#if livros.length}
         {@render botaoImportar()}
       {/if}
@@ -320,6 +346,39 @@
   .acoes {
     display: flex;
     gap: 0.5rem;
+  }
+
+  /* Por cima de toda a biblioteca, sem capturar o arraste (quem recebe é a janela). */
+  .soltar {
+    position: fixed;
+    inset: 0.75rem;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 2px dashed var(--destaque);
+    border-radius: var(--raio-grande);
+    background: color-mix(in srgb, var(--destaque-suave) 92%, transparent);
+    color: var(--destaque);
+    pointer-events: none;
+  }
+
+  .soltar p {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .soltar .formatos {
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: var(--texto);
+  }
+
+  .icone-soltar {
+    font-size: 2.5rem;
   }
 
   header {

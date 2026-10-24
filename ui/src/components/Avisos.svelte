@@ -6,12 +6,13 @@
 
   // As duas regiões existem sempre: leitores de tela só anunciam o que muda dentro de uma
   // região que já estava na página. Sucesso é educado (status); erro interrompe (alert).
-  const sucessos = $derived(avisos.filter((a) => a.tipo === "sucesso"));
+  const sucessos = $derived(avisos.filter((a) => a.tipo !== "erro"));
   const erros = $derived(avisos.filter((a) => a.tipo === "erro"));
 
   /** Some sozinho depois de DURACAO_AVISO_MS, mas para enquanto o ponteiro ou o foco estão nele. */
   function temporizar(no: HTMLElement, aviso: Aviso) {
-    if (aviso.tipo === "erro") return;
+    // Erro fica até ser fechado; progresso some quando o trabalho termina.
+    if (aviso.tipo !== "sucesso") return;
     let restante = DURACAO_AVISO_MS;
     let inicio = 0;
     let espera: ReturnType<typeof setTimeout> | undefined;
