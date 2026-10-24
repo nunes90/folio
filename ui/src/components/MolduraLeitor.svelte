@@ -67,6 +67,14 @@
     document.getElementById(painel)?.focus();
   }
 
+  /** Abre um painel (se fechado) e leva o foco a ele (paleta de comandos). */
+  export async function mostrarPainel(painel: "indice" | "aparencia") {
+    const aberto = painel === "indice" ? indiceAberto : aparenciaAberta;
+    if (!aberto) await alternar(painel);
+    await tick();
+    document.getElementById(painel)?.focus();
+  }
+
   /** Fecha o painel que cobre o livro e devolve o foco ao botão que o abriu. */
   function fecharPainel() {
     if (aparenciaAberta) {

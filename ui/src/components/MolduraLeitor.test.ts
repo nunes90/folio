@@ -46,6 +46,18 @@ describe("MolduraLeitor", () => {
     expect(screen.getByRole("button", { name: "Claro" })).toBeTruthy();
   });
 
+  it("mostrarPainel() (paleta de comandos) abre o painel e leva o foco a ele", async () => {
+    const { component } = renderizar();
+    await component.mostrarPainel("aparencia");
+    const aparencia = screen.getByRole("button", { name: "Aparência" });
+    expect(aparencia.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement?.id).toBe("aparencia");
+    // Já aberto: não fecha (não é liga/desliga), só leva o foco.
+    await component.mostrarPainel("indice");
+    expect(screen.getByRole("button", { name: "Índice" }).getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement?.id).toBe("indice");
+  });
+
   it("Esc fecha o painel em que o foco está e devolve o foco ao botão", async () => {
     renderizar({ aparenciaAberta: true });
     const claro = screen.getByRole("button", { name: "Claro" });

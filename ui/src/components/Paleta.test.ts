@@ -75,6 +75,20 @@ describe("Paleta", () => {
     for (const c of lista) expect(c.executar).not.toHaveBeenCalled();
   });
 
+  it("comandos gerados pelo termo vêm antes dos outros", async () => {
+    const ir = vi.fn();
+    const porTermo = (termo: string): Comando[] =>
+      /^\d+$/.test(termo)
+        ? [{ id: "pagina", titulo: `Ir para a página ${termo}`, grupo: "PDF", executar: ir }]
+        : [];
+    render(Paleta, { aberto: true, comandos: comandos(), porTermo, onFechar: () => {} });
+    const campo = screen.getByRole("combobox");
+    await fireEvent.input(campo, { target: { value: "42" } });
+    expect(screen.getAllByRole("option")[0]!.textContent).toContain("Ir para a página 42");
+    await fireEvent.keyDown(campo, { key: "Enter" });
+    expect(ir).toHaveBeenCalledOnce();
+  });
+
   it("mostra o atalho do comando como teclas", () => {
     abrir();
     const opcao = screen.getByRole("option", { name: /Importar/ });

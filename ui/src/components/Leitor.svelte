@@ -26,6 +26,13 @@
   import { resolverTema } from "../lib/temas";
   import { aguardarTransicao } from "../lib/transicao";
   import {
+    comandosDaPagina,
+    comandosDoIndice,
+    comandosDoTexto,
+    type Comando,
+    type ComandosDoLeitor,
+  } from "../lib/comandos";
+  import {
     blocoParaFala,
     falar,
     ouvirVoz,
@@ -41,12 +48,15 @@
     inicio,
     onFechar,
     onProgresso,
+    onComandos,
   }: {
     arquivo: File;
     /** Onde retomar a leitura (EPUB CFI salvo na biblioteca). */
     inicio?: string;
     onFechar: () => void;
     onProgresso?: (localizacao: string, fracao: number) => void;
+    /** Publica os comandos deste livro para a paleta (Ctrl+K), de novo a cada mudança. */
+    onComandos?: (comandos: ComandosDoLeitor) => void;
   } = $props();
 
   let moldura: MolduraLeitor;
@@ -246,6 +256,69 @@
     // Leva o foco ao texto: o leitor de tela continua a leitura dali.
     view.renderer.focusView();
   }
+
+  // Paleta de comandos: o que dá para fazer neste livro agora (muda com a voz, a seção atual e
+  // as preferências).
+  $effect(() => {
+    const lista: Comando[] = [
+      {
+        id: "proxima",
+        titulo: "Próxima página",
+        grupo: "Leitura",
+        teclas: [["Page Down"]],
+        executar: () => void proxima(),
+      },
+      {
+        id: "anterior",
+        titulo: "Página anterior",
+        grupo: "Leitura",
+        teclas: [["Page Up"]],
+        executar: () => void anterior(),
+      },
+      {
+        id: "mostrar-indice",
+        titulo: "Mostrar o índice",
+        grupo: "Leitura",
+        palavras: "capítulos sumário",
+        executar: () => void moldura.mostrarPainel("indice"),
+      },
+      {
+        id: "mostrar-aparencia",
+        titulo: "Mostrar a aparência",
+        grupo: "Leitura",
+        palavras: "painel",
+        executar: () => void moldura.mostrarPainel("aparencia"),
+      },
+    ];
+    if (voz === "parado")
+      lista.push({
+        id: "voz-ler",
+        titulo: "Ler em voz alta",
+        grupo: "Voz",
+        executar: () => void lerEmVozAlta(),
+      });
+    else
+      lista.push(
+        {
+          id: "voz-pausar",
+          titulo: voz === "pausado" ? "Continuar a leitura em voz alta" : "Pausar a leitura em voz alta",
+          grupo: "Voz",
+          executar: () => void pausarOuRetomar(),
+        },
+        {
+          id: "voz-parar",
+          titulo: "Parar a leitura em voz alta",
+          grupo: "Voz",
+          executar: () => void pararLeitura(),
+        },
+      );
+    lista.push(
+      ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
+      ...comandosDaPagina(preferencias, atualizarPreferencias),
+      ...comandosDoTexto(preferencias, atualizarPreferencias, restaurarPadrao),
+    );
+    onComandos?.({ comandos: lista });
+  });
 
   function aoTeclar(e: KeyboardEvent) {
     // Com um diálogo aberto (ex.: atalhos), as teclas são dele.

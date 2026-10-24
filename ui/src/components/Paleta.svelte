@@ -9,10 +9,16 @@
   let {
     aberto,
     comandos,
+    porTermo,
+    textoDoCampo = "Buscar comando ou livro…",
     onFechar,
   }: {
     aberto: boolean;
     comandos: Comando[];
+    /** Comandos que dependem do que foi digitado (ex.: "42" → "Ir para a página 42"); vêm primeiro. */
+    porTermo?: (termo: string) => Comando[];
+    /** Texto de exemplo do campo (placeholder), conforme a tela. */
+    textoDoCampo?: string;
     onFechar: () => void;
   } = $props();
 
@@ -24,7 +30,7 @@
   /** Escolhido com Enter ou clique: roda quando o diálogo terminar de fechar. */
   let escolhido: Comando | null = null;
 
-  const achados = $derived(filtrarComandos(comandos, termo));
+  const achados = $derived([...(porTermo?.(termo) ?? []), ...filtrarComandos(comandos, termo)]);
   const idOpcao = (c: Comando) => `comando-${c.id}`;
   const anuncio = $derived(
     achados.length === 0
@@ -103,7 +109,7 @@
     aria-expanded="true"
     aria-controls="lista-comandos"
     aria-activedescendant={achados[ativo] ? idOpcao(achados[ativo]) : undefined}
-    placeholder="Buscar comando ou livro…"
+    placeholder={textoDoCampo}
     autocomplete="off"
     spellcheck="false"
     onkeydown={aoTeclar}

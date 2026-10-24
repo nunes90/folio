@@ -19,6 +19,14 @@
   import { achatar, converterSumario, itemAtual, type ItemSumarioPdf } from "../lib/sumario";
   import { resolverTema } from "../lib/temas";
   import { aguardarTransicao } from "../lib/transicao";
+  import {
+    comandosDaPagina,
+    comandosDoIndice,
+    irParaPagina,
+    type Comando,
+    type ComandosDoLeitor,
+  } from "../lib/comandos";
+  import type { ModoPdf } from "../lib/preferencias.svelte";
 
   let {
     dados,
@@ -26,6 +34,7 @@
     inicio,
     onFechar,
     onProgresso,
+    onComandos,
   }: {
     dados: ArrayBuffer;
     titulo: string;
@@ -33,6 +42,8 @@
     inicio?: string;
     onFechar: () => void;
     onProgresso?: (localizacao: string, fracao: number) => void;
+    /** Publica os comandos deste documento para a paleta (Ctrl+K), de novo a cada mudança. */
+    onComandos?: (comandos: ComandosDoLeitor) => void;
   } = $props();
 
   let moldura: MolduraLeitor;
@@ -261,6 +272,101 @@
       matchDiacritics: false,
     });
   }
+
+  const MODOS_PDF: [ModoPdf, string][] = [
+    ["paginas", "página a página"],
+    ["rolagem", "rolagem contínua"],
+  ];
+
+  // Paleta de comandos: o que dá para fazer neste documento agora. Digitar um número oferece
+  // "Ir para a página N" (porTermo).
+  $effect(() => {
+    const lista: Comando[] = [
+      {
+        id: "proxima",
+        titulo: "Próxima página",
+        grupo: "Leitura",
+        teclas: [["→"]],
+        executar: () => irPara(pagina + 1),
+      },
+      {
+        id: "anterior",
+        titulo: "Página anterior",
+        grupo: "Leitura",
+        teclas: [["←"]],
+        executar: () => irPara(pagina - 1),
+      },
+      {
+        id: "primeira",
+        titulo: "Ir para a primeira página",
+        grupo: "Leitura",
+        palavras: "início",
+        executar: () => irPara(1),
+      },
+      {
+        id: "ultima",
+        titulo: "Ir para a última página",
+        grupo: "Leitura",
+        palavras: "fim",
+        executar: () => irPara(total),
+      },
+      {
+        id: "buscar-pdf",
+        titulo: "Buscar no documento",
+        grupo: "Leitura",
+        teclas: [["Ctrl", "F"]],
+        executar: () => campoBusca?.focus(),
+      },
+      {
+        id: "mostrar-indice",
+        titulo: "Mostrar o índice",
+        grupo: "Leitura",
+        palavras: "capítulos sumário",
+        executar: () => void moldura.mostrarPainel("indice"),
+      },
+      {
+        id: "mostrar-aparencia",
+        titulo: "Mostrar a aparência",
+        grupo: "Leitura",
+        palavras: "painel",
+        executar: () => void moldura.mostrarPainel("aparencia"),
+      },
+      {
+        id: "zoom-mais",
+        titulo: "Aumentar o zoom",
+        grupo: "Zoom",
+        teclas: [["Ctrl", "+"]],
+        executar: () => visor?.increaseScale(),
+      },
+      {
+        id: "zoom-menos",
+        titulo: "Diminuir o zoom",
+        grupo: "Zoom",
+        teclas: [["Ctrl", "−"]],
+        executar: () => visor?.decreaseScale(),
+      },
+      {
+        id: "zoom-largura",
+        titulo: "Ajustar à largura",
+        grupo: "Zoom",
+        teclas: [["Ctrl", "0"]],
+        executar: () => {
+          if (visor) visor.currentScaleValue = "page-width";
+        },
+      },
+      ...MODOS_PDF.map(([modoPdf, nome]) => ({
+        id: `modo-${modoPdf}`,
+        titulo: `Exibição: ${nome}`,
+        grupo: "Aparência",
+        dica: preferencias.modoPdf === modoPdf ? "atual" : undefined,
+        executar: () => atualizarPreferencias({ modoPdf }),
+      })),
+      ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
+      ...comandosDaPagina(preferencias, atualizarPreferencias),
+    ];
+    const n = total;
+    onComandos?.({ comandos: lista, porTermo: (termo) => irParaPagina(termo, n, irPara) });
+  });
 
   function aoTeclar(e: KeyboardEvent) {
     // Com um diálogo aberto (ex.: atalhos), as teclas são dele.

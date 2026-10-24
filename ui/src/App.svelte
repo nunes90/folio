@@ -45,7 +45,7 @@
   import { aplicarTema, resolverTema } from "./lib/temas";
   import { aplicarAnimacao } from "./lib/animacao";
   import { transicionar } from "./lib/transicao";
-  import type { Comando } from "./lib/comandos";
+  import type { Comando, ComandosDoLeitor } from "./lib/comandos";
   import type { Filtro } from "./lib/filtro";
   import type { TemaEscolhido } from "./lib/temas";
   import type { Movimento } from "./lib/preferencias.svelte";
@@ -56,6 +56,8 @@
   let importando = $state(false);
   let ajudaAberta = $state(false);
   let paletaAberta = $state(false);
+  /** O que o leitor aberto oferece à paleta (índice, página, texto…); vazio na biblioteca. */
+  let doLeitor = $state<ComandosDoLeitor>({ comandos: [] });
   /** A biblioteca na tela (para a paleta trocar de estante ou levar à busca). */
   let biblioteca = $state<ReturnType<typeof Biblioteca>>();
   /** Leitor de PDF, importado sob demanda (o pdf.js é grande) antes de a transição começar. */
@@ -164,6 +166,7 @@
         grupo: "Leitura",
         executar: () => void fechar(),
       });
+      lista.push(...doLeitor.comandos);
     }
     for (const [tema, nome] of NOMES_TEMA)
       lista.push({
@@ -535,6 +538,7 @@
     await recarregar();
     const voltar = () => {
       aberto = null;
+      doLeitor = { comandos: [] };
     };
     if (id) await transicionar(id, "fechar", voltar);
     else voltar();
@@ -544,7 +548,17 @@
 <svelte:window onkeydown={aoTeclar} />
 
 <Atalhos {contexto} aberto={ajudaAberta} onFechar={() => (ajudaAberta = false)} />
-<Paleta aberto={paletaAberta} {comandos} onFechar={() => (paletaAberta = false)} />
+<Paleta
+  aberto={paletaAberta}
+  {comandos}
+  porTermo={aberto ? doLeitor.porTermo : undefined}
+  textoDoCampo={!aberto
+    ? "Buscar comando ou livro…"
+    : aberto.livro.formato === "pdf"
+      ? "Buscar comando ou número da página…"
+      : "Buscar comando ou capítulo…"}
+  onFechar={() => (paletaAberta = false)}
+/>
 <Avisos />
 
 <Confirmacao
@@ -606,6 +620,7 @@
       inicio={aberto.inicio}
       onFechar={fechar}
       onProgresso={aoProgredir}
+      onComandos={(c: ComandosDoLeitor) => (doLeitor = c)}
     />
   {/if}
 {:else if aberto}
@@ -614,6 +629,7 @@
     inicio={aberto.inicio}
     onFechar={fechar}
     onProgresso={aoProgredir}
+    onComandos={(c) => (doLeitor = c)}
   />
 {:else}
   <Biblioteca
