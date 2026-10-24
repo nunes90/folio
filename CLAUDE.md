@@ -253,5 +253,7 @@ docs/decisions/  # ADRs
   sem espera (um upsert no SQLite, < 1 ms; os comandos rodam na ordem): a espera de 1 s perdia a última página ao
   fechar a janela. **Não interceptar o fechamento da janela** (`onCloseRequested`): com o tratador registrado, o Tauri
   segura o fechamento até o JS liberar, e em testes o JS às vezes não recebia o pedido (janela impossível de fechar).
+- **v0.4.0** (out/2026): tag assinada `v0.4.0` (M13 + capas e progresso + painéis flutuantes) e Release no GitHub
+  como pre-release.
 - Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.

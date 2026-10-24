@@ -2000,7 +2000,7 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "leitor"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "directories",
@@ -2018,7 +2018,7 @@ dependencies = [
 
 [[package]]
 name = "leitor-core"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "insta",
  "lopdf",
