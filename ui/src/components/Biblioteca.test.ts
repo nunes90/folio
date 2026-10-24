@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import axe from "axe-core";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { sistema } from "../lib/ambiente.svelte";
 import type { Livro } from "../lib/biblioteca";
 import { PADRAO } from "../lib/preferencias.svelte";
 import Biblioteca from "./Biblioteca.svelte";
@@ -32,10 +33,17 @@ const livros = [
 
 const semAcao = { onAbrir: () => {}, onImportar: () => {} };
 
+/** Itens da grade de livros (a barra lateral também tem uma lista). A grade vazia fica
+ *  `hidden` e sai da árvore de acessibilidade: aí não há itens. */
+function itensDaGrade(): HTMLElement[] {
+  const grade = screen.queryByRole("list", { name: "Livros" });
+  return grade ? within(grade).queryAllByRole("listitem") : [];
+}
+
 describe("Biblioteca", () => {
   it("lista os livros com título, autor e progresso no nome do botão", () => {
     render(Biblioteca, { livros, ...semAcao });
-    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(itensDaGrade()).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: /Dom Casmurro.*Machado de Assis.*37% lido/ }),
     ).toBeTruthy();
@@ -47,9 +55,9 @@ describe("Biblioteca", () => {
     expect(screen.getByText("menos de 1% lido")).toBeTruthy();
   });
 
-  it("livro concluído (situação vinda do core) aparece como Concluído", () => {
+  it("livro concluído (situação vinda do core) aparece como Lido", () => {
     render(Biblioteca, { livros: [livro({ fracao: 0.997, situacao: "concluido" })], ...semAcao });
-    expect(screen.getByRole("button", { name: /Dom Casmurro.*Concluído/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Dom Casmurro.*EPUB Lido$/ })).toBeTruthy();
   });
 
   it("mostra o formato no card e o progresso numa barra decorativa sobre a capa", () => {
@@ -73,10 +81,17 @@ describe("Biblioteca", () => {
     const estante = [
       livro({ id: "a", titulo: "Dom Casmurro", fracao: 0.37, situacao: "lendo" }),
       livro({ id: "b", titulo: "Memórias Póstumas", fracao: 1, situacao: "concluido" }),
-      livro({ id: "c", titulo: "O Cortiço", autores: ["Aluísio Azevedo"] }),
+      livro({ id: "c", titulo: "O Cortiço", autores: ["Aluísio Azevedo"], paraLerEm: 5 }),
     ];
+    afterEach(() => {
+      sistema.estreita = false;
+    });
+    const naBarra = (nome: RegExp) =>
+      within(screen.getByRole("navigation", { name: "Estantes" })).getByRole("button", {
+        name: nome,
+      });
     // Itens da grade acessíveis (a lista vazia fica `hidden` e sai da árvore de acessibilidade).
-    const visiveis = () => screen.queryAllByRole("listitem").length;
+    const visiveis = () => itensDaGrade().length;
 
     it("a busca filtra por título ou autor e anuncia quantos livros sobraram", async () => {
       render(Biblioteca, { livros: estante, ...semAcao });
@@ -86,16 +101,50 @@ describe("Biblioteca", () => {
       expect(screen.getByText("1 livro encontrado")).toBeTruthy();
     });
 
-    it("filtros mostram a contagem, marcam o ativo com aria-pressed e combinam com a busca", async () => {
+    it("barra lateral: estantes com contagem, a atual com aria-current", async () => {
       render(Biblioteca, { livros: estante, ...semAcao });
-      const todos = screen.getByRole("button", { name: "Todos 3" });
-      const concluidos = screen.getByRole("button", { name: "Concluídos 1" });
-      expect(todos.getAttribute("aria-pressed")).toBe("true");
-      await fireEvent.click(concluidos);
-      expect(concluidos.getAttribute("aria-pressed")).toBe("true");
-      expect(todos.getAttribute("aria-pressed")).toBe("false");
+      const todos = naBarra(/^Todos 3$/);
+      const lidos = naBarra(/^Lidos 1$/);
+      expect(naBarra(/^Lendo 1$/)).toBeTruthy();
+      expect(naBarra(/^Para ler 1$/)).toBeTruthy();
+      expect(todos.getAttribute("aria-current")).toBe("page");
+      await fireEvent.click(lidos);
+      expect(lidos.getAttribute("aria-current")).toBe("page");
+      expect(todos.hasAttribute("aria-current")).toBe(false);
       expect(visiveis()).toBe(1);
       expect(screen.getByRole("button", { name: /Memórias Póstumas/ })).toBeTruthy();
+      await fireEvent.click(naBarra(/^Para ler/));
+      expect(screen.getByRole("button", { name: /O Cortiço/ })).toBeTruthy();
+      expect(visiveis()).toBe(1);
+    });
+
+    it("setas ↑↓, Home e End andam entre as estantes (uma só parada de Tab)", async () => {
+      render(Biblioteca, { livros: estante, ...semAcao });
+      const todos = naBarra(/^Todos/);
+      expect(todos.getAttribute("tabindex")).toBe("0");
+      expect(naBarra(/^Lendo/).getAttribute("tabindex")).toBe("-1");
+      todos.focus();
+      await fireEvent.keyDown(todos, { key: "ArrowDown" });
+      expect(document.activeElement).toBe(naBarra(/^Lendo/));
+      await fireEvent.keyDown(document.activeElement!, { key: "End" });
+      expect(document.activeElement).toBe(naBarra(/^Lidos/));
+      await fireEvent.keyDown(document.activeElement!, { key: "Home" });
+      expect(document.activeElement).toBe(todos);
+    });
+
+    it("janela estreita: as estantes ficam num painel aberto pelo botão Estantes", async () => {
+      sistema.estreita = true;
+      render(Biblioteca, { livros: estante, ...semAcao });
+      const botao = screen.getByRole("button", { name: "Estantes" });
+      expect(botao.getAttribute("aria-expanded")).toBe("false");
+      expect(screen.queryByRole("navigation", { name: "Estantes" })).toBeNull();
+      await fireEvent.click(botao);
+      expect(botao.getAttribute("aria-expanded")).toBe("true");
+      // Escolher uma estante fecha o painel e devolve o foco ao botão.
+      await fireEvent.click(naBarra(/^Lendo/));
+      expect(botao.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(botao);
+      expect(visiveis()).toBe(1);
     });
 
     it("sem resultado, explica e oferece limpar a busca", async () => {
@@ -111,8 +160,6 @@ describe("Biblioteca", () => {
 
     it("as setas andam só entre os livros visíveis", async () => {
       render(Biblioteca, { livros: estante, ...semAcao });
-      await fireEvent.click(screen.getByRole("button", { name: /^Lendo/ }));
-      await fireEvent.click(screen.getByRole("button", { name: "Todos 3" }));
       await fireEvent.input(screen.getByRole("searchbox"), { target: { value: "o" } });
       // "o" aparece em Dom Casmurro, Memórias Póstumas e O Cortiço; com "cortico", só um.
       await fireEvent.input(screen.getByRole("searchbox"), { target: { value: "cortico" } });
@@ -129,7 +176,7 @@ describe("Biblioteca", () => {
     it("biblioteca vazia não mostra busca nem filtros", () => {
       render(Biblioteca, { livros: [], ...semAcao });
       expect(screen.queryByRole("searchbox")).toBeNull();
-      expect(screen.queryByRole("button", { name: /^Todos/ })).toBeNull();
+      expect(screen.queryByRole("navigation", { name: "Estantes" })).toBeNull();
     });
   });
 
@@ -196,7 +243,7 @@ describe("Biblioteca", () => {
   describe("teclado (roving tabindex)", () => {
     const tres = [livro({ id: "a" }), livro({ id: "b", titulo: "B" }), livro({ id: "c", titulo: "C" })];
     const botoes = () =>
-      screen.getAllByRole("listitem").map((li) => within(li).getByRole("button"));
+      itensDaGrade().map((li) => within(li).getByRole("button"));
 
     it("só um livro fica na ordem do Tab", () => {
       render(Biblioteca, { livros: tres, ...semAcao });

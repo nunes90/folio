@@ -179,5 +179,10 @@ docs/decisions/  # ADRs
   `Situacao::do_livro`), `mover_para_lixeira`, `restaurar`, `apagar_de_vez` (o antigo `remover`), `esvaziar_lixeira`,
   `listar_lixeira`; `listar` exclui a lixeira; `marcar_aberto` tira "para ler"; importar um livro da lixeira devolve
   `Importado::Restaurado` ("… voltou da lixeira."). O comando `remover_livro` ainda apaga de vez até o M9c.
-- Próximo passo: **M9b** (barra lateral). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
+- **M9b** (branch `feat/m9b-barra-lateral`): `Estantes.svelte` (Todos · Lendo · Para ler · Lidos, contagem,
+  `aria-current="page"`, roving tabindex com ↑↓/Home/End) numa barra lateral (`<nav aria-label="Estantes">`) à
+  esquerda da biblioteca; em janela estreita, botão "Estantes" abre um `PainelLateral` com véu (Esc/véu/escolher fecham
+  e devolvem o foco). `lib/filtro.ts`: `Filtro` = `todos | lendo | para-ler | lidos`. Os filtros em pílula do M8c
+  saíram; o card diz "Lido".
+- Próximo passo: **M9c** (Lixeira na barra e ações do livro). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
   destaque da frase lida.

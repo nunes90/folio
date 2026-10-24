@@ -49,9 +49,9 @@ a Lixeira é outro estado do livro. A busca continua no topo e filtra a vista at
   - [x] M9a — core: migração 3 com `para_ler`, `lido_em` (lido manual, vence o progresso) e `removido_em`
     (lixeira); marcar para ler / lido, mover para a lixeira, restaurar, apagar de vez, esvaziar. `Situacao`
     considera o lido manual. Abrir um livro tira "Para ler". Importar um livro que está na lixeira o restaura.
-  - [ ] M9b — barra lateral: Todos · Lendo · Para ler · Lidos · Lixeira, com contagem, setas e `aria-current`
-    (substitui os filtros do M8c); drawer em janela estreita
-  - [ ] M9c — ações do livro: menu "Mais ações" sempre visível (e tecla Menu / Shift+F10) com Para ler, Marcar
+  - [x] M9b — barra lateral: Todos · Lendo · Para ler · Lidos, com contagem, setas e `aria-current`
+    (substitui os filtros do M8c); painel em janela estreita. A Lixeira entra na barra no M9c, junto com as ações dela
+  - [ ] M9c — Lixeira na barra lateral e ações do livro: menu "Mais ações" sempre visível (e tecla Menu / Shift+F10) com Para ler, Marcar
     como lido e Mover para a lixeira; vista da lixeira com Restaurar, Apagar de vez e Esvaziar (só esses pedem
     confirmação); aviso com "Desfazer"
   - Decisões: a lixeira nunca se esvazia sozinha; "Para ler" sai ao abrir o livro; a lista se chama "Lidos".
