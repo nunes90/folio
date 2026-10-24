@@ -93,7 +93,11 @@ clarão). Tag `v0.3.1`, Release como pre-release.
 **v0.4.0** (out/2026): M13 (Interface · Página · Texto), capas e progresso, painéis flutuantes. Tag `v0.4.0`,
 Release como pre-release.
 
-- [ ] **Depois**: paleta de comandos, slider de páginas, modo foco, destaques…
+- [ ] **M14 — Paleta de comandos** (Ctrl+K): buscar uma ação ou um livro pelo nome.
+  - [x] **M14a**: registro de comandos (`lib/comandos.ts`), `Paleta.svelte` (combobox + listbox), comandos da
+    biblioteca (importar, buscar, estantes, coleções, lixeira), aparência da interface, atalhos e abrir livro.
+  - [ ] **M14b**: comandos do leitor (capítulos do índice, cor da página, texto, voz, página do PDF).
+- [ ] **Depois**: slider de páginas, modo foco, destaques…
 
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.

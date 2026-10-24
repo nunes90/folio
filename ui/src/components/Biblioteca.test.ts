@@ -53,6 +53,22 @@ describe("Biblioteca", () => {
     expect(screen.getByRole("button", { name: /Memórias Póstumas.*Não iniciado/ })).toBeTruthy();
   });
 
+  it("mostrar() (paleta de comandos) troca a estante, limpa a busca e foca o 1º livro", async () => {
+    const { component } = render(Biblioteca, { livros, ...semAcao });
+    await fireEvent.input(screen.getByRole("searchbox"), { target: { value: "memorias" } });
+    expect(itensDaGrade()).toHaveLength(1);
+    await component.mostrar("lendo");
+    expect(itensDaGrade()).toHaveLength(1);
+    expect(document.activeElement?.textContent).toContain("Dom Casmurro");
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+  });
+
+  it("buscar() (paleta de comandos) leva ao campo de busca", () => {
+    const { component } = render(Biblioteca, { livros, ...semAcao });
+    component.buscar();
+    expect(document.activeElement).toBe(screen.getByRole("searchbox"));
+  });
+
   it("livro recém-aberto não aparece como 0%", () => {
     render(Biblioteca, { livros: [livro({ fracao: 0.0013, situacao: "lendo" })], ...semAcao });
     expect(screen.getByText("menos de 1% lido")).toBeTruthy();

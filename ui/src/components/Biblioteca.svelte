@@ -180,6 +180,21 @@
     campoBusca?.focus();
   }
 
+  /** Leva à busca (Ctrl+F e a paleta de comandos). */
+  export function buscar() {
+    campoBusca?.focus();
+    campoBusca?.select();
+  }
+
+  /** Mostra uma estante, a lista de autores ou uma coleção (paleta de comandos); foco no 1º livro. */
+  export async function mostrar(destino: Filtro) {
+    termo = "";
+    voltandoDe = null;
+    filtro = destino;
+    await tick();
+    focar(0);
+  }
+
   // Ctrl+F leva à busca e Ctrl+O importa (na biblioteca; nos leitores, o Ctrl+F é deles).
   function aoTeclarJanela(e: KeyboardEvent) {
     if (e.key === "Escape" && estantesAbertas && !e.defaultPrevented) {
@@ -191,8 +206,7 @@
     const tecla = e.key.toLowerCase();
     if (tecla === "f" && campoBusca) {
       e.preventDefault();
-      campoBusca.focus();
-      campoBusca.select();
+      buscar();
     } else if (tecla === "o") {
       e.preventDefault();
       if (!importando) onImportar();
