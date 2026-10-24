@@ -216,4 +216,6 @@ docs/decisions/  # ADRs
   `chavesDoLivro`. `Filtro` ganha `autores` (a lista) e `autor:<chave>` (os livros do autor). Barra: item "Autores"
   depois de Lidos (atual também dentro de um autor). `ListaAutores.svelte` (roving ↑↓/Home/End; ao voltar, foco no
   autor de onde se saiu). Vista do autor com "‹ Autores" e o nome (foco no título ao abrir).
-- Próximo passo: marcar a v0.3.0 (M9 + M10 + M11). M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o destaque da frase lida.
+- **v0.3.0** (out/2026): tag assinada `v0.3.0` (M9 + M10 + M11) e Release no GitHub como pre-release.
+- Próximo passo: a definir (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
+  PDF; conferir à mão o destaque da frase lida.
