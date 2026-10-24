@@ -246,12 +246,64 @@ impl Biblioteca {
         conexao.pragma_update(None, "foreign_keys", true)?;
         conexao.pragma_update(None, "journal_mode", "WAL")?;
         migrar(&mut conexao)?;
-        Ok(Self {
+        let biblioteca = Self {
             conexao,
             dir_livros,
             dir_capas: capas.to_path_buf(),
             relogio: agora,
-        })
+        };
+        // As capas ficam num cache, que o usuário (ou o sistema) pode limpar a qualquer hora.
+        // Não consertar não impede a leitura: só avisa.
+        match biblioteca.conferir_capas() {
+            Ok(0) => {}
+            Ok(n) => tracing::info!(n, "capas ausentes do cache refeitas"),
+            Err(erro) => tracing::warn!(%erro, "não foi possível conferir as capas"),
+        }
+        Ok(biblioteca)
+    }
+
+    /// Conserta as capas que sumiram do cache; devolve quantas. EPUB: a capa sai de novo da
+    /// cópia do livro. PDF: a referência é apagada e o frontend a gera de novo com o pdf.js
+    /// (como ao importar). Conferir é barato: só verifica se cada arquivo existe.
+    #[instrument(skip(self))]
+    pub fn conferir_capas(&self) -> Resultado<usize> {
+        let mut consulta = self
+            .conexao
+            .prepare("SELECT id, formato, arquivo, capa FROM livros WHERE capa IS NOT NULL")?;
+        let sem_arquivo: Vec<(String, String, String)> = consulta
+            .query_map([], |linha| {
+                Ok((
+                    linha.get(0)?,
+                    linha.get(1)?,
+                    linha.get(2)?,
+                    linha.get::<_, String>(3)?,
+                ))
+            })?
+            .filter_map(Result::ok)
+            .filter(|(.., capa)| !self.dir_capas.join(capa).exists())
+            .map(|(id, formato, arquivo, _)| (id, formato, arquivo))
+            .collect();
+        for (id, formato, arquivo) in &sem_arquivo {
+            let nova = match Formato::de_texto(formato) {
+                Some(Formato::Epub) => self.extrair_capa_de_novo(arquivo, id),
+                _ => None,
+            };
+            self.conexao.execute(
+                "UPDATE livros SET capa = ?1 WHERE id = ?2",
+                params![nova, id],
+            )?;
+        }
+        Ok(sem_arquivo.len())
+    }
+
+    /// Lê a capa da cópia do EPUB e a grava no cache; `None` se não der (sem capa, arquivo
+    /// sumido ou ilegível): o livro fica com a capa substituta.
+    fn extrair_capa_de_novo(&self, arquivo: &str, id: &str) -> Option<String> {
+        let bytes = std::fs::read(self.dir_livros.join(arquivo)).ok()?;
+        let capa = epub::ler(&bytes).ok()?.capa?;
+        self.gravar_capa(id, &capa)
+            .inspect_err(|erro| tracing::warn!(%erro, %id, "capa não regravada"))
+            .ok()
     }
 
     /// Importa um livro. Se ele já estiver na biblioteca, devolve o existente como
@@ -851,6 +903,55 @@ mod tests {
             bib.definir_capa("nao-existe", &capa).unwrap_err(),
             ErroBiblioteca::NaoEncontrado(_)
         ));
+    }
+
+    #[test]
+    fn capas_apagadas_do_cache_sao_regeradas_ao_abrir() {
+        let dir = tempfile::tempdir().unwrap();
+        let (dados, capas) = (dir.path().join("dados"), dir.path().join("capas"));
+        let bib = Biblioteca::abrir(&dados, &capas).unwrap();
+        let epub = bib
+            .importar(&fixture("dom-casmurro.epub"))
+            .unwrap()
+            .into_livro();
+        let capa_epub = epub.capa.clone().expect("o EPUB tem capa");
+        let bytes_da_capa = std::fs::read(&capa_epub).unwrap();
+        let pdf = bib.importar(&fixture("minimo.pdf")).unwrap().into_livro();
+        let capa_pdf = Capa {
+            tipo_midia: "image/png".into(),
+            bytes: vec![1, 2, 3],
+        };
+        bib.definir_capa(&pdf.id, &capa_pdf).unwrap();
+        drop(bib);
+
+        // Limpar o cache apaga o diretório inteiro.
+        std::fs::remove_dir_all(&capas).unwrap();
+        let bib = Biblioteca::abrir(&dados, &capas).unwrap();
+
+        // EPUB: a capa sai de novo da cópia do livro.
+        let epub = bib.obter(&epub.id).unwrap().unwrap();
+        assert_eq!(std::fs::read(epub.capa.unwrap()).unwrap(), bytes_da_capa);
+        // PDF: a capa é gerada pelo frontend (pdf.js); sem referência, ele a gera de novo.
+        assert_eq!(bib.obter(&pdf.id).unwrap().unwrap().capa, None);
+        // Com tudo no lugar, não há o que consertar.
+        assert_eq!(bib.conferir_capas().unwrap(), 0);
+    }
+
+    #[test]
+    fn conferir_capas_so_mexe_nas_que_faltam() {
+        let (_dir, bib) = nova();
+        let epub = bib
+            .importar(&fixture("dom-casmurro.epub"))
+            .unwrap()
+            .into_livro();
+        let outro = bib
+            .importar(&fixture("capa-epub2.epub"))
+            .unwrap()
+            .into_livro();
+        std::fs::remove_file(epub.capa.as_ref().unwrap()).unwrap();
+        assert_eq!(bib.conferir_capas().unwrap(), 1);
+        assert!(epub.capa.unwrap().exists());
+        assert!(outro.capa.unwrap().exists());
     }
 
     #[test]

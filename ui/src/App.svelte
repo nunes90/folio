@@ -35,7 +35,6 @@
     restaurarLivro,
     salvarProgresso,
     type Livro,
-    type Progresso,
   } from "./lib/biblioteca";
   import { log } from "./lib/log";
   import { avisar, avisarSeDemorar, mensagensDaImportacao } from "./lib/avisos.svelte";
@@ -46,8 +45,6 @@
   import { aplicarAnimacao } from "./lib/animacao";
   import { transicionar } from "./lib/transicao";
 
-  /** Progresso só vai ao banco depois de um tempo sem virar página. */
-  const ESPERA_PROGRESSO_MS = 1000;
 
   let livros = $state<Livro[]>([]);
   let aberto = $state<{ livro: Livro; dados: ArrayBuffer; inicio?: string } | null>(null);
@@ -81,8 +78,6 @@
     }
   }
 
-  let pendente: { id: string; progresso: Progresso } | null = null;
-  let temporizador: ReturnType<typeof setTimeout> | undefined;
 
   // Tema e movimento da interface: reagem às preferências e às mudanças do sistema.
   $effect(() => {
@@ -179,20 +174,13 @@
 
   function aoProgredir(localizacao: string, fracao: number) {
     if (!aberto) return;
-    pendente = { id: aberto.livro.id, progresso: { localizacao, fracao } };
-    clearTimeout(temporizador);
-    temporizador = setTimeout(gravarPendente, ESPERA_PROGRESSO_MS);
-  }
-
-  async function gravarPendente() {
-    if (!pendente) return;
-    const { id, progresso } = pendente;
-    pendente = null;
-    try {
-      await salvarProgresso(id, progresso);
-    } catch (e) {
-      log.warn(`falha ao salvar progresso: ${e}`);
-    }
+    // Grava a cada mudança de página, sem esperar: é um único upsert no SQLite (menos de 1 ms),
+    // e fechar a janela logo depois de virar a página não perde mais a última posição. (Uma
+    // espera de 1 s perdia; interceptar o fechamento da janela arriscava deixá-la impossível
+    // de fechar se o tratador não fosse chamado.) Os comandos rodam um de cada vez, na ordem.
+    salvarProgresso(aberto.livro.id, { localizacao, fracao }).catch((e) =>
+      log.warn(`falha ao salvar progresso: ${e}`),
+    );
   }
 
   let gerandoCapas = false;
@@ -416,8 +404,6 @@
   }
 
   async function fechar() {
-    clearTimeout(temporizador);
-    await gravarPendente();
     const id = aberto?.livro.id;
     ultimoAberto = id;
     // A lista é recarregada antes, para a capa de destino já estar na tela nova.
