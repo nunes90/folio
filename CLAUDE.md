@@ -202,5 +202,13 @@ docs/decisions/  # ADRs
   `renomear_colecao`, `apagar_colecao`, `adicionar_a_colecao` (idempotente), `remover_da_colecao`. Nome aparado; vazio
   → `NomeDeColecaoVazio`; repetido → `ColecaoJaExiste` (comparação com `to_lowercase` no Rust: o `NOCASE` do SQLite
   só cobre ASCII). `LivroNaBiblioteca.colecoes` vem de um `group_concat`. Comandos finos e tipos TS prontos.
-- Próximo passo: **M10b** (coleções na interface). M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. M6 (empacotamento) em aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o
-  destaque da frase lida.
+- **M10b** (branch `feat/m10b-colecoes-ui`): `Filtro` = `Vista | colecao:<id>` (`idDaColecao`, `contarPorColecao` em
+  `lib/filtro.ts`). Barra lateral: vistas, seção "Coleções" (com contagem e "+ Nova coleção", fora das setas) e
+  Lixeira; as setas andam por vistas, coleções e lixeira. Vista da coleção com "Renomear…" e "Apagar coleção…" (os
+  livros ficam); se a coleção sumir, volta para Todos. `PedirNome.svelte` (nova/renomear; erro do core ligado ao campo,
+  diálogo continua aberto) e `EscolherColecoes.svelte` ("Adicionar à coleção…": caixas que aplicam na hora e "Criar e
+  adicionar"). Menu do livro: "Adicionar à coleção…" e, dentro de uma coleção, "Tirar desta coleção" (aviso com
+  Desfazer). Na linha de ícones do card, a pasta "Coleções" abre o mesmo diálogo (`aria-haspopup="dialog"`, não é
+  liga/desliga; destacada e cheia se o livro está em alguma coleção, `title` com a quantidade).
+- **M10 concluído.** Próximo passo: marcar a v0.3.0 (M9 + M10) ou o M11 (autores e séries). M6 (empacotamento) em
+  aberto. Pendências do M4d: leitura em voz alta de PDF; conferir à mão o destaque da frase lida.

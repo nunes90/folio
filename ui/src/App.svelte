@@ -5,6 +5,8 @@
   import Avisos from "./components/Avisos.svelte";
   import Biblioteca from "./components/Biblioteca.svelte";
   import Confirmacao from "./components/Confirmacao.svelte";
+  import EscolherColecoes from "./components/EscolherColecoes.svelte";
+  import PedirNome from "./components/PedirNome.svelte";
   import type { AcaoLivro } from "./components/MenuLivro.svelte";
   import Leitor from "./components/Leitor.svelte";
   import {
@@ -16,7 +18,14 @@
     importarLivros,
     listarLivros,
     progressoDoLivro,
+    adicionarAColecao,
+    apagarColecao,
     apagarLivro,
+    criarColecao,
+    listarColecoes,
+    removerDaColecao,
+    renomearColecao,
+    type Colecao,
     definirFavorito,
     definirLido,
     definirParaLer,
@@ -48,7 +57,18 @@
   let LeitorPdf = $state<Component<any> | null>(null);
   let lixeira = $state<Livro[]>([]);
   /** O que espera confirmação: apagar um livro de vez ou esvaziar a lixeira. */
-  let confirmar = $state<{ tipo: "apagar"; livro: Livro } | { tipo: "esvaziar" } | null>(null);
+  let confirmar = $state<
+    | { tipo: "apagar"; livro: Livro }
+    | { tipo: "esvaziar" }
+    | { tipo: "apagar-colecao"; colecao: Colecao }
+    | null
+  >(null);
+  let colecoes = $state<Colecao[]>([]);
+  /** Diálogo de nome: nova coleção ou renomear uma; `erro` vem do core (ex.: nome repetido). */
+  let pedirNome = $state<{ colecao: Colecao | null; erro: string | null } | null>(null);
+  /** Livro cujo diálogo "Adicionar à coleção…" está aberto (o id: a lista é recarregada). */
+  let colecoesDe = $state<string | null>(null);
+  const livroDasColecoes = $derived(livros.find((l) => l.id === colecoesDe) ?? null);
   /** Livro fechado por último: recebe o foco ao voltar para a biblioteca. */
   let ultimoAberto = $state<string>();
   const contexto = $derived(aberto ? aberto.livro.formato : "biblioteca");
@@ -105,7 +125,11 @@
 
   async function recarregar() {
     try {
-      [livros, lixeira] = await Promise.all([listarLivros(), listarLixeira()]);
+      [livros, lixeira, colecoes] = await Promise.all([
+        listarLivros(),
+        listarLixeira(),
+        listarColecoes(),
+      ]);
     } catch (e) {
       avisar(`Não foi possível carregar a biblioteca: ${e}`, "erro");
     }
@@ -284,11 +308,82 @@
         if (ok) ultimoAberto = vizinho;
         return;
       }
+      case "colecoes":
+        colecoesDe = livro.id;
+        return;
+      case "tirar-da-colecao":
+        // Chega por onTirarDaColecao (a biblioteca sabe de qual coleção).
+        return;
       case "apagar":
         // Irreversível: só depois de confirmar.
         confirmar = { tipo: "apagar", livro };
         return;
     }
+  }
+
+  /** Confirmar no diálogo de nome: cria ou renomeia; com erro, o diálogo fica aberto. */
+  async function nomeConfirmado(nome: string) {
+    const pedido = pedirNome;
+    if (!pedido) return;
+    try {
+      if (pedido.colecao) {
+        await renomearColecao(pedido.colecao.id, nome);
+        avisar(`A coleção agora se chama “${nome.trim()}”.`);
+      } else {
+        const nova = await criarColecao(nome);
+        avisar(`Coleção “${nova.nome}” criada.`);
+      }
+    } catch (e) {
+      pedirNome = { ...pedido, erro: String(e) };
+      return;
+    }
+    pedirNome = null;
+    await recarregar();
+  }
+
+  async function alternarColecao(colecao: number, marcar: boolean) {
+    const livro = livroDasColecoes;
+    if (!livro) return;
+    try {
+      if (marcar) await adicionarAColecao(colecao, livro.id);
+      else await removerDaColecao(colecao, livro.id);
+    } catch (e) {
+      avisar(`Não foi possível mudar as coleções de ${livro.titulo}: ${e}`, "erro");
+    }
+    await recarregar();
+  }
+
+  /** Cria a coleção e já põe o livro nela; devolve o erro (para o diálogo) ou null. */
+  async function criarComLivro(nome: string): Promise<string | null> {
+    const livro = livroDasColecoes;
+    if (!livro) return null;
+    try {
+      const nova = await criarColecao(nome);
+      await adicionarAColecao(nova.id, livro.id);
+      avisar(`Coleção “${nova.nome}” criada com ${livro.titulo}.`);
+    } catch (e) {
+      return String(e);
+    }
+    await recarregar();
+    return null;
+  }
+
+  async function tirarDaColecao(livro: Livro, colecao: number) {
+    const nome = colecoes.find((c) => c.id === colecao)?.nome ?? "a coleção";
+    await executar(
+      () => removerDaColecao(colecao, livro.id),
+      `${livro.titulo} saiu de “${nome}”.`,
+      `Não foi possível tirar ${livro.titulo} da coleção`,
+      {
+        rotulo: "Desfazer",
+        executar: () =>
+          void executar(
+            () => adicionarAColecao(colecao, livro.id),
+            `${livro.titulo} voltou para “${nome}”.`,
+            `Não foi possível devolver ${livro.titulo} à coleção`,
+          ),
+      },
+    );
   }
 
   async function confirmado() {
@@ -303,6 +398,13 @@
         `Não foi possível apagar ${livro.titulo}`,
       );
       if (ok) ultimoAberto = vizinho;
+    } else if (pedido?.tipo === "apagar-colecao") {
+      const { colecao } = pedido;
+      await executar(
+        () => apagarColecao(colecao.id),
+        `A coleção “${colecao.nome}” foi apagada. Os livros continuam na biblioteca.`,
+        `Não foi possível apagar a coleção “${colecao.nome}”`,
+      );
     } else if (pedido?.tipo === "esvaziar") {
       const n = lixeira.length;
       await executar(
@@ -337,12 +439,20 @@
   aberto={confirmar !== null}
   titulo={confirmar?.tipo === "esvaziar"
     ? "Esvaziar a lixeira?"
-    : `Apagar ${confirmar?.livro.titulo ?? ""} de vez?`}
-  rotuloConfirmar={confirmar?.tipo === "esvaziar" ? "Esvaziar" : "Apagar de vez"}
+    : confirmar?.tipo === "apagar-colecao"
+      ? `Apagar a coleção “${confirmar.colecao.nome}”?`
+      : `Apagar ${confirmar?.livro.titulo ?? ""} de vez?`}
+  rotuloConfirmar={confirmar?.tipo === "esvaziar"
+    ? "Esvaziar"
+    : confirmar?.tipo === "apagar-colecao"
+      ? "Apagar coleção"
+      : "Apagar de vez"}
   onConfirmar={confirmado}
   onCancelar={() => (confirmar = null)}
 >
-  {#if confirmar?.tipo === "esvaziar"}
+  {#if confirmar?.tipo === "apagar-colecao"}
+    <p>Só a coleção é apagada: os livros continuam na biblioteca e nas outras coleções.</p>
+  {:else if confirmar?.tipo === "esvaziar"}
     <p>
       {lixeira.length === 1 ? "O livro da lixeira será apagado" : `Os ${lixeira.length} livros da lixeira serão apagados`}
       de vez, com o progresso de leitura. Não dá para desfazer.
@@ -350,8 +460,30 @@
   {:else}
     <p>O livro e o progresso de leitura serão apagados de vez. Não dá para desfazer.</p>
   {/if}
-  <p>Os arquivos originais, de onde os livros foram importados, não são afetados.</p>
+  {#if confirmar?.tipo !== "apagar-colecao"}
+    <p>Os arquivos originais, de onde os livros foram importados, não são afetados.</p>
+  {/if}
 </Confirmacao>
+
+<PedirNome
+  aberto={pedirNome !== null}
+  titulo={pedirNome?.colecao ? "Renomear coleção" : "Nova coleção"}
+  rotuloConfirmar={pedirNome?.colecao ? "Renomear" : "Criar"}
+  valorInicial={pedirNome?.colecao?.nome ?? ""}
+  erro={pedirNome?.erro ?? null}
+  onConfirmar={nomeConfirmado}
+  onCancelar={() => (pedirNome = null)}
+/>
+
+<EscolherColecoes
+  aberto={livroDasColecoes !== null}
+  titulo={livroDasColecoes?.titulo ?? ""}
+  {colecoes}
+  marcadas={livroDasColecoes?.colecoes ?? []}
+  onAlternar={alternarColecao}
+  onCriar={criarComLivro}
+  onFechar={() => (colecoesDe = null)}
+/>
 
 {#if aberto?.livro.formato === "pdf"}
   <!-- Importado em abrir(), antes da transição: o pdf.js só é carregado quando um PDF é aberto. -->
@@ -385,5 +517,10 @@
     {lixeira}
     onAcao={aoAcao}
     onEsvaziar={() => (confirmar = { tipo: "esvaziar" })}
+    {colecoes}
+    onNovaColecao={() => (pedirNome = { colecao: null, erro: null })}
+    onRenomearColecao={(colecao) => (pedirNome = { colecao, erro: null })}
+    onApagarColecao={(colecao) => (confirmar = { tipo: "apagar-colecao", colecao })}
+    onTirarDaColecao={tirarDaColecao}
   />
 {/if}

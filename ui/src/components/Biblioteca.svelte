@@ -1,6 +1,12 @@
 <script lang="ts">
-  import { urlDaCapa, type Livro } from "../lib/biblioteca";
-  import { contarPorFiltro, filtrarLivros, type Filtro } from "../lib/filtro";
+  import { urlDaCapa, type Colecao, type Livro } from "../lib/biblioteca";
+  import {
+    contarPorColecao,
+    contarPorFiltro,
+    filtrarLivros,
+    idDaColecao,
+    type Filtro,
+  } from "../lib/filtro";
   import type { Preferencias } from "../lib/preferencias.svelte";
   import type { TemaEfetivo } from "../lib/temas";
   import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
@@ -21,6 +27,11 @@
     onAbrir,
     onImportar,
     lixeira = [],
+    colecoes = [],
+    onNovaColecao,
+    onRenomearColecao,
+    onApagarColecao,
+    onTirarDaColecao,
     onAcao,
     onEsvaziar,
     preferencias,
@@ -39,6 +50,11 @@
     /** Ação pedida pelo menu ou pelo teclado (quem chama confirma o que for irreversível). */
     onAcao?: (livro: Livro, acao: AcaoLivro) => void;
     onEsvaziar?: () => void;
+    colecoes?: Colecao[];
+    onNovaColecao?: () => void;
+    onRenomearColecao?: (colecao: Colecao) => void;
+    onApagarColecao?: (colecao: Colecao) => void;
+    onTirarDaColecao?: (livro: Livro, colecao: number) => void;
     /** Se presentes, a biblioteca oferece o painel de tema e movimento. */
     preferencias?: Preferencias;
     onMudarPreferencias?: (mudancas: Partial<Preferencias>) => void;
@@ -59,6 +75,22 @@
   const visiveis = $derived(filtrarLivros(todos, termo, filtro));
   const contagens = $derived(contarPorFiltro(todos, termo));
   const naLixeira = $derived(filtro === "lixeira");
+  const contagensColecoes = $derived(
+    contarPorColecao(
+      todos,
+      termo,
+      colecoes.map((c) => c.id),
+    ),
+  );
+  // Coleção aberta (se o filtro for de coleção).
+  const colecaoAtual = $derived.by(() => {
+    const id = idDaColecao(filtro);
+    return id === null ? null : (colecoes.find((c) => c.id === id) ?? null);
+  });
+  // A coleção aberta foi apagada (aqui ou em outro lugar): volta para Todos.
+  $effect(() => {
+    if (idDaColecao(filtro) !== null && !colecaoAtual) filtro = "todos";
+  });
 
   // Menu "Mais ações": de qual livro está aberto (um por vez).
   let menuDe = $state<string | null>(null);
@@ -249,7 +281,14 @@
 
   {#if temLivros && !estreita}
     <nav class="barra" aria-label="Estantes">
-      <Estantes atual={filtro} {contagens} onEscolher={escolher} />
+      <Estantes
+        atual={filtro}
+        {contagens}
+        {colecoes}
+        {contagensColecoes}
+        onEscolher={escolher}
+        {onNovaColecao}
+      />
     </nav>
   {/if}
 
@@ -273,7 +312,14 @@
         elemento="nav"
         onFechar={fecharEstantes}
       >
-        <Estantes atual={filtro} {contagens} onEscolher={escolher} />
+        <Estantes
+        atual={filtro}
+        {contagens}
+        {colecoes}
+        {contagensColecoes}
+        onEscolher={escolher}
+        {onNovaColecao}
+      />
       </PainelLateral>
     </div>
   {/if}
@@ -342,6 +388,18 @@
     {:else}
       <p class="so-leitor-de-tela" role="status">{anuncioBusca}</p>
 
+      {#if colecaoAtual}
+        <div class="cabeca-colecao">
+          <h2>{colecaoAtual.nome}</h2>
+          {#if onRenomearColecao}
+            <button type="button" onclick={() => onRenomearColecao(colecaoAtual)}>Renomear…</button>
+          {/if}
+          {#if onApagarColecao}
+            <button type="button" onclick={() => onApagarColecao(colecaoAtual)}>Apagar coleção…</button>
+          {/if}
+        </div>
+      {/if}
+
       {#if naLixeira && visiveis.length && onEsvaziar}
         <div class="aviso-lixeira">
           <p>Os livros ficam na lixeira até você esvaziá-la. Para trazer um de volta, use Restaurar.</p>
@@ -354,6 +412,9 @@
           {#if termo.trim()}
             <p>Nenhum livro encontrado para “{termo.trim()}”.</p>
             <button type="button" onclick={limparBusca}>Limpar busca</button>
+          {:else if colecaoAtual}
+            <p>Nenhum livro nesta coleção ainda. Use “Adicionar à coleção…” no menu de um livro.</p>
+            <button type="button" onclick={() => (filtro = "todos")}>Mostrar todos</button>
           {:else if naLixeira}
             <p>A lixeira está vazia.</p>
             <button type="button" onclick={() => (filtro = "todos")}>Mostrar todos</button>
@@ -440,13 +501,31 @@
                       <Icone nome={marca.icone} preenchido={marca.ativo && marca.acao !== "lido"} />
                     </button>
                   {/each}
+                  {@const emColecoes = livro.colecoes.length}
+                  <!-- Abre o diálogo de coleções (não liga/desliga): destacado se o livro está em alguma. -->
+                  <button
+                    type="button"
+                    class="marca"
+                    class:marcada={emColecoes > 0}
+                    tabindex="-1"
+                    aria-label="Coleções"
+                    aria-haspopup="dialog"
+                    title={emColecoes ? `Coleções (${emColecoes})` : "Coleções"}
+                    onclick={() => onAcao(livro, "colecoes")}
+                  >
+                    <Icone nome="pasta" preenchido={emColecoes > 0} />
+                  </button>
                 {/if}
                 <MenuLivro
                   {livro}
                   aberto={menuDe === livro.id}
                   onAlternar={() => (menuDe = menuDe === livro.id ? null : livro.id)}
                   onFechar={fecharMenu}
-                  onAcao={(acao) => onAcao(livro, acao)}
+                  naColecao={colecaoAtual !== null}
+                  onAcao={(acao) =>
+                    acao === "tirar-da-colecao"
+                      ? colecaoAtual && onTirarDaColecao?.(livro, colecaoAtual.id)
+                      : onAcao(livro, acao)}
                 />
               </div>
             {/if}
@@ -730,7 +809,8 @@
 
   /* Marcada: cor de destaque, fundo suave e, quando o ícone tem, a forma cheia. A cor não é a
      única pista (WCAG 1.4.1). */
-  .marca[aria-pressed="true"] {
+  .marca[aria-pressed="true"],
+  .marca.marcada {
     background: var(--destaque-suave);
     color: var(--destaque);
   }
@@ -739,8 +819,27 @@
     cursor: default;
   }
 
-  :global([data-tema="alto-contraste"]) .marca[aria-pressed="true"] {
+  :global([data-tema="alto-contraste"]) .marca[aria-pressed="true"],
+  :global([data-tema="alto-contraste"]) .marca.marcada {
     border-color: var(--destaque);
+  }
+
+  .cabeca-colecao {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-block-start: 1rem;
+  }
+
+  .cabeca-colecao h2 {
+    flex: 1;
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  .cabeca-colecao button {
+    border-radius: var(--raio);
   }
 
   .aviso-lixeira {

@@ -393,6 +393,82 @@ describe("Biblioteca", () => {
       expect(nomes.slice(0, 3)).toEqual(["Todos 2", "Favoritos 1", "Lendo 0"]);
     });
 
+    describe("coleções", () => {
+      const colecoes = [
+        { id: 1, nome: "Clássicos", quantidade: 1 },
+        { id: 2, nome: "Trabalho", quantidade: 0 },
+      ];
+      const comColecoes = () => ({
+        ...props(),
+        livros: [livro({ id: "a", colecoes: [1] }), livros[1]!],
+        colecoes,
+        onNovaColecao: vi.fn(),
+        onRenomearColecao: vi.fn(),
+        onApagarColecao: vi.fn(),
+        onTirarDaColecao: vi.fn(),
+      });
+
+      it("aparecem na barra com contagem, entre as vistas e a lixeira; Nova coleção pede o nome", async () => {
+        const p = comColecoes();
+        render(Biblioteca, p);
+        const barra = within(screen.getByRole("navigation", { name: "Estantes" }));
+        const nomes = barra
+          .getAllByRole("button")
+          .map((b) => b.textContent?.replace(/\s+/g, " ").trim());
+        expect(nomes.slice(-4)).toEqual(["Clássicos 1", "Trabalho 0", "Nova coleção", "Lixeira 1"]);
+        await fireEvent.click(barra.getByRole("button", { name: "Nova coleção" }));
+        expect(p.onNovaColecao).toHaveBeenCalledOnce();
+      });
+
+      it("a vista de uma coleção mostra os livros dela, com Renomear e Apagar", async () => {
+        const p = comColecoes();
+        render(Biblioteca, p);
+        await fireEvent.click(naBarra(/^Clássicos/));
+        expect(itensDaGrade()).toHaveLength(1);
+        expect(screen.getByRole("heading", { name: "Clássicos" })).toBeTruthy();
+        await fireEvent.click(screen.getByRole("button", { name: "Renomear…" }));
+        expect(p.onRenomearColecao).toHaveBeenCalledWith(colecoes[0]);
+        await fireEvent.click(screen.getByRole("button", { name: "Apagar coleção…" }));
+        expect(p.onApagarColecao).toHaveBeenCalledWith(colecoes[0]);
+      });
+
+      it("no menu do livro: Adicionar à coleção… e, dentro de uma coleção, Tirar desta coleção", async () => {
+        const p = comColecoes();
+        render(Biblioteca, p);
+        await fireEvent.click(naBarra(/^Clássicos/));
+        await fireEvent.click(screen.getByRole("button", { name: "Mais ações para Dom Casmurro" }));
+        await fireEvent.click(screen.getByRole("menuitem", { name: "Tirar desta coleção" }));
+        expect(p.onTirarDaColecao).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), 1);
+        await fireEvent.click(screen.getByRole("button", { name: "Mais ações para Dom Casmurro" }));
+        await fireEvent.click(screen.getByRole("menuitem", { name: "Adicionar à coleção…" }));
+        expect(p.onAcao).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), "colecoes");
+      });
+
+      it("ícone de coleções no card: abre o diálogo e mostra se o livro está em alguma", async () => {
+        const p = comColecoes();
+        render(Biblioteca, p);
+        const [comColecao, semColecao] = itensDaGrade();
+        const botao = within(comColecao!).getByRole("button", { name: "Coleções" });
+        expect(botao.getAttribute("aria-haspopup")).toBe("dialog");
+        expect(botao.getAttribute("title")).toBe("Coleções (1)");
+        expect(botao.classList.contains("marcada")).toBe(true);
+        expect(botao.tabIndex).toBe(-1);
+        expect(
+          within(semColecao!).getByRole("button", { name: "Coleções" }).classList.contains("marcada"),
+        ).toBe(false);
+        await fireEvent.click(botao);
+        expect(p.onAcao).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), "colecoes");
+      });
+
+      it("se a coleção aberta deixar de existir, volta para Todos", async () => {
+        const p = comColecoes();
+        const { rerender } = render(Biblioteca, p);
+        await fireEvent.click(naBarra(/^Trabalho/));
+        await rerender({ ...p, colecoes: [colecoes[0]] });
+        expect(naBarra(/^Todos/).getAttribute("aria-current")).toBe("page");
+      });
+    });
+
     it("sem onAcao, não há menu nem atalhos de ação", () => {
       render(Biblioteca, { livros, ...semAcao });
       expect(screen.queryByRole("button", { name: /^Mais ações/ })).toBeNull();

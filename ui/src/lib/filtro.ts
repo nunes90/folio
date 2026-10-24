@@ -2,11 +2,19 @@
 // interface, então filtrar a cada tecla é instantâneo, sem ir ao core.
 import type { Livro } from "./biblioteca";
 
-/** As estantes da barra lateral (vistas da biblioteca). */
-export type Filtro = "todos" | "favoritos" | "lendo" | "para-ler" | "lidos" | "lixeira";
+/** As vistas fixas da barra lateral. */
+export type Vista = "todos" | "favoritos" | "lendo" | "para-ler" | "lidos" | "lixeira";
+
+/** O que a grade mostra: uma vista fixa ou uma coleção (`colecao:<id>`). */
+export type Filtro = Vista | `colecao:${number}`;
+
+/** Id da coleção, se o filtro for de coleção. */
+export function idDaColecao(filtro: Filtro): number | null {
+  return filtro.startsWith("colecao:") ? Number(filtro.slice("colecao:".length)) : null;
+}
 
 // Um livro na lixeira só aparece na estante "lixeira".
-const NA_ESTANTE: Record<Filtro, (livro: Livro) => boolean> = {
+const NA_ESTANTE: Record<Vista, (livro: Livro) => boolean> = {
   todos: (l) => l.removidoEm === null,
   favoritos: (l) => l.removidoEm === null && l.favoritoEm !== null,
   lendo: (l) => l.removidoEm === null && l.situacao === "lendo",
@@ -34,8 +42,13 @@ function buscar(livros: Livro[], termo: string): Livro[] {
   });
 }
 
+function naColecao(id: number): (livro: Livro) => boolean {
+  return (l) => l.removidoEm === null && l.colecoes.includes(id);
+}
+
 function naSituacao(livros: Livro[], filtro: Filtro): Livro[] {
-  return livros.filter(NA_ESTANTE[filtro]);
+  const colecao = idDaColecao(filtro);
+  return livros.filter(colecao === null ? NA_ESTANTE[filtro as Vista] : naColecao(colecao));
 }
 
 /** O que a grade mostra: a busca e o filtro juntos, na ordem original (atividade recente). */
@@ -44,7 +57,7 @@ export function filtrarLivros(livros: Livro[], termo: string, filtro: Filtro): L
 }
 
 /** Quantos livros cada filtro mostraria com o termo atual (os números nos botões). */
-export function contarPorFiltro(livros: Livro[], termo: string): Record<Filtro, number> {
+export function contarPorFiltro(livros: Livro[], termo: string): Record<Vista, number> {
   const achados = buscar(livros, termo);
   return {
     todos: naSituacao(achados, "todos").length,
@@ -54,4 +67,14 @@ export function contarPorFiltro(livros: Livro[], termo: string): Record<Filtro, 
     lidos: naSituacao(achados, "lidos").length,
     lixeira: naSituacao(achados, "lixeira").length,
   };
+}
+
+/** Quantos livros (fora da lixeira) cada coleção mostraria com o termo atual. */
+export function contarPorColecao(
+  livros: Livro[],
+  termo: string,
+  colecoes: number[],
+): Record<number, number> {
+  const achados = buscar(livros, termo);
+  return Object.fromEntries(colecoes.map((id) => [id, achados.filter(naColecao(id)).length]));
 }
