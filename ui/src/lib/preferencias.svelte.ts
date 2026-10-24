@@ -3,8 +3,8 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { familiaCss, fontFace } from "./fontes";
 import { log } from "./log";
-import type { PaginaPdf } from "./paginaPdf";
-import { cssDoTema, type TemaEfetivo, type TemaEscolhido } from "./temas";
+import { cssDaPagina, resolverPagina, type Pagina } from "./pagina";
+import type { TemaEfetivo, TemaEscolhido } from "./temas";
 import type { EstiloVirada } from "./virada";
 
 export type Fonte = "original" | "literata" | "atkinson" | "lexend" | "opendyslexic";
@@ -22,6 +22,7 @@ export interface Preferencias {
   colunas: number;
   alinhamento: Alinhamento;
   hifenizacao: boolean;
+  /** Cores da interface (barras, painéis, biblioteca). */
   tema: TemaEscolhido;
   movimento: Movimento;
   /** Velocidade da leitura em voz alta, -100 a 100 (0 = normal do sistema). */
@@ -30,7 +31,8 @@ export interface Preferencias {
   virada: EstiloVirada;
   /** PDF página a página ou em rolagem contínua. */
   modoPdf: ModoPdf;
-  paginaPdf: PaginaPdf;
+  /** O papel do livro, igual no EPUB e no PDF; "automatica" segue a interface. */
+  pagina: Pagina;
 }
 
 /** Mesmos padrões e limites do core; o core é quem decide no fim (normaliza ao salvar). */
@@ -49,7 +51,7 @@ export const PADRAO: Preferencias = {
   velocidadeVoz: 0,
   virada: "esmaecer",
   modoPdf: "paginas",
-  paginaPdf: "original",
+  pagina: "automatica",
 };
 
 export const LIMITES = {
@@ -94,8 +96,8 @@ export function atualizarPreferencias(mudancas: Partial<Preferencias>): void {
 
 /** Restaura o texto; tema, movimento, virada e modo do PDF ficam (têm os próprios painéis). */
 export function restaurarPadrao(): void {
-  const { tema, movimento, virada, modoPdf, paginaPdf } = preferencias;
-  atualizarPreferencias({ ...PADRAO, tema, movimento, virada, modoPdf, paginaPdf });
+  const { tema, movimento, virada, modoPdf, pagina } = preferencias;
+  atualizarPreferencias({ ...PADRAO, tema, movimento, virada, modoPdf, pagina });
 }
 
 /** Seletores de blocos de texto corrido (os mesmos que o leitor do foliate-js ajusta). */
@@ -112,7 +114,7 @@ export function cssDoLivro(
   base?: string,
 ): string {
   const regras = [
-    cssDoTema(tema),
+    cssDaPagina(resolverPagina(p.pagina, tema), tema),
     `html { font-size: ${+(escala * p.tamanho * 100).toFixed(2)}% !important; }`,
   ];
 

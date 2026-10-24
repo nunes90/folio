@@ -35,7 +35,8 @@ pub enum Alinhamento {
     Justificado,
 }
 
-/// Tema de cores da interface e do livro.
+/// Cores da **interface** (barras, painéis, biblioteca). A cor do papel do livro é a
+/// [`Pagina`]; só o alto contraste também vale para a página do EPUB (necessidade, não gosto).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Tema {
@@ -44,7 +45,6 @@ pub enum Tema {
     Sistema,
     Claro,
     Escuro,
-    Sepia,
     AltoContraste,
 }
 
@@ -84,20 +84,21 @@ pub enum ModoPdf {
     Rolagem,
 }
 
-/// Cor da página do PDF. O PDF é um desenho (canvas): não dá para trocar as cores do texto
-/// como no EPUB, então cada opção é um efeito sobre a página já desenhada (ver
-/// `ui/src/lib/paginaPdf.ts`).
+/// O "papel" do livro, igual nos dois formatos (`ui/src/lib/pagina.ts`). No EPUB, o texto e o
+/// fundo mudam de verdade; no PDF (um desenho), a página é tingida ou invertida.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum PaginaPdf {
-    /// Como o PDF foi feito.
+pub enum Pagina {
+    /// Segue a interface: clara → original; escura → noite.
     #[default]
+    Automatica,
+    /// Como o livro foi feito.
     Original,
-    /// Papel creme: o branco vira creme, o preto continua preto.
+    /// Papel creme.
     Creme,
     /// Papel sépia, mais amarelado.
     Sepia,
-    /// Claro e escuro invertidos, sem trocar as cores.
+    /// Claro e escuro invertidos.
     Noite,
 }
 
@@ -137,7 +138,7 @@ pub struct PreferenciasLeitura {
     pub velocidade_voz: i8,
     pub virada: Virada,
     pub modo_pdf: ModoPdf,
-    pub pagina_pdf: PaginaPdf,
+    pub pagina: Pagina,
 }
 
 impl Default for PreferenciasLeitura {
@@ -157,7 +158,7 @@ impl Default for PreferenciasLeitura {
             velocidade_voz: 0,
             virada: Virada::Esmaecer,
             modo_pdf: ModoPdf::Paginas,
-            pagina_pdf: PaginaPdf::Original,
+            pagina: Pagina::Automatica,
         }
     }
 }
@@ -200,7 +201,10 @@ impl PreferenciasLeitura {
     /// Lê o JSON salvo. JSON inválido (ex.: de uma versão futura com outra estrutura) vira o
     /// padrão, para que preferências corrompidas nunca impeçam a leitura.
     pub fn de_json(json: &str) -> Self {
-        match serde_json::from_str::<Self>(json) {
+        let lido = serde_json::from_str::<serde_json::Value>(json)
+            .map(migrar)
+            .and_then(serde_json::from_value::<Self>);
+        match lido {
             Ok(p) => p.normalizada(),
             Err(erro) => {
                 tracing::warn!(%erro, "preferências de leitura inválidas; usando o padrão");
@@ -212,6 +216,30 @@ impl PreferenciasLeitura {
     pub fn para_json(&self) -> String {
         serde_json::to_string(self).expect("serializar structs simples não falha")
     }
+}
+
+/// Converte o JSON de versões anteriores para o modelo atual, antes de ler.
+///
+/// M13 (interface e página separadas):
+/// - o tema "sepia" saiu da interface: vira tema claro + página sépia;
+/// - "paginaPdf" (só PDF) virou "pagina" (os dois formatos). O "original" dele era só o padrão
+///   do M12: vira automática, para o EPUB continuar seguindo a interface como antes.
+///   Uma página escolhida de verdade (creme, sépia, noite) vence o tema sépia.
+fn migrar(mut json: serde_json::Value) -> serde_json::Value {
+    let Some(campos) = json.as_object_mut() else {
+        return json;
+    };
+    if let Some(antiga) = campos.remove("paginaPdf") {
+        let escolhida = antiga.as_str().filter(|p| *p != "original");
+        if let (Some(p), false) = (escolhida, campos.contains_key("pagina")) {
+            campos.insert("pagina".into(), p.into());
+        }
+    }
+    if campos.get("tema").and_then(|t| t.as_str()) == Some("sepia") {
+        campos.insert("tema".into(), "claro".into());
+        campos.entry("pagina").or_insert_with(|| "sepia".into());
+    }
+    json
 }
 
 #[cfg(test)]
@@ -325,27 +353,50 @@ mod tests {
     }
 
     #[test]
-    fn pagina_do_pdf_tem_padrao_original_e_vai_no_json() {
-        // Preferências salvas antes do M12 (sem o campo) mantêm o PDF como foi feito.
+    fn pagina_tem_padrao_automatica_e_vai_no_json() {
         let p = PreferenciasLeitura::de_json(r#"{"tamanho": 1.2}"#);
-        assert_eq!(p.pagina_pdf, PaginaPdf::Original);
+        assert_eq!(p.pagina, Pagina::Automatica);
 
         for (pagina, texto) in [
-            (PaginaPdf::Creme, "creme"),
-            (PaginaPdf::Sepia, "sepia"),
-            (PaginaPdf::Noite, "noite"),
+            (Pagina::Original, "original"),
+            (Pagina::Creme, "creme"),
+            (Pagina::Sepia, "sepia"),
+            (Pagina::Noite, "noite"),
         ] {
             let json = PreferenciasLeitura {
-                pagina_pdf: pagina,
+                pagina,
                 ..Default::default()
             }
             .para_json();
-            assert!(
-                json.contains(&format!(r#""paginaPdf":"{texto}""#)),
-                "{json}"
-            );
-            assert_eq!(PreferenciasLeitura::de_json(&json).pagina_pdf, pagina);
+            assert!(json.contains(&format!(r#""pagina":"{texto}""#)), "{json}");
+            assert!(!json.contains("paginaPdf"), "{json}");
+            assert_eq!(PreferenciasLeitura::de_json(&json).pagina, pagina);
         }
+    }
+
+    #[test]
+    fn migra_o_tema_sepia_para_interface_clara_e_pagina_sepia() {
+        // Até o M12, "sépia" era um tema da interface (e da página do EPUB).
+        let p = PreferenciasLeitura::de_json(r#"{"tema":"sepia","tamanho":1.2}"#);
+        assert_eq!(p.tema, Tema::Claro);
+        assert_eq!(p.pagina, Pagina::Sepia);
+        assert_eq!(p.tamanho, 1.2, "o resto é preservado");
+    }
+
+    #[test]
+    fn migra_a_pagina_do_pdf_para_a_pagina_dos_dois_formatos() {
+        // "original" era só o padrão do M12: vira automática (o EPUB continua seguindo a interface).
+        let p = PreferenciasLeitura::de_json(r#"{"tema":"escuro","paginaPdf":"original"}"#);
+        assert_eq!(p.tema, Tema::Escuro);
+        assert_eq!(p.pagina, Pagina::Automatica);
+        // Uma escolha de verdade continua.
+        let p = PreferenciasLeitura::de_json(r#"{"paginaPdf":"noite"}"#);
+        assert_eq!(p.pagina, Pagina::Noite);
+        // Tema sépia + página do PDF escolhida: vale a página escolhida.
+        let p = PreferenciasLeitura::de_json(r#"{"tema":"sepia","paginaPdf":"creme"}"#);
+        assert_eq!((p.tema, p.pagina), (Tema::Claro, Pagina::Creme));
+        let p = PreferenciasLeitura::de_json(r#"{"tema":"sepia","paginaPdf":"original"}"#);
+        assert_eq!((p.tema, p.pagina), (Tema::Claro, Pagina::Sepia));
     }
 
     #[test]

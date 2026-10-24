@@ -1,7 +1,6 @@
 <script lang="ts">
   import { TEMAS, type TemaEfetivo, type TemaEscolhido } from "../lib/temas";
   import type { Movimento, Preferencias } from "../lib/preferencias.svelte";
-  import type { EstiloVirada } from "../lib/virada";
 
   let {
     preferencias,
@@ -14,23 +13,17 @@
     temaDoSistema?: TemaEfetivo;
   } = $props();
 
+  // Seção "Interface" do painel Aparência: só as cores do app. O papel do livro é a seção
+  // Página (PainelPagina); só o alto contraste também vale para a página do EPUB.
   const NOMES: Record<TemaEfetivo, string> = {
     claro: "Claro",
     escuro: "Escuro",
-    sepia: "Sépia",
     "alto-contraste": "Alto contraste",
   };
 
   const OPCOES: { valor: TemaEscolhido; nome: string }[] = [
     { valor: "sistema", nome: "Do sistema" },
     ...(Object.keys(NOMES) as TemaEfetivo[]).map((t) => ({ valor: t, nome: NOMES[t] })),
-  ];
-
-  const VIRADAS: { valor: EstiloVirada; nome: string }[] = [
-    { valor: "esmaecer", nome: "Esmaecer (sugerido)" },
-    { valor: "deslizar", nome: "Deslizar" },
-    { valor: "virar", nome: "Virar a folha" },
-    { valor: "nenhuma", nome: "Nenhuma" },
   ];
 
   const MOVIMENTOS: { valor: Movimento; nome: string }[] = [
@@ -40,10 +33,10 @@
 </script>
 
 <div class="painel">
-  <h2>Tema e movimento</h2>
+  <h2>Interface</h2>
 
   <fieldset>
-    <legend>Tema</legend>
+    <legend>Cores</legend>
     {#each OPCOES as opcao (opcao.valor)}
       {@const amostra = opcao.valor === "sistema" ? temaDoSistema : opcao.valor}
       <label class="opcao">
@@ -70,22 +63,6 @@
             <span class="agora">(agora: {NOMES[temaDoSistema].toLowerCase()})</span>
           {/if}
         </span>
-      </label>
-    {/each}
-  </fieldset>
-
-  <fieldset>
-    <legend>Virada de página</legend>
-    {#each VIRADAS as v (v.valor)}
-      <label class="opcao">
-        <input
-          type="radio"
-          name="virada"
-          value={v.valor}
-          checked={preferencias.virada === v.valor}
-          onchange={() => onMudar({ virada: v.valor })}
-        />
-        {v.nome}
       </label>
     {/each}
   </fieldset>

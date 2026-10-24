@@ -11,7 +11,11 @@ describe("cssDoLivro", () => {
   });
 
   it("inclui as cores do tema", () => {
-    expect(cssDoLivro(PADRAO, 1, "sepia", base)).toContain("background: #f4ecd8 !important");
+    expect(cssDoLivro({ ...PADRAO, pagina: "sepia" }, 1, "claro", base)).toContain(
+      "background: #f0e1c2 !important",
+    );
+    // Automática segue a interface: escura → página noite.
+    expect(cssDoLivro(PADRAO, 1, "escuro", base)).toContain("background: #191919 !important");
   });
 
   it("no padrão, não troca a fonte nem o alinhamento do livro", () => {

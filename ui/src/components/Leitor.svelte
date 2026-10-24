@@ -5,6 +5,7 @@
   import Icone from "./Icone.svelte";
   import MolduraLeitor from "./MolduraLeitor.svelte";
   import PainelLeitura from "./PainelLeitura.svelte";
+  import PainelPagina from "./PainelPagina.svelte";
   import PainelTema from "./PainelTema.svelte";
   import {
     criarView,
@@ -281,6 +282,12 @@
       {preferencias}
       onMudar={atualizarPreferencias}
       temaDoSistema={resolverTema("sistema", sistema)}
+    />
+    <PainelPagina
+      {preferencias}
+      onMudar={atualizarPreferencias}
+      formato="epub"
+      interface={temaEfetivo()}
     />
     <PainelLeitura {preferencias} onMudar={atualizarPreferencias} onRestaurar={restaurarPadrao} />
   {/snippet}
