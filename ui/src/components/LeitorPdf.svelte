@@ -1,11 +1,25 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
   import type { PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
   import "pdfjs-dist/web/pdf_viewer.css";
   import BarraPdf from "./BarraPdf.svelte";
   import BuscaPdf from "./BuscaPdf.svelte";
   import Indice from "./Indice.svelte";
+  import AbasIndice, { type Aba } from "./AbasIndice.svelte";
+  import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
+  import ListaDestaques from "./ListaDestaques.svelte";
+  import type { Destaque } from "../lib/biblioteca";
+  import { ControleDestaques } from "../lib/controleDestaques.svelte";
+  import { estiloDoMarcaTexto, hexDaCor, posicaoDaBarra } from "../lib/destaques";
+  import {
+    acertou,
+    lerLocalPdf,
+    localPdf,
+    naJanela,
+    posicaoNoPdf,
+    retangulosNaPagina,
+  } from "../lib/destaquesPdf";
   import Carregando from "./Carregando.svelte";
   import MolduraLeitor from "./MolduraLeitor.svelte";
   import PainelPagina from "./PainelPagina.svelte";
@@ -30,6 +44,7 @@
 
   let {
     dados,
+    livroId,
     titulo,
     inicio,
     onFechar,
@@ -37,6 +52,8 @@
     onComandos,
   }: {
     dados: ArrayBuffer;
+    /** Id do livro na biblioteca (para os destaques). */
+    livroId: string;
     titulo: string;
     /** Onde retomar, no formato `pagina:N` (salvo na biblioteca). */
     inicio?: string;
@@ -57,6 +74,24 @@
   let tarefa: PDFDocumentLoadingTask | undefined;
 
   let modoFoco = $state(false);
+
+  // Destaques (M16c): a lógica comum está no ControleDestaques; aqui, a seleção na camada de
+  // texto do pdf.js e uma camada própria sobre cada página (o arquivo do PDF não muda).
+  let abaIndice = $state<Aba>("indice");
+  let abas = $state<AbasIndice>();
+  const destaques = new ControleDestaques({
+    get livroId() {
+      return livroId;
+    },
+    titulo: () => titulo,
+    desenhar: (d) => redesenharDe(d),
+    apagarDesenho: (d) => redesenharDe(d),
+    irPara: irParaDestaque,
+    focarTexto: () => conteiner.focus({ preventScroll: true }),
+    limparSelecao: () => window.getSelection()?.removeAllRanges(),
+    anunciar: (texto) => (anuncio = texto),
+    mostrarLista: mostrarDestaques,
+  });
   let pagina = $state(1);
   let total = $state(0);
   let zoom = $state(1);
@@ -111,6 +146,7 @@
   onMount(() => {
     moldura.focarTitulo();
     window.addEventListener("keydown", aoTeclar);
+    window.addEventListener("pointerdown", aoApontar);
     abrir().catch((e) => {
       erro = `Não foi possível abrir o PDF: ${e}`;
       log.error(erro);
@@ -132,6 +168,7 @@
     observador?.observe(conteiner);
     return () => {
       window.removeEventListener("keydown", aoTeclar);
+      window.removeEventListener("pointerdown", aoApontar);
       observador?.disconnect();
       cancelAnimationFrame(quadro);
       tarefa?.destroy();
@@ -165,6 +202,11 @@
       },
     );
     estavaInvertida = invertida;
+    // A camada dos destaques some quando o pdf.js refaz a página (zoom, redesenho): volta
+    // a cada desenho, em porcentagens (não depende do zoom).
+    eventos.on("pagerendered", ({ pageNumber }: { pageNumber: number }) =>
+      desenharDestaques(pageNumber),
+    );
 
     eventos.on("pagesinit", () => {
       pronto = true; // o efeito acima aplica o modo e o zoom
@@ -175,10 +217,14 @@
       onProgresso?.(`pagina:${v.currentPageNumber}`, v.currentPageNumber / v.pagesCount);
     });
     eventos.on("pagechanging", ({ pageNumber }: { pageNumber: number }) => {
+      destaques.esconder();
       pagina = pageNumber;
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
     });
-    eventos.on("scalechanging", ({ scale }: { scale: number }) => (zoom = scale));
+    eventos.on("scalechanging", ({ scale }: { scale: number }) => {
+      destaques.esconder();
+      zoom = scale;
+    });
     eventos.on(
       "updatefindcontrolstate",
       ({ state, matchesCount }: { state: number; matchesCount: { current: number; total: number } }) => {
@@ -194,6 +240,7 @@
       },
     );
 
+    await destaques.carregar();
     tarefa = carregarPdf(dados);
     const documento = await tarefa.promise;
     total = documento.numPages;
@@ -387,6 +434,7 @@
         dica: preferencias.modoPdf === modoPdf ? "atual" : undefined,
         executar: () => atualizarPreferencias({ modoPdf }),
       })),
+      ...destaques.comandos(destacarSelecao),
       ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
       ...comandosDaPagina(preferencias, atualizarPreferencias),
     ];
@@ -394,11 +442,146 @@
     onComandos?.({ comandos: lista, porTermo: (termo) => irParaPagina(termo, n, irPara) });
   });
 
+  /** O elemento da página `n` (o .page do pdf.js), se estiver no DOM. */
+  function paginaEl(n: number): HTMLElement | null {
+    return conteiner.querySelector<HTMLElement>(`.page[data-page-number="${n}"]`);
+  }
+
+  /** (Re)desenha a camada de destaques da página `n`, logo acima do desenho da página. */
+  function desenharDestaques(n: number) {
+    const el = paginaEl(n);
+    if (!el) return;
+    el.querySelector(".camada-destaques")?.remove();
+    const daPagina = destaques.lista.flatMap((d) => {
+      const local = lerLocalPdf(d.local);
+      return local?.pagina === n ? [{ d, retangulos: local.retangulos }] : [];
+    });
+    if (!daPagina.length) return;
+    const camada = document.createElement("div");
+    camada.className = "camada-destaques";
+    camada.setAttribute("aria-hidden", "true");
+    for (const { d, retangulos } of daPagina)
+      for (const r of retangulos) {
+        const marca = document.createElement("div");
+        Object.assign(marca.style, {
+          left: `${r.x * 100}%`,
+          top: `${r.y * 100}%`,
+          width: `${r.l * 100}%`,
+          height: `${r.a * 100}%`,
+          background: hexDaCor(d.cor),
+        });
+        camada.append(marca);
+      }
+    // Acima do desenho da página e abaixo da camada de texto (que continua selecionável).
+    const desenho = el.querySelector(".canvasWrapper");
+    if (desenho) desenho.after(camada);
+    else el.prepend(camada);
+  }
+
+  function redesenharDe(d: Destaque) {
+    const local = lerLocalPdf(d.local);
+    if (local) desenharDestaques(local.pagina);
+  }
+
+  // O marca-texto se mistura com a página: multiply no papel claro, screen na noite.
+  const marcaTexto = $derived(estiloDoMarcaTexto(invertida));
+
+  /** Título da seção (do sumário) em que a página `n` está. */
+  function capituloDa(n: number): string | null {
+    const href = itemAtual(paginasDoIndice, n);
+    return achatar(itensIndice).find((i) => i.href === href)?.label.trim() ?? null;
+  }
+
+  /** Há texto selecionado numa página? Abre a barra sobre ele. */
+  function verSelecao(focar: boolean): boolean {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return false;
+    const range = sel.getRangeAt(0);
+    const inicio = range.startContainer;
+    const el = (inicio instanceof Element ? inicio : inicio.parentElement)?.closest<HTMLElement>(".page");
+    if (!el || !conteiner.contains(el)) return false;
+    const trecho = range.toString();
+    const n = Number(el.dataset.pageNumber);
+    const caixa = el.getBoundingClientRect();
+    // Uma seleção que passa da página fica só com a parte da página onde começou.
+    const retangulos = retangulosNaPagina([...range.getClientRects()], caixa);
+    if (!trecho.trim() || !retangulos.length) return false;
+    destaques.mostrarSelecao(
+      {
+        local: localPdf(n, retangulos),
+        trecho,
+        capitulo: capituloDa(n),
+        posicao: posicaoNoPdf(n, total, retangulos[0]!.y),
+      },
+      posicaoDaBarra(naJanela(retangulos[0]!, caixa)),
+      focar,
+    );
+    return true;
+  }
+
+  /** Ctrl+D: a barra da seleção, com o foco nela. */
+  function destacarSelecao() {
+    if (!verSelecao(true)) anuncio = "Selecione um trecho do texto para destacar.";
+  }
+
+  /** Soltar o ponteiro: há seleção? (barra). Senão, clicou num destaque? (barra dele). */
+  function aoSoltar(e: PointerEvent) {
+    setTimeout(() => {
+      if (verSelecao(false)) return;
+      const el = (e.target as Element | null)?.closest<HTMLElement>(".page");
+      if (!el) return;
+      const caixa = el.getBoundingClientRect();
+      const x = (e.clientX - caixa.left) / caixa.width;
+      const y = (e.clientY - caixa.top) / caixa.height;
+      const n = Number(el.dataset.pageNumber);
+      for (const d of destaques.lista) {
+        const local = lerLocalPdf(d.local);
+        if (local?.pagina === n && acertou(local.retangulos, x, y)) {
+          destaques.mostrarDestaque(d, posicaoDaBarra(naJanela(local.retangulos[0]!, caixa)));
+          return;
+        }
+      }
+    });
+  }
+
+  function aoApontar(e: PointerEvent) {
+    if (!(e.target instanceof Element && e.target.closest(".barra-destaque"))) destaques.esconder();
+  }
+
+  async function irParaDestaque(destaque: Destaque) {
+    const local = lerLocalPdf(destaque.local);
+    if (!local) return;
+    irPara(local.pagina);
+    conteiner.focus({ preventScroll: true });
+  }
+
+  async function mostrarDestaques() {
+    await moldura.mostrarPainel("indice");
+    abas?.mostrar("destaques");
+  }
+
+  /** Apagado pela lista, o botão some com o item: o foco volta para a aba. */
+  async function apagarDaLista(destaque: Destaque) {
+    await destaques.apagar(destaque);
+    await tick();
+    if (document.activeElement === document.body) document.getElementById("aba-destaques")?.focus();
+  }
+
   function aoTeclar(e: KeyboardEvent) {
     // Com um diálogo aberto (ex.: atalhos), as teclas são dele.
     if (e.target instanceof Element && e.target.closest("dialog")) return;
     if (!visor) return;
     const ctrl = e.ctrlKey || e.metaKey;
+    if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "d") {
+      e.preventDefault();
+      destacarSelecao();
+      return;
+    }
+    if (e.key === "Escape" && destaques.barra) {
+      e.preventDefault();
+      destaques.fecharBarra();
+      return;
+    }
     // Sem Shift: Ctrl+Shift+F é o modo foco (da moldura).
     if (ctrl && !e.shiftKey && e.key.toLowerCase() === "f") {
       e.preventDefault();
@@ -448,11 +631,24 @@
   {/snippet}
 
   {#snippet indice()}
-    {#if itensIndice.length}
-      <Indice itens={itensIndice} atual={hrefAtual} onNavegar={irParaSecao} />
-    {:else}
-      <p>Este PDF não tem sumário.</p>
-    {/if}
+    <AbasIndice bind:this={abas} bind:aba={abaIndice} quantidade={destaques.lista.length}>
+      {#snippet conteudoIndice()}
+        {#if itensIndice.length}
+          <Indice itens={itensIndice} atual={hrefAtual} onNavegar={irParaSecao} />
+        {:else}
+          <p>Este PDF não tem sumário.</p>
+        {/if}
+      {/snippet}
+      {#snippet conteudoDestaques()}
+        <ListaDestaques
+          destaques={destaques.lista}
+          onIr={irParaDestaque}
+          onNota={(d) => destaques.editarNota(d)}
+          onApagar={apagarDaLista}
+          onExportar={() => destaques.exportar()}
+        />
+      {/snippet}
+    </AbasIndice>
   {/snippet}
 
   {#snippet aparencia()}
@@ -497,13 +693,17 @@
     class:camada={!!estiloPagina.camada}
     class:invertida
     style:--papel-pdf={estiloPagina.papel}
+    style:--marca-opacidade={marcaTexto.opacidade}
+    style:--marca-mistura={marcaTexto.mistura}
     bind:this={conteiner}
+    onpointerup={aoSoltar}
     tabindex="0"
     role="region"
     aria-label={titulo}
   >
     <div class="pdfViewer"></div>
   </div>
+  <DestaquesDoLeitor controle={destaques} />
 </MolduraLeitor>
 
 <style>
@@ -537,6 +737,20 @@
 
   .conteiner.invertida :global(.page) {
     background-color: var(--papel-pdf);
+  }
+
+  /* Destaques (M16c): por cima do desenho da página, sem pegar o ponteiro (a seleção de texto
+     continua). Mesma mistura do EPUB (lib/destaques.ts). */
+  .conteiner :global(.camada-destaques) {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .conteiner :global(.camada-destaques > div) {
+    position: absolute;
+    opacity: var(--marca-opacidade);
+    mix-blend-mode: var(--marca-mistura);
   }
 
   .nota {

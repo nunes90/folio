@@ -309,5 +309,17 @@ docs/decisions/  # ADRs
   Apagar avisa com Desfazer (`restaurar_destaque`). Exportar: `save` do plugin-dialog (`dialog:allow-save`). Paleta:
   "Destacar a seleção", "Mostrar os destaques", "Exportar os destaques…", "Ir para destaque: …". `Leitor` recebe
   `livroId`. Selecionar texto só pelo teclado depende do leitor de tela (o WebKitGTK não tem cursor de navegação).
-- Próximo passo: M16c (destaques no PDF). (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
+- **M16c** (branch `feat/m16c-destaques-pdf`): a lógica comum aos dois leitores saiu do `Leitor` para
+  `lib/controleDestaques.svelte.ts` (`ControleDestaques`, classe com runes: lista, barra, nota, cor, copiar, apagar com
+  Desfazer, exportar, comandos da paleta), com um `AdaptadorDestaques` por formato (`desenhar`, `apagarDesenho`,
+  `irPara`, `focarTexto`, `limparSelecao`, `anunciar`, `mostrarLista`; `livroId` como getter). `DestaquesDoLeitor.svelte`
+  = barra + diálogo da nota. `posicaoDaBarra` em `lib/destaques.ts`. PDF (`lib/destaquesPdf.ts`): `local` =
+  `pdf:<página>:x,y,l,a;…` em frações da página (`localPdf`/`lerLocalPdf`), `retangulosNaPagina` (recorta na página,
+  descarta os vazios e o "fim do conteúdo" do pdf.js, junta os da mesma linha), `posicaoNoPdf`, `acertou` (clique),
+  `naJanela`. No `LeitorPdf`: seleção na camada de texto (`pointerup` no contêiner; Ctrl+D), camada
+  `.camada-destaques` (divs em %, `pointer-events: none`) logo depois do `.canvasWrapper` de cada `.page`,
+  redesenhada a cada `pagerendered` (o `reset()` do pdf.js tira nós desconhecidos); mistura e opacidade por variáveis
+  CSS (`screen` na noite). Capítulo pelo sumário (`itemAtual`). Ir até o destaque = ir à página.
+- **M16 concluído.**
+- Próximo passo: a definir (v0.6.0 com M16; Séries; voz no PDF). (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.
