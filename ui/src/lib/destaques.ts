@@ -86,6 +86,24 @@ export function fracaoNoDocumento(range: Range): number {
   return total ? antes.toString().length / total : 0;
 }
 
+/**
+ * Onde a barra de destaque fica: centralizada no trecho, acima dele (ou abaixo, se não houver
+ * espaço sob o cabeçalho). `origem` desloca as coordenadas (o iframe do capítulo, no EPUB).
+ */
+export function posicaoDaBarra(
+  trecho: { left: number; top: number; bottom: number; width: number },
+  origem: { left: number; top: number } = { left: 0, top: 0 },
+  espacoAcima = 96,
+): { x: number; y: number; abaixo: boolean } {
+  const topo = origem.top + trecho.top;
+  const abaixo = topo < espacoAcima;
+  return {
+    x: origem.left + trecho.left + trecho.width / 2,
+    y: abaixo ? origem.top + trecho.bottom : topo,
+    abaixo,
+  };
+}
+
 /** Trecho encurtado para listas e comandos: espaços juntados, até `max` caracteres. */
 export function resumo(trecho: string, max = 80): string {
   const t = trecho.replace(/\s+/g, " ").trim();

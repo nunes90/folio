@@ -2,8 +2,7 @@
   import { onMount, tick } from "svelte";
   import Indice from "./Indice.svelte";
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
-  import BarraDestaque from "./BarraDestaque.svelte";
-  import EditarNota from "./EditarNota.svelte";
+  import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
   import ListaDestaques from "./ListaDestaques.svelte";
   import Carregando from "./Carregando.svelte";
   import Icone from "./Icone.svelte";
@@ -31,29 +30,17 @@
   import { sistema, temaEfetivo } from "../lib/ambiente.svelte";
   import { resolverTema } from "../lib/temas";
   import { aguardarTransicao } from "../lib/transicao";
-  import {
-    apagarDestaque,
-    criarDestaque,
-    definirCorDestaque,
-    definirNotaDestaque,
-    escolherDestinoMarkdown,
-    exportarDestaques,
-    listarDestaques,
-    restaurarDestaque,
-    type CorDestaque,
-    type Destaque,
-  } from "../lib/biblioteca";
+  import type { Destaque } from "../lib/biblioteca";
+  import { ControleDestaques } from "../lib/controleDestaques.svelte";
   import {
     aplicarMarcaTexto,
     fracaoNoDocumento,
     hexDaCor,
-    nomeDaCor,
     paginaEscura,
+    posicaoDaBarra,
     posicaoNoLivro,
-    resumo,
   } from "../lib/destaques";
   import { resolverPagina } from "../lib/pagina";
-  import { avisar } from "../lib/avisos.svelte";
   import {
     comandosDaPagina,
     comandosDoIndice,
@@ -106,21 +93,26 @@
   let pronto = $state(false);
   let modoFoco = $state(false);
 
-  // Destaques (M16): a lista do livro, a barra sobre a seleção (ou sobre um destaque clicado)
-  // e o diálogo da nota. A seleção é guardada ao abrir a barra: o foco pode sair do texto.
-  let destaques = $state<Destaque[]>([]);
+  // Destaques (M16): a lógica comum aos dois formatos está no ControleDestaques; aqui, só o
+  // que é do EPUB (a seleção no iframe, o CFI, o desenho pelo overlayer do foliate-js).
   let abaIndice = $state<Aba>("indice");
   let abas = $state<AbasIndice>();
-  let barra = $state<{
-    x: number;
-    y: number;
-    abaixo: boolean;
-    focar: boolean;
-    destaque: Destaque | null;
-  } | null>(null);
-  let selecao: { indice: number; range: Range } | null = null;
-  let notaDe = $state<Destaque | null>(null);
   let marcaTexto: Desenho | undefined;
+  const destaques = new ControleDestaques({
+    get livroId() {
+      return livroId;
+    },
+    titulo: () => titulo,
+    desenhar: (d) => view?.addAnnotation({ value: d.local }),
+    apagarDesenho: (d) => view?.deleteAnnotation({ value: d.local }),
+    irPara: irParaDestaque,
+    focarTexto: () => view?.renderer.focusView(),
+    limparSelecao: () => {
+      for (const { doc } of view?.renderer.getContents() ?? []) doc.getSelection()?.removeAllRanges();
+    },
+    anunciar: (texto) => (anuncio = texto),
+    mostrarLista: mostrarDestaques,
+  });
 
   // O marca-texto se mistura com a página: multiply no papel claro, screen no escuro.
   $effect(() => {
@@ -267,25 +259,24 @@
     // Cada capítulo carregado ganha uma camada de desenho: os destaques dele são desenhados
     // ali (addAnnotation só desenha os da seção carregada) e redesenhados ao repaginar.
     v.addEventListener("create-overlay", () => {
-      for (const d of destaques) v.addAnnotation({ value: d.local });
+      for (const d of destaques.lista) v.addAnnotation({ value: d.local });
     });
     v.addEventListener("draw-annotation", (e) => {
       const { draw, annotation } = (e as CustomEvent<{
         draw: (desenho: Desenho, opcoes: { color: string }) => void;
         annotation: { value: string };
       }>).detail;
-      const d = destaques.find((x) => x.local === annotation.value);
+      const d = destaques.porLocal(annotation.value);
       if (marcaTexto) draw(marcaTexto, { color: hexDaCor(d?.cor ?? "amarelo") });
     });
     // Clique num destaque: a barra dele (cor, nota, copiar, apagar).
     v.addEventListener("show-annotation", (e) => {
       const { value, range } = (e as CustomEvent<{ value: string; range: Range }>).detail;
-      const d = destaques.find((x) => x.local === value);
-      if (d) abrirBarra(range, d, false);
+      const d = destaques.porLocal(value);
+      if (d) destaques.mostrarDestaque(d, posicaoNoIframe(range));
     });
     v.addEventListener("relocate", (e) => {
-      barra = null;
-      selecao = null;
+      destaques.esconder();
       const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;
       progresso = fraction;
       hrefAtual = tocItem?.href;
@@ -303,9 +294,7 @@
       const { doc, index } = (e as CustomEvent<{ doc: Document; index: number }>).detail;
       // Seleção com o mouse: a barra aparece ao soltar (sem tirar o foco do texto).
       doc.addEventListener("pointerup", () => setTimeout(() => verSelecao(doc, index, false)));
-      doc.addEventListener("pointerdown", () => {
-        if (barra) barra = null;
-      });
+      doc.addEventListener("pointerdown", () => destaques.esconder());
       doc.addEventListener("keydown", (original) => {
         const copia = new KeyboardEvent("keydown", {
           key: original.key,
@@ -331,10 +320,7 @@
     const idioma = v.book.metadata?.language;
     idiomaDoLivro = (Array.isArray(idioma) ? idioma[0] : idioma) ?? null;
     itensIndice = v.book.toc ?? [];
-    destaques = await listarDestaques(livroId).catch((erro) => {
-      log.warn(`destaques indisponíveis: ${erro}`);
-      return [];
-    });
+    await destaques.carregar();
     await v.init({ lastLocation: inicio ?? null, showTextStart: !inicio });
     moldura.focarTitulo();
   }
@@ -346,31 +332,29 @@
     view.renderer.focusView();
   }
 
-  /** Abre a barra sobre `range` (coordenadas do iframe convertidas para as da janela). */
-  function abrirBarra(range: Range, destaque: Destaque | null, focar: boolean) {
+  /** Onde a barra fica: o retângulo do trecho, somado ao do iframe do capítulo. */
+  function posicaoNoIframe(range: Range) {
     const quadro = range.startContainer.ownerDocument?.defaultView?.frameElement;
-    const r = range.getBoundingClientRect();
-    const q = quadro?.getBoundingClientRect() ?? { left: 0, top: 0 };
-    const topo = q.top + r.top;
-    // Sem espaço acima do trecho (perto do cabeçalho): a barra vai para baixo dele.
-    const abaixo = topo < 96;
-    barra = {
-      x: q.left + r.left + r.width / 2,
-      y: abaixo ? q.top + r.bottom : topo,
-      abaixo,
-      focar,
-      destaque,
-    };
+    return posicaoDaBarra(range.getBoundingClientRect(), quadro?.getBoundingClientRect());
   }
 
-  /** Há texto selecionado em `doc`? Guarda a seleção e abre a barra. */
+  /** Há texto selecionado em `doc`? Abre a barra sobre ele (com o CFI já calculado). */
   function verSelecao(doc: Document, indice: number, focar: boolean): boolean {
     const sel = doc.getSelection();
-    if (!sel || sel.isCollapsed || !sel.rangeCount) return false;
+    if (!view || !sel || sel.isCollapsed || !sel.rangeCount) return false;
     const range = sel.getRangeAt(0);
-    if (!range.toString().trim()) return false;
-    selecao = { indice, range: range.cloneRange() };
-    abrirBarra(range, null, focar);
+    const trecho = range.toString();
+    if (!trecho.trim()) return false;
+    destaques.mostrarSelecao(
+      {
+        local: view.getCFI(indice, range),
+        trecho,
+        capitulo: view.getProgressOf(indice, range)?.tocItem?.label?.trim() ?? null,
+        posicao: posicaoNoLivro(view.getSectionFractions(), indice, fracaoNoDocumento(range)),
+      },
+      posicaoNoIframe(range),
+      focar,
+    );
     return true;
   }
 
@@ -384,125 +368,7 @@
   }
 
   function aoApontarFora(e: PointerEvent) {
-    if (barra && !(e.target instanceof Element && e.target.closest(".barra-destaque"))) barra = null;
-  }
-
-  /** Fecha a barra; se ela tinha o foco (teclado), devolve-o ao texto. */
-  function fecharBarra() {
-    const tinhaFoco = !!document.activeElement?.closest(".barra-destaque");
-    barra = null;
-    if (tinhaFoco) view?.renderer.focusView();
-  }
-
-  function limparSelecao() {
-    for (const { doc } of view?.renderer.getContents() ?? []) doc.getSelection()?.removeAllRanges();
-    selecao = null;
-  }
-
-  /** Reinsere na ordem de leitura (a do core: posição, depois criação). */
-  function comDestaque(lista: Destaque[], d: Destaque): Destaque[] {
-    return [...lista.filter((x) => x.id !== d.id), d].sort(
-      (a, b) => a.posicao - b.posicao || a.criadoEm - b.criadoEm || a.id - b.id,
-    );
-  }
-
-  /** Cria o destaque da seleção guardada; devolve-o (ou undefined, com aviso de erro). */
-  async function criarDaSelecao(cor: CorDestaque): Promise<Destaque | undefined> {
-    if (!view || !selecao) return;
-    const { indice, range } = selecao;
-    try {
-      const d = await criarDestaque(livroId, {
-        local: view.getCFI(indice, range),
-        trecho: range.toString(),
-        cor,
-        capitulo: view.getProgressOf(indice, range)?.tocItem?.label?.trim() ?? null,
-        posicao: posicaoNoLivro(view.getSectionFractions(), indice, fracaoNoDocumento(range)),
-      });
-      destaques = comDestaque(destaques, d);
-      view.addAnnotation({ value: d.local });
-      limparSelecao();
-      anuncio = `Destaque ${nomeDaCor(cor).toLowerCase()} criado.`;
-      return d;
-    } catch (erro) {
-      avisar(`Não foi possível criar o destaque: ${erro}`, "erro");
-    }
-  }
-
-  async function escolherCor(cor: CorDestaque) {
-    const existente = barra?.destaque;
-    fecharBarra();
-    if (!existente) {
-      await criarDaSelecao(cor);
-      return;
-    }
-    try {
-      const d = await definirCorDestaque(existente.id, cor);
-      destaques = comDestaque(destaques, d);
-      view?.addAnnotation({ value: d.local });
-      anuncio = `Destaque agora ${nomeDaCor(cor).toLowerCase()}.`;
-    } catch (erro) {
-      avisar(`Não foi possível mudar a cor: ${erro}`, "erro");
-    }
-  }
-
-  /** Nota: num destaque, edita; numa seleção, cria o destaque (amarelo) e abre a nota. */
-  async function pedirNota() {
-    const existente = barra?.destaque ?? null;
-    fecharBarra();
-    notaDe = existente ?? (await criarDaSelecao("amarelo")) ?? null;
-  }
-
-  async function salvarNota(nota: string) {
-    const d = notaDe;
-    notaDe = null;
-    if (!d) return;
-    try {
-      destaques = comDestaque(destaques, await definirNotaDestaque(d.id, nota));
-      anuncio = nota.trim() ? "Nota salva." : "Nota apagada.";
-    } catch (erro) {
-      avisar(`Não foi possível salvar a nota: ${erro}`, "erro");
-    }
-    view?.renderer.focusView();
-  }
-
-  async function copiar() {
-    const texto = barra?.destaque?.trecho ?? selecao?.range.toString() ?? "";
-    fecharBarra();
-    try {
-      await navigator.clipboard.writeText(texto);
-      avisar("Trecho copiado.");
-    } catch (erro) {
-      avisar(`Não foi possível copiar: ${erro}`, "erro");
-    }
-  }
-
-  async function apagar(destaque: Destaque) {
-    if (barra) fecharBarra();
-    try {
-      const apagado = await apagarDestaque(destaque.id);
-      destaques = destaques.filter((x) => x.id !== apagado.id);
-      // Apagado pela lista, o botão some com o item: o foco volta para a aba.
-      await tick();
-      if (document.activeElement === document.body) document.getElementById("aba-destaques")?.focus();
-      view?.deleteAnnotation({ value: apagado.local });
-      avisar("Destaque apagado.", "sucesso", {
-        rotulo: "Desfazer",
-        executar: () => void restaurar(apagado),
-      });
-    } catch (erro) {
-      avisar(`Não foi possível apagar o destaque: ${erro}`, "erro");
-    }
-  }
-
-  async function restaurar(destaque: Destaque) {
-    try {
-      const d = await restaurarDestaque(destaque);
-      destaques = comDestaque(destaques, d);
-      view?.addAnnotation({ value: d.local });
-      avisar("Destaque restaurado.");
-    } catch (erro) {
-      avisar(`Não foi possível restaurar o destaque: ${erro}`, "erro");
-    }
+    if (!(e.target instanceof Element && e.target.closest(".barra-destaque"))) destaques.esconder();
   }
 
   async function irParaDestaque(destaque: Destaque) {
@@ -516,16 +382,11 @@
     abas?.mostrar("destaques");
   }
 
-  async function exportar() {
-    const nome = `${titulo || "Livro"} — destaques.md`.replace(/[/\\]/g, "-");
-    const caminho = await escolherDestinoMarkdown(nome);
-    if (!caminho) return;
-    try {
-      const n = await exportarDestaques(livroId, caminho);
-      avisar(n === 1 ? "1 destaque exportado." : `${n} destaques exportados.`);
-    } catch (erro) {
-      avisar(`Não foi possível exportar: ${erro}`, "erro");
-    }
+  /** Apagado pela lista, o botão some com o item: o foco volta para a aba. */
+  async function apagarDaLista(destaque: Destaque) {
+    await destaques.apagar(destaque);
+    await tick();
+    if (document.activeElement === document.body) document.getElementById("aba-destaques")?.focus();
   }
 
   // Paleta de comandos: o que dá para fazer neste livro agora (muda com a voz, a seção atual e
@@ -591,40 +452,7 @@
           executar: () => void pararLeitura(),
         },
       );
-    lista.push(
-      {
-        id: "destacar",
-        titulo: "Destacar a seleção",
-        grupo: "Destaques",
-        teclas: [["Ctrl", "D"]],
-        palavras: "marca-texto grifar",
-        executar: destacarSelecao,
-      },
-      {
-        id: "mostrar-destaques",
-        titulo: "Mostrar os destaques",
-        grupo: "Destaques",
-        palavras: "notas",
-        executar: () => void mostrarDestaques(),
-      },
-    );
-    if (destaques.length)
-      lista.push({
-        id: "exportar-destaques",
-        titulo: "Exportar os destaques…",
-        grupo: "Destaques",
-        palavras: "markdown notas",
-        executar: () => void exportar(),
-      });
-    for (const d of destaques)
-      lista.push({
-        id: `destaque-${d.id}`,
-        titulo: `Ir para destaque: ${resumo(d.trecho, 60)}`,
-        grupo: "Destaques",
-        dica: nomeDaCor(d.cor),
-        palavras: d.nota ?? "",
-        executar: () => void irParaDestaque(d),
-      });
+    lista.push(...destaques.comandos(destacarSelecao));
     lista.push(
       ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
       ...comandosDaPagina(preferencias, atualizarPreferencias),
@@ -644,9 +472,9 @@
       destacarSelecao();
       return;
     }
-    if (e.key === "Escape" && barra) {
+    if (e.key === "Escape" && destaques.barra) {
       e.preventDefault();
-      fecharBarra();
+      destaques.fecharBarra();
       return;
     }
     if (e.altKey || e.ctrlKey || e.metaKey) return;
@@ -667,7 +495,7 @@
 
 <MolduraLeitor bind:this={moldura} bind:modoFoco {titulo} {anuncio} {progresso} {onFechar}>
   {#snippet indice()}
-    <AbasIndice bind:this={abas} bind:aba={abaIndice} quantidade={destaques.length}>
+    <AbasIndice bind:this={abas} bind:aba={abaIndice} quantidade={destaques.lista.length}>
       {#snippet conteudoIndice()}
         {#if itensIndice.length}
           <Indice itens={itensIndice} atual={hrefAtual} onNavegar={irParaSecao} />
@@ -677,11 +505,11 @@
       {/snippet}
       {#snippet conteudoDestaques()}
         <ListaDestaques
-          {destaques}
+          destaques={destaques.lista}
           onIr={irParaDestaque}
-          onNota={(d) => (notaDe = d)}
-          onApagar={apagar}
-          onExportar={exportar}
+          onNota={(d) => destaques.editarNota(d)}
+          onApagar={apagarDaLista}
+          onExportar={() => destaques.exportar()}
         />
       {/snippet}
     </AbasIndice>
@@ -729,30 +557,7 @@
     </div>
   {/snippet}
 
-  {#if barra}
-    <BarraDestaque
-      x={barra.x}
-      y={barra.y}
-      abaixo={barra.abaixo}
-      focar={barra.focar}
-      corAtual={barra.destaque?.cor ?? null}
-      onCor={escolherCor}
-      onNota={pedirNota}
-      onCopiar={copiar}
-      onApagar={barra.destaque ? () => apagar(barra!.destaque!) : undefined}
-      onFechar={fecharBarra}
-    />
-  {/if}
-  <EditarNota
-    aberto={notaDe !== null}
-    trecho={notaDe?.trecho ?? ""}
-    valorInicial={notaDe?.nota ?? ""}
-    onSalvar={salvarNota}
-    onCancelar={() => {
-      notaDe = null;
-      view?.renderer.focusView();
-    }}
-  />
+  <DestaquesDoLeitor controle={destaques} />
 
   <div class="palco" bind:this={palco}>
     {#if erro}

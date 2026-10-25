@@ -616,6 +616,7 @@
   {#if LeitorPdf}
     <LeitorPdf
       dados={aberto.dados}
+      livroId={aberto.livro.id}
       titulo={aberto.livro.titulo}
       inicio={aberto.inicio}
       onFechar={fechar}
