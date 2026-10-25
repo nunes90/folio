@@ -106,7 +106,9 @@ Release como pre-release.
 - [ ] **M16 — Destaques e notas**
   - [x] **M16a**: core. Tabela `destaques` (migração 6), criar/listar/cor/nota/apagar/restaurar, contagem no livro,
     exportar em Markdown. Comandos finos e tipos TS.
-  - [ ] **M16b**: EPUB (barra de seleção, painel Destaques, paleta).
+  - [x] **M16b**: EPUB. Barra sobre a seleção (cores, Nota, Copiar; num destaque, Apagar), Ctrl+D pelo teclado,
+    marca-texto do foliate-js com contraste testado em todas as páginas, aba "Destaques" no índice, nota, apagar com
+    Desfazer, exportar em Markdown, comandos na paleta.
   - [ ] **M16c**: PDF (camada própria sobre o pdf.js, sem alterar o arquivo).
 - [ ] **Depois**: slider de páginas…
 

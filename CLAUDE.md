@@ -295,5 +295,19 @@ docs/decisions/  # ADRs
   `restaurar_destaque` (mesmo id e datas: Desfazer), `exportar_destaques` / `para_markdown` (puro; `##` quando o
   capítulo muda, trecho em citação, nota abaixo; snapshot). `LivroNaBiblioteca.destaques` (contagem). Comandos finos
   e tipos TS (`Destaque`, `NovoDestaque`, `CorDestaque`) prontos.
-- Próximo passo: M16b (destaques no EPUB), depois M16c (PDF). (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
+- **M16b** (branch `feat/m16b-destaques-epub`): destaques no leitor de EPUB. `lib/destaques.ts`: `CORES_DESTAQUE`
+  (nome + hex), `estiloDoMarcaTexto` (papel claro: multiply 0,4; noite e alto contraste: screen 0,3; publicado nas
+  variáveis `--overlayer-highlight-*` do `<foliate-view>`), `misturar` + teste de contraste ≥ 4,5:1 de cada cor em
+  cada página, `posicaoNoLivro` (início da seção + `fracaoNoDocumento`), `resumo`, `descreverDestaque`. Foliate:
+  `create-overlay` → `addAnnotation` de todos (só desenha os da seção carregada), `draw-annotation` →
+  `Overlayer.highlight` (`desenhoMarcaTexto`, com `@ts-expect-error`: o foliate-js não tem tipos), `show-annotation`
+  (clique) → barra do destaque. `BarraDestaque.svelte` (toolbar ARIA: cores com `aria-label`, `aria-pressed` só num
+  destaque existente; Nota, Copiar, Apagar; não rouba o foco ao abrir pelo mouse; Ctrl+D a abre com foco; posição
+  = retângulo do trecho + o do iframe). `EditarNota.svelte` (Ctrl+Enter salva; vazio apaga). `AbasIndice.svelte`
+  (tabs ARIA "Índice" · "Destaques (n)", `mostrar()`; snippets `conteudoIndice`/`conteudoDestaques`).
+  `ListaDestaques.svelte` (trecho, cor por extenso · capítulo, nota; Nota/Apagar; "Exportar em Markdown…").
+  Apagar avisa com Desfazer (`restaurar_destaque`). Exportar: `save` do plugin-dialog (`dialog:allow-save`). Paleta:
+  "Destacar a seleção", "Mostrar os destaques", "Exportar os destaques…", "Ir para destaque: …". `Leitor` recebe
+  `livroId`. Selecionar texto só pelo teclado depende do leitor de tela (o WebKitGTK não tem cursor de navegação).
+- Próximo passo: M16c (destaques no PDF). (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
   PDF; conferir à mão o destaque da frase lida.

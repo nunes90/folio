@@ -35,6 +35,10 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
     { teclas: [["←"], ["→"]], acao: "Página à esquerda ou à direita" },
     { teclas: [["Page Up"], ["Page Down"]], acao: "Página anterior ou seguinte" },
     { teclas: [["Ctrl", "Shift", "F"]], acao: "Modo foco: só o livro na tela (Esc sai)" },
+    {
+      teclas: [["Ctrl", "D"]],
+      acao: "Destacar o trecho selecionado (abre a barra de cores; setas escolhem, Enter aplica)",
+    },
     ...GERAIS,
   ],
   pdf: [
