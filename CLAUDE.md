@@ -321,5 +321,6 @@ docs/decisions/  # ADRs
   redesenhada a cada `pagerendered` (o `reset()` do pdf.js tira nós desconhecidos); mistura e opacidade por variáveis
   CSS (`screen` na noite). Capítulo pelo sumário (`itemAtual`). Ir até o destaque = ir à página.
 - **M16 concluído.**
-- Próximo passo: a definir (v0.6.0 com M16; Séries; voz no PDF). (Séries, M6 empacotamento, ou novas features). Pendências do M4d: leitura em voz alta de
-  PDF; conferir à mão o destaque da frase lida.
+- **v0.6.0** (out/2026): tag assinada `v0.6.0` (M16) e Release no GitHub como pre-release.
+- Próximo passo: "destacar a frase atual" (Ctrl+D sem seleção). Depois: Séries, M6 empacotamento. Pendências do M4d:
+  leitura em voz alta de PDF; conferir à mão o destaque da frase lida.
