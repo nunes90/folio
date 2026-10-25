@@ -111,6 +111,12 @@ Release como pre-release.
     Desfazer, exportar em Markdown, comandos na paleta.
   - [x] **M16c**: PDF. Mesmos recursos do EPUB (lógica comum em `ControleDestaques`); trecho guardado como página e
     retângulos em frações da página; camada própria sobre cada página do pdf.js. O arquivo do PDF não muda.
+
+**v0.6.0** (out/2026): M16 (destaques e notas no EPUB e no PDF, exportar em Markdown). Tag `v0.6.0`, Release como
+pre-release.
+
+- [ ] **Destacar a frase atual**: Ctrl+D sem seleção destaca a primeira frase da página (ou a que a leitura em voz
+  alta está lendo); Alt+↑/↓ trocam de frase, Alt+Shift+↓ estende. Para quem usa só o teclado, sem leitor de tela.
 - [ ] **Depois**: slider de páginas…
 
 ## Futuro
