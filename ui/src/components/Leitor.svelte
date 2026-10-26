@@ -113,6 +113,9 @@
     anunciar: (texto) => (anuncio = texto),
     mostrarLista: mostrarDestaques,
     aoFecharBarra: () => {
+      // A seleção do modo frase era só a prévia: some com a barra. Senão o próximo Ctrl+D a
+      // trataria como uma seleção feita com o mouse, fora do modo frase (sem Alt+↑/↓).
+      modoFrase?.doc.getSelection()?.removeAllRanges();
       modoFrase = null;
       // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou.
       if (retomarVozAoFechar) {

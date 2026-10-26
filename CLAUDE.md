@@ -39,6 +39,9 @@ docs/decisions/  # ADRs
 - Testes: unitários + integração com fixtures (`crates/core/tests/`), `insta` (snapshots),
   `proptest` (parsers não podem dar panic), Vitest (frontend), `axe-core` (a11y),
   `tauri-driver` para E2E (Linux/Windows; no macOS os testes são manuais), `criterion` mais tarde.
+- **Svelte 5, `$effect` e bibliotecas com eventos síncronos** (pdf.js, foliate-js): chamar a biblioteca dentro de um
+  efeito pode disparar, na hora, tratadores que leem estado reativo, e essas leituras viram dependências do efeito
+  (ele passa a rodar quando não devia). Pôr essas chamadas em `untrack(() => …)`.
 - **Atalhos como linguagem**: a leitura inteira deve ser operável sem o mouse. Todo recurso novo ganha atalho (sem
   letra sozinha, WCAG 2.1.4) ou comando na paleta (Ctrl+K), e entra no F1 (`lib/atalhos.ts`).
 - Git: uma branch por funcionalidade, PRs pequenos, Conventional Commits (`feat:`, `fix:`, `test:`, `refactor:`).
@@ -345,4 +348,18 @@ docs/decisions/  # ADRs
   página virava durante a pausa) e, ao retomar, dava o bloco por terminado, pulando o resto dele. O `pausar`/`retomar`
   do core ficam sem uso no frontend. "Ouvir" na barra (`onOuvir`, só com voz): lê a partir da frase,
   da seleção ou do destaque (`resolveCFI`); `lerEmVozAlta(desde?)` recomeça se já estiver lendo.
-- Próximo passo: M17b (blocos e frases no PDF). Séries continua adiado.
+- **M17b** (branch `feat/m17b-frases-pdf`): `lib/frasesPdf.ts`: `agruparEmLinhas` (spans da camada de texto em
+  linhas pelo meio vertical), `quebrasDeBloco` (bloco novo com espaço > meia linha ou letra de outro tamanho, ex.:
+  título), `frasesDaCamada` (frases de cada bloco pela `frasesDe` do EPUB) e `textoDoTrecho` (o `<br>` de fim de
+  linha do pdf.js vira espaço: o `toString()` o ignorava e juntava palavras de linhas diferentes no destaque e no
+  Markdown; vale também para a seleção com o mouse). No `LeitorPdf`: Ctrl+D sem seleção entra no modo frase na
+  primeira frase da página (`camadaDeTexto` espera o `textlayerrendered`, até 1,5 s; `WeakMap` por camada);
+  Alt+↑/↓ passam para a página vizinha nas pontas; Alt+Shift+↑/↓ só dentro da página; `pagechanging` não esconde a
+  barra no modo frase; virar à mão a fecha. Sem "Ouvir" no PDF até a voz no PDF (M23).  Bug achado
+  aqui: o `$effect` do modo do PDF mudava o zoom, o pdf.js chamava na hora o tratador de `scalechanging`, e o estado
+  lido ali (o zoom, a barra) virava dependência do efeito: mudar o zoom voltava para "página inteira" e abrir a
+  barra a fechava em 4 ms. As chamadas ao pdf.js nos efeitos agora ficam em `untrack`. Também: a barra só fecha se
+  a escala mudar de fato, e o `ResizeObserver` do M15 só reaplica o zoom se o tamanho do contêiner mudar. Nos dois
+  leitores, a seleção do modo frase (a prévia) é limpa quando a barra fecha (`aoFecharBarra`): sem isso, o Ctrl+D
+  seguinte a tratava como seleção do mouse, fora do modo frase, e o Alt+↑/↓ não fazia nada.
+- Próximo passo: M6a (AppImage de teste na CI). Séries continua adiado.
