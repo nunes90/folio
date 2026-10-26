@@ -37,7 +37,15 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
     { teclas: [["Ctrl", "Shift", "F"]], acao: "Modo foco: só o livro na tela (Esc sai)" },
     {
       teclas: [["Ctrl", "D"]],
-      acao: "Destacar o trecho selecionado (abre a barra de cores; setas escolhem, Enter aplica)",
+      acao: "Destacar o trecho selecionado ou, sem seleção, a frase atual (abre a barra de cores; setas escolhem, Enter aplica)",
+    },
+    {
+      teclas: [["Alt", "↑"], ["Alt", "↓"]],
+      acao: "Na barra de destaque: frase anterior ou seguinte",
+    },
+    {
+      teclas: [["Alt", "Shift", "↑"], ["Alt", "Shift", "↓"]],
+      acao: "Na barra de destaque: encolher ou estender o trecho, uma frase por vez",
     },
     ...GERAIS,
   ],

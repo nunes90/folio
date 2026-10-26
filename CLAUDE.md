@@ -329,4 +329,20 @@ docs/decisions/  # ADRs
   v0.8 uma ideia por vez, sessões e metas, progresso honesto, continuação (M19–M22); v0.9 voz, tipografia, comparar
   trechos lado a lado (M23–M25); v1.0 acabamento (M26) e AppImage final (M6b). Nome definitivo do app em aberto
   ("Leitor" é provisório; trocar o identificador exige migrar as pastas de dados).
-- Próximo passo: M17a (blocos e frases no EPUB, destacar a frase atual, ouvir daqui). Séries continua adiado.
+- **M17a** (branch `feat/m17a-frases-epub`): `lib/frases.ts` com as regras do `tts.js` do foliate-js (mesmas tags de
+  bloco; frases pelo `Intl.Segmenter`): `blocosDe`, `frasesDe`, `frasesDoDocumento`, `indiceDaFraseEm`, `unir`.
+  Quebras de linha no meio do parágrafo viram espaço antes de dividir (o segmentador as trata como fim de frase).
+  `textosDe` percorre só do início ao fim do bloco: percorrer o ancestral comum era quadrático (5 mil frases: 3,8 s →
+  36 ms); as frases de cada capítulo ficam num `WeakMap` por documento. Modo frase no `Leitor`: Ctrl+D sem seleção
+  seleciona de verdade a frase atual (a seleção é a prévia; `scrollToAnchor(trecho, true)` + `addRange`, porque o
+  foliate só seleciona quando a página vira) e abre a barra pelo caminho da seleção; Alt+↑/↓ trocam de frase,
+  Alt+Shift+↑/↓ encolhem ou estendem (`onTrecho` na `BarraDestaque`, `MudancaDeTrecho`); o `relocate` não esconde
+  a barra no modo frase; virar a página à mão a fecha (`aoFecharBarra` no adaptador zera o modo). Durante a voz,
+  a frase lida já é a seleção: Ctrl+D a destaca, pausando a voz enquanto a barra está aberta (a página viraria e a
+  barra fecharia) e retomando quando ela fecha (`retomarVozAoFechar`; "Ouvir" recomeça em vez de retomar).  **Pausar
+  cancela a fala e retomar fala de novo a partir da última frase marcada** (`tts.resume()` do foliate-js; eventos
+  com a voz pausada são ignorados): o `PAUSE` do speech-dispatcher só pausava na marca seguinte (o destaque andava e a
+  página virava durante a pausa) e, ao retomar, dava o bloco por terminado, pulando o resto dele. O `pausar`/`retomar`
+  do core ficam sem uso no frontend. "Ouvir" na barra (`onOuvir`, só com voz): lê a partir da frase,
+  da seleção ou do destaque (`resolveCFI`); `lerEmVozAlta(desde?)` recomeça se já estiver lendo.
+- Próximo passo: M17b (blocos e frases no PDF). Séries continua adiado.

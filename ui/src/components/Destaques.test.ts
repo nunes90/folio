@@ -88,6 +88,31 @@ describe("BarraDestaque", () => {
     expect(props.onFechar).toHaveBeenCalled();
   });
 
+  it("Alt+↑/↓ trocam de frase e Alt+Shift+↑/↓ mudam o tamanho do trecho", async () => {
+    const onTrecho = vi.fn();
+    renderizar({ onTrecho, focar: true });
+    await tick();
+    await tick();
+    const alvo = document.activeElement!;
+    await fireEvent.keyDown(alvo, { key: "ArrowDown", altKey: true });
+    await fireEvent.keyDown(alvo, { key: "ArrowUp", altKey: true });
+    await fireEvent.keyDown(alvo, { key: "ArrowDown", altKey: true, shiftKey: true });
+    await fireEvent.keyDown(alvo, { key: "ArrowUp", altKey: true, shiftKey: true });
+    expect(onTrecho.mock.calls.map((c) => c[0])).toEqual(["proxima", "anterior", "estender", "encolher"]);
+    // Alt+→ não mexe no foco da barra (é do sistema).
+    await fireEvent.keyDown(alvo, { key: "ArrowRight", altKey: true });
+    expect(document.activeElement).toBe(alvo);
+  });
+
+  it("com voz, há Ouvir (antes de Apagar)", async () => {
+    const onOuvir = vi.fn();
+    renderizar({ onOuvir, onApagar: vi.fn() });
+    const nomes = screen.getAllByRole("button").map((b) => b.getAttribute("aria-label") ?? b.textContent?.trim());
+    expect(nomes.slice(-3)).toEqual(["Copiar", "Ouvir", "Apagar"]);
+    await fireEvent.click(screen.getByRole("button", { name: "Ouvir" }));
+    expect(onOuvir).toHaveBeenCalled();
+  });
+
   it("uma parada de Tab só", () => {
     renderizar();
     const comTab = screen.getAllByRole("button").filter((b) => b.tabIndex === 0);

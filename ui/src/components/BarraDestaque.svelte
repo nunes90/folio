@@ -1,10 +1,12 @@
 <script lang="ts">
-  // Barra sobre o trecho selecionado (ou sobre um destaque clicado): as cores, Nota, Copiar e,
-  // num destaque que já existe, Apagar. Padrão ARIA de toolbar: uma parada de Tab, setas
-  // entre os botões, Esc fecha. Aberta pelo mouse, não rouba o foco (a seleção continua);
-  // aberta pelo teclado (Ctrl+D), o foco vai para a primeira cor.
+  // Barra sobre o trecho selecionado (ou sobre um destaque clicado): as cores, Nota, Copiar,
+  // Ouvir (se o leitor tiver voz) e, num destaque que já existe, Apagar. Padrão ARIA de
+  // toolbar: uma parada de Tab, setas entre os botões, Esc fecha. Aberta pelo mouse, não
+  // rouba o foco (a seleção continua); aberta pelo teclado (Ctrl+D), o foco vai para a
+  // primeira cor. Alt+↑/↓ trocam de frase e Alt+Shift+↑/↓ encolhem ou estendem o trecho.
   import { tick } from "svelte";
   import type { CorDestaque } from "../lib/biblioteca";
+  import type { MudancaDeTrecho } from "../lib/controleDestaques.svelte";
   import { CORES_DESTAQUE } from "../lib/destaques";
   import Icone from "./Icone.svelte";
 
@@ -17,7 +19,9 @@
     onCor,
     onNota,
     onCopiar,
+    onOuvir,
     onApagar,
+    onTrecho,
     onFechar,
   }: {
     /** Centro do trecho, em coordenadas da janela. */
@@ -33,8 +37,12 @@
     onCor: (cor: CorDestaque) => void;
     onNota: () => void;
     onCopiar: () => void;
+    /** Ouvir a partir do trecho (leitura em voz alta). */
+    onOuvir?: () => void;
     /** Só num destaque existente. */
     onApagar?: () => void;
+    /** Alt+↑/↓ e Alt+Shift+↑/↓: outra frase, ou o trecho maior ou menor. */
+    onTrecho?: (mudanca: MudancaDeTrecho) => void;
     onFechar: () => void;
   } = $props();
 
@@ -42,6 +50,11 @@
   let largura = $state(0);
   let ativo = $state(0);
   const MARGEM = 8;
+  // Posição de cada botão depois das cores (roving tabindex).
+  const iNota = CORES_DESTAQUE.length;
+  const iCopiar = iNota + 1;
+  const iOuvir = iCopiar + 1;
+  const iApagar = $derived(iOuvir + (onOuvir ? 1 : 0));
 
   // Centralizada no trecho, sem sair da janela.
   const esquerda = $derived(
@@ -72,7 +85,11 @@
 
   function aoTeclar(e: KeyboardEvent) {
     const n = botoes().length;
-    if (e.key === "ArrowRight") focarBotao(ativo + 1);
+    if (e.altKey && onTrecho && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      const baixo = e.key === "ArrowDown";
+      onTrecho(e.shiftKey ? (baixo ? "estender" : "encolher") : baixo ? "proxima" : "anterior");
+    } else if (e.altKey) return;
+    else if (e.key === "ArrowRight") focarBotao(ativo + 1);
     else if (e.key === "ArrowLeft") focarBotao(ativo - 1);
     else if (e.key === "Home") focarBotao(0);
     else if (e.key === "End") focarBotao(n - 1);
@@ -109,22 +126,27 @@
   <span class="separador" aria-hidden="true"></span>
   <button
     type="button"
-    tabindex={ativo === CORES_DESTAQUE.length ? 0 : -1}
+    tabindex={ativo === iNota ? 0 : -1}
     onclick={onNota}
   >
     <Icone nome="nota" /><span class="rotulo">Nota</span>
   </button>
   <button
     type="button"
-    tabindex={ativo === CORES_DESTAQUE.length + 1 ? 0 : -1}
+    tabindex={ativo === iCopiar ? 0 : -1}
     onclick={onCopiar}
   >
     <Icone nome="copiar" /><span class="rotulo">Copiar</span>
   </button>
+  {#if onOuvir}
+    <button type="button" tabindex={ativo === iOuvir ? 0 : -1} onclick={onOuvir}>
+      <Icone nome="voz" /><span class="rotulo">Ouvir</span>
+    </button>
+  {/if}
   {#if onApagar}
     <button
       type="button"
-      tabindex={ativo === CORES_DESTAQUE.length + 2 ? 0 : -1}
+      tabindex={ativo === iApagar ? 0 : -1}
       onclick={onApagar}
     >
       <Icone nome="lixeira" /><span class="rotulo">Apagar</span>

@@ -30,6 +30,9 @@ export interface PosicaoBarra {
   abaixo: boolean;
 }
 
+/** Alt+↑/↓ (outra frase) e Alt+Shift+↑/↓ (trecho menor ou maior) na barra. */
+export type MudancaDeTrecho = "proxima" | "anterior" | "estender" | "encolher";
+
 /** O que cada formato faz do seu jeito. */
 export interface AdaptadorDestaques {
   livroId: string;
@@ -46,6 +49,8 @@ export interface AdaptadorDestaques {
   anunciar(texto: string): void;
   /** Abre o painel na aba Destaques. */
   mostrarLista(): Promise<void>;
+  /** A barra fechou (sem destaque novo ou depois dele): ex.: sair do modo frase. */
+  aoFecharBarra?(): void;
 }
 
 /** Ordem de leitura, a mesma do core: posição, depois criação. */
@@ -92,13 +97,16 @@ export class ControleDestaques {
 
   /** Esconde a barra sem mexer no foco (ex.: virou a página, clicou fora). */
   esconder(): void {
+    if (!this.barra) return;
     this.barra = null;
+    this.#a.aoFecharBarra?.();
   }
 
   /** Fecha a barra; se ela tinha o foco (teclado), devolve-o ao texto. */
   fecharBarra(): void {
     const tinhaFoco = !!document.activeElement?.closest(".barra-destaque");
     this.barra = null;
+    this.#a.aoFecharBarra?.();
     if (tinhaFoco) this.#a.focarTexto();
   }
 
@@ -223,10 +231,10 @@ export class ControleDestaques {
     const lista: Comando[] = [
       {
         id: "destacar",
-        titulo: "Destacar a seleção",
+        titulo: "Destacar a seleção ou a frase atual",
         grupo: "Destaques",
         teclas: [["Ctrl", "D"]],
-        palavras: "marca-texto grifar",
+        palavras: "marca-texto grifar frase",
         executar: destacarSelecao,
       },
       {
