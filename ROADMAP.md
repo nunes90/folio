@@ -127,8 +127,9 @@ A base de vários recursos: saber onde estão os blocos (parágrafos) e as frase
   `Intl.Segmenter`). **Destacar a frase atual**: Ctrl+D sem seleção destaca a primeira frase da página (ou a que a
   voz está lendo); Alt+↑/↓ trocam de frase, Alt+Shift+↓ estende; para quem usa só o teclado, sem leitor de tela.
   **Ouvir a partir daqui**: da frase atual, da seleção ou de um destaque.
-- [ ] **M17b — Blocos e frases no PDF**: linhas da camada de texto do pdf.js agrupadas em blocos (espaçamento e
-  recuo) e divididas em frases; destacar a frase atual e ouvir daqui no PDF.
+- [x] **M17b — Blocos e frases no PDF**: linhas da camada de texto do pdf.js agrupadas em blocos (espaço entre
+  linhas e tamanho da letra) e divididas em frases; destacar a frase atual no PDF. "Ouvir daqui" no PDF vem com a
+  voz no PDF (M23).
 - [ ] **M6a — AppImage de teste**: a CI gera o AppImage (`cargo tauri build --bundles appimage`) a cada tag `v*`
   e o anexa à Release como pre-release, com o nome provisório. Serve para achar cedo os problemas de empacotamento
   (WebKitGTK embutido, NVIDIA/Wayland, associação a EPUB e PDF) testando numa distribuição limpa.

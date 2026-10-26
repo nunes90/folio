@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
   import type { PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
   import "pdfjs-dist/web/pdf_viewer.css";
@@ -10,8 +10,10 @@
   import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
   import ListaDestaques from "./ListaDestaques.svelte";
   import type { Destaque } from "../lib/biblioteca";
-  import { ControleDestaques } from "../lib/controleDestaques.svelte";
-  import { estiloDoMarcaTexto, hexDaCor, posicaoDaBarra } from "../lib/destaques";
+  import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
+  import { unir } from "../lib/frases";
+  import { frasesDaCamada, textoDoTrecho } from "../lib/frasesPdf";
+  import { estiloDoMarcaTexto, hexDaCor, posicaoDaBarra, resumo } from "../lib/destaques";
   import {
     acertou,
     lerLocalPdf,
@@ -91,7 +93,20 @@
     limparSelecao: () => window.getSelection()?.removeAllRanges(),
     anunciar: (texto) => (anuncio = texto),
     mostrarLista: mostrarDestaques,
+    // A seleção do modo frase era só a prévia: some com a barra. Senão o próximo Ctrl+D a
+    // trataria como uma seleção feita com o mouse, fora do modo frase (sem Alt+↑/↓).
+    aoFecharBarra: () => {
+      if (modoFrase) window.getSelection()?.removeAllRanges();
+      modoFrase = null;
+    },
   });
+
+  // Modo frase (M17b), como no EPUB: Ctrl+D sem seleção seleciona a primeira frase da página e
+  // abre a barra; Alt+↑/↓ trocam de frase (passando de página nas pontas), Alt+Shift+↑/↓
+  // encolhem ou estendem o trecho (dentro da página).
+  let modoFrase: { pagina: number; frases: Range[]; de: number; ate: number } | null = null;
+  /** Frases de cada camada de texto já dividida (o pdf.js troca a camada ao redesenhar). */
+  const frasesPorCamada = new WeakMap<Element, Range[]>();
   let pagina = $state(1);
   let total = $state(0);
   let zoom = $state(1);
@@ -116,7 +131,8 @@
     const agora = invertida;
     if (!pronto || !visor || agora === estavaInvertida) return;
     estavaInvertida = agora;
-    visor.refresh();
+    const v = visor;
+    untrack(() => v.refresh());
   });
 
   /** Texto da região aria-live: anuncia a mudança de seção (não cada página). */
@@ -132,12 +148,19 @@
   });
 
   // Página a página (como um livro, zoom "página inteira") ou rolagem contínua (zoom
-  // "largura"). Reage na hora quando a preferência muda.
+  // "largura"). Reage na hora quando a preferência muda (e só a ela).
+  // As chamadas ao pdf.js ficam em `untrack`: ele dispara eventos na hora (ex.:
+  // "scalechanging"), e o estado que os tratadores leem (o zoom, a barra de destaque) viraria
+  // dependência deste efeito. Aí mudar o zoom voltava para "página inteira", e abrir a barra
+  // reaplicava o zoom e a fechava.
   $effect(() => {
     const paginas = preferencias.modoPdf === "paginas";
     if (!pronto || !visor || !modosDeRolagem) return;
-    visor.scrollMode = paginas ? modosDeRolagem.PAGE : modosDeRolagem.VERTICAL;
-    visor.currentScaleValue = paginas ? "page-fit" : "page-width";
+    const [v, modos] = [visor, modosDeRolagem];
+    untrack(() => {
+      v.scrollMode = paginas ? modos.PAGE : modos.VERTICAL;
+      v.currentScaleValue = paginas ? "page-fit" : "page-width";
+    });
   });
 
   /** Estados do PDFFindController (FindState no pdf.js). */
@@ -153,13 +176,19 @@
     });
     // A área do documento muda de tamanho (modo foco, painéis, janela): os zooms "página
     // inteira" e "largura" são recalculados, uma vez por quadro.
+    // Só quando o tamanho muda de verdade: o pdf.js avisa "scalechanging" a cada reaplicação,
+    // mesmo com a escala igual, e isso fechava a barra de destaque à toa.
     let quadro = 0;
+    let tamanho = "";
     const observador =
       typeof ResizeObserver === "undefined"
         ? null
         : new ResizeObserver(() => {
             cancelAnimationFrame(quadro);
             quadro = requestAnimationFrame(() => {
+              const novo = `${conteiner.clientWidth}x${conteiner.clientHeight}`;
+              if (novo === tamanho) return;
+              tamanho = novo;
               const valor = visor?.currentScaleValue;
               if (visor && (valor === "page-fit" || valor === "page-width"))
                 visor.currentScaleValue = valor;
@@ -217,12 +246,14 @@
       onProgresso?.(`pagina:${v.currentPageNumber}`, v.currentPageNumber / v.pagesCount);
     });
     eventos.on("pagechanging", ({ pageNumber }: { pageNumber: number }) => {
-      destaques.esconder();
+      // No modo frase, a página muda para acompanhar a frase: a barra vai junto.
+      if (!modoFrase) destaques.esconder();
       pagina = pageNumber;
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
     });
     eventos.on("scalechanging", ({ scale }: { scale: number }) => {
-      destaques.esconder();
+      // A barra fica fora de lugar só se o zoom mudou de fato.
+      if (scale !== zoom) destaques.esconder();
       zoom = scale;
     });
     eventos.on(
@@ -500,7 +531,7 @@
     const inicio = range.startContainer;
     const el = (inicio instanceof Element ? inicio : inicio.parentElement)?.closest<HTMLElement>(".page");
     if (!el || !conteiner.contains(el)) return false;
-    const trecho = range.toString();
+    const trecho = textoDoTrecho(range);
     const n = Number(el.dataset.pageNumber);
     const caixa = el.getBoundingClientRect();
     // Uma seleção que passa da página fica só com a parte da página onde começou.
@@ -520,8 +551,100 @@
   }
 
   /** Ctrl+D: a barra da seleção, com o foco nela. */
+  /** Ctrl+D: a barra da seleção, com o foco nela; sem seleção, a da frase atual. */
   function destacarSelecao() {
-    if (!verSelecao(true)) anuncio = "Selecione um trecho do texto para destacar.";
+    if (!verSelecao(true)) void iniciarModoFrase(pagina, "inicio");
+  }
+
+  /** A camada de texto da página `n`, esperando o pdf.js terminar de montá-la (até 1,5 s). */
+  async function camadaDeTexto(n: number): Promise<Element | null> {
+    const pronta = () => paginaEl(n)?.querySelector(".textLayer:has(span)") ?? null;
+    if (pronta() || !visor) return pronta();
+    const v = visor;
+    await new Promise<void>((resolver) => {
+      const aoMontar = ({ pageNumber }: { pageNumber: number }) => {
+        if (pageNumber === n) terminar();
+      };
+      const limite = setTimeout(terminar, 1500);
+      function terminar() {
+        clearTimeout(limite);
+        v.eventBus.off("textlayerrendered", aoMontar);
+        resolver();
+      }
+      v.eventBus.on("textlayerrendered", aoMontar);
+    });
+    return pronta();
+  }
+
+  /** As frases da página `n` (vazio se ela não tiver texto, ex.: um PDF escaneado). */
+  async function frasesDaPagina(n: number): Promise<Range[]> {
+    const camada = await camadaDeTexto(n);
+    if (!camada) return [];
+    const frases = frasesPorCamada.get(camada) ?? frasesDaCamada(camada, null);
+    frasesPorCamada.set(camada, frases);
+    return frases;
+  }
+
+  /** Entra no modo frase na página `n`, na primeira frase dela (ou na última, vindo de trás). */
+  async function iniciarModoFrase(n: number, onde: "inicio" | "fim") {
+    const frases = await frasesDaPagina(n);
+    if (!frases.length) {
+      anuncio =
+        n === pagina
+          ? "Não há texto selecionável nesta página para destacar."
+          : "Não há texto na página seguinte.";
+      return;
+    }
+    const i = onde === "inicio" ? 0 : frases.length - 1;
+    modoFrase = { pagina: n, frases, de: i, ate: i };
+    mostrarFrases();
+  }
+
+  /** Seleciona o trecho do modo frase e abre a barra sobre ele (com o foco). */
+  function mostrarFrases() {
+    if (!modoFrase) return;
+    const trecho = unir(modoFrase.frases, modoFrase.de, modoFrase.ate);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(trecho);
+    verSelecao(true);
+    anuncio = `Frase: ${resumo(textoDoTrecho(trecho), 300)}`;
+  }
+
+  /** Alt+↑/↓ (outra frase; nas pontas, a página vizinha) e Alt+Shift+↑/↓ (trecho na página). */
+  async function mudarTrecho(mudanca: MudancaDeTrecho) {
+    if (!modoFrase) return;
+    const { pagina: n, frases, de, ate } = modoFrase;
+    const ultima = frases.length - 1;
+    if (mudanca === "proxima" && ate === ultima) {
+      if (n >= total) {
+        anuncio = "Fim do documento.";
+        return;
+      }
+      irPara(n + 1);
+      await iniciarModoFrase(n + 1, "inicio");
+      return;
+    }
+    if (mudanca === "anterior" && de === 0) {
+      if (n <= 1) {
+        anuncio = "Início do documento.";
+        return;
+      }
+      irPara(n - 1);
+      await iniciarModoFrase(n - 1, "fim");
+      return;
+    }
+    let [novoDe, novoAte] = [de, ate];
+    if (mudanca === "proxima") novoDe = novoAte = ate + 1;
+    else if (mudanca === "anterior") novoDe = novoAte = de - 1;
+    else if (mudanca === "estender") novoAte = Math.min(ate + 1, ultima);
+    else novoAte = Math.max(ate - 1, de);
+    if (novoDe === de && novoAte === ate) {
+      anuncio = mudanca === "estender" ? "Fim da página." : "Só uma frase.";
+      return;
+    }
+    modoFrase = { ...modoFrase, de: novoDe, ate: novoAte };
+    mostrarFrases();
   }
 
   /** Soltar o ponteiro: há seleção? (barra). Senão, clicou num destaque? (barra dele). */
@@ -614,6 +737,8 @@
     const avancar = e.key === "ArrowRight" || (inteira && e.key === "ArrowDown");
     if (!voltar && !avancar) return;
     e.preventDefault();
+    // Virar a página à mão encerra a barra (e o modo frase).
+    destaques.esconder();
     irPara(voltar ? pagina - 1 : pagina + 1);
   }
 </script>
@@ -703,7 +828,7 @@
   >
     <div class="pdfViewer"></div>
   </div>
-  <DestaquesDoLeitor controle={destaques} />
+  <DestaquesDoLeitor controle={destaques} onTrecho={(m) => void mudarTrecho(m)} />
 </MolduraLeitor>
 
 <style>
