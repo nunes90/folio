@@ -1,0 +1,9 @@
+---
+source: crates/core/src/destaques.rs
+expression: "para_markdown(\"Livro\", &[], &destaques, Some(Motivo::Citar))"
+---
+# Livro — para citar
+
+> Para a monografia.
+
+> Outra citação.

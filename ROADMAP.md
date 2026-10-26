@@ -133,7 +133,7 @@ A base de vários recursos: saber onde estão os blocos (parágrafos) e as frase
 - [x] **M6a — AppImage de teste**: a CI gera o AppImage (`cargo tauri build --bundles appimage`) a cada tag `v*`
   e o anexa à Release como pre-release, com o nome provisório. Serve para achar cedo os problemas de empacotamento
   (WebKitGTK embutido, NVIDIA/Wayland, associação a EPUB e PDF) testando numa distribuição limpa.
-- [ ] **M18 — Destaques que servem para reler**: motivo do destaque (dúvida, citar, revisar), independente da
+- [x] **M18 — Destaques que servem para reler**: motivo do destaque (dúvida, citar, revisar), independente da
   cor (migração 7); filtro na aba Destaques; exportar só "para citar" em Markdown; tudo também na paleta.
 
 ### v0.8 — o ritmo de quem lê

@@ -1,0 +1,19 @@
+---
+source: crates/core/src/destaques.rs
+expression: "para_markdown(\"Livro\", &[], &destaques, None)"
+---
+# Livro
+
+> Uma dúvida.
+
+*Dúvida*
+
+> Para a monografia.
+
+*Para citar*
+
+> Sem motivo.
+
+> Outra citação.
+
+*Para citar*

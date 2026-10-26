@@ -370,4 +370,14 @@ docs/decisions/  # ADRs
   em mais distribuições): na Release publicada, gera e anexa o AppImage; à mão e em PRs do empacotamento, só como
   artefato. Local: `cargo tauri build --bundles appimage` → `target/release/bundle/appimage/` (~108 MB, com o
   WebKitGTK e o GStreamer embutidos).
-- Próximo passo: M18 (destaques com motivo). Séries continua adiado.
+- **M18** (branch `feat/m18-motivo`): migração 7 (`motivo` em `destaques`; NULL = sem motivo). `enum Motivo { Duvida,
+  Citar, Revisar }` (kebab-case; texto desconhecido → sem motivo; `rotulo()` e `nome()` para o Markdown), campo
+  `motivo` em `Destaque`/`NovoDestaque` (`#[serde(default)]`), `definir_motivo_do_destaque` e comando
+  `definir_motivo_destaque`. `para_markdown(…, so)`: sem filtro, cada trecho mostra o motivo em itálico; com
+  `so`, só os daquele motivo e o título diz qual ("— para citar"); `exportar_destaques(…, so)` conta só esses.
+  Frontend: `MOTIVOS` em `lib/destaques.ts` (ícones `duvida`, `citar`, `revisar`); na barra, os motivos entre as
+  cores e a Nota (numa seleção, criam o destaque amarelo com o motivo; num destaque, liga/desliga com
+  `aria-pressed`); `ControleDestaques.escolherMotivo`/`definirMotivo`/`exportar(motivo)`; na aba Destaques, filtro
+  Todos · Dúvida · Citar · Revisar com contagem (`aria-pressed`), seletor de motivo em cada item (teclado, sem
+  abrir a barra) e "Exportar só …" seguindo o filtro; paleta: "Exportar só …" para os motivos que existem.
+- Próximo passo: v0.7.0 (M17a, M17b, M6a, M18). Séries continua adiado.

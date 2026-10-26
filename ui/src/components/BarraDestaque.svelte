@@ -5,9 +5,9 @@
   // rouba o foco (a seleção continua); aberta pelo teclado (Ctrl+D), o foco vai para a
   // primeira cor. Alt+↑/↓ trocam de frase e Alt+Shift+↑/↓ encolhem ou estendem o trecho.
   import { tick } from "svelte";
-  import type { CorDestaque } from "../lib/biblioteca";
+  import type { CorDestaque, MotivoDestaque } from "../lib/biblioteca";
   import type { MudancaDeTrecho } from "../lib/controleDestaques.svelte";
-  import { CORES_DESTAQUE } from "../lib/destaques";
+  import { CORES_DESTAQUE, MOTIVOS } from "../lib/destaques";
   import Icone from "./Icone.svelte";
 
   let {
@@ -15,8 +15,10 @@
     y,
     abaixo = false,
     corAtual = null,
+    motivoAtual = null,
     focar = false,
     onCor,
+    onMotivo,
     onNota,
     onCopiar,
     onOuvir,
@@ -32,9 +34,13 @@
     abaixo?: boolean;
     /** Cor do destaque existente (marcada com aria-pressed); null numa seleção nova. */
     corAtual?: CorDestaque | null;
+    /** Motivo do destaque existente (marcado com aria-pressed). */
+    motivoAtual?: MotivoDestaque | null;
     /** Leva o foco à barra ao abrir (aberta pelo teclado). */
     focar?: boolean;
     onCor: (cor: CorDestaque) => void;
+    /** Dúvida, citar, revisar: numa seleção, cria com o motivo; num destaque, liga/desliga. */
+    onMotivo?: (motivo: MotivoDestaque) => void;
     onNota: () => void;
     onCopiar: () => void;
     /** Ouvir a partir do trecho (leitura em voz alta). */
@@ -51,9 +57,10 @@
   let ativo = $state(0);
   const MARGEM = 8;
   // Posição de cada botão depois das cores (roving tabindex).
-  const iNota = CORES_DESTAQUE.length;
-  const iCopiar = iNota + 1;
-  const iOuvir = iCopiar + 1;
+  const iMotivos = CORES_DESTAQUE.length;
+  const iNota = $derived(iMotivos + (onMotivo ? MOTIVOS.length : 0));
+  const iCopiar = $derived(iNota + 1);
+  const iOuvir = $derived(iCopiar + 1);
   const iApagar = $derived(iOuvir + (onOuvir ? 1 : 0));
 
   // Centralizada no trecho, sem sair da janela.
@@ -123,6 +130,22 @@
       onclick={() => onCor(cor.valor)}
     ></button>
   {/each}
+  {#if onMotivo}
+    <span class="separador" aria-hidden="true"></span>
+    {#each MOTIVOS as motivo, i (motivo.valor)}
+      <button
+        type="button"
+        class="motivo"
+        aria-label={motivo.nome}
+        aria-pressed={corAtual ? motivoAtual === motivo.valor : undefined}
+        title={motivo.nome}
+        tabindex={ativo === iMotivos + i ? 0 : -1}
+        onclick={() => onMotivo(motivo.valor)}
+      >
+        <Icone nome={motivo.valor} />
+      </button>
+    {/each}
+  {/if}
   <span class="separador" aria-hidden="true"></span>
   <button
     type="button"
@@ -223,6 +246,13 @@
   .cor[aria-pressed="true"] {
     border-color: var(--texto);
     padding: 2px;
+  }
+
+  /* Motivo marcado: fundo de destaque e borda (não só a cor). */
+  .motivo[aria-pressed="true"] {
+    border-color: var(--destaque);
+    background: var(--destaque-suave);
+    color: var(--destaque);
   }
 
   .separador {

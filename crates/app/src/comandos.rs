@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use leitor_core::biblioteca::{Biblioteca, Colecao, Importado, LivroNaBiblioteca, Progresso};
-use leitor_core::destaques::{Cor, Destaque, NovoDestaque};
+use leitor_core::destaques::{Cor, Destaque, Motivo, NovoDestaque};
 use leitor_core::epub::Capa;
 use leitor_core::preferencias::PreferenciasLeitura;
 use leitor_core::voz::{ConfigVoz, MotorDeVoz};
@@ -171,6 +171,19 @@ pub fn definir_cor_destaque(
         .map_err(|e| registrar(&e))
 }
 
+/// `motivo` nulo tira o motivo.
+#[tauri::command]
+pub fn definir_motivo_destaque(
+    bib: State<'_, EstadoBiblioteca>,
+    id: i64,
+    motivo: Option<Motivo>,
+) -> Result<Destaque, String> {
+    bib.lock()
+        .unwrap()
+        .definir_motivo_do_destaque(id, motivo)
+        .map_err(|e| registrar(&e))
+}
+
 /// `nota` nula ou só com espaços apaga a nota.
 #[tauri::command]
 pub fn definir_nota_destaque(
@@ -204,16 +217,18 @@ pub fn restaurar_destaque(
         .map_err(|e| registrar(&e))
 }
 
-/// Grava os destaques do livro em Markdown no caminho escolhido; devolve quantos foram.
+/// Grava os destaques do livro (com `motivo`, só os dele) em Markdown no caminho escolhido;
+/// devolve quantos foram.
 #[tauri::command]
 pub fn exportar_destaques(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
     caminho: PathBuf,
+    motivo: Option<Motivo>,
 ) -> Result<usize, String> {
     bib.lock()
         .unwrap()
-        .exportar_destaques(&livro, &caminho)
+        .exportar_destaques(&livro, &caminho, motivo)
         .map_err(|e| registrar(&e))
 }
 

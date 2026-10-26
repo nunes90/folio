@@ -770,7 +770,8 @@
           onIr={irParaDestaque}
           onNota={(d) => destaques.editarNota(d)}
           onApagar={apagarDaLista}
-          onExportar={() => destaques.exportar()}
+          onMotivo={(d, m) => destaques.definirMotivo(d, m)}
+          onExportar={(m) => destaques.exportar(m)}
         />
       {/snippet}
     </AbasIndice>

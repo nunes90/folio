@@ -6,6 +6,7 @@ import {
   apagarDestaque,
   criarDestaque,
   definirCorDestaque,
+  definirMotivoDestaque,
   definirNotaDestaque,
   escolherDestinoMarkdown,
   exportarDestaques,
@@ -13,15 +14,16 @@ import {
   restaurarDestaque,
   type CorDestaque,
   type Destaque,
+  type MotivoDestaque,
   type NovoDestaque,
 } from "./biblioteca";
 import { avisar } from "./avisos.svelte";
 import type { Comando } from "./comandos";
-import { nomeDaCor, resumo } from "./destaques";
+import { MOTIVOS, nomeDaCor, nomeDoMotivo, resumo } from "./destaques";
 import { log } from "./log";
 
-/** Um trecho selecionado, já com o endereço no livro (falta só a cor). */
-export type Selecao = Omit<NovoDestaque, "cor" | "nota">;
+/** Um trecho selecionado, já com o endereço no livro (falta só a cor e o motivo). */
+export type Selecao = Omit<NovoDestaque, "cor" | "nota" | "motivo">;
 
 /** Onde a barra aparece: centro e topo (ou base, com `abaixo`) do trecho, na janela. */
 export interface PosicaoBarra {
@@ -114,16 +116,20 @@ export class ControleDestaques {
     this.lista = ordenar([...this.lista.filter((x) => x.id !== d.id), d]);
   }
 
-  async #criar(cor: CorDestaque): Promise<Destaque | undefined> {
+  async #criar(
+    cor: CorDestaque,
+    motivo: MotivoDestaque | null = null,
+  ): Promise<Destaque | undefined> {
     const selecao = this.#selecao;
     if (!selecao) return;
     try {
-      const d = await criarDestaque(this.#a.livroId, { ...selecao, cor });
+      const d = await criarDestaque(this.#a.livroId, { ...selecao, cor, motivo });
       this.#selecao = null;
       this.#guardar(d);
       this.#a.desenhar(d);
       this.#a.limparSelecao();
-      this.#a.anunciar(`Destaque ${nomeDaCor(cor).toLowerCase()} criado.`);
+      const comMotivo = motivo ? ` (${nomeDoMotivo(motivo).toLowerCase()})` : "";
+      this.#a.anunciar(`Destaque ${nomeDaCor(cor).toLowerCase()}${comMotivo} criado.`);
       return d;
     } catch (erro) {
       avisar(`Não foi possível criar o destaque: ${erro}`, "erro");
@@ -145,6 +151,30 @@ export class ControleDestaques {
       this.#a.anunciar(`Destaque agora ${nomeDaCor(cor).toLowerCase()}.`);
     } catch (erro) {
       avisar(`Não foi possível mudar a cor: ${erro}`, "erro");
+    }
+  }
+
+  /**
+   * Motivo na barra: numa seleção, cria o destaque (amarelo) com ele; num destaque, liga ou
+   * desliga (o mesmo motivo de novo o tira).
+   */
+  async escolherMotivo(motivo: MotivoDestaque): Promise<void> {
+    const existente = this.barra?.destaque;
+    this.fecharBarra();
+    if (!existente) {
+      await this.#criar("amarelo", motivo);
+      return;
+    }
+    await this.definirMotivo(existente, existente.motivo === motivo ? null : motivo);
+  }
+
+  /** Define (ou tira, com null) o motivo de um destaque: barra e aba Destaques. */
+  async definirMotivo(destaque: Destaque, motivo: MotivoDestaque | null): Promise<void> {
+    try {
+      this.#guardar(await definirMotivoDestaque(destaque.id, motivo));
+      this.#a.anunciar(motivo ? `Motivo: ${nomeDoMotivo(motivo).toLowerCase()}.` : "Sem motivo.");
+    } catch (erro) {
+      avisar(`Não foi possível mudar o motivo: ${erro}`, "erro");
     }
   }
 
@@ -214,12 +244,14 @@ export class ControleDestaques {
     }
   }
 
-  async exportar(): Promise<void> {
-    const nome = `${this.#a.titulo() || "Livro"} — destaques.md`.replace(/[/\\]/g, "-");
+  /** Exporta em Markdown todos os destaques ou, com `motivo`, só os dele. */
+  async exportar(motivo: MotivoDestaque | null = null): Promise<void> {
+    const sufixo = motivo ? `destaques (${nomeDoMotivo(motivo).toLowerCase()})` : "destaques";
+    const nome = `${this.#a.titulo() || "Livro"} — ${sufixo}.md`.replace(/[/\\]/g, "-");
     const caminho = await escolherDestinoMarkdown(nome);
     if (!caminho) return;
     try {
-      const n = await exportarDestaques(this.#a.livroId, caminho);
+      const n = await exportarDestaques(this.#a.livroId, caminho, motivo);
       avisar(n === 1 ? "1 destaque exportado." : `${n} destaques exportados.`);
     } catch (erro) {
       avisar(`Não foi possível exportar: ${erro}`, "erro");
@@ -253,12 +285,21 @@ export class ControleDestaques {
         palavras: "markdown notas",
         executar: () => void this.exportar(),
       });
+    for (const m of MOTIVOS)
+      if (this.lista.some((d) => d.motivo === m.valor))
+        lista.push({
+          id: `exportar-${m.valor}`,
+          titulo: `Exportar só ${m.exportar}…`,
+          grupo: "Destaques",
+          palavras: "markdown motivo",
+          executar: () => void this.exportar(m.valor),
+        });
     for (const d of this.lista)
       lista.push({
         id: `destaque-${d.id}`,
         titulo: `Ir para destaque: ${resumo(d.trecho, 60)}`,
         grupo: "Destaques",
-        dica: nomeDaCor(d.cor),
+        dica: d.motivo ? `${nomeDaCor(d.cor)} · ${nomeDoMotivo(d.motivo)}` : nomeDaCor(d.cor),
         palavras: d.nota ?? "",
         executar: () => void this.#a.irPara(d),
       });

@@ -36,6 +36,9 @@ export interface Livro {
 /** Cor do marca-texto (`Cor` no core). Nunca é a única informação: o nome vai junto. */
 export type CorDestaque = "amarelo" | "verde" | "azul" | "rosa";
 
+/** Por que o trecho foi marcado (`Motivo` no core); independente da cor. */
+export type MotivoDestaque = "duvida" | "citar" | "revisar";
+
 /** Espelha `Destaque` do core (crates/core/src/destaques.rs). */
 export interface Destaque {
   id: number;
@@ -44,6 +47,7 @@ export interface Destaque {
   local: string;
   trecho: string;
   cor: CorDestaque;
+  motivo: MotivoDestaque | null;
   nota: string | null;
   /** Título da seção (do índice) em que o trecho está. */
   capitulo: string | null;
@@ -58,6 +62,7 @@ export interface NovoDestaque {
   local: string;
   trecho: string;
   cor?: CorDestaque;
+  motivo?: MotivoDestaque | null;
   nota?: string | null;
   capitulo?: string | null;
   posicao: number;
@@ -160,6 +165,11 @@ export function definirCorDestaque(id: number, cor: CorDestaque): Promise<Destaq
   return invoke<Destaque>("definir_cor_destaque", { id, cor });
 }
 
+/** `null` tira o motivo. */
+export function definirMotivoDestaque(id: number, motivo: MotivoDestaque | null): Promise<Destaque> {
+  return invoke<Destaque>("definir_motivo_destaque", { id, motivo });
+}
+
 /** `null` ou só espaços apagam a nota. */
 export function definirNotaDestaque(id: number, nota: string | null): Promise<Destaque> {
   return invoke<Destaque>("definir_nota_destaque", { id, nota });
@@ -174,9 +184,13 @@ export function restaurarDestaque(destaque: Destaque): Promise<Destaque> {
   return invoke<Destaque>("restaurar_destaque", { destaque });
 }
 
-/** Grava os destaques em Markdown no caminho escolhido; devolve quantos foram. */
-export function exportarDestaques(livro: string, caminho: string): Promise<number> {
-  return invoke<number>("exportar_destaques", { livro, caminho });
+/** Grava os destaques (com `motivo`, só os dele) em Markdown no caminho escolhido; devolve quantos foram. */
+export function exportarDestaques(
+  livro: string,
+  caminho: string,
+  motivo: MotivoDestaque | null = null,
+): Promise<number> {
+  return invoke<number>("exportar_destaques", { livro, caminho, motivo });
 }
 
 export function listarLixeira(): Promise<Livro[]> {
