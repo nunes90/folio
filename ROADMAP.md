@@ -18,8 +18,7 @@ Cada marco precisa terminar em algo utilizável.
   - [x] M5b — transições entre telas (biblioteca ↔ leitor)
   - [x] M5c — virada de página
   - [x] M5d — janelas estreitas (painéis por cima do livro), estados de carregamento
-- [ ] **M6 — Empacotamento**: Flatpak/AppImage. Fica em aberto até a distribuição; incluir a CI que anexa o
-  AppImage às Releases a cada tag `v*`.
+- [ ] **M6 — Empacotamento**: AppImage (Flatpak depois). M6a na v0.7 (build de teste na CI), M6b na v1.0.
 
 **v0.1.0** (out/2026): M0–M5. Tag `v0.1.0`, Release como pre-release no GitHub.
 
@@ -115,11 +114,58 @@ Release como pre-release.
 **v0.6.0** (out/2026): M16 (destaques e notas no EPUB e no PDF, exportar em Markdown). Tag `v0.6.0`, Release como
 pre-release.
 
-- [ ] **Destacar a frase atual**: Ctrl+D sem seleção destaca a primeira frase da página (ou a que a leitura em voz
-  alta está lendo); Alt+↑/↓ trocam de frase, Alt+Shift+↓ estende. Para quem usa só o teclado, sem leitor de tela.
-- [ ] **Depois**: slider de páginas…
+## Rumo à v1.0
+
+Princípios que valem para tudo daqui em diante:
+- **A leitura inteira operável sem o mouse**: todo recurso novo tem atalho ou comando na paleta (Ctrl+K).
+- **Tudo local**: ritmo, sessões e releituras ficam só no computador; tom neutro, sem gamificação.
+- **Igual no EPUB e no PDF**, como desde o M5; quando o PDF não permitir, dizer o porquê.
+
+### v0.7 — o texto em blocos e frases
+A base de vários recursos: saber onde estão os blocos (parágrafos) e as frases, nos dois formatos.
+- [ ] **M17a — Blocos e frases no EPUB**: segmentação (o `tts.js` do foliate-js já divide; frases com
+  `Intl.Segmenter`). **Destacar a frase atual**: Ctrl+D sem seleção destaca a primeira frase da página (ou a que a
+  voz está lendo); Alt+↑/↓ trocam de frase, Alt+Shift+↓ estende; para quem usa só o teclado, sem leitor de tela.
+  **Ouvir a partir daqui**: da frase atual, da seleção ou de um destaque.
+- [ ] **M17b — Blocos e frases no PDF**: linhas da camada de texto do pdf.js agrupadas em blocos (espaçamento e
+  recuo) e divididas em frases; destacar a frase atual e ouvir daqui no PDF.
+- [ ] **M6a — AppImage de teste**: a CI gera o AppImage (`cargo tauri build --bundles appimage`) a cada tag `v*`
+  e o anexa à Release como pre-release, com o nome provisório. Serve para achar cedo os problemas de empacotamento
+  (WebKitGTK embutido, NVIDIA/Wayland, associação a EPUB e PDF) testando numa distribuição limpa.
+- [ ] **M18 — Destaques que servem para reler**: motivo do destaque (dúvida, citar, revisar), independente da
+  cor (migração 7); filtro na aba Destaques; exportar só "para citar" em Markdown; tudo também na paleta.
+
+### v0.8 — o ritmo de quem lê
+- [ ] **M19 — Uma ideia por vez**: só o bloco atual em evidência, o resto esmaecido (só visual: o leitor de tela
+  lê tudo); atalho para o próximo e o anterior bloco, que vira a página quando precisa; respeita o movimento
+  reduzido. EPUB e PDF (no PDF, pelos blocos do M17b).
+- [ ] **M20 — Sessões e metas**: sessões de leitura no core (migração 8: início, fim, de onde a onde). Meta da
+  sessão ("20 min" ou "15 páginas") com barra discreta e, ao fim, uma pausa suave e um resumo ("você parou em…"),
+  sem sequência de dias nem ranking. Modo foco com saída planejada ("sair em 1 página / 5 min") e opção de
+  revelar as barras só pelo teclado.
+- [ ] **M21 — Progresso honesto**: ritmo real de quem lê (das sessões) para estimar "~40 min neste capítulo";
+  "você voltou várias vezes a este trecho" (visitas guardadas no core). Dados só locais, tom neutro.
+- [ ] **M22 — Continuação ao reabrir**: "Da última vez você estava em <capítulo>" e as 2–3 frases anteriores ao
+  ponto em que parou, tiradas do próprio texto (sem resumo gerado, sem IA).
+
+### v0.9 — voz, tipografia e comparação
+- [ ] **M23 — Voz com acompanhamento**: destaque da frase estável (pendência do M4d), velocidade por trecho (mais
+  devagar em listas e código; o SSIP permite por mensagem), voz no PDF com o mesmo modelo do EPUB.
+- [ ] **M24 — Tipografia que reage ao texto** (EPUB): `pre`/`code` sempre em monoespaçada, títulos com mais ar,
+  largura de coluna que respeita o livro e a preferência.
+- [ ] **M25 — Comparar trechos**: dois pontos do mesmo livro lado a lado (a moldura dividida, cada lado com a
+  sua posição), e um destaque ou nota fixado ao lado do texto. EPUB e PDF. Atenção ao custo de dois leitores no
+  WebKitGTK (medir memória e quadros por segundo).
+
+### v1.0 — pronto para distribuir
+- [ ] **M26 — Acabamento**: nome definitivo e ícone (ainda em aberto; o identificador `io.github.nunes90.leitor`
+  define as pastas de dados, então trocá-lo exige migrar os dados: decidir o nome quanto antes); roteiro do Orca refeito com todos os recursos; revisão "tudo sem mouse"; testes E2E
+  dos fluxos principais com `tauri-driver`; livros grandes e arquivos quebrados; README e guia de uso.
+- [ ] **M6b — Empacotamento final**: AppImage com o nome e o ícone definitivos, arquivo `.desktop` e associação a
+  EPUB e PDF ("Abrir com") conferidos; Release estável (não mais pre-release). Flatpak (Flathub) depois da 1.0.
 
 ## Futuro
+- **Slider de páginas** (arrastar para qualquer ponto do livro).
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
   O código já trata o macOS em alguns pontos (diretório de logs, escala de texto) e deve continuar compilando.
 - **Windows**.

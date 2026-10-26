@@ -39,6 +39,8 @@ docs/decisions/  # ADRs
 - Testes: unitários + integração com fixtures (`crates/core/tests/`), `insta` (snapshots),
   `proptest` (parsers não podem dar panic), Vitest (frontend), `axe-core` (a11y),
   `tauri-driver` para E2E (Linux/Windows; no macOS os testes são manuais), `criterion` mais tarde.
+- **Atalhos como linguagem**: a leitura inteira deve ser operável sem o mouse. Todo recurso novo ganha atalho (sem
+  letra sozinha, WCAG 2.1.4) ou comando na paleta (Ctrl+K), e entra no F1 (`lib/atalhos.ts`).
 - Git: uma branch por funcionalidade, PRs pequenos, Conventional Commits (`feat:`, `fix:`, `test:`, `refactor:`).
 - Antes de commitar: `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test`.
 - CI (GitHub Actions): Ubuntu. fmt, clippy, test, `cargo deny`, build/teste do frontend. (macOS adiado, ADR 0006.)
@@ -322,5 +324,9 @@ docs/decisions/  # ADRs
   CSS (`screen` na noite). Capítulo pelo sumário (`itemAtual`). Ir até o destaque = ir à página.
 - **M16 concluído.**
 - **v0.6.0** (out/2026): tag assinada `v0.6.0` (M16) e Release no GitHub como pre-release.
-- Próximo passo: "destacar a frase atual" (Ctrl+D sem seleção). Depois: Séries, M6 empacotamento. Pendências do M4d:
-  leitura em voz alta de PDF; conferir à mão o destaque da frase lida.
+- **Plano até a v1.0** no ROADMAP ("Rumo à v1.0"): v0.7 blocos e frases (M17a/b), AppImage de teste na CI (M6a) e
+  destaques com motivo (M18);
+  v0.8 uma ideia por vez, sessões e metas, progresso honesto, continuação (M19–M22); v0.9 voz, tipografia, comparar
+  trechos lado a lado (M23–M25); v1.0 acabamento (M26) e AppImage final (M6b). Nome definitivo do app em aberto
+  ("Leitor" é provisório; trocar o identificador exige migrar as pastas de dados).
+- Próximo passo: M17a (blocos e frases no EPUB, destacar a frase atual, ouvir daqui). Séries continua adiado.
