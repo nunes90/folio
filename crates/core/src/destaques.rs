@@ -50,6 +50,54 @@ impl Cor {
     }
 }
 
+/// Por que o trecho foi marcado (M18): para reler com um propósito e filtrar depois.
+/// Independente da cor (a cor é como aparece; o motivo, para que serve).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Motivo {
+    Duvida,
+    Citar,
+    Revisar,
+}
+
+impl Motivo {
+    pub fn como_texto(self) -> &'static str {
+        match self {
+            Motivo::Duvida => "duvida",
+            Motivo::Citar => "citar",
+            Motivo::Revisar => "revisar",
+        }
+    }
+
+    /// Texto desconhecido vira "sem motivo" (`None`): o destaque continua, só sem o motivo.
+    pub fn de_texto(texto: &str) -> Option<Self> {
+        match texto {
+            "duvida" => Some(Motivo::Duvida),
+            "citar" => Some(Motivo::Citar),
+            "revisar" => Some(Motivo::Revisar),
+            _ => None,
+        }
+    }
+
+    /// Rótulo no Markdown exportado, abaixo do trecho.
+    pub fn rotulo(self) -> &'static str {
+        match self {
+            Motivo::Duvida => "Dúvida",
+            Motivo::Citar => "Para citar",
+            Motivo::Revisar => "Para revisar",
+        }
+    }
+
+    /// Nome no título do Markdown de um motivo só ("Dom Casmurro — para citar").
+    pub fn nome(self) -> &'static str {
+        match self {
+            Motivo::Duvida => "dúvida",
+            Motivo::Citar => "para citar",
+            Motivo::Revisar => "para revisar",
+        }
+    }
+}
+
 /// Um destaque como a interface o vê.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +108,9 @@ pub struct Destaque {
     pub local: String,
     pub trecho: String,
     pub cor: Cor,
+    /// Por que foi marcado (dúvida, citar, revisar), se a pessoa disse.
+    #[serde(default)]
+    pub motivo: Option<Motivo>,
     pub nota: Option<String>,
     /// Título da seção (do índice) em que o trecho está, se houver.
     pub capitulo: Option<String>,
@@ -77,6 +128,8 @@ pub struct NovoDestaque {
     pub trecho: String,
     #[serde(default)]
     pub cor: Cor,
+    #[serde(default)]
+    pub motivo: Option<Motivo>,
     #[serde(default)]
     pub nota: Option<String>,
     #[serde(default)]
@@ -102,17 +155,19 @@ fn posicao_valida(posicao: f64) -> f64 {
 }
 
 const SELECT_DESTAQUE: &str = "
-    SELECT id, livro_id, local, trecho, cor, nota, capitulo, posicao, criado_em, atualizado_em
+    SELECT id, livro_id, local, trecho, cor, motivo, nota, capitulo, posicao, criado_em, atualizado_em
     FROM destaques";
 
 fn destaque_da_linha(linha: &Row) -> rusqlite::Result<Destaque> {
     let cor: String = linha.get("cor")?;
+    let motivo: Option<String> = linha.get("motivo")?;
     Ok(Destaque {
         id: linha.get("id")?,
         livro_id: linha.get("livro_id")?,
         local: linha.get("local")?,
         trecho: linha.get("trecho")?,
         cor: Cor::de_texto(&cor),
+        motivo: motivo.as_deref().and_then(Motivo::de_texto),
         nota: linha.get("nota")?,
         capitulo: linha.get("capitulo")?,
         posicao: linha.get("posicao")?,
@@ -148,13 +203,15 @@ impl Biblioteca {
         self.conexao
             .execute(
                 "INSERT INTO destaques
-                     (livro_id, local, trecho, cor, nota, capitulo, posicao, criado_em, atualizado_em)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
+                     (livro_id, local, trecho, cor, motivo, nota, capitulo, posicao, criado_em,
+                      atualizado_em)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
                 params![
                     livro,
                     novo.local,
                     trecho,
                     novo.cor.como_texto(),
+                    novo.motivo.map(Motivo::como_texto),
                     texto_opcional(novo.nota.as_deref()),
                     texto_opcional(novo.capitulo.as_deref()),
                     posicao_valida(novo.posicao),
@@ -197,6 +254,20 @@ impl Biblioteca {
         )
     }
 
+    /// Define o motivo; `None` tira o motivo (o destaque fica).
+    #[instrument(skip(self))]
+    pub fn definir_motivo_do_destaque(
+        &self,
+        id: i64,
+        motivo: Option<Motivo>,
+    ) -> Resultado<Destaque> {
+        self.atualizar_destaque(
+            "UPDATE destaques SET motivo = ?1, atualizado_em = ?2 WHERE id = ?3",
+            params![motivo.map(Motivo::como_texto), (self.relogio)(), id],
+            id,
+        )
+    }
+
     /// Define a nota; `None` ou só espaços apagam a nota (o destaque fica).
     #[instrument(skip(self, nota))]
     pub fn definir_nota_do_destaque(&self, id: i64, nota: Option<&str>) -> Resultado<Destaque> {
@@ -235,14 +306,16 @@ impl Biblioteca {
         self.conexao
             .execute(
                 "INSERT INTO destaques
-                     (id, livro_id, local, trecho, cor, nota, capitulo, posicao, criado_em, atualizado_em)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                     (id, livro_id, local, trecho, cor, motivo, nota, capitulo, posicao, criado_em,
+                      atualizado_em)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                 params![
                     destaque.id,
                     destaque.livro_id,
                     destaque.local,
                     destaque.trecho,
                     destaque.cor.como_texto(),
+                    destaque.motivo.map(Motivo::como_texto),
                     destaque.nota,
                     destaque.capitulo,
                     posicao_valida(destaque.posicao),
@@ -254,32 +327,58 @@ impl Biblioteca {
         self.destaque(destaque.id)
     }
 
-    /// Os destaques do livro em Markdown (ver [`para_markdown`]).
-    pub fn destaques_em_markdown(&self, livro: &str) -> Resultado<String> {
+    /// Os destaques do livro em Markdown (ver [`para_markdown`]); com `so`, só os desse motivo.
+    pub fn destaques_em_markdown(&self, livro: &str, so: Option<Motivo>) -> Resultado<String> {
         let dados = self
             .obter(livro)?
             .ok_or_else(|| ErroBiblioteca::NaoEncontrado(livro.to_owned()))?;
         let destaques = self.listar_destaques(livro)?;
-        Ok(para_markdown(&dados.titulo, &dados.autores, &destaques))
+        Ok(para_markdown(&dados.titulo, &dados.autores, &destaques, so))
     }
 
-    /// Grava os destaques do livro em Markdown em `destino`; devolve quantos foram.
+    /// Grava os destaques do livro (com `so`, só os desse motivo) em Markdown em `destino`;
+    /// devolve quantos foram.
     #[instrument(skip(self), fields(destino = %destino.display()))]
-    pub fn exportar_destaques(&self, livro: &str, destino: &Path) -> Resultado<usize> {
-        let markdown = self.destaques_em_markdown(livro)?;
+    pub fn exportar_destaques(
+        &self,
+        livro: &str,
+        destino: &Path,
+        so: Option<Motivo>,
+    ) -> Resultado<usize> {
+        let markdown = self.destaques_em_markdown(livro, so)?;
         gravar(destino, markdown.as_bytes())?;
-        Ok(self.listar_destaques(livro)?.len())
+        let destaques = self.listar_destaques(livro)?;
+        Ok(destaques
+            .iter()
+            .filter(|d| so.is_none() || d.motivo == so)
+            .count())
     }
 }
 
 /// Markdown para estudo (e para levar ao Obsidian): título, autores e, em ordem de leitura,
 /// cada trecho como citação, com a nota logo abaixo. Um título de seção (`##`) aparece quando
 /// o capítulo muda. Função pura: o mesmo livro e os mesmos destaques dão o mesmo texto.
-pub fn para_markdown(titulo: &str, autores: &[String], destaques: &[Destaque]) -> String {
-    let mut md = format!("# {}\n", titulo.trim());
+///
+/// Com `so`, só os destaques desse motivo, e o título diz qual ("Dom Casmurro — para citar");
+/// sem ele, todos, e cada um mostra o seu motivo (se tiver) em itálico, abaixo do trecho.
+pub fn para_markdown(
+    titulo: &str,
+    autores: &[String],
+    destaques: &[Destaque],
+    so: Option<Motivo>,
+) -> String {
+    let mut md = match so {
+        Some(motivo) => format!("# {} — {}\n", titulo.trim(), motivo.nome()),
+        None => format!("# {}\n", titulo.trim()),
+    };
     if !autores.is_empty() {
         md.push_str(&format!("\n{}\n", autores.join(", ")));
     }
+    // `filter` + `collect` numa lista de referências: não copia os destaques.
+    let destaques: Vec<&Destaque> = destaques
+        .iter()
+        .filter(|d| so.is_none() || d.motivo == so)
+        .collect();
     if destaques.is_empty() {
         md.push_str("\nNenhum destaque.\n");
         return md;
@@ -298,6 +397,10 @@ pub fn para_markdown(titulo: &str, autores: &[String], destaques: &[Destaque]) -
             md.push_str(if linha.is_empty() { ">" } else { "> " });
             md.push_str(linha);
             md.push('\n');
+        }
+        // No arquivo de um motivo só, repeti-lo em cada trecho seria ruído.
+        if let (None, Some(motivo)) = (so, destaque.motivo) {
+            md.push_str(&format!("\n*{}*\n", motivo.rotulo()));
         }
         if let Some(nota) = &destaque.nota {
             md.push_str(&format!("\n{nota}\n"));
@@ -325,6 +428,7 @@ mod tests {
             local: format!("epubcfi(/6/4!/4/2,/1:0,/1:{})", trecho.len()),
             trecho: trecho.to_owned(),
             cor: Cor::Amarelo,
+            motivo: None,
             nota: None,
             capitulo: None,
             posicao,
@@ -502,6 +606,7 @@ mod tests {
             local: "l".into(),
             trecho: "t".into(),
             cor: Cor::Azul,
+            motivo: None,
             nota: None,
             capitulo: None,
             posicao: 0.5,
@@ -521,6 +626,7 @@ mod tests {
             local: "l".into(),
             trecho: trecho.into(),
             cor: Cor::Amarelo,
+            motivo: None,
             nota: nota.map(Into::into),
             capitulo: capitulo.map(Into::into),
             posicao: 0.0,
@@ -544,14 +650,15 @@ mod tests {
         insta::assert_snapshot!(para_markdown(
             "Dom Casmurro",
             &["Machado de Assis".into()],
-            &destaques
+            &destaques,
+            None
         ));
     }
 
     #[test]
     fn markdown_sem_destaques_e_sem_autor() {
         assert_eq!(
-            para_markdown("Livro", &[], &[]),
+            para_markdown("Livro", &[], &[], None),
             "# Livro\n\nNenhum destaque.\n"
         );
     }
@@ -561,8 +668,108 @@ mod tests {
         let (dir, bib, livro) = nova_com_livro();
         bib.criar_destaque(&livro, novo("um trecho", 0.1)).unwrap();
         let destino = dir.path().join("destaques.md");
-        assert_eq!(bib.exportar_destaques(&livro, &destino).unwrap(), 1);
+        assert_eq!(bib.exportar_destaques(&livro, &destino, None).unwrap(), 1);
         let texto = std::fs::read_to_string(&destino).unwrap();
         assert!(texto.contains("> um trecho\n"), "{texto}");
+    }
+
+    #[test]
+    fn motivo_ao_criar_trocar_e_tirar_e_volta_com_o_desfazer() {
+        let (_dir, bib, livro) = nova_com_livro();
+        let d = bib
+            .criar_destaque(
+                &livro,
+                NovoDestaque {
+                    motivo: Some(Motivo::Duvida),
+                    ..novo("trecho", 0.5)
+                },
+            )
+            .unwrap();
+        assert_eq!(d.motivo, Some(Motivo::Duvida));
+        let d = bib
+            .definir_motivo_do_destaque(d.id, Some(Motivo::Citar))
+            .unwrap();
+        assert_eq!(d.motivo, Some(Motivo::Citar));
+        let apagado = bib.apagar_destaque(d.id).unwrap();
+        assert_eq!(
+            bib.restaurar_destaque(&apagado).unwrap().motivo,
+            Some(Motivo::Citar)
+        );
+        let d = bib.definir_motivo_do_destaque(d.id, None).unwrap();
+        assert_eq!(d.motivo, None);
+        assert!(matches!(
+            bib.definir_motivo_do_destaque(999, None),
+            Err(ErroBiblioteca::DestaqueNaoEncontrado(999))
+        ));
+    }
+
+    #[test]
+    fn motivo_desconhecido_vira_sem_motivo_e_vai_em_kebab_case() {
+        assert_eq!(Motivo::de_texto("talvez"), None);
+        for m in [Motivo::Duvida, Motivo::Citar, Motivo::Revisar] {
+            assert_eq!(Motivo::de_texto(m.como_texto()), Some(m));
+            assert_eq!(
+                serde_json::to_string(&m).unwrap(),
+                format!("\"{}\"", m.como_texto())
+            );
+        }
+        // O JSON da interface pode não ter o campo (destaques de antes do M18).
+        let novo: NovoDestaque =
+            serde_json::from_str(r#"{"local":"l","trecho":"t","posicao":0.1}"#).unwrap();
+        assert_eq!(novo.motivo, None);
+    }
+
+    fn com_motivo(trecho: &str, motivo: Option<Motivo>) -> Destaque {
+        Destaque {
+            motivo,
+            ..destaque(trecho, None, None)
+        }
+    }
+
+    #[test]
+    fn markdown_mostra_o_motivo_e_filtra_por_ele() {
+        let destaques = [
+            com_motivo("Uma dúvida.", Some(Motivo::Duvida)),
+            com_motivo("Para a monografia.", Some(Motivo::Citar)),
+            com_motivo("Sem motivo.", None),
+            com_motivo("Outra citação.", Some(Motivo::Citar)),
+        ];
+        insta::assert_snapshot!(
+            "markdown_com_motivos",
+            para_markdown("Livro", &[], &destaques, None)
+        );
+        insta::assert_snapshot!(
+            "markdown_so_para_citar",
+            para_markdown("Livro", &[], &destaques, Some(Motivo::Citar))
+        );
+        assert_eq!(
+            para_markdown("Livro", &[], &destaques[2..3], Some(Motivo::Revisar)),
+            "# Livro — para revisar\n\nNenhum destaque.\n"
+        );
+    }
+
+    #[test]
+    fn exportar_so_um_motivo_conta_so_os_dele() {
+        let (dir, bib, livro) = nova_com_livro();
+        bib.criar_destaque(&livro, novo("a", 0.1)).unwrap();
+        bib.criar_destaque(
+            &livro,
+            NovoDestaque {
+                motivo: Some(Motivo::Citar),
+                ..novo("b", 0.2)
+            },
+        )
+        .unwrap();
+        let destino = dir.path().join("citar.md");
+        assert_eq!(
+            bib.exportar_destaques(&livro, &destino, Some(Motivo::Citar))
+                .unwrap(),
+            1
+        );
+        let texto = std::fs::read_to_string(&destino).unwrap();
+        assert!(
+            texto.contains("> b\n") && !texto.contains("> a\n"),
+            "{texto}"
+        );
     }
 }

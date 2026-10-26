@@ -62,6 +62,7 @@ fn main() -> anyhow::Result<()> {
             comandos::listar_destaques,
             comandos::criar_destaque,
             comandos::definir_cor_destaque,
+            comandos::definir_motivo_destaque,
             comandos::definir_nota_destaque,
             comandos::apagar_destaque,
             comandos::restaurar_destaque,

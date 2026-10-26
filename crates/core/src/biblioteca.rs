@@ -93,6 +93,10 @@ const MIGRACOES: &[&str] = &[
     );
     CREATE INDEX destaques_por_livro ON destaques (livro_id, posicao);
 ",
+    "
+    -- Motivo do destaque (M18): duvida | citar | revisar; NULL = sem motivo.
+    ALTER TABLE destaques ADD COLUMN motivo TEXT;
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.

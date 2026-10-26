@@ -5,6 +5,7 @@ const api = vi.hoisted(() => ({
   listarDestaques: vi.fn(),
   criarDestaque: vi.fn(),
   definirCorDestaque: vi.fn(),
+  definirMotivoDestaque: vi.fn(),
   definirNotaDestaque: vi.fn(),
   apagarDestaque: vi.fn(),
   restaurarDestaque: vi.fn(),
@@ -24,6 +25,7 @@ function destaque(parcial: Partial<Destaque> = {}): Destaque {
     local: "l1",
     trecho: "escondi-me atrás da porta",
     cor: "amarelo",
+    motivo: null,
     nota: null,
     capitulo: null,
     posicao: 0.5,
@@ -70,7 +72,7 @@ describe("ControleDestaques", () => {
     c.mostrarSelecao(selecao, pos, false);
     expect(c.barra).toMatchObject({ x: 10, destaque: null });
     await c.escolherCor("verde");
-    expect(api.criarDestaque).toHaveBeenCalledWith("livro", { ...selecao, cor: "verde" });
+    expect(api.criarDestaque).toHaveBeenCalledWith("livro", { ...selecao, cor: "verde", motivo: null });
     expect(c.barra).toBeNull();
     // Na ordem de leitura: 0.2 antes de 0.5.
     expect(c.lista.map((d) => d.id)).toEqual([9, 1]);
@@ -98,7 +100,7 @@ describe("ControleDestaques", () => {
     api.definirNotaDestaque.mockResolvedValue({ ...criado, nota: "pensar" });
     c.mostrarSelecao(selecao, pos, true);
     await c.pedirNota();
-    expect(api.criarDestaque).toHaveBeenCalledWith("livro", { ...selecao, cor: "amarelo" });
+    expect(api.criarDestaque).toHaveBeenCalledWith("livro", { ...selecao, cor: "amarelo", motivo: null });
     expect(c.notaDe).toEqual(criado);
     await c.salvarNota("pensar");
     expect(c.notaDe).toBeNull();
@@ -144,8 +146,44 @@ describe("ControleDestaques", () => {
     api.escolherDestinoMarkdown.mockResolvedValue("/tmp/x.md");
     api.exportarDestaques.mockResolvedValue(2);
     await c.exportar();
-    expect(api.exportarDestaques).toHaveBeenCalledWith("livro", "/tmp/x.md");
+    expect(api.exportarDestaques).toHaveBeenCalledWith("livro", "/tmp/x.md", null);
     expect(avisos.avisar).toHaveBeenCalledWith("2 destaques exportados.");
+  });
+
+  it("motivo numa seleção cria o destaque com ele; num destaque, liga e desliga", async () => {
+    const { a, c } = novo();
+    api.criarDestaque.mockResolvedValue(destaque({ id: 9, motivo: "duvida" }));
+    c.mostrarSelecao(selecao, pos, false);
+    await c.escolherMotivo("duvida");
+    expect(api.criarDestaque).toHaveBeenCalledWith("livro", {
+      ...selecao,
+      cor: "amarelo",
+      motivo: "duvida",
+    });
+    expect(a.anunciar).toHaveBeenLastCalledWith("Destaque amarelo (dúvida) criado.");
+    const d = c.lista[0]!;
+    api.definirMotivoDestaque.mockResolvedValue({ ...d, motivo: null });
+    c.mostrarDestaque(d, pos);
+    await c.escolherMotivo("duvida"); // o mesmo de novo: tira
+    expect(api.definirMotivoDestaque).toHaveBeenCalledWith(9, null);
+    expect(c.lista[0]!.motivo).toBeNull();
+    api.definirMotivoDestaque.mockResolvedValue({ ...d, motivo: "citar" });
+    await c.definirMotivo(c.lista[0]!, "citar");
+    expect(c.lista[0]!.motivo).toBe("citar");
+    expect(a.anunciar).toHaveBeenLastCalledWith("Motivo: citar.");
+  });
+
+  it("exportar só um motivo sugere o nome com ele e só oferece motivos que existem", async () => {
+    const { c } = novo();
+    api.escolherDestinoMarkdown.mockResolvedValue("/tmp/c.md");
+    api.exportarDestaques.mockResolvedValue(1);
+    await c.exportar("citar");
+    expect(api.escolherDestinoMarkdown).toHaveBeenCalledWith("Dom Casmurro — destaques (citar).md");
+    expect(api.exportarDestaques).toHaveBeenCalledWith("livro", "/tmp/c.md", "citar");
+    c.lista = [destaque({ motivo: "citar" })];
+    const titulos = c.comandos(() => {}).map((x) => x.titulo);
+    expect(titulos).toContain("Exportar só “para citar”…");
+    expect(titulos).not.toContain("Exportar só as dúvidas…");
   });
 
   it("comandos: destacar, mostrar, exportar (só com destaques) e um por destaque", async () => {

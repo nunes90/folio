@@ -27,6 +27,8 @@
     abaixo={barra.abaixo}
     focar={barra.focar}
     corAtual={barra.destaque?.cor ?? null}
+    motivoAtual={barra.destaque?.motivo ?? null}
+    onMotivo={(motivo) => controle.escolherMotivo(motivo)}
     onCor={(cor) => controle.escolherCor(cor)}
     onNota={() => controle.pedirNota()}
     onCopiar={() => controle.copiar()}

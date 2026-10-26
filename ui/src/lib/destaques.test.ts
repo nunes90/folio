@@ -84,6 +84,7 @@ describe("textos", () => {
       local: "l",
       trecho: "escondi-me atrás da porta",
       cor: "verde",
+      motivo: null,
       nota: "o narrador escuta",
       capitulo: null,
       posicao: 0,
@@ -94,5 +95,8 @@ describe("textos", () => {
       "Destaque verde: escondi-me atrás da porta. Nota: o narrador escuta",
     );
     expect(descreverDestaque({ ...d, nota: null })).toBe("Destaque verde: escondi-me atrás da porta");
+    expect(descreverDestaque({ ...d, nota: null, motivo: "citar" })).toBe(
+      "Destaque verde (citar): escondi-me atrás da porta",
+    );
   });
 });

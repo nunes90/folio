@@ -1,6 +1,6 @@
 // Destaques no leitor (M16): cores do marca-texto, posição na ordem de leitura e textos para
 // o leitor de tela. Funções puras; o desenho é do overlayer do foliate-js.
-import type { CorDestaque, Destaque } from "./biblioteca";
+import type { CorDestaque, Destaque, MotivoDestaque } from "./biblioteca";
 import type { PaginaEfetiva } from "./pagina";
 
 /** As cores, na ordem da barra. O nome sempre acompanha a cor (nunca só a cor). */
@@ -10,6 +10,17 @@ export const CORES_DESTAQUE: { valor: CorDestaque; nome: string; hex: string }[]
   { valor: "azul", nome: "Azul", hex: "#4da3f0" },
   { valor: "rosa", nome: "Rosa", hex: "#f06aa8" },
 ];
+
+/** Os motivos (M18), na ordem da barra e do filtro: para reler com um propósito. */
+export const MOTIVOS: { valor: MotivoDestaque; nome: string; exportar: string }[] = [
+  { valor: "duvida", nome: "Dúvida", exportar: "as dúvidas" },
+  { valor: "citar", nome: "Citar", exportar: "“para citar”" },
+  { valor: "revisar", nome: "Revisar", exportar: "“para revisar”" },
+];
+
+export function nomeDoMotivo(motivo: MotivoDestaque): string {
+  return MOTIVOS.find((m) => m.valor === motivo)?.nome ?? motivo;
+}
 
 export function nomeDaCor(cor: CorDestaque): string {
   return CORES_DESTAQUE.find((c) => c.valor === cor)?.nome ?? cor;
@@ -112,6 +123,7 @@ export function resumo(trecho: string, max = 80): string {
 
 /** Nome acessível de um destaque: a cor (em palavras), o trecho e, se houver, a nota. */
 export function descreverDestaque(d: Destaque): string {
+  const motivo = d.motivo ? ` (${nomeDoMotivo(d.motivo).toLowerCase()})` : "";
   const nota = d.nota ? `. Nota: ${resumo(d.nota, 120)}` : "";
-  return `Destaque ${nomeDaCor(d.cor).toLowerCase()}: ${resumo(d.trecho, 120)}${nota}`;
+  return `Destaque ${nomeDaCor(d.cor).toLowerCase()}${motivo}: ${resumo(d.trecho, 120)}${nota}`;
 }

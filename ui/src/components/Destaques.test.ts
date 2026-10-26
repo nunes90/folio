@@ -20,6 +20,7 @@ function destaque(parcial: Partial<Destaque> = {}): Destaque {
     local: "epubcfi(/6/4!/4/2,/1:0,/1:5)",
     trecho: "escondi-me atrás da porta",
     cor: "amarelo",
+    motivo: null,
     nota: null,
     capitulo: "III. A denúncia",
     posicao: 0.1,
@@ -113,6 +114,17 @@ describe("BarraDestaque", () => {
     expect(onOuvir).toHaveBeenCalled();
   });
 
+  it("com motivos: Dúvida, Citar, Revisar depois das cores; num destaque, o atual marcado", async () => {
+    const onMotivo = vi.fn();
+    renderizar({ onMotivo, corAtual: "verde", motivoAtual: "citar", onApagar: vi.fn() });
+    expect(screen.getByRole("button", { name: "Citar" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Dúvida" }).getAttribute("aria-pressed")).toBe("false");
+    await fireEvent.click(screen.getByRole("button", { name: "Revisar" }));
+    expect(onMotivo).toHaveBeenCalledWith("revisar");
+    const nomes = screen.getAllByRole("button").map((b) => b.getAttribute("aria-label") ?? b.textContent?.trim());
+    expect(nomes.slice(4, 8)).toEqual(["Dúvida", "Citar", "Revisar", "Nota"]);
+  });
+
   it("uma parada de Tab só", () => {
     renderizar();
     const comTab = screen.getAllByRole("button").filter((b) => b.tabIndex === 0);
@@ -120,7 +132,7 @@ describe("BarraDestaque", () => {
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {
-    const { container } = renderizar({ corAtual: "rosa", onApagar: vi.fn() });
+    const { container } = renderizar({ corAtual: "rosa", motivoAtual: "duvida", onMotivo: vi.fn(), onApagar: vi.fn() });
     await semViolacoes(container);
   });
 });
@@ -158,6 +170,36 @@ describe("ListaDestaques", () => {
     expect(onExportar).toHaveBeenCalled();
   });
 
+  it("filtra por motivo (com contagens) e o exportar segue o filtro", async () => {
+    const onExportar = vi.fn();
+    const comMotivos = [
+      destaque({ id: 1, motivo: "duvida", trecho: "Uma dúvida" }),
+      destaque({ id: 2, motivo: "citar", trecho: "Para citar" }),
+      destaque({ id: 3, trecho: "Sem motivo" }),
+    ];
+    render(ListaDestaques, { destaques: comMotivos, onIr() {}, onNota() {}, onApagar() {}, onExportar });
+    const filtro = screen.getByRole("group", { name: "Filtrar por motivo" });
+    expect(within(filtro).getByRole("button", { name: "Todos 3" }).getAttribute("aria-pressed")).toBe("true");
+    await fireEvent.click(within(filtro).getByRole("button", { name: "Citar 1" }));
+    const itens = within(screen.getByRole("list", { name: "Destaques" })).getAllByRole("listitem");
+    expect(itens.map((i) => i.textContent)).toEqual([expect.stringContaining("Para citar")]);
+    await fireEvent.click(screen.getByRole("button", { name: "Exportar só “para citar”…" }));
+    expect(onExportar).toHaveBeenCalledWith("citar");
+    await fireEvent.click(within(filtro).getByRole("button", { name: "Revisar 0" }));
+    expect(screen.getByText("Nenhum destaque com esse motivo.")).toBeTruthy();
+  });
+
+  it("o motivo de cada destaque muda pelo seletor (sem abrir a barra)", async () => {
+    const onMotivo = vi.fn();
+    render(ListaDestaques, { destaques: lista, onIr() {}, onNota() {}, onApagar() {}, onMotivo });
+    const seletor = screen.getByRole("combobox", { name: "Motivo: Tio Cosme" }) as HTMLSelectElement;
+    expect(seletor.value).toBe("");
+    await fireEvent.change(seletor, { target: { value: "revisar" } });
+    expect(onMotivo).toHaveBeenCalledWith(lista[1], "revisar");
+    await fireEvent.change(seletor, { target: { value: "" } });
+    expect(onMotivo).toHaveBeenLastCalledWith(lista[1], null);
+  });
+
   it("sem destaques, explica como criar", () => {
     render(ListaDestaques, { destaques: [], onIr() {}, onNota() {}, onApagar() {} });
     expect(screen.getByText(/Nenhum destaque ainda/)).toBeTruthy();
@@ -170,6 +212,7 @@ describe("ListaDestaques", () => {
       onIr() {},
       onNota() {},
       onApagar() {},
+      onMotivo() {},
       onExportar() {},
     });
     await semViolacoes(container);
