@@ -38,6 +38,8 @@ export interface Paginador extends HTMLElement {
   setStyles(css: string): void;
   /** Põe o foco do teclado no capítulo (iframe). */
   focusView(): void;
+  /** Vira até o trecho; com `selecionar`, também o seleciona (é assim que a voz marca a frase). */
+  scrollToAnchor(trecho: Range, selecionar?: boolean): Promise<void>;
   next(): Promise<void>;
   prev(): Promise<void>;
 }
@@ -62,6 +64,8 @@ export interface FoliateView extends HTMLElement {
   goTo(alvo: string | number): Promise<void>;
   /** CFI de um trecho (`range`) da seção `indice`. */
   getCFI(indice: number, range: Range): string;
+  /** O CFI de volta para a seção e o trecho nela. */
+  resolveCFI(cfi: string): { index: number; anchor(doc: Document): Range };
   /** Item do índice em que o trecho está. */
   getProgressOf(indice: number, range: Range): { tocItem?: { label: string; href: string } };
   /** Onde cada seção começa no livro (0 a 1). */

@@ -123,7 +123,7 @@ Princípios que valem para tudo daqui em diante:
 
 ### v0.7 — o texto em blocos e frases
 A base de vários recursos: saber onde estão os blocos (parágrafos) e as frases, nos dois formatos.
-- [ ] **M17a — Blocos e frases no EPUB**: segmentação (o `tts.js` do foliate-js já divide; frases com
+- [x] **M17a — Blocos e frases no EPUB**: segmentação (o `tts.js` do foliate-js já divide; frases com
   `Intl.Segmenter`). **Destacar a frase atual**: Ctrl+D sem seleção destaca a primeira frase da página (ou a que a
   voz está lendo); Alt+↑/↓ trocam de frase, Alt+Shift+↓ estende; para quem usa só o teclado, sem leitor de tela.
   **Ouvir a partir daqui**: da frase atual, da seleção ou de um destaque.

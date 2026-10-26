@@ -155,7 +155,7 @@ describe("ControleDestaques", () => {
     c.lista = [destaque({ nota: "uma nota" })];
     const lista = c.comandos(destacar);
     expect(lista.map((x) => x.titulo)).toEqual([
-      "Destacar a seleção",
+      "Destacar a seleção ou a frase atual",
       "Mostrar os destaques",
       "Exportar os destaques…",
       "Ir para destaque: escondi-me atrás da porta",

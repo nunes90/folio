@@ -31,7 +31,8 @@
   import { resolverTema } from "../lib/temas";
   import { aguardarTransicao } from "../lib/transicao";
   import type { Destaque } from "../lib/biblioteca";
-  import { ControleDestaques } from "../lib/controleDestaques.svelte";
+  import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
+  import { frasesDoDocumento, indiceDaFraseEm, unir } from "../lib/frases";
   import {
     aplicarMarcaTexto,
     fracaoNoDocumento,
@@ -39,6 +40,7 @@
     paginaEscura,
     posicaoDaBarra,
     posicaoNoLivro,
+    resumo,
   } from "../lib/destaques";
   import { resolverPagina } from "../lib/pagina";
   import {
@@ -112,7 +114,15 @@
     },
     anunciar: (texto) => (anuncio = texto),
     mostrarLista: mostrarDestaques,
+    aoFecharBarra: () => (modoFrase = null),
   });
+
+  // Modo frase (M17a): Ctrl+D sem seleção seleciona a frase atual (a primeira da página) e
+  // abre a barra; Alt+↑/↓ trocam de frase, Alt+Shift+↑/↓ encolhem ou estendem o trecho. Para
+  // destacar sem o mouse e sem leitor de tela. A frase é selecionada de verdade: a seleção é
+  // a prévia, e o resto (barra, destaque, copiar, ouvir) é o mesmo da seleção com o mouse.
+  let modoFrase: { doc: Document; indice: number; frases: Range[]; de: number; ate: number } | null =
+    null;
 
   // O marca-texto se mistura com a página: multiply no papel claro, screen no escuro.
   $effect(() => {
@@ -178,16 +188,18 @@
     return moldura.virarPagina(ladoDaAnterior(), () => view?.prev());
   }
 
-  async function lerEmVozAlta() {
+  /** Lê em voz alta a partir de `desde` (ou da página atual). Se já estiver lendo, recomeça dali. */
+  async function lerEmVozAlta(desde?: Range) {
     if (!view) return;
     if (!vozPossivel) {
       anuncio =
         "Leitura em voz alta indisponível: o speech-dispatcher não está instalado ou ativo.";
       return;
     }
+    if (voz !== "parado") await pararLeitura();
     await view.initTTS("sentence");
-    // Começa na página atual, não no início do capítulo.
-    const range = view.lastLocation?.range;
+    // Começa na página atual (ou no trecho pedido), não no início do capítulo.
+    const range = desde ?? view.lastLocation?.range;
     await seguirLendo(range ? view.tts?.from(range) : view.tts?.start());
   }
 
@@ -276,7 +288,8 @@
       if (d) destaques.mostrarDestaque(d, posicaoNoIframe(range));
     });
     v.addEventListener("relocate", (e) => {
-      destaques.esconder();
+      // No modo frase, a página vira para acompanhar a frase: a barra vai junto.
+      if (!modoFrase) destaques.esconder();
       const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;
       progresso = fraction;
       hrefAtual = tocItem?.href;
@@ -359,12 +372,94 @@
   }
 
   /** Ctrl+D: a barra da seleção, com o foco nela. */
+  /** Ctrl+D: a barra da seleção, com o foco nela; sem seleção, a da frase atual. */
   function destacarSelecao() {
     if (!view) return;
     const comSelecao = view.renderer
       .getContents()
       .some(({ doc, index }) => verSelecao(doc, index, true));
-    if (!comSelecao) anuncio = "Selecione um trecho do texto para destacar.";
+    if (!comSelecao) void iniciarModoFrase();
+  }
+
+  /** O capítulo visível: o documento e o índice da seção. */
+  function capituloVisivel(): { doc: Document; indice: number } | null {
+    const doc = view?.lastLocation?.range?.startContainer.ownerDocument;
+    const conteudo = view?.renderer.getContents().find((c) => c.doc === doc);
+    return conteudo ? { doc: conteudo.doc, indice: conteudo.index } : null;
+  }
+
+  /** Frases de cada capítulo já dividido (o documento não muda enquanto está carregado). */
+  const frasesPorCapitulo = new WeakMap<Document, Range[]>();
+
+  async function iniciarModoFrase() {
+    const capitulo = capituloVisivel();
+    const inicio = view?.lastLocation?.range;
+    if (!capitulo || !inicio) return;
+    const frases =
+      frasesPorCapitulo.get(capitulo.doc) ?? frasesDoDocumento(capitulo.doc, idiomaDoLivro);
+    frasesPorCapitulo.set(capitulo.doc, frases);
+    if (!frases.length) {
+      anuncio = "Não há texto nesta página para destacar.";
+      return;
+    }
+    const i = indiceDaFraseEm(frases, inicio);
+    modoFrase = { ...capitulo, frases, de: i, ate: i };
+    await mostrarFrases();
+  }
+
+  /** Seleciona o trecho do modo frase, vira a página até ele e abre a barra (com o foco). */
+  async function mostrarFrases() {
+    if (!view || !modoFrase) return;
+    const { doc, indice, frases, de, ate } = modoFrase;
+    const trecho = unir(frases, de, ate);
+    await view.renderer.scrollToAnchor(trecho, true);
+    // Ao virar, o foliate seleciona o trecho; sem virar, não: seleciona aqui, nos dois casos.
+    const sel = doc.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(trecho);
+    await new Promise(requestAnimationFrame);
+    if (!modoFrase) return;
+    verSelecao(doc, indice, true);
+    anuncio = `Frase: ${resumo(trecho.toString(), 300)}`;
+  }
+
+  /** Alt+↑/↓ (outra frase) e Alt+Shift+↑/↓ (trecho menor ou maior), dentro do capítulo. */
+  function mudarTrecho(mudanca: MudancaDeTrecho) {
+    if (!modoFrase) return;
+    const { frases, de, ate } = modoFrase;
+    const ultima = frases.length - 1;
+    let [novoDe, novoAte] = [de, ate];
+    if (mudanca === "proxima") novoDe = novoAte = Math.min(ate + 1, ultima);
+    else if (mudanca === "anterior") novoDe = novoAte = Math.max(de - 1, 0);
+    else if (mudanca === "estender") novoAte = Math.min(ate + 1, ultima);
+    else novoAte = Math.max(ate - 1, de);
+    if (novoDe === de && novoAte === ate) {
+      anuncio = mudanca === "anterior" ? "Início do capítulo." : mudanca === "encolher" ? "Só uma frase." : "Fim do capítulo.";
+      return;
+    }
+    modoFrase = { ...modoFrase, de: novoDe, ate: novoAte };
+    void mostrarFrases();
+  }
+
+  /** Ouvir a partir do trecho da barra (seleção, frase ou destaque) até o fim do livro. */
+  async function ouvirDaqui() {
+    const carregados = view?.renderer.getContents() ?? [];
+    const barra = destaques.barra;
+    let trecho: Range | undefined;
+    if (modoFrase) trecho = unir(modoFrase.frases, modoFrase.de, modoFrase.ate);
+    else if (barra?.destaque && view) {
+      // O CFI do destaque, de volta para um trecho no capítulo carregado.
+      const { index, anchor } = view.resolveCFI(barra.destaque.local);
+      const doc = carregados.find((c) => c.index === index)?.doc;
+      if (doc) trecho = anchor(doc);
+    } else {
+      for (const { doc } of carregados) {
+        const sel = doc.getSelection();
+        if (sel && !sel.isCollapsed && sel.rangeCount) trecho = sel.getRangeAt(0).cloneRange();
+      }
+    }
+    destaques.fecharBarra();
+    if (trecho) await lerEmVozAlta(trecho);
   }
 
   function aoApontarFora(e: PointerEvent) {
@@ -488,6 +583,8 @@
     const acao = acoes[e.key];
     if (acao) {
       e.preventDefault();
+      // Virar a página à mão encerra a barra (e o modo frase).
+      destaques.esconder();
       acao();
     }
   }
@@ -533,7 +630,7 @@
   {#snippet rodape()}
     <div class="voz" role="group" aria-label="Leitura em voz alta">
       {#if voz === "parado"}
-        <button type="button" onclick={lerEmVozAlta}>
+        <button type="button" onclick={() => lerEmVozAlta()}>
           <Icone nome="voz" /><span class="rotulo">Ler em voz alta</span>
         </button>
       {:else}
@@ -557,7 +654,11 @@
     </div>
   {/snippet}
 
-  <DestaquesDoLeitor controle={destaques} />
+  <DestaquesDoLeitor
+    controle={destaques}
+    onOuvir={vozPossivel ? () => void ouvirDaqui() : undefined}
+    onTrecho={mudarTrecho}
+  />
 
   <div class="palco" bind:this={palco}>
     {#if erro}
