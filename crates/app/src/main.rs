@@ -8,13 +8,24 @@ mod logging;
 use anyhow::Context;
 use tauri::{Emitter, Manager};
 
+/// Identificador do app quando ele se chamava "Leitor" (as pastas de dados usavam este nome).
+const IDENTIFICADOR_ANTIGO: &str = "io.github.nunes90.leitor";
+
+/// A pasta do app (`.../io.github.nunes90.folio`), depois de trazer a antiga, se só ela existir.
+fn migrar(nova: &std::path::Path) -> std::path::PathBuf {
+    match nova.parent() {
+        Some(pai) => folio_core::pastas::pasta_migrada(nova, &pai.join(IDENTIFICADOR_ANTIGO)),
+        None => nova.to_path_buf(),
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     // Antes do logging: init() cria uma thread, e set_var só é seguro sem outras threads.
     let dmabuf_desligado = contornar_dmabuf_nvidia();
 
     // O guard precisa viver até o fim do main: ao ser dropado, esvazia o buffer do arquivo de log.
     let _guard = logging::init()?;
-    tracing::info!(versao = leitor_core::VERSION, "iniciando o leitor");
+    tracing::info!(versao = folio_core::VERSION, "iniciando o Folio");
     if dmabuf_desligado {
         tracing::info!("NVIDIA detectada: WEBKIT_DISABLE_DMABUF_RENDERER=1");
     }
@@ -29,21 +40,23 @@ fn main() -> anyhow::Result<()> {
             // Dados (banco e livros) e cache de capas nos diretórios do app no sistema.
             // O escopo do protocolo de assets (tauri.conf.json) libera só $APPCACHE/capas.
             let caminhos = app.path();
-            let biblioteca = leitor_core::biblioteca::Biblioteca::abrir(
-                &caminhos.app_data_dir()?,
-                &caminhos.app_cache_dir()?.join("capas"),
-            )?;
+            // O app se chamava "Leitor": na primeira abertura com o nome novo, as pastas antigas
+            // (dados e cache) passam para as novas (folio_core::pastas).
+            let dados = migrar(&caminhos.app_data_dir()?);
+            let cache = migrar(&caminhos.app_cache_dir()?);
+            let biblioteca =
+                folio_core::biblioteca::Biblioteca::abrir(&dados, &cache.join("capas"))?;
             app.manage(comandos::EstadoBiblioteca::new(biblioteca));
 
             // Voz é opcional: sem o speech-dispatcher, o app abre e só a leitura em voz alta
             // fica indisponível. Os eventos do motor vão ao frontend como o evento `voz`.
             let app_voz = app.handle().clone();
-            let motor = leitor_core::voz::SpeechDispatcher::conectar(move |evento| {
+            let motor = folio_core::voz::SpeechDispatcher::conectar(move |evento| {
                 if let Err(erro) = app_voz.emit("voz", evento) {
                     tracing::warn!(%erro, "falha ao enviar evento de voz");
                 }
             })
-            .map(|m| Box::new(m) as Box<dyn leitor_core::voz::MotorDeVoz>)
+            .map(|m| Box::new(m) as Box<dyn folio_core::voz::MotorDeVoz>)
             .inspect_err(|erro| tracing::warn!(%erro, "leitura em voz alta indisponível"))
             .ok();
             app.manage(comandos::EstadoVoz(motor));

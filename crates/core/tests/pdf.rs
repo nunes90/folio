@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use leitor_core::pdf;
+use folio_core::pdf;
 use proptest::prelude::*;
 
 fn fixture(nome: &str) -> Vec<u8> {

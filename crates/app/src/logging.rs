@@ -1,6 +1,6 @@
 //! Logging: stderr + arquivo com rotação diária.
 //!
-//! Filtro via `RUST_LOG` (ex.: `RUST_LOG=leitor=debug`); padrão `info`.
+//! Filtro via `RUST_LOG` (ex.: `RUST_LOG=folio=debug`); padrão `info`.
 
 use std::path::PathBuf;
 
@@ -10,12 +10,12 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
-const APP: &str = "leitor";
+const APP: &str = "folio";
 const MAX_ARQUIVOS: usize = 7;
 
 /// Diretório de logs por plataforma:
-/// - Linux: `~/.local/state/leitor/logs` (respeita `XDG_STATE_HOME`)
-/// - macOS: `~/Library/Logs/leitor`
+/// - Linux: `~/.local/state/folio/logs` (respeita `XDG_STATE_HOME`)
+/// - macOS: `~/Library/Logs/folio`
 /// - outros: `<dados locais>/logs`
 pub fn log_dir() -> Option<PathBuf> {
     if cfg!(target_os = "macos") {
@@ -67,9 +67,9 @@ mod tests {
     fn log_dir_termina_no_lugar_certo() {
         let dir = log_dir().expect("home deve existir no ambiente de teste");
         if cfg!(target_os = "macos") {
-            assert!(dir.ends_with("Library/Logs/leitor"), "{}", dir.display());
+            assert!(dir.ends_with("Library/Logs/folio"), "{}", dir.display());
         } else {
-            assert!(dir.ends_with("leitor/logs"), "{}", dir.display());
+            assert!(dir.ends_with("folio/logs"), "{}", dir.display());
         }
     }
 

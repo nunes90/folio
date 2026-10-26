@@ -3,11 +3,11 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use leitor_core::biblioteca::{Biblioteca, Colecao, Importado, LivroNaBiblioteca, Progresso};
-use leitor_core::destaques::{Cor, Destaque, Motivo, NovoDestaque};
-use leitor_core::epub::Capa;
-use leitor_core::preferencias::PreferenciasLeitura;
-use leitor_core::voz::{ConfigVoz, MotorDeVoz};
+use folio_core::biblioteca::{Biblioteca, Colecao, Importado, LivroNaBiblioteca, Progresso};
+use folio_core::destaques::{Cor, Destaque, Motivo, NovoDestaque};
+use folio_core::epub::Capa;
+use folio_core::preferencias::PreferenciasLeitura;
+use folio_core::voz::{ConfigVoz, MotorDeVoz};
 use serde::Serialize;
 use tauri::State;
 use tauri::ipc::{InvokeBody, Request, Response};
@@ -403,7 +403,7 @@ fn registrar(erro: &(dyn std::error::Error + 'static)) -> String {
     erro.to_string()
 }
 
-/// Caminho passado na linha de comando (`leitor livro.epub`), usado pelo "Abrir com…" do sistema.
+/// Caminho passado na linha de comando (`folio livro.epub`), usado pelo "Abrir com…" do sistema.
 #[tauri::command]
 pub fn caminho_inicial() -> Option<PathBuf> {
     std::env::args_os().nth(1).map(PathBuf::from)

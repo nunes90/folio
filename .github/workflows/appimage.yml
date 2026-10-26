@@ -11,7 +11,7 @@ on:
     paths:
       - .github/workflows/appimage.yml
       - crates/app/tauri.conf.json
-      - crates/app/leitor.desktop
+      - crates/app/folio.desktop
       - crates/app/icons/**
 
 permissions:

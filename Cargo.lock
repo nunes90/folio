@@ -1073,6 +1073,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
+name = "folio"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "directories",
+ "folio-core",
+ "gtk",
+ "serde",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-log",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "folio-core"
+version = "0.6.0"
+dependencies = [
+ "insta",
+ "lopdf",
+ "percent-encoding",
+ "proptest",
+ "quick-xml",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
+ "zip",
+]
+
+[[package]]
 name = "foreign-types"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1997,43 +2034,6 @@ name = "lazy_static"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
-
-[[package]]
-name = "leitor"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "directories",
- "gtk",
- "leitor-core",
- "serde",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-log",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "leitor-core"
-version = "0.6.0"
-dependencies = [
- "insta",
- "lopdf",
- "percent-encoding",
- "proptest",
- "quick-xml",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "tempfile",
- "thiserror 2.0.21",
- "tracing",
- "zip",
-]
 
 [[package]]
 name = "libappindicator"

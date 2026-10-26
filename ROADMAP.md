@@ -1,6 +1,6 @@
-# Roadmap
+# Roadmap do Folio
 
-Cada marco precisa terminar em algo utilizável.
+Cada marco precisa terminar em algo utilizável. (O app se chamava "Leitor" até out/2026.)
 
 - [x] **M0 — Esqueleto**: workspace Cargo (`core` + `app`), Tauri abrindo uma janela, logging com tracing, CI (Ubuntu), cargo deny, pre-commit hook.
 - [x] **M1 — Abrir EPUB**: abrir um arquivo, ler com paginação via foliate-js, navegar pelo índice.
@@ -159,8 +159,8 @@ A base de vários recursos: saber onde estão os blocos (parágrafos) e as frase
   WebKitGTK (medir memória e quadros por segundo).
 
 ### v1.0 — pronto para distribuir
-- [ ] **M26 — Acabamento**: nome definitivo e ícone (ainda em aberto; o identificador `io.github.nunes90.leitor`
-  define as pastas de dados, então trocá-lo exige migrar os dados: decidir o nome quanto antes); roteiro do Orca refeito com todos os recursos; revisão "tudo sem mouse"; testes E2E
+- [ ] **M26 — Acabamento**: ~~nome definitivo e ícone~~ (feito antes: **Folio**, com a migração das pastas);
+  roteiro do Orca refeito com todos os recursos; revisão "tudo sem mouse"; testes E2E
   dos fluxos principais com `tauri-driver`; livros grandes e arquivos quebrados; README e guia de uso.
 - [ ] **M6b — Empacotamento final**: AppImage com o nome e o ícone definitivos, arquivo `.desktop` e associação a
   EPUB e PDF ("Abrir com") conferidos; Release estável (não mais pre-release). Flatpak (Flathub) depois da 1.0.
