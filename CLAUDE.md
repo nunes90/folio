@@ -362,4 +362,12 @@ docs/decisions/  # ADRs
   a escala mudar de fato, e o `ResizeObserver` do M15 só reaplica o zoom se o tamanho do contêiner mudar. Nos dois
   leitores, a seleção do modo frase (a prévia) é limpa quando a barra fecha (`aoFecharBarra`): sem isso, o Ctrl+D
   seguinte a tratava como seleção do mouse, fora do modo frase, e o Alt+↑/↓ não fazia nada.
-- Próximo passo: M6a (AppImage de teste na CI). Séries continua adiado.
+- **M6a** (branch `ci/m6a-appimage`): empacotamento ligado só para AppImage (`bundle.targets`), ícones 32/64/128/256
+  (gerados do `icon.png` provisório com `cargo tauri icon -p`), `category` Productivity (vira `Office`),
+  `fileAssociations` EPUB e PDF. Modelo próprio do `.desktop` (`crates/app/leitor.desktop`, via
+  `bundle.linux.deb.desktopTemplate`, que o AppImage também usa): o do Tauri não punha `%f` no `Exec`, e o "Abrir
+  com" abria o app sem o arquivo. Workflow `.github/workflows/appimage.yml` (Ubuntu 22.04: glibc mais antiga roda
+  em mais distribuições): na Release publicada, gera e anexa o AppImage; à mão e em PRs do empacotamento, só como
+  artefato. Local: `cargo tauri build --bundles appimage` → `target/release/bundle/appimage/` (~108 MB, com o
+  WebKitGTK e o GStreamer embutidos).
+- Próximo passo: M18 (destaques com motivo). Séries continua adiado.

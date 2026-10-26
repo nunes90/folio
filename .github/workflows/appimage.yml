@@ -1,0 +1,71 @@
+name: AppImage
+
+# Gera o AppImage quando uma Release é publicada (gh release create …) e o anexa a ela (M6a).
+# Também roda à mão (aba Actions → AppImage → Run workflow) e em PRs que mexem no empacotamento:
+# aí o AppImage fica só como artefato do job, para testar sem criar Release.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/appimage.yml
+      - crates/app/tauri.conf.json
+      - crates/app/leitor.desktop
+      - crates/app/icons/**
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  appimage:
+    name: AppImage
+    # A versão mais antiga do Ubuntu disponível: o AppImage leva as bibliotecas do sistema em
+    # que foi feito, e uma glibc mais antiga roda em mais distribuições.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Dependências do Tauri e do AppImage
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev \
+            patchelf libfuse2 file
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Guarda também o tauri-cli instalado (~/.cargo/bin) entre as execuções.
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Dependências do frontend
+        working-directory: ui
+        run: npm ci
+
+      - name: tauri-cli
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Gerar o AppImage
+        run: cargo tauri build --bundles appimage -- --locked
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+      - name: Anexar à Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" target/release/bundle/appimage/*.AppImage --clobber

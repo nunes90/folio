@@ -44,9 +44,44 @@
     }
   },
   "bundle": {
-    "active": false,
+    "active": true,
+    "targets": [
+      "appimage"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Leitor de EPUB e PDF acessível",
+    "longDescription": "Leitor de livros EPUB e PDF para Linux, com foco em acessibilidade (teclado, leitor de tela, leitura em voz alta) e animações suaves.",
     "icon": [
+      "icons/32x32.png",
+      "icons/64x64.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
       "icons/icon.png"
-    ]
+    ],
+    "fileAssociations": [
+      {
+        "ext": [
+          "epub"
+        ],
+        "mimeType": "application/epub+zip",
+        "name": "EPUB",
+        "description": "Livro EPUB",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "pdf"
+        ],
+        "mimeType": "application/pdf",
+        "name": "PDF",
+        "description": "Documento PDF",
+        "role": "Viewer"
+      }
+    ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "leitor.desktop"
+      }
+    }
   }
 }
