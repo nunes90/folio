@@ -27,6 +27,8 @@ export interface DetalheRelocate {
 export interface TtsFoliate {
   start(): string | undefined;
   next(): string | undefined;
+  /** O bloco atual a partir da última marca (`setMark`): para retomar depois de uma pausa. */
+  resume(): string | undefined;
   from(range: Range): string | undefined;
   /** Destaca a frase da marca e vira a página até ela. */
   setMark(marca: string): void;

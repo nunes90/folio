@@ -338,6 +338,11 @@ docs/decisions/  # ADRs
   foliate só seleciona quando a página vira) e abre a barra pelo caminho da seleção; Alt+↑/↓ trocam de frase,
   Alt+Shift+↑/↓ encolhem ou estendem (`onTrecho` na `BarraDestaque`, `MudancaDeTrecho`); o `relocate` não esconde
   a barra no modo frase; virar a página à mão a fecha (`aoFecharBarra` no adaptador zera o modo). Durante a voz,
-  a frase lida já é a seleção: Ctrl+D a destaca. "Ouvir" na barra (`onOuvir`, só com voz): lê a partir da frase,
+  a frase lida já é a seleção: Ctrl+D a destaca, pausando a voz enquanto a barra está aberta (a página viraria e a
+  barra fecharia) e retomando quando ela fecha (`retomarVozAoFechar`; "Ouvir" recomeça em vez de retomar).  **Pausar
+  cancela a fala e retomar fala de novo a partir da última frase marcada** (`tts.resume()` do foliate-js; eventos
+  com a voz pausada são ignorados): o `PAUSE` do speech-dispatcher só pausava na marca seguinte (o destaque andava e a
+  página virava durante a pausa) e, ao retomar, dava o bloco por terminado, pulando o resto dele. O `pausar`/`retomar`
+  do core ficam sem uso no frontend. "Ouvir" na barra (`onOuvir`, só com voz): lê a partir da frase,
   da seleção ou do destaque (`resolveCFI`); `lerEmVozAlta(desde?)` recomeça se já estiver lendo.
 - Próximo passo: M17b (blocos e frases no PDF). Séries continua adiado.

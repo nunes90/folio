@@ -55,8 +55,6 @@
     falar,
     ouvirVoz,
     pararVoz,
-    pausarVoz,
-    retomarVoz,
     vozDisponivel,
     type EventoVoz,
   } from "../lib/voz";
@@ -114,7 +112,14 @@
     },
     anunciar: (texto) => (anuncio = texto),
     mostrarLista: mostrarDestaques,
-    aoFecharBarra: () => (modoFrase = null),
+    aoFecharBarra: () => {
+      modoFrase = null;
+      // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou.
+      if (retomarVozAoFechar) {
+        retomarVozAoFechar = false;
+        if (voz === "pausado") void pausarOuRetomar();
+      }
+    },
   });
 
   // Modo frase (M17a): Ctrl+D sem seleção seleciona a frase atual (a primeira da página) e
@@ -123,6 +128,8 @@
   // a prévia, e o resto (barra, destaque, copiar, ouvir) é o mesmo da seleção com o mouse.
   let modoFrase: { doc: Document; indice: number; frases: Range[]; de: number; ate: number } | null =
     null;
+  /** Ctrl+D pausou a voz para destacar a frase lida: retomar quando a barra fechar. */
+  let retomarVozAoFechar = false;
 
   // O marca-texto se mistura com a página: multiply no papel claro, screen no escuro.
   $effect(() => {
@@ -241,20 +248,25 @@
   }
 
   function aoEventoVoz(e: EventoVoz) {
-    // Eventos atrasados depois de parar (ou de outro livro) são ignorados.
-    if (voz === "parado" || !view?.tts) return;
+    // Eventos atrasados depois de parar ou pausar (ou de outro livro) são ignorados.
+    if (voz !== "falando" || !view?.tts) return;
     if (e.tipo === "marca") view.tts.setMark(e.marca);
     else if (e.tipo === "fim") seguirLendo(view.tts.next()).catch((erro) => log.warn(`${erro}`));
     else voz = "parado";
   }
 
+  /**
+   * Pausar cancela a fala; retomar fala de novo a partir da frase em que parou (o `resume()`
+   * do tts.js começa na última marca). A pausa do speech-dispatcher não servia: ele só pausa
+   * na marca seguinte e, ao retomar, dava o bloco por terminado, pulando o resto dele.
+   */
   async function pausarOuRetomar() {
     if (voz === "falando") {
-      await pausarVoz();
       voz = "pausado";
+      await pararVoz();
     } else if (voz === "pausado") {
-      await retomarVoz();
       voz = "falando";
+      await seguirLendo(view?.tts?.resume());
     }
   }
 
@@ -372,13 +384,26 @@
   }
 
   /** Ctrl+D: a barra da seleção, com o foco nela. */
-  /** Ctrl+D: a barra da seleção, com o foco nela; sem seleção, a da frase atual. */
-  function destacarSelecao() {
+  /**
+   * Ctrl+D: a barra da seleção, com o foco nela; sem seleção, a da frase atual. Com a voz
+   * lendo, a frase lida é a seleção: a voz pausa enquanto a barra está aberta (senão a página
+   * vira no meio da escolha e a barra fecha) e continua quando ela fecha.
+   */
+  async function destacarSelecao() {
     if (!view) return;
+    if (voz === "falando") {
+      await pausarOuRetomar();
+      retomarVozAoFechar = true;
+    }
     const comSelecao = view.renderer
       .getContents()
       .some(({ doc, index }) => verSelecao(doc, index, true));
-    if (!comSelecao) void iniciarModoFrase();
+    if (!comSelecao) await iniciarModoFrase();
+    // Nada para destacar (a barra não abriu): a voz continua na hora.
+    if (!destaques.barra && retomarVozAoFechar) {
+      retomarVozAoFechar = false;
+      if (voz === "pausado") await pausarOuRetomar();
+    }
   }
 
   /** O capítulo visível: o documento e o índice da seção. */
@@ -458,6 +483,8 @@
         if (sel && !sel.isCollapsed && sel.rangeCount) trecho = sel.getRangeAt(0).cloneRange();
       }
     }
+    // A leitura recomeça no trecho: não retomar a pausada ao fechar a barra.
+    retomarVozAoFechar = false;
     destaques.fecharBarra();
     if (trecho) await lerEmVozAlta(trecho);
   }
@@ -564,7 +591,7 @@
     if (!view || e.defaultPrevented) return;
     if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "d") {
       e.preventDefault();
-      destacarSelecao();
+      void destacarSelecao();
       return;
     }
     if (e.key === "Escape" && destaques.barra) {
