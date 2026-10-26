@@ -130,7 +130,7 @@ A base de vários recursos: saber onde estão os blocos (parágrafos) e as frase
 - [x] **M17b — Blocos e frases no PDF**: linhas da camada de texto do pdf.js agrupadas em blocos (espaço entre
   linhas e tamanho da letra) e divididas em frases; destacar a frase atual no PDF. "Ouvir daqui" no PDF vem com a
   voz no PDF (M23).
-- [ ] **M6a — AppImage de teste**: a CI gera o AppImage (`cargo tauri build --bundles appimage`) a cada tag `v*`
+- [x] **M6a — AppImage de teste**: a CI gera o AppImage (`cargo tauri build --bundles appimage`) a cada tag `v*`
   e o anexa à Release como pre-release, com o nome provisório. Serve para achar cedo os problemas de empacotamento
   (WebKitGTK embutido, NVIDIA/Wayland, associação a EPUB e PDF) testando numa distribuição limpa.
 - [ ] **M18 — Destaques que servem para reler**: motivo do destaque (dúvida, citar, revisar), independente da
