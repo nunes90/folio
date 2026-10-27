@@ -7,6 +7,7 @@ use folio_core::biblioteca::{Biblioteca, Colecao, Importado, LivroNaBiblioteca, 
 use folio_core::destaques::{Cor, Destaque, Motivo, NovoDestaque};
 use folio_core::epub::Capa;
 use folio_core::preferencias::PreferenciasLeitura;
+use folio_core::sessoes::Sessao;
 use folio_core::voz::{ConfigVoz, MotorDeVoz};
 use serde::Serialize;
 use tauri::State;
@@ -360,6 +361,57 @@ pub fn progresso_livro(
     bib.lock()
         .unwrap()
         .progresso(&id)
+        .map_err(|e| registrar(&e))
+}
+
+/// Começa uma sessão de leitura (M20) ao abrir o livro, no ponto em que ele abriu.
+#[tauri::command]
+pub fn iniciar_sessao(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+    onde: Progresso,
+) -> Result<Sessao, String> {
+    bib.lock()
+        .unwrap()
+        .iniciar_sessao(&livro, &onde)
+        .map_err(|e| registrar(&e))
+}
+
+/// A leitura continua (atividade ou mudança de lugar, com `onde`).
+#[tauri::command]
+pub fn registrar_sessao(
+    bib: State<'_, EstadoBiblioteca>,
+    id: i64,
+    onde: Option<Progresso>,
+) -> Result<Sessao, String> {
+    bib.lock()
+        .unwrap()
+        .registrar_na_sessao(id, onde.as_ref())
+        .map_err(|e| registrar(&e))
+}
+
+/// Encerra a sessão ao fechar o livro; `None` se ela foi curta demais e não ficou.
+#[tauri::command]
+pub fn encerrar_sessao(
+    bib: State<'_, EstadoBiblioteca>,
+    id: i64,
+    onde: Option<Progresso>,
+) -> Result<Option<Sessao>, String> {
+    bib.lock()
+        .unwrap()
+        .encerrar_sessao(id, onde.as_ref())
+        .map_err(|e| registrar(&e))
+}
+
+/// As sessões do livro, da mais recente para a mais antiga.
+#[tauri::command]
+pub fn listar_sessoes(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+) -> Result<Vec<Sessao>, String> {
+    bib.lock()
+        .unwrap()
+        .listar_sessoes(&livro)
         .map_err(|e| registrar(&e))
 }
 

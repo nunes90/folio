@@ -97,6 +97,21 @@ const MIGRACOES: &[&str] = &[
     -- Motivo do destaque (M18): duvida | citar | revisar; NULL = sem motivo.
     ALTER TABLE destaques ADD COLUMN motivo TEXT;
 ",
+    "
+    -- Sessões de leitura (M20, ver sessoes.rs).
+    CREATE TABLE sessoes (
+        id         INTEGER PRIMARY KEY,
+        livro_id   TEXT    NOT NULL REFERENCES livros(id) ON DELETE CASCADE,
+        inicio     INTEGER NOT NULL,  -- segundos desde 1970 (UTC)
+        fim        INTEGER NOT NULL,  -- o último aviso
+        ativo      INTEGER NOT NULL,  -- segundos lendo, sem as pausas longas
+        de_local   TEXT    NOT NULL,  -- EPUB CFI ou `pagina:N` (PDF), ao abrir
+        de_fracao  REAL    NOT NULL,
+        ate_local  TEXT    NOT NULL,  -- onde está agora
+        ate_fracao REAL    NOT NULL
+    );
+    CREATE INDEX sessoes_por_livro ON sessoes (livro_id, inicio);
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.
@@ -238,6 +253,8 @@ pub enum ErroBiblioteca {
     DestaqueSemTrecho,
     #[error("o destaque precisa de um local no livro")]
     DestaqueSemLocal,
+    #[error("sessão de leitura não encontrada: {0}")]
+    SessaoNaoEncontrada(i64),
     #[error("não foi possível gravar {}", caminho.display())]
     Io {
         caminho: PathBuf,

@@ -9,6 +9,7 @@ pub mod metadados;
 pub mod pastas;
 pub mod pdf;
 pub mod preferencias;
+pub mod sessoes;
 mod ssip;
 pub mod voz;
 
