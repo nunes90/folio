@@ -67,6 +67,20 @@ function textosDe(range: Range): { no: Text; inicio: number; fim: number }[] {
   return lista;
 }
 
+/** O mesmo intervalo, do primeiro ao último caractere visível (sem os espaços das pontas). */
+export function aparar(range: Range): Range {
+  const pedacos = textosDe(range).filter((p) => p.no.data.slice(p.inicio, p.fim).trim());
+  const primeiro = pedacos[0];
+  const ultimo = pedacos.at(-1);
+  if (!primeiro || !ultimo) return range.cloneRange();
+  const r = primeiro.no.ownerDocument.createRange();
+  const inicio = primeiro.no.data.slice(primeiro.inicio, primeiro.fim);
+  r.setStart(primeiro.no, primeiro.inicio + inicio.length - inicio.trimStart().length);
+  const fim = ultimo.no.data.slice(ultimo.inicio, ultimo.fim);
+  r.setEnd(ultimo.no, ultimo.inicio + fim.trimEnd().length);
+  return r;
+}
+
 /** As frases de um bloco, sem os espaços das pontas. `idioma` guia o Intl.Segmenter. */
 export function frasesDe(bloco: Range, idioma?: string | null): Range[] {
   const pedacos = textosDe(bloco);

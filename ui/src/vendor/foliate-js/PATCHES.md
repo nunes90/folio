@@ -9,3 +9,4 @@ que o problema foi resolvido no projeto original.
 | Arquivo | Alteração | Motivo |
 |---|---|---|
 | `paginator.js` (`View.expand`) | retorna cedo se `this.document` for `null` | ao fechar o livro, um `ResizeObserver` já enfileirado chamava `expand()` depois de o iframe ser removido: `TypeError: Cannot destructure property 'documentElement'` |
+| `paginator.js` (`Paginator.centerAnchor`) | método novo: rola até o trecho ficar no meio da tela, na rolagem contínua, com duração e curva dadas | a "uma ideia por vez" (M19) mantém o bloco atual no centro; o `scrollToAnchor` só põe o trecho no alto, e a animação do foliate é fixa (300 ms, `animated`) |

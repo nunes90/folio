@@ -921,6 +921,32 @@ export class Paginator extends HTMLElement {
     async scrollToAnchor(anchor, select) {
         return this.#scrollToAnchor(anchor, select ? 'selection' : 'navigation')
     }
+    // LEITOR: na rolagem contínua, rola até o trecho ficar no meio da tela (se couber; senão,
+    // o começo dele no alto), com a animação de quem chama (`duration` em ms; 0 = na hora).
+    // Para a "uma ideia por vez" do Folio (M19). O trecho vira a âncora (volta a ele ao repaginar).
+    async centerAnchor(anchor, duration = 0, ease = easeOutQuad) {
+        if (!this.scrolled || this.#vertical) return this.#scrollToAnchor(anchor, 'anchor')
+        const rects = Array.from(uncollapse(anchor)?.getClientRects?.() ?? [])
+            .filter(r => r.width > 0 && r.height > 0)
+        if (!rects.length) return
+        const { left, right } = this.#getRectMapper()({
+            top: Math.min(...rects.map(r => r.top)),
+            bottom: Math.max(...rects.map(r => r.bottom)),
+        })
+        const { size } = this
+        const sobra = Math.max(0, (size - (right - left)) / 2)
+        const offset = Math.max(0, Math.min(this.viewSize - size, left - this.#margin - sobra))
+        this.#anchor = anchor
+        const element = this.#container
+        const done = () => {
+            this.#scrollBounds = [offset, this.atStart ? 0 : size, this.atEnd ? 0 : size]
+            this.#afterScroll('anchor')
+        }
+        if (duration > 0 && Math.abs(element.scrollTop - offset) > 1) return animate(
+            element.scrollTop, offset, duration, ease, x => element.scrollTop = x).then(done)
+        element.scrollTop = offset
+        done()
+    }
     async #scrollToAnchor(anchor, reason = 'anchor') {
         this.#anchor = anchor
         const rects = uncollapse(anchor)?.getClientRects?.()

@@ -12,11 +12,21 @@
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
   import { unir } from "../lib/frases";
-  import { frasesDaCamada, textoDoTrecho } from "../lib/frasesPdf";
+  import { frasesDaCamada, ideiasDaCamada, textoDoTrecho } from "../lib/frasesPdf";
+  import {
+    OPACIDADE_FORA,
+    rolarSuave,
+    uniao,
+    veuNaPagina,
+    vizinho,
+    type Sentido,
+  } from "../lib/umaIdeia";
+  import { curva, duracao } from "../lib/animacao";
   import { estiloDoMarcaTexto, hexDaCor, posicaoDaBarra, resumo } from "../lib/destaques";
   import {
     acertou,
     lerLocalPdf,
+    type Retangulo,
     localPdf,
     naJanela,
     posicaoNoPdf,
@@ -76,6 +86,7 @@
   let tarefa: PDFDocumentLoadingTask | undefined;
 
   let modoFoco = $state(false);
+  let umaIdeia = $state(false);
 
   // Destaques (M16c): a lógica comum está no ControleDestaques; aqui, a seleção na camada de
   // texto do pdf.js e uma camada própria sobre cada página (o arquivo do PDF não muda).
@@ -107,6 +118,12 @@
   let modoFrase: { pagina: number; frases: Range[]; de: number; ate: number } | null = null;
   /** Frases de cada camada de texto já dividida (o pdf.js troca a camada ao redesenhar). */
   const frasesPorCamada = new WeakMap<Element, Range[]>();
+
+  // Uma ideia por vez (M19): o bloco atual da página; sobre os outros, um véu da cor do papel
+  // (o desenho do PDF não tem elementos para esmaecer, como no EPUB). Os blocos são os do modo
+  // frase (lib/frasesPdf.ts).
+  let ideia: { pagina: number; atual: number; furos: Retangulo[] } | null = null;
+  const ideiasPorCamada = new WeakMap<Element, HTMLElement[][]>();
   let pagina = $state(1);
   let total = $state(0);
   let zoom = $state(1);
@@ -148,13 +165,14 @@
   });
 
   // Página a página (como um livro, zoom "página inteira") ou rolagem contínua (zoom
-  // "largura"). Reage na hora quando a preferência muda (e só a ela).
+  // "largura"). Reage na hora quando a preferência muda (e só a ela). A uma ideia por vez usa
+  // sempre a rolagem contínua, sem mudar a preferência: ao desligá-la, volta o que era.
   // As chamadas ao pdf.js ficam em `untrack`: ele dispara eventos na hora (ex.:
   // "scalechanging"), e o estado que os tratadores leem (o zoom, a barra de destaque) viraria
   // dependência deste efeito. Aí mudar o zoom voltava para "página inteira", e abrir a barra
   // reaplicava o zoom e a fechava.
   $effect(() => {
-    const paginas = preferencias.modoPdf === "paginas";
+    const paginas = preferencias.modoPdf === "paginas" && !umaIdeia;
     if (!pronto || !visor || !modosDeRolagem) return;
     const [v, modos] = [visor, modosDeRolagem];
     untrack(() => {
@@ -233,8 +251,13 @@
     estavaInvertida = invertida;
     // A camada dos destaques some quando o pdf.js refaz a página (zoom, redesenho): volta
     // a cada desenho, em porcentagens (não depende do zoom).
-    eventos.on("pagerendered", ({ pageNumber }: { pageNumber: number }) =>
-      desenharDestaques(pageNumber),
+    eventos.on("pagerendered", ({ pageNumber }: { pageNumber: number }) => {
+      desenharDestaques(pageNumber);
+      desenharIdeia(pageNumber);
+    });
+    // A camada de texto (de onde saem os blocos) pode ficar pronta depois do desenho.
+    eventos.on("textlayerrendered", ({ pageNumber }: { pageNumber: number }) =>
+      desenharIdeia(pageNumber),
     );
 
     eventos.on("pagesinit", () => {
@@ -250,6 +273,8 @@
       if (!modoFrase) destaques.esconder();
       pagina = pageNumber;
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
+      // Rolando com o mouse, a uma ideia passa à página nova quando o bloco atual sai da tela.
+      if (ideia && ideia.pagina !== pageNumber && !ideiaNaTela()) void irParaIdeiaDa(pageNumber);
     });
     eventos.on("scalechanging", ({ scale }: { scale: number }) => {
       // A barra fica fora de lugar só se o zoom mudou de fato.
@@ -320,7 +345,7 @@
   function irPara(n: number) {
     if (!visor || n < 1 || n > total || n === pagina) return;
     const v = visor;
-    if (preferencias.modoPdf === "rolagem") {
+    if (preferencias.modoPdf === "rolagem" || umaIdeia) {
       v.currentPageNumber = n;
       return;
     }
@@ -422,6 +447,34 @@
         executar: () => moldura.alternarFoco(),
       },
       {
+        id: "uma-ideia",
+        titulo: umaIdeia ? "Desligar uma ideia por vez" : "Ligar uma ideia por vez",
+        grupo: "Leitura",
+        teclas: [["Ctrl", "Shift", "B"]],
+        palavras: "bloco parágrafo esmaecer concentrar",
+        executar: () => moldura.alternarUmaIdeia(),
+      },
+      ...(umaIdeia
+        ? [
+            {
+              id: "ideia-proxima",
+              titulo: "Próximo bloco",
+              grupo: "Leitura",
+              teclas: [["↓"]],
+              palavras: "parágrafo seguinte",
+              executar: () => void andarIdeia("frente"),
+            },
+            {
+              id: "ideia-anterior",
+              titulo: "Bloco anterior",
+              grupo: "Leitura",
+              teclas: [["↑"]],
+              palavras: "parágrafo",
+              executar: () => void andarIdeia("tras"),
+            },
+          ]
+        : []),
+      {
         id: "mostrar-indice",
         titulo: "Mostrar o índice",
         grupo: "Leitura",
@@ -514,6 +567,169 @@
     if (local) desenharDestaques(local.pagina);
   }
 
+  $effect(() => {
+    const ligada = umaIdeia;
+    if (!pronto) return;
+    untrack(() => {
+      if (ligada) void ligarIdeia();
+      else desligarIdeia();
+    });
+  });
+
+  /** Os blocos da página `n` (vazio se ela não tiver texto). */
+  /**
+   * As ideias da página `n`, na ordem de leitura (vazio se ela não tiver texto): os blocos, com
+   * os rótulos de figura e as partes de equação juntos (lib/frasesPdf.ts).
+   */
+  async function ideiasDaPagina(n: number): Promise<HTMLElement[][]> {
+    const camada = await camadaDeTexto(n);
+    return camada ? ideiasDe(camada) : [];
+  }
+
+  function ideiasDe(camada: Element): HTMLElement[][] {
+    const ideias = ideiasPorCamada.get(camada) ?? ideiasDaCamada(camada);
+    ideiasPorCamada.set(camada, ideias);
+    return ideias;
+  }
+
+  async function ligarIdeia() {
+    // O efeito do modo passa à rolagem contínua (e o pdf.js redesenha): espera o novo layout.
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    if (umaIdeia) await irParaIdeiaDa(pagina, "frente", true, true);
+  }
+
+  function desligarIdeia() {
+    const camadas = [...conteiner.querySelectorAll(".camada-ideia")];
+    ideia = null;
+    for (const c of camadas) c.classList.add("escondida");
+    setTimeout(() => camadas.forEach((c) => c.remove()), duracao("media"));
+  }
+
+  /**
+   * A uma ideia passa para a página `n`: o primeiro bloco dela (ou o último, vindo de trás).
+   * As outras páginas ficam esmaecidas por inteiro.
+   */
+  async function irParaIdeiaDa(n: number, sentido: Sentido = "frente", centralizar = false, aparecer = false) {
+    const anterior = ideia?.pagina;
+    ideia = { pagina: n, atual: -1, furos: [] };
+    if (anterior !== undefined && anterior !== n) desenharIdeia(anterior);
+    // A página ainda não foi desenhada (longe da tela): rola até ela para o pdf.js desenhá-la.
+    const el = paginaEl(n);
+    if (centralizar && el && !el.querySelector(".textLayer:has(span)"))
+      centralizarEm(el.getBoundingClientRect().top);
+    const ideias = await ideiasDaPagina(n);
+    if (!ideia || ideia.pagina !== n) return;
+    ideia.atual = sentido === "frente" ? 0 : ideias.length - 1;
+    if (aparecer) for (const p of conteiner.querySelectorAll<HTMLElement>(".page:has(canvas)"))
+      desenharIdeia(Number(p.dataset.pageNumber), true);
+    else desenharIdeia(n);
+    mostrarIdeia(centralizar);
+  }
+
+  /**
+   * (Re)desenha a camada da página `n`: um véu só, sobre a página inteira, com um furo no bloco
+   * atual (nas outras páginas, sem furo). Véus separados por bloco se sobrepunham nas folgas
+   * (faixas mais escuras). Trocar de bloco só move o furo (transform). `aparecer`: ao ligar, o
+   * véu esmaece a página aos poucos.
+   */
+  function desenharIdeia(n: number, aparecer = false) {
+    const el = paginaEl(n);
+    if (!el) return;
+    el.querySelector(".camada-ideia")?.remove();
+    if (!ideia) return;
+    const camada = document.createElement("div");
+    camada.className = "camada-ideia";
+    camada.setAttribute("aria-hidden", "true");
+    camada.append(document.createElement("div"));
+    if (ideia.pagina === n) {
+      const camadaTexto = el.querySelector(".textLayer:has(span)");
+      if (!camadaTexto) return;
+      const caixa = el.getBoundingClientRect();
+      ideia.furos = ideiasDe(camadaTexto).map((pedacos) =>
+        veuNaPagina(uniao(pedacos.map((p) => p.getBoundingClientRect())), caixa),
+      );
+    } else camada.classList.add("sem-furo");
+    // Acima do desenho e dos destaques, abaixo da camada de texto (que continua selecionável).
+    const antes = el.querySelector(".camada-destaques") ?? el.querySelector(".canvasWrapper");
+    if (antes) antes.after(camada);
+    else el.prepend(camada);
+    if (ideia.pagina === n) mostrarIdeia(false);
+    if (aparecer) {
+      camada.classList.add("escondida");
+      requestAnimationFrame(() => camada.classList.remove("escondida"));
+    }
+  }
+
+  /**
+   * Leva o furo ao bloco atual (sem bloco, ex.: página só com imagem, a página não fica
+   * esmaecida). `centralizar`: a página rola até o bloco ficar no meio da tela.
+   */
+  function mostrarIdeia(centralizar = true) {
+    if (!ideia) return;
+    const camada = paginaEl(ideia.pagina)?.querySelector<HTMLElement>(".camada-ideia");
+    const furo = camada?.firstElementChild as HTMLElement | null | undefined;
+    const r = ideia.furos[ideia.atual];
+    if (!camada || !furo) return;
+    camada.classList.toggle("sem-bloco", !r);
+    if (!r) return;
+    // Em porcentagens do próprio furo (do tamanho da página): não depende do zoom.
+    furo.style.transform = `translate(${r.x * 100}%, ${r.y * 100}%) scale(${r.l}, ${r.a})`;
+    if (!centralizar) return;
+    const pag = camada.getBoundingClientRect();
+    const altura = r.a * pag.height;
+    const tela = conteiner.clientHeight;
+    // Cabe na tela: no meio; senão, o começo no alto.
+    centralizarEm(pag.top + r.y * pag.height + Math.min(altura, tela) / 2);
+  }
+
+  /** Rola o documento até a altura `y` (da janela) ficar no meio da tela. */
+  function centralizarEm(y: number) {
+    const tela = conteiner.getBoundingClientRect();
+    const topo = conteiner.scrollTop + y - (tela.top + tela.height / 2);
+    rolarSuave(conteiner, topo, duracao("longa"), curva);
+  }
+
+  /** O bloco atual (ou, sem bloco, a página dele) ainda aparece na tela? */
+  function ideiaNaTela(): boolean {
+    const el = ideia ? paginaEl(ideia.pagina) : null;
+    if (!ideia || !el) return false;
+    const pag = el.getBoundingClientRect();
+    const r = ideia.furos[ideia.atual] ?? { y: 0, a: 1 };
+    const [topo, base] = [pag.top + r.y * pag.height, pag.top + (r.y + r.a) * pag.height];
+    const tela = conteiner.getBoundingClientRect();
+    return base > tela.top && topo < tela.bottom;
+  }
+
+  /** ↓ (frente) e ↑ (trás): o bloco vizinho, no meio da tela; nas pontas, a página vizinha. */
+  async function andarIdeia(sentido: Sentido) {
+    if (!ideia) return;
+    const n = ideia.pagina;
+    const i = vizinho(ideia.furos, ideia.atual, sentido);
+    if (i !== null) {
+      ideia.atual = i;
+      mostrarIdeia();
+      return;
+    }
+    const vizinha = sentido === "frente" ? n + 1 : n - 1;
+    if (vizinha < 1 || vizinha > total) {
+      anuncio = sentido === "frente" ? "Fim do documento." : "Início do documento.";
+      return;
+    }
+    await irParaIdeiaDa(vizinha, sentido, true);
+  }
+
+  /** Clique no texto com a uma ideia ligada: o bloco clicado vem à frente. */
+  async function escolherIdeiaEm(n: number, x: number, y: number) {
+    if (!ideia) return;
+    if (ideia.pagina !== n) await irParaIdeiaDa(n);
+    if (!ideia) return;
+    const i = ideia.furos.findIndex((r) => acertou([r], x, y));
+    if (i < 0 || i === ideia.atual) return;
+    ideia.atual = i;
+    mostrarIdeia();
+  }
+
   // O marca-texto se mistura com a página: multiply no papel claro, screen na noite.
   const marcaTexto = $derived(estiloDoMarcaTexto(invertida));
 
@@ -595,7 +811,11 @@
           : "Não há texto na página seguinte.";
       return;
     }
-    const i = onde === "inicio" ? 0 : frases.length - 1;
+    // Com a uma ideia por vez, a partir do bloco em evidência (a frase que contém o primeiro
+    // pedaço dele; as frases estão na ordem de leitura, não na do arquivo).
+    const primeiro = ideia?.pagina === n ? (await ideiasDaPagina(n))[ideia.atual]?.[0] : undefined;
+    const naIdeia = primeiro ? frases.findIndex((f) => f.intersectsNode(primeiro)) : -1;
+    const i = naIdeia >= 0 ? naIdeia : onde === "inicio" ? 0 : frases.length - 1;
     modoFrase = { pagina: n, frases, de: i, ate: i };
     mostrarFrases();
   }
@@ -664,6 +884,7 @@
           return;
         }
       }
+      void escolherIdeiaEm(n, x, y);
     });
   }
 
@@ -729,6 +950,12 @@
     // Setas trocam de página, exceto quando o foco está num campo de texto.
     const emCampo = e.target instanceof HTMLInputElement;
     if (emCampo || ctrl || e.altKey) return;
+    if (umaIdeia && !e.shiftKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      destaques.esconder();
+      void andarIdeia(e.key === "ArrowDown" ? "frente" : "tras");
+      return;
+    }
     // As setas viram a página e não rolam: no modo página a página, o pdf.js deixa uma sobra
     // de alguns pixels, e rolá-la deslocava a página. Com a página inteira na tela, ↑ e ↓
     // também viram; com zoom maior, rolam a página (o que não cabe).
@@ -746,6 +973,8 @@
 <MolduraLeitor
   bind:this={moldura}
   bind:modoFoco
+  bind:umaIdeia
+  escOcupado={!!destaques.barra}
   {titulo}
   {anuncio}
   progresso={total ? pagina / total : 0}
@@ -821,6 +1050,8 @@
     style:--papel-pdf={estiloPagina.papel}
     style:--marca-opacidade={marcaTexto.opacidade}
     style:--marca-mistura={marcaTexto.mistura}
+    style:--veu-ideia={estiloPagina.camada ? "#ffffff" : estiloPagina.papel}
+    style:--veu-opacidade={1 - OPACIDADE_FORA}
     bind:this={conteiner}
     onpointerup={aoSoltar}
     tabindex="0"
@@ -877,6 +1108,41 @@
     position: absolute;
     opacity: var(--marca-opacidade);
     mix-blend-mode: var(--marca-mistura);
+  }
+
+  /* Uma ideia por vez (M19): um véu da cor do papel sobre a página, com um furo no bloco
+     atual (a sombra do furo é o véu). O furo tem o tamanho da página e vai ao bloco por
+     translate + scale, então trocar de bloco é só transform. Em creme e sépia, o véu é branco:
+     a camada multiply da página (o ::after, por cima) o tinge como ao papel. */
+  .conteiner :global(.camada-ideia) {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    pointer-events: none;
+    opacity: var(--veu-opacidade);
+    transition: opacity var(--duracao-media) var(--curva);
+  }
+
+  .conteiner :global(.camada-ideia.escondida),
+  .conteiner :global(.camada-ideia.sem-bloco) {
+    opacity: 0;
+  }
+
+  /* As outras páginas: esmaecidas por inteiro. */
+  .conteiner :global(.camada-ideia.sem-furo) {
+    background: var(--veu-ideia);
+  }
+
+  .conteiner :global(.camada-ideia.sem-furo > div) {
+    display: none;
+  }
+
+  .conteiner :global(.camada-ideia > div) {
+    position: absolute;
+    inset: 0;
+    transform-origin: 0 0;
+    box-shadow: 0 0 0 200000px var(--veu-ideia);
+    transition: transform var(--duracao-media) var(--curva);
   }
 
   .nota {

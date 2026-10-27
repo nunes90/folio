@@ -140,9 +140,11 @@ A base de vários recursos: saber onde estão os blocos (parágrafos) e as frase
 pre-release, com o AppImage anexado pela CI.
 
 ### v0.8 — o ritmo de quem lê
-- [ ] **M19 — Uma ideia por vez**: só o bloco atual em evidência, o resto esmaecido (só visual: o leitor de tela
-  lê tudo); atalho para o próximo e o anterior bloco, que vira a página quando precisa; respeita o movimento
-  reduzido. EPUB e PDF (no PDF, pelos blocos do M17b).
+- [x] **M19 — Uma ideia por vez**: opcional (Ctrl+Shift+B, botão da lâmpada, paleta; Esc sai; não é lembrado).
+  Só o bloco atual em evidência, o resto esmaecido (só visual: o leitor de tela lê tudo). Enquanto ligado, o
+  livro rola em vez de paginar: ↑/↓ passam de bloco e o texto rola até ele ficar no meio da tela; clicar num
+  parágrafo o escolhe. Respeita o movimento reduzido. No PDF, os blocos seguem a ordem de leitura (recorte XY) e
+  só o texto principal entra (figuras, legendas, margem, cabeçalho e rodapé ficam esmaecidos).
 - [ ] **M20 — Sessões e metas**: sessões de leitura no core (migração 8: início, fim, de onde a onde). Meta da
   sessão ("20 min" ou "15 páginas") com barra discreta e, ao fim, uma pausa suave e um resumo ("você parou em…"),
   sem sequência de dias nem ranking. Modo foco com saída planejada ("sair em 1 página / 5 min") e opção de

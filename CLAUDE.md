@@ -395,4 +395,26 @@ docs/decisions/  # ADRs
   32/64/128/256/512 gerados com `cargo tauri icon -p`. O repositório no GitHub virou `nunes90/folio` (`gh repo rename`).
 - **v0.7.0** (out/2026): tag assinada `v0.7.0` (M17a, M17b, M6a, M18 e o nome Folio) e Release como pre-release;
   o AppImage é anexado pela CI ao publicar a Release (primeira vez do M6a).
-- Próximo passo: M19 (uma ideia por vez). Séries continua adiado.
+- **M19** (branch `feat/m19-uma-ideia`): "uma ideia por vez", opcional e igual nos dois formatos.
+  `MolduraLeitor`: `umaIdeia` bindable, `alternarUmaIdeia()`, botão (ícone `ideia`, `aria-pressed`), Ctrl+Shift+B
+  (Ctrl+Shift+I é o inspetor do WebKit; Ctrl+Shift+U, a entrada Unicode do IBus), anúncio; o Esc desliga por
+  último (depois do modo foco e dos painéis; `escOcupado` com a barra de destaque aberta). Não é lembrado. Ligado,
+  o livro passa a **rolagem contínua** (sem mudar a preferência; ao desligar, volta) e o bloco atual fica no meio
+  da tela: ↑/↓ passam de bloco (nas pontas, o capítulo ou a página vizinha), a rolagem anima com a mola
+  (`duracao("longa")`), clicar num bloco o escolhe, rolar com o mouse troca de bloco quando o atual sai da tela,
+  Ctrl+D começa o modo frase no bloco. Paginado, a página virava a cada bloco e o PDF não tinha para onde rolar.
+  `lib/umaIdeia.ts`: `blocosDoDocumento` (de `blocosDe`, com `aparar`), `emVolta`/`esmaecer` (EPUB: os irmãos de
+  cada elemento no caminho do bloco até o body ganham `data-folio-fora`, opacidade 0,35 com transição; a
+  opacidade de um ancestral alcançaria o bloco), `cruza`, `blocoNaTela`, `vizinho`, `veuNaPagina`, `uniao`,
+  `rolarSuave`. EPUB: `flow="scrolled"` e `Paginator.centerAnchor` (alteração local no foliate-js, PATCHES.md).
+  PDF: um véu da cor do papel sobre a página com um furo no bloco atual (`box-shadow` do furo; o furo vai ao
+  bloco por translate + scale, só transform; em creme/sépia o véu é branco e a camada multiply o tinge); as
+  outras páginas visíveis ficam esmaecidas por inteiro. Véus separados por bloco se sobrepunham nas folgas.
+  **Ordem de leitura no PDF** (`lib/frasesPdf.ts`): o pdf.js entrega o texto na ordem do arquivo (cabeçalho,
+  figuras e equações em qualquer lugar). `ordemDeLeitura` = recorte XY (colunas quando os dois lados têm 3+
+  linhas ou numa linha só; senão, o maior vão entre faixas; o recuo de código não vira coluna);
+  `blocosEmOrdem` (blocos contínuos no DOM; legenda abre bloco); `ideiasEmOrdem` (curtos próximos juntos:
+  rótulos de figura, equação com o número; legenda com a continuação); `soOPrincipal` (sai o que está fora da
+  coluna principal, legendas e os rótulos logo antes delas, o curto acima ou abaixo de todo o texto). O modo
+  frase usa a mesma ordem, mas passa por tudo. Testado com páginas reais pelo pdf.js no Node (`node` roda `.ts`).
+- Próximo passo: M20 (sessões e metas). Séries continua adiado.

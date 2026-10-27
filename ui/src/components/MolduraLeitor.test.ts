@@ -32,6 +32,7 @@ describe("MolduraLeitor", () => {
       "Índice",
       "Dom Casmurro",
       "Buscar",
+      "Uma ideia por vez",
       "Modo foco",
       "Aparência",
       "Voltar à biblioteca",
@@ -285,6 +286,58 @@ describe("MolduraLeitor", () => {
       const { component } = renderizar();
       await component.alternarFoco();
       expect(moldura().classList.contains("foco")).toBe(true);
+    });
+  });
+
+  describe("uma ideia por vez", () => {
+    const moldura = () => document.querySelector<HTMLElement>(".moldura")!;
+    const botao = () => screen.getByRole("button", { name: "Uma ideia por vez" });
+
+    it("o botão liga e desliga (aria-pressed) e anuncia", async () => {
+      renderizar();
+      expect(botao().getAttribute("aria-pressed")).toBe("false");
+      await fireEvent.click(botao());
+      expect(botao().getAttribute("aria-pressed")).toBe("true");
+      expect(screen.getByText(/Uma ideia por vez ativada/)).toBeTruthy();
+      await fireEvent.click(botao());
+      expect(botao().getAttribute("aria-pressed")).toBe("false");
+      expect(screen.getByText("Uma ideia por vez desativada.")).toBeTruthy();
+    });
+
+    it("Ctrl+Shift+B liga e desliga; Esc desliga", async () => {
+      renderizar({ indiceAberto: false });
+      await fireEvent.keyDown(window, { key: "B", ctrlKey: true, shiftKey: true });
+      expect(botao().getAttribute("aria-pressed")).toBe("true");
+      await fireEvent.keyDown(window, { key: "B", ctrlKey: true, shiftKey: true });
+      expect(botao().getAttribute("aria-pressed")).toBe("false");
+      await fireEvent.keyDown(window, { key: "b", ctrlKey: true, shiftKey: true });
+      await fireEvent.keyDown(window, { key: "Escape" });
+      expect(botao().getAttribute("aria-pressed")).toBe("false");
+    });
+
+    it("o Esc fecha antes o painel aberto e o modo foco", async () => {
+      renderizar({ umaIdeia: true, indiceAberto: false, aparenciaAberta: true });
+      await fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByRole("complementary", { name: "Aparência" })).toBeNull();
+      expect(botao().getAttribute("aria-pressed")).toBe("true");
+      await fireEvent.click(screen.getByRole("button", { name: "Modo foco" }));
+      await fireEvent.keyDown(window, { key: "Escape" });
+      expect(moldura().classList.contains("foco")).toBe(false);
+      expect(botao().getAttribute("aria-pressed")).toBe("true");
+      await fireEvent.keyDown(window, { key: "Escape" });
+      expect(botao().getAttribute("aria-pressed")).toBe("false");
+    });
+
+    it("com o índice aberto ao lado (janela larga) e o foco no livro, o Esc desliga", async () => {
+      renderizar({ umaIdeia: true });
+      await fireEvent.keyDown(window, { key: "Escape" });
+      expect(botao().getAttribute("aria-pressed")).toBe("false");
+    });
+
+    it("com o Esc ocupado no leitor (ex.: barra de destaque), não desliga", async () => {
+      renderizar({ umaIdeia: true, indiceAberto: false, escOcupado: true });
+      await fireEvent.keyDown(window, { key: "Escape" });
+      expect(botao().getAttribute("aria-pressed")).toBe("true");
     });
   });
 

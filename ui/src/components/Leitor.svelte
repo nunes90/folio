@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import Indice from "./Indice.svelte";
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
   import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
@@ -33,6 +33,16 @@
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
   import { frasesDoDocumento, indiceDaFraseEm, unir } from "../lib/frases";
+  import {
+    blocoNaTela,
+    blocosDoDocumento,
+    cruza,
+    esmaecer,
+    vizinho,
+    type Bloco,
+    type Sentido,
+  } from "../lib/umaIdeia";
+  import { CURVA_CSS, curva, duracao } from "../lib/animacao";
   import {
     aplicarMarcaTexto,
     fracaoNoDocumento,
@@ -92,6 +102,7 @@
   let erro = $state<string | null>(null);
   let pronto = $state(false);
   let modoFoco = $state(false);
+  let umaIdeia = $state(false);
 
   // Destaques (M16): a lógica comum aos dois formatos está no ControleDestaques; aqui, só o
   // que é do EPUB (a seleção no iframe, o CFI, o desenho pelo overlayer do foliate-js).
@@ -133,6 +144,102 @@
     null;
   /** Ctrl+D pausou a voz para destacar a frase lida: retomar quando a barra fechar. */
   let retomarVozAoFechar = false;
+
+  // Uma ideia por vez (M19): o bloco atual do capítulo; o resto, esmaecido. Enquanto ligada, o
+  // livro fica em rolagem contínua e o bloco atual, no meio da tela; ao desligar, volta a ser
+  // paginado na página do último bloco.
+  let ideia: { doc: Document; blocos: Bloco[]; atual: number } | null = null;
+  /** Chegando a outro capítulo por ↓ ou ↑: começa no primeiro bloco dele, ou no último. */
+  let chegandoDe: Sentido | null = null;
+
+  $effect(() => {
+    const ligada = umaIdeia;
+    if (!pronto) return;
+    untrack(() => void (ligada ? ligarIdeia() : desligarIdeia()));
+  });
+
+  async function ligarIdeia() {
+    view?.renderer.setAttribute("flow", "scrolled");
+    // O foliate refaz o layout e volta ao ponto em que estava: o bloco dali vem ao centro.
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    acompanharIdeia(true);
+  }
+
+  function desligarIdeia() {
+    if (ideia) esmaecer(ideia.doc, null, transicaoDaIdeia());
+    ideia = null;
+    chegandoDe = null;
+    view?.renderer.setAttribute("flow", "paginated");
+  }
+
+  /**
+   * Põe em evidência o bloco na tela: o atual, se ainda estiver nela (a rolagem com o mouse
+   * troca de bloco). `centralizar`: rola até ele ficar no meio da tela.
+   */
+  function acompanharIdeia(centralizar = false) {
+    const visivel = view?.lastLocation?.range;
+    if (!umaIdeia || !visivel) return;
+    const doc = visivel.startContainer.ownerDocument;
+    if (!doc) return;
+    if (ideia?.doc !== doc) {
+      if (ideia) esmaecer(ideia.doc, null, "0ms");
+      const blocos = blocosDoDocumento(doc);
+      const atual = chegandoDe === "tras" ? blocos.length - 1 : chegandoDe ? 0 : -1;
+      ideia = { doc, blocos, atual };
+      centralizar ||= chegandoDe !== null;
+      chegandoDe = null;
+    }
+    const atual = ideia.blocos[ideia.atual];
+    if (!atual || !cruza(atual.trecho, visivel))
+      ideia.atual = blocoNaTela(
+        ideia.blocos.map((b) => b.trecho),
+        visivel,
+      );
+    mostrarIdeia(centralizar);
+  }
+
+  /** Clique no texto com a uma ideia ligada: o bloco clicado vem à frente. */
+  function escolherIdeiaNoClique(doc: Document) {
+    const sel = doc.getSelection();
+    if (!ideia || ideia.doc !== doc || !sel?.rangeCount) return;
+    const ponto = sel.getRangeAt(0);
+    const i = ideia.blocos.findIndex((b) =>
+      b.trecho.isPointInRange(ponto.startContainer, ponto.startOffset),
+    );
+    if (i < 0 || i === ideia.atual) return;
+    ideia.atual = i;
+    mostrarIdeia(true);
+  }
+
+  const transicaoDaIdeia = () => `${duracao("media")}ms ${CURVA_CSS}`;
+
+  function mostrarIdeia(centralizar = false) {
+    if (!ideia) return;
+    const bloco = ideia.blocos[ideia.atual] ?? null;
+    esmaecer(ideia.doc, bloco, transicaoDaIdeia());
+    if (centralizar && bloco) void view?.renderer.centerAnchor(bloco.trecho, duracao("longa"), curva);
+  }
+
+  /** ↓ (frente) e ↑ (trás): o bloco vizinho, no meio da tela; nas pontas, o capítulo vizinho. */
+  async function andarIdeia(sentido: Sentido) {
+    if (!ideia || !view) return;
+    const i = vizinho(ideia.blocos, ideia.atual, sentido);
+    if (i !== null) {
+      ideia.atual = i;
+      mostrarIdeia(true);
+      return;
+    }
+    const antes = view.renderer.getContents()[0]?.index;
+    const lado = sentido === "frente" ? ladoDaProxima() : ladoDaAnterior();
+    chegandoDe = sentido;
+    const r = view.renderer;
+    await moldura.virarPagina(lado, () => (sentido === "frente" ? r.nextSection() : r.prevSection()));
+    if (view.renderer.getContents()[0]?.index === antes) {
+      chegandoDe = null;
+      anuncio = sentido === "frente" ? "Fim do livro." : "Início do livro.";
+    }
+  }
 
   // O marca-texto se mistura com a página: multiply no papel claro, screen no escuro.
   $effect(() => {
@@ -309,6 +416,7 @@
       progresso = fraction;
       hrefAtual = tocItem?.href;
       if (cfi) onProgresso?.(cfi, fraction);
+      acompanharIdeia();
       const secao = tocItem?.label.trim();
       // O primeiro posicionamento não é anunciado: o foco no título já informa o livro.
       if (secao && secao !== secaoAnunciada) {
@@ -321,7 +429,11 @@
     v.addEventListener("load", (e) => {
       const { doc, index } = (e as CustomEvent<{ doc: Document; index: number }>).detail;
       // Seleção com o mouse: a barra aparece ao soltar (sem tirar o foco do texto).
-      doc.addEventListener("pointerup", () => setTimeout(() => verSelecao(doc, index, false)));
+      doc.addEventListener("pointerup", () =>
+        setTimeout(() => {
+          if (!verSelecao(doc, index, false)) escolherIdeiaNoClique(doc);
+        }),
+      );
       doc.addEventListener("pointerdown", () => destaques.esconder());
       doc.addEventListener("keydown", (original) => {
         const copia = new KeyboardEvent("keydown", {
@@ -421,7 +533,9 @@
 
   async function iniciarModoFrase() {
     const capitulo = capituloVisivel();
-    const inicio = view?.lastLocation?.range;
+    // Com a uma ideia por vez, a partir do bloco em evidência; senão, do início da página.
+    const bloco = ideia?.doc === capitulo?.doc ? ideia?.blocos[ideia.atual]?.trecho : undefined;
+    const inicio = bloco ?? view?.lastLocation?.range;
     if (!capitulo || !inicio) return;
     const frases =
       frasesPorCapitulo.get(capitulo.doc) ?? frasesDoDocumento(capitulo.doc, idiomaDoLivro);
@@ -541,6 +655,14 @@
         executar: () => moldura.alternarFoco(),
       },
       {
+        id: "uma-ideia",
+        titulo: umaIdeia ? "Desligar uma ideia por vez" : "Ligar uma ideia por vez",
+        grupo: "Leitura",
+        teclas: [["Ctrl", "Shift", "B"]],
+        palavras: "bloco parágrafo esmaecer concentrar",
+        executar: () => moldura.alternarUmaIdeia(),
+      },
+      {
         id: "mostrar-indice",
         titulo: "Mostrar o índice",
         grupo: "Leitura",
@@ -555,6 +677,25 @@
         executar: () => void moldura.mostrarPainel("aparencia"),
       },
     ];
+    if (umaIdeia)
+      lista.push(
+        {
+          id: "ideia-proxima",
+          titulo: "Próximo bloco",
+          grupo: "Leitura",
+          teclas: [["↓"]],
+          palavras: "parágrafo seguinte",
+          executar: () => void andarIdeia("frente"),
+        },
+        {
+          id: "ideia-anterior",
+          titulo: "Bloco anterior",
+          grupo: "Leitura",
+          teclas: [["↑"]],
+          palavras: "parágrafo",
+          executar: () => void andarIdeia("tras"),
+        },
+      );
     if (voz === "parado")
       lista.push({
         id: "voz-ler",
@@ -603,6 +744,12 @@
       return;
     }
     if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (umaIdeia && !e.shiftKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      destaques.esconder();
+      void andarIdeia(e.key === "ArrowDown" ? "frente" : "tras");
+      return;
+    }
     // Setas seguem a direção visual (livros RTL invertem); PageUp/PageDown seguem a ordem de leitura.
     const acoes: Record<string, () => Promise<void>> = {
       ArrowLeft: () => moldura.virarPagina("esquerda", () => view!.goLeft()),
@@ -620,7 +767,16 @@
   }
 </script>
 
-<MolduraLeitor bind:this={moldura} bind:modoFoco {titulo} {anuncio} {progresso} {onFechar}>
+<MolduraLeitor
+  bind:this={moldura}
+  bind:modoFoco
+  bind:umaIdeia
+  escOcupado={!!destaques.barra}
+  {titulo}
+  {anuncio}
+  {progresso}
+  {onFechar}
+>
   {#snippet indice()}
     <AbasIndice bind:this={abas} bind:aba={abaIndice} quantidade={destaques.lista.length}>
       {#snippet conteudoIndice()}

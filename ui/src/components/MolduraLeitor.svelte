@@ -18,6 +18,8 @@
     indiceAberto = $bindable(true),
     aparenciaAberta = $bindable(false),
     modoFoco = $bindable(false),
+    umaIdeia = $bindable(false),
+    escOcupado = false,
     onFechar,
     acoes,
     indice,
@@ -34,6 +36,10 @@
     aparenciaAberta?: boolean;
     /** Modo foco: só o livro na tela; as barras aparecem por cima quando chamadas. */
     modoFoco?: boolean;
+    /** Uma ideia por vez (M19): só o bloco atual em evidência. O leitor faz o resto. */
+    umaIdeia?: boolean;
+    /** O Esc é de outra coisa no leitor (ex.: a barra de destaque aberta): não sai da uma ideia. */
+    escOcupado?: boolean;
     onFechar: () => void;
     /** Ações próprias do formato no cabeçalho (ex.: busca do PDF). */
     acoes?: Snippet;
@@ -150,6 +156,14 @@
     anuncioFoco = "Modo foco desativado.";
   }
 
+  /** Liga ou desliga a uma ideia por vez (botão, Ctrl+Shift+B e paleta de comandos). */
+  export function alternarUmaIdeia() {
+    umaIdeia = !umaIdeia;
+    anuncioFoco = umaIdeia
+      ? "Uma ideia por vez ativada: seta para baixo e para cima passam de bloco. Esc sai."
+      : "Uma ideia por vez desativada.";
+  }
+
   function aoEntrarNasBarras() {
     clearTimeout(esconder);
     if (modoFoco) ponteiroNasBarras = true;
@@ -230,6 +244,11 @@
       alternarFoco();
       return;
     }
+    if (e.ctrlKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === "b") {
+      e.preventDefault();
+      alternarUmaIdeia();
+      return;
+    }
     if (e.key !== "Escape") return;
     // No modo foco não há painel aberto: o Esc sai dele.
     if (modoFoco) {
@@ -255,6 +274,10 @@
       aparenciaAberta = false;
       // O foco estava no painel, que some: devolve ao botão que o abriu.
       if (estavaDentro) botaoAparencia.focus();
+    } else if (umaIdeia && !escOcupado) {
+      // Por último: o Esc fecha antes o que estiver aberto.
+      e.preventDefault();
+      alternarUmaIdeia();
     }
   }
 </script>
@@ -289,6 +312,14 @@
     <h1 tabindex="-1" bind:this={tituloEl}>{titulo}</h1>
     <div class="lado fim">
       {@render acoes?.()}
+      <button
+        type="button"
+        aria-pressed={umaIdeia}
+        aria-keyshortcuts="Control+Shift+B"
+        onclick={alternarUmaIdeia}
+      >
+        <Icone nome="ideia" /><span class="rotulo">Uma ideia por vez</span>
+      </button>
       <button
         type="button"
         aria-pressed={modoFoco}
