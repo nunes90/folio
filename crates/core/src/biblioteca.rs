@@ -129,6 +129,13 @@ const MIGRACOES: &[&str] = &[
         PRIMARY KEY (livro_id, trecho)
     );
 ",
+    "
+    -- Quando o leitor chegou ao ponto atual da sessão (M21): o avanço só conta depois de 5 s
+    -- no ponto anterior. NULL = desde o início da sessão.
+    ALTER TABLE sessoes ADD COLUMN movido_em INTEGER;
+    -- O avanço gravado antes desta regra contava a navegação pelo sumário como leitura.
+    UPDATE sessoes SET avanco = 0;
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.

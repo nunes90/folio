@@ -454,7 +454,10 @@ docs/decisions/  # ADRs
 - **M20 concluído.**
 - **M21a** (branch `feat/m21a-ritmo`): ritmo e estimativas. Migração 9: `sessoes.avanco` (fração lida em
   sequência: só passos para a frente de até `SALTO_MAXIMO` = 5% do livro por aviso; voltar e saltar pelo índice,
-  pela busca ou por um destaque não contam). `ritmo(sessoes)` (puro) = avanço ÷ tempo ativo das sessões de 1 min
+  pela busca ou por um destaque não contam) e só depois de `PERMANENCIA_MINIMA` = 5 s no ponto anterior
+  (folhear e clicar no sumário de capítulo em capítulo não é ler; medido desde a última mudança de lugar,
+  `movido_em`, migração 11, e não desde o último aviso: a tecla de virar a página avisa atividade logo antes).
+  A migração 11 zerou o avanço gravado pela regra anterior. `ritmo(sessoes)` (puro) = avanço ÷ tempo ativo das sessões de 1 min
   ou mais que avançaram; `None` com menos de `RITMO_MINIMO` = 5 min (sem dado, sem estimativa).
   `Biblioteca::ritmo_de_leitura` e o comando. As sessões gravadas antes da migração ficam com avanço 0 (não
   entram). `lib/estimativa.ts`: `estimar(fracao, ritmo, fimDoCapitulo)`, `duracaoAproximada` ("~12 min",
