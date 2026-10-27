@@ -1,11 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MetaDaSessao,
   PAUSA_MAXIMA_MS,
   comandosDaMeta,
+  comandosDoFoco,
   duracaoPorExtenso,
   metaPorTermo,
   nomeDaMeta,
+  nomeDoFocoPlanejado,
   textoDoResumo,
   type Ponto,
 } from "./meta.svelte";
@@ -169,5 +171,25 @@ describe("paleta", () => {
     expect(metaPorTermo("0 min", m, "pdf")).toEqual([]);
     metaPorTermo("12 pág", m, "pdf")[0]!.executar();
     expect(m.meta).toEqual({ tipo: "paginas", paginas: 12 });
+  });
+});
+
+describe("modo foco planejado", () => {
+  it("nomes e comandos do formato; com saída marcada, a opção de ficar", () => {
+    expect(nomeDoFocoPlanejado({ tipo: "minutos", minutos: 10 })).toBe("por 10 min");
+    expect(nomeDoFocoPlanejado({ tipo: "capitulo" })).toBe("até o fim do capítulo");
+    const saida = new MetaDaSessao(relogio);
+    const focarPor = vi.fn();
+    const epub = comandosDoFoco(saida, "epub", focarPor).map((c) => c.titulo);
+    expect(epub).toContain("Modo foco até o fim do capítulo");
+    expect(epub).not.toContain("Modo foco por 5 páginas");
+    const pdf = comandosDoFoco(saida, "pdf", focarPor);
+    expect(pdf.map((c) => c.titulo)).toContain("Modo foco por 5 páginas");
+    pdf.find((c) => c.titulo === "Modo foco por 10 min")!.executar();
+    expect(focarPor).toHaveBeenCalledWith({ tipo: "minutos", minutos: 10 });
+    saida.definir({ tipo: "minutos", minutos: 10 });
+    expect(comandosDoFoco(saida, "pdf", focarPor)[0]!.titulo).toBe(
+      "Ficar no modo foco sem hora para sair",
+    );
   });
 });

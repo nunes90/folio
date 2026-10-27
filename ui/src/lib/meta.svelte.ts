@@ -220,3 +220,45 @@ export function metaPorTermo(termo: string, meta: MetaDaSessao, formato: "epub" 
     },
   ];
 }
+
+/** "por 10 min", "por 5 páginas", "até o fim do capítulo": a saída planejada do modo foco. */
+export function nomeDoFocoPlanejado(meta: Meta): string {
+  return meta.tipo === "capitulo" ? nomeDaMeta(meta) : `por ${nomeDaMeta(meta)}`;
+}
+
+const MINUTOS_FOCO = [5, 10, 15, 30];
+const PAGINAS_FOCO = [1, 5, 10];
+
+/**
+ * Os comandos do modo foco com saída planejada (M20c): entram no foco (se preciso) e saem
+ * sozinhos ao cumprir. `saida` conta como uma meta; `focarPor` é o da moldura.
+ */
+export function comandosDoFoco(
+  saida: MetaDaSessao,
+  formato: "epub" | "pdf",
+  focarPor: (meta: Meta | null) => void,
+): Comando[] {
+  const opcoes: Meta[] = [
+    ...MINUTOS_FOCO.map((minutos) => ({ tipo: "minutos" as const, minutos })),
+    ...(formato === "epub"
+      ? [{ tipo: "capitulo" as const }]
+      : PAGINAS_FOCO.map((paginas) => ({ tipo: "paginas" as const, paginas }))),
+  ];
+  const lista: Comando[] = opcoes.map((m) => ({
+    id: `foco-${nomeDaMeta(m)}`,
+    titulo: `Modo foco ${nomeDoFocoPlanejado(m)}`,
+    grupo: "Leitura",
+    palavras: "sair depois planejado tempo",
+    executar: () => focarPor(m),
+  }));
+  if (saida.meta)
+    lista.unshift({
+      id: "foco-sem-saida",
+      titulo: "Ficar no modo foco sem hora para sair",
+      grupo: "Leitura",
+      dica: saida.texto,
+      palavras: "cancelar saída planejada",
+      executar: () => focarPor(null),
+    });
+  return lista;
+}

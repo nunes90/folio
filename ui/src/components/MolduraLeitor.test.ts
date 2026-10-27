@@ -4,6 +4,7 @@ import { createRawSnippet, tick } from "svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sistema } from "../lib/ambiente.svelte";
 import { MetaDaSessao } from "../lib/meta.svelte";
+import { atualizarPreferencias } from "../lib/preferencias.svelte";
 import MolduraLeitor from "./MolduraLeitor.svelte";
 
 const trecho = (html: string) => createRawSnippet(() => ({ render: () => html }));
@@ -367,6 +368,69 @@ describe("MolduraLeitor", () => {
       await fireEvent.click(within(pausa).getByRole("button", { name: "Voltar à biblioteca" }));
       expect(onFechar).toHaveBeenCalledOnce();
       expect(meta.meta).toBeNull();
+    });
+  });
+
+  describe("modo foco planejado e barras só pelo teclado", () => {
+    const moldura = () => document.querySelector<HTMLElement>(".moldura")!;
+
+    it("focarPor entra no foco e sai sozinho ao cumprir, com um anúncio", async () => {
+      const saidaDoFoco = new MetaDaSessao();
+      saidaDoFoco.mover({ rotulo: "página 1", pagina: 1 });
+      const { component } = renderizar({ saidaDoFoco });
+      component.focarPor({ tipo: "paginas", paginas: 2 });
+      await tick();
+      expect(moldura().classList.contains("foco")).toBe(true);
+      expect(screen.getByText("Modo foco por 2 páginas. Esc sai antes.")).toBeTruthy();
+      saidaDoFoco.mover({ rotulo: "página 3", pagina: 3 });
+      await tick();
+      expect(moldura().classList.contains("foco")).toBe(false);
+      expect(screen.getByText(/Modo foco encerrado como planejado/)).toBeTruthy();
+      expect(saidaDoFoco.meta).toBeNull();
+    });
+
+    it("sair do foco antes desfaz a saída planejada", async () => {
+      const saidaDoFoco = new MetaDaSessao();
+      const { component } = renderizar({ saidaDoFoco });
+      component.focarPor({ tipo: "minutos", minutos: 10 });
+      await tick();
+      await fireEvent.keyDown(window, { key: "Escape" });
+      expect(saidaDoFoco.meta).toBeNull();
+    });
+
+    it("com barras só pelo teclado, o ponteiro na beira do cabeçalho não revela", async () => {
+      atualizarPreferencias({ barrasSoPeloTeclado: true });
+      const { component } = renderizar();
+      component.alternarFoco();
+      await tick();
+      await fireEvent.pointerEnter(screen.getAllByRole("banner")[0]!);
+      expect(moldura().classList.contains("revelada")).toBe(false);
+      atualizarPreferencias({ barrasSoPeloTeclado: false });
+    });
+
+    it("o foco devolvido ao voltar para a janela não revela as barras; um Tab depois, sim", async () => {
+      const { component } = renderizar();
+      component.alternarFoco();
+      await tick();
+      const voltar = screen.getByRole("button", { name: "Voltar à biblioteca" });
+      window.dispatchEvent(new Event("blur"));
+      await fireEvent.focusIn(voltar);
+      window.dispatchEvent(new Event("focus"));
+      expect(moldura().classList.contains("revelada")).toBe(false);
+      await new Promise((r) => setTimeout(r));
+      await fireEvent.focusIn(voltar);
+      expect(moldura().classList.contains("revelada")).toBe(true);
+    });
+
+    it("com barras só pelo teclado, não há faixas para o ponteiro", async () => {
+      atualizarPreferencias({ barrasSoPeloTeclado: true });
+      const { component } = renderizar();
+      component.alternarFoco();
+      await tick();
+      expect(document.querySelector(".sensor")).toBeNull();
+      atualizarPreferencias({ barrasSoPeloTeclado: false });
+      await tick();
+      expect(document.querySelectorAll(".sensor")).toHaveLength(2);
     });
   });
 

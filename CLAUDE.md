@@ -440,4 +440,16 @@ docs/decisions/  # ADRs
   (diálogo "Meta cumprida": "Você leu 20 minutos: de página 128 até página 141."; Continuar lendo em foco,
   Esc = continuar, "Mais 20 min", "Voltar à biblioteca"). Os leitores só movem a meta (EPUB: capítulo pela
   seção e `getSectionFractions`; PDF: a página).
-- Próximo passo: M20c (saída planejada do modo foco). Séries continua adiado.
+- **M20c** (branch `feat/m20c-foco-planejado`): modo foco com saída planejada e barras só pelo teclado.
+  `MolduraLeitor.focarPor(meta | null)` entra no foco (se preciso) com uma saída contada por outra
+  `MetaDaSessao` (`saidaDoFoco`, que os leitores movem junto com a meta: `moverContagens`); ao cumprir, o foco
+  acaba sozinho, sem diálogo, só com o anúncio ("Modo foco encerrado como planejado, depois de 10 minutos de
+  leitura."); sair antes desfaz a saída. Paleta (`comandosDoFoco`): "Modo foco por 5/10/15/30 min", "por 1/5/10
+  páginas" (PDF), "até o fim do capítulo" (EPUB) e "Ficar no modo foco sem hora para sair". No canto, ao lado
+  da porcentagem, "foco: 3 de 10 min". Preferência `barrasSoPeloTeclado` (core `barras_so_pelo_teclado`,
+  padrão desligado; seção "Modo foco" do painel Página): sem as faixas `.sensor` e sem o `pointerenter` do
+  cabeçalho e do rodapé (o mouse que entra na janela pela borda acertava a beira deles, escondidos), as barras
+  só aparecem com o foco nelas (Tab). Nos dois modos, o `focusin` que o navegador repete ao devolver o foco
+  quando a janela volta a ser ativa (no Hyprland, o mouse entrar nela basta) não revela as barras.
+- **M20 concluído.**
+- Próximo passo: M21 (progresso honesto, com o ritmo das sessões). Séries continua adiado.
