@@ -434,6 +434,11 @@ describe("MolduraLeitor", () => {
     });
   });
 
+  it("mostra a estimativa no rodapé, como texto, quando o leitor a dá", () => {
+    renderizar({ estimativa: "~12 min no capítulo" });
+    expect(screen.getByText("~12 min no capítulo").closest("footer")).toBeTruthy();
+  });
+
   it("não tem violações de acessibilidade (axe)", async () => {
     const { container } = renderizar({ aparenciaAberta: true });
     const { violations } = await axe.run(container);

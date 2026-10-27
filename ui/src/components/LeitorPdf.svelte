@@ -29,6 +29,8 @@
     metaPorTermo,
     type Ponto,
   } from "../lib/meta.svelte";
+  import { comandoQuantoFalta, estimar, textoDoRodape } from "../lib/estimativa";
+  import { ritmoDeLeitura } from "../lib/biblioteca";
   import { estiloDoMarcaTexto, hexDaCor, posicaoDaBarra, resumo } from "../lib/destaques";
   import {
     acertou,
@@ -152,6 +154,26 @@
   let destinos = new Map<string, string | unknown[]>();
   let paginasDoIndice = $state(new Map<string, number>());
   const hrefAtual = $derived(itemAtual(paginasDoIndice, pagina));
+
+  // Progresso honesto (M21): o ritmo neste livro (das sessões), buscado ao abrir e de 5 em 5
+  // minutos (a sessão atual entra nele à medida que é gravada).
+  let ritmo = $state<number | null>(null);
+  /** Onde a seção atual acaba (fração): a página antes da próxima seção do sumário. */
+  const fimDoCapitulo = $derived.by(() => {
+    const seguintes = [...paginasDoIndice.values()].filter((p) => p > pagina);
+    return seguintes.length && total ? (Math.min(...seguintes) - 1) / total : null;
+  });
+  const estimativa = $derived(estimar(total ? pagina / total : 0, ritmo, fimDoCapitulo));
+  onMount(() => {
+    const buscar = () =>
+      ritmoDeLeitura(livroId)
+        .then((r) => (ritmo = r))
+        .catch((e) => log.warn(`ritmo de leitura: ${e}`));
+    void buscar();
+    const intervalo = setInterval(buscar, 5 * 60_000);
+    return () => clearInterval(intervalo);
+  });
+
   // Cor da página escolhida no painel Aparência.
   // A página escolhida (a automática segue a interface), igual à do EPUB.
   const paginaEfetiva = $derived(resolverPagina(preferencias.pagina, temaEfetivo()));
@@ -538,6 +560,7 @@
         executar: () => atualizarPreferencias({ modoPdf }),
       })),
       ...destaques.comandos(destacarSelecao),
+      comandoQuantoFalta(estimativa, "pdf", (texto) => (anuncio = texto)),
       ...comandosDaMeta(meta, "pdf"),
       ...comandosDoFoco(saidaDoFoco, "pdf", (m) => moldura.focarPor(m)),
       ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
@@ -1001,6 +1024,7 @@
   escOcupado={!!destaques.barra}
   {meta}
   {saidaDoFoco}
+  estimativa={estimativa ? textoDoRodape(estimativa, "pdf") : undefined}
   {titulo}
   {anuncio}
   progresso={total ? pagina / total : 0}

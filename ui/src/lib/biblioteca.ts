@@ -260,6 +260,8 @@ export interface Sessao {
   ativo: number;
   de: Progresso;
   ate: Progresso;
+  /** Fração do livro lida em sequência (sem voltas nem saltos): a base do ritmo. */
+  avanco: number;
 }
 
 export function iniciarSessao(livro: string, onde: Progresso): Promise<Sessao> {
@@ -278,6 +280,11 @@ export function encerrarSessao(id: number, onde?: Progresso): Promise<Sessao | n
 
 export function listarSessoes(livro: string): Promise<Sessao[]> {
   return invoke<Sessao[]>("listar_sessoes", { livro });
+}
+
+/** O ritmo no livro, em fração do livro por segundo de leitura; `null` sem dado bastante. */
+export function ritmoDeLeitura(livro: string): Promise<number | null> {
+  return invoke<number | null>("ritmo_de_leitura", { livro });
 }
 
 /** URL da capa pelo protocolo de assets (escopo restrito ao cache de capas). */

@@ -50,6 +50,8 @@
     metaPorTermo,
     type Ponto,
   } from "../lib/meta.svelte";
+  import { comandoQuantoFalta, estimar, textoDoRodape } from "../lib/estimativa";
+  import { ritmoDeLeitura } from "../lib/biblioteca";
   import {
     aplicarMarcaTexto,
     fracaoNoDocumento,
@@ -112,6 +114,22 @@
   let umaIdeia = $state(false);
   /** Meta da sessão (M20b): a moldura mostra; aqui, só onde a leitura está. */
   const meta = new MetaDaSessao();
+  // Progresso honesto (M21): o ritmo neste livro (das sessões), buscado ao abrir e de 5 em 5
+  // minutos (a sessão atual entra nele à medida que é gravada).
+  let ritmo = $state<number | null>(null);
+  /** Onde a seção atual acaba (fração do livro), para "~12 min no capítulo". */
+  let fimDoCapitulo = $state<number | null>(null);
+  const estimativa = $derived(estimar(progresso, ritmo, fimDoCapitulo));
+  onMount(() => {
+    const buscar = () =>
+      ritmoDeLeitura(livroId)
+        .then((r) => (ritmo = r))
+        .catch((e) => log.warn(`ritmo de leitura: ${e}`));
+    void buscar();
+    const intervalo = setInterval(buscar, 5 * 60_000);
+    return () => clearInterval(intervalo);
+  });
+
   /** Saída planejada do modo foco (M20c): conta como uma meta, e a moldura sai ao cumprir. */
   const saidaDoFoco = new MetaDaSessao();
 
@@ -168,6 +186,7 @@
     if (!view || indice === undefined) return;
     const inicios = view.getSectionFractions();
     const [de, ate] = [inicios[indice] ?? 0, inicios[indice + 1] ?? 1];
+    fimDoCapitulo = ate;
     const noCapitulo = ate > de ? Math.min(1, Math.max(0, (fracao - de) / (ate - de))) : 0;
     const noLivro = porcento.format(fracao);
     moverContagens({
@@ -750,6 +769,7 @@
           executar: () => void pararLeitura(),
         },
       );
+    lista.push(comandoQuantoFalta(estimativa, "epub", (texto) => (anuncio = texto)));
     lista.push(...destaques.comandos(destacarSelecao), ...comandosDaMeta(meta, "epub"),
       ...comandosDoFoco(saidaDoFoco, "epub", (m) => moldura.focarPor(m)),
     );
@@ -808,6 +828,7 @@
   escOcupado={!!destaques.barra}
   {meta}
   {saidaDoFoco}
+  estimativa={estimativa ? textoDoRodape(estimativa, "epub") : undefined}
   {titulo}
   {anuncio}
   {progresso}

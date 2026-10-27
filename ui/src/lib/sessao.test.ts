@@ -18,6 +18,7 @@ const sessao = (parcial: Partial<Sessao> = {}): Sessao => ({
   inicio: 0,
   fim: 0,
   ativo: 0,
+  avanco: 0,
   de: em("a"),
   ate: em("a"),
   ...parcial,
