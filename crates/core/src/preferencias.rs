@@ -139,6 +139,8 @@ pub struct PreferenciasLeitura {
     pub virada: Virada,
     pub modo_pdf: ModoPdf,
     pub pagina: Pagina,
+    /// No modo foco, as barras aparecem só pelo teclado (Tab), não com o ponteiro nas bordas.
+    pub barras_so_pelo_teclado: bool,
 }
 
 impl Default for PreferenciasLeitura {
@@ -159,6 +161,7 @@ impl Default for PreferenciasLeitura {
             virada: Virada::Esmaecer,
             modo_pdf: ModoPdf::Paginas,
             pagina: Pagina::Automatica,
+            barras_so_pelo_teclado: false,
         }
     }
 }
@@ -309,6 +312,14 @@ mod tests {
         assert_eq!(p.fonte, Fonte::Lexend);
         assert_eq!(p.tema, Tema::Sistema);
         assert_eq!(p.movimento, Movimento::Sistema);
+    }
+
+    #[test]
+    fn barras_so_pelo_teclado_no_json_com_padrao_desligado() {
+        assert!(!PreferenciasLeitura::de_json("{}").barras_so_pelo_teclado);
+        let p = PreferenciasLeitura::de_json(r#"{"barrasSoPeloTeclado": true}"#);
+        assert!(p.barras_so_pelo_teclado);
+        assert!(p.para_json().contains(r#""barrasSoPeloTeclado":true"#));
     }
 
     #[test]

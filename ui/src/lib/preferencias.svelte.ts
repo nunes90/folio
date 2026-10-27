@@ -33,6 +33,8 @@ export interface Preferencias {
   modoPdf: ModoPdf;
   /** O papel do livro, igual no EPUB e no PDF; "automatica" segue a interface. */
   pagina: Pagina;
+  /** No modo foco, as barras aparecem só pelo teclado (Tab), não com o ponteiro nas bordas. */
+  barrasSoPeloTeclado: boolean;
 }
 
 /** Mesmos padrões e limites do core; o core é quem decide no fim (normaliza ao salvar). */
@@ -52,6 +54,7 @@ export const PADRAO: Preferencias = {
   virada: "esmaecer",
   modoPdf: "paginas",
   pagina: "automatica",
+  barrasSoPeloTeclado: false,
 };
 
 export const LIMITES = {
@@ -94,10 +97,18 @@ export function atualizarPreferencias(mudancas: Partial<Preferencias>): void {
   }, ESPERA_GRAVACAO_MS);
 }
 
-/** Restaura o texto; tema, movimento, virada e modo do PDF ficam (têm os próprios painéis). */
+/** Restaura o texto; o resto (tema, movimento, página, modo foco…) fica: tem as próprias seções. */
 export function restaurarPadrao(): void {
-  const { tema, movimento, virada, modoPdf, pagina } = preferencias;
-  atualizarPreferencias({ ...PADRAO, tema, movimento, virada, modoPdf, pagina });
+  const { tema, movimento, virada, modoPdf, pagina, barrasSoPeloTeclado } = preferencias;
+  atualizarPreferencias({
+    ...PADRAO,
+    tema,
+    movimento,
+    virada,
+    modoPdf,
+    pagina,
+    barrasSoPeloTeclado,
+  });
 }
 
 /** Seletores de blocos de texto corrido (os mesmos que o leitor do foliate-js ajusta). */

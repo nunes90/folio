@@ -5,7 +5,12 @@
   import Icone from "./Icone.svelte";
   import PainelLateral from "./PainelLateral.svelte";
   import ResumoDaMeta from "./ResumoDaMeta.svelte";
-  import type { MetaDaSessao } from "../lib/meta.svelte";
+  import {
+    duracaoPorExtenso,
+    nomeDoFocoPlanejado,
+    type Meta,
+    type MetaDaSessao,
+  } from "../lib/meta.svelte";
   import { ATRIBUTO_AREA, ATRIBUTO_TELA } from "../lib/transicao";
   import { preferencias } from "../lib/preferencias.svelte";
   import { animarVirada, cancelarVirada, quadrosDaVirada, type Sentido } from "../lib/virada";
@@ -23,6 +28,7 @@
     umaIdeia = $bindable(false),
     escOcupado = false,
     meta,
+    saidaDoFoco,
     onFechar,
     acoes,
     indice,
@@ -45,6 +51,8 @@
     escOcupado?: boolean;
     /** Meta da sessão (M20b): indicador no rodapé e a pausa ao cumprir. O leitor a move. */
     meta?: MetaDaSessao;
+    /** Saída planejada do modo foco (M20c): conta como uma meta; ao cumprir, o foco acaba. */
+    saidaDoFoco?: MetaDaSessao;
     onFechar: () => void;
     /** Ações próprias do formato no cabeçalho (ex.: busca do PDF). */
     acoes?: Snippet;
@@ -148,8 +156,32 @@
     }
   }
 
+  /**
+   * Modo foco com saída planejada ("por 10 min", "até o fim do capítulo"); `null` tira a saída
+   * e fica no foco. Entra no foco se preciso.
+   */
+  export function focarPor(saida: Meta | null) {
+    if (!modoFoco) alternarFoco();
+    saidaDoFoco?.definir(saida);
+    anuncioFoco = saida
+      ? `Modo foco ${nomeDoFocoPlanejado(saida)}. Esc sai antes.`
+      : "Modo foco sem hora para sair.";
+  }
+
+  // A saída planejada se cumpriu: o foco acaba sozinho, sem diálogo (só o anúncio).
+  $effect(() => {
+    const cumprida = saidaDoFoco?.resumo;
+    if (!cumprida) return;
+    untrack(() => {
+      if (modoFoco) sairDoFoco();
+      anuncioFoco = `Modo foco encerrado como planejado, depois de ${duracaoPorExtenso(cumprida.segundos)} de leitura.`;
+      saidaDoFoco?.definir(null);
+    });
+  });
+
   /** Sai do modo foco; `restaurar` reabre os painéis que estavam abertos ao entrar. */
   function sairDoFoco(restaurar = true) {
+    saidaDoFoco?.definir(null);
     modoFoco = false;
     clearTimeout(esconder);
     ponteiroNasBarras = false;
@@ -171,7 +203,21 @@
 
   function aoEntrarNasBarras() {
     clearTimeout(esconder);
-    if (modoFoco) ponteiroNasBarras = true;
+    // Com "barras só pelo teclado", o ponteiro não revela nada: nem as faixas (que nem existem)
+    // nem a beira do cabeçalho e do rodapé escondidos, que o mouse acerta ao entrar na janela
+    // pela borda.
+    if (modoFoco && !preferencias.barrasSoPeloTeclado) ponteiroNasBarras = true;
+  }
+
+  // Ao voltar para a janela (no Hyprland, basta o mouse entrar nela), o navegador devolve o
+  // foco ao elemento que o tinha, com um novo `focusin`. Se era um botão das barras, elas
+  // reapareciam sem ninguém ter pedido. Esse foco devolvido não revela; um Tab, sim.
+  let voltandoAJanela = false;
+  function aoSairDaJanela() {
+    voltandoAJanela = true;
+  }
+  function aoVoltarAJanela() {
+    setTimeout(() => (voltandoAJanela = false));
   }
 
   function aoSairDasBarras() {
@@ -180,6 +226,7 @@
   }
 
   function aoFocarBarra() {
+    if (voltandoAJanela && modoFoco) return;
     focoNasBarras = true;
   }
 
@@ -206,10 +253,13 @@
   // O relógio da meta: um tique por segundo (só conta com a janela à vista e com atividade
   // recente, ver lib/meta.svelte.ts). Teclas, cliques e a roda contam como atividade.
   onMount(() => {
-    if (!meta) return;
-    const m = meta;
-    const relogio = setInterval(() => m.tique(document.visibilityState === "visible"), 1000);
-    const agir = () => m.atividade();
+    const contagens = [meta, saidaDoFoco].filter((m) => m !== undefined);
+    if (!contagens.length) return;
+    const relogio = setInterval(() => {
+      const visivel = document.visibilityState === "visible";
+      for (const m of contagens) m.tique(visivel);
+    }, 1000);
+    const agir = () => contagens.forEach((m) => m.atividade());
     const opcoes = { capture: true, passive: true };
     for (const tipo of ["keydown", "pointerdown", "wheel"]) window.addEventListener(tipo, agir, opcoes);
     return () => {
@@ -303,7 +353,7 @@
   }
 </script>
 
-<svelte:window onkeydown={aoTeclar} />
+<svelte:window onkeydown={aoTeclar} onblur={aoSairDaJanela} onfocus={aoVoltarAJanela} />
 
 <div
   class="moldura"
@@ -388,11 +438,17 @@
   </div>
 
   {#if modoFoco}
-    <!-- Faixas nas bordas: o ponteiro nelas revela as barras (no teclado, o Tab as revela). -->
-    <div class="sensor topo" aria-hidden="true" onpointerenter={aoEntrarNasBarras}></div>
-    <div class="sensor base" aria-hidden="true" onpointerenter={aoEntrarNasBarras}></div>
-    <!-- Decorativo: a porcentagem lida continua no rodapé, como texto. -->
-    <span class="progresso-canto" aria-hidden="true">{Math.round(progresso * 100)}%</span>
+    <!-- Faixas nas bordas: o ponteiro nelas revela as barras (no teclado, o Tab as revela).
+         Com "barras só pelo teclado" nas preferências, não há faixas. -->
+    {#if !preferencias.barrasSoPeloTeclado}
+      <div class="sensor topo" aria-hidden="true" onpointerenter={aoEntrarNasBarras}></div>
+      <div class="sensor base" aria-hidden="true" onpointerenter={aoEntrarNasBarras}></div>
+    {/if}
+    <!-- Decorativo: a porcentagem lida continua no rodapé, como texto; a saída planejada foi
+         anunciada ao entrar. -->
+    <span class="progresso-canto" aria-hidden="true">
+      {Math.round(progresso * 100)}%{#if saidaDoFoco?.meta}&ensp;·&ensp;foco: {saidaDoFoco.texto}{/if}
+    </span>
   {/if}
 
   {#if cobrindo}

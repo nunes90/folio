@@ -22,7 +22,13 @@
     type Sentido,
   } from "../lib/umaIdeia";
   import { curva, duracao } from "../lib/animacao";
-  import { MetaDaSessao, comandosDaMeta, metaPorTermo } from "../lib/meta.svelte";
+  import {
+    MetaDaSessao,
+    comandosDaMeta,
+    comandosDoFoco,
+    metaPorTermo,
+    type Ponto,
+  } from "../lib/meta.svelte";
   import { estiloDoMarcaTexto, hexDaCor, posicaoDaBarra, resumo } from "../lib/destaques";
   import {
     acertou,
@@ -90,6 +96,14 @@
   let umaIdeia = $state(false);
   /** Meta da sessão (M20b): a moldura mostra; aqui, só a página em que a leitura está. */
   const meta = new MetaDaSessao();
+  /** Saída planejada do modo foco (M20c): conta como uma meta, e a moldura sai ao cumprir. */
+  const saidaDoFoco = new MetaDaSessao();
+
+  /** Onde a leitura está, para a meta e para a saída planejada do foco. */
+  function moverContagens(ponto: Ponto) {
+    meta.mover(ponto);
+    saidaDoFoco.mover(ponto);
+  }
 
   // Destaques (M16c): a lógica comum está no ControleDestaques; aqui, a seleção na camada de
   // texto do pdf.js e uma camada própria sobre cada página (o arquivo do PDF não muda).
@@ -268,7 +282,7 @@
       const n = Number(inicio?.match(/^pagina:(\d+)$/)?.[1]);
       if (n >= 1 && n <= v.pagesCount) v.currentPageNumber = n;
       pagina = v.currentPageNumber;
-      meta.mover({ rotulo: `página ${pagina}`, pagina });
+      moverContagens({ rotulo: `página ${pagina}`, pagina });
       // Registra a abertura mesmo sem troca de página (senão o livro aparece como "Não iniciado").
       onProgresso?.(`pagina:${v.currentPageNumber}`, v.currentPageNumber / v.pagesCount);
     });
@@ -277,7 +291,7 @@
       if (!modoFrase) destaques.esconder();
       pagina = pageNumber;
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
-      meta.mover({ rotulo: `página ${pageNumber}`, pagina: pageNumber });
+      moverContagens({ rotulo: `página ${pageNumber}`, pagina: pageNumber });
       // Rolando com o mouse, a uma ideia passa à página nova quando o bloco atual sai da tela.
       if (ideia && ideia.pagina !== pageNumber && !ideiaNaTela()) void irParaIdeiaDa(pageNumber);
     });
@@ -525,6 +539,7 @@
       })),
       ...destaques.comandos(destacarSelecao),
       ...comandosDaMeta(meta, "pdf"),
+      ...comandosDoFoco(saidaDoFoco, "pdf", (m) => moldura.focarPor(m)),
       ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
       ...comandosDaPagina(preferencias, atualizarPreferencias),
     ];
@@ -985,6 +1000,7 @@
   bind:umaIdeia
   escOcupado={!!destaques.barra}
   {meta}
+  {saidaDoFoco}
   {titulo}
   {anuncio}
   progresso={total ? pagina / total : 0}

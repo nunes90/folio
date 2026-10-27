@@ -5,7 +5,8 @@
   import type { EstiloVirada } from "../lib/virada";
 
   // Seção "Página" do painel Aparência, igual nos dois formatos: o papel (mesmos nomes e
-  // amostras; a implementação difere, ver lib/pagina.ts), a virada e, só no PDF, a exibição.
+  // amostras; a implementação difere, ver lib/pagina.ts), a virada, o modo foco e, só no PDF, a
+  // exibição.
   let {
     preferencias,
     onMudar,
@@ -115,6 +116,21 @@
         {v.nome}
       </label>
     {/each}
+  </fieldset>
+
+  <fieldset>
+    <legend>Modo foco</legend>
+    <label class="opcao">
+      <input
+        type="checkbox"
+        checked={preferencias.barrasSoPeloTeclado}
+        onchange={(e) => onMudar({ barrasSoPeloTeclado: e.currentTarget.checked })}
+      />
+      <span>
+        Mostrar as barras só pelo teclado
+        <span class="descricao">com Tab; o ponteiro nas bordas não as revela</span>
+      </span>
+    </label>
   </fieldset>
 
   {#if formato === "pdf"}
