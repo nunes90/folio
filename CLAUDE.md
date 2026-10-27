@@ -417,4 +417,17 @@ docs/decisions/  # ADRs
   rótulos de figura, equação com o número; legenda com a continuação); `soOPrincipal` (sai o que está fora da
   coluna principal, legendas e os rótulos logo antes delas, o curto acima ou abaixo de todo o texto). O modo
   frase usa a mesma ordem, mas passa por tudo. Testado com páginas reais pelo pdf.js no Node (`node` roda `.ts`).
-- Próximo passo: M20 (sessões e metas). Séries continua adiado.
+- **M20a** (branch `feat/m20a-sessoes-core`): sessões de leitura. Core `sessoes.rs` (outro `impl Biblioteca`):
+  migração 8 (`sessoes`: livro, início, fim = último aviso, `ativo` em segundos, de/até com localização e
+  fração; `ON DELETE CASCADE`). `iniciar_sessao`, `registrar_na_sessao` (soma o intervalo desde o último aviso
+  até `PAUSA_MAXIMA` = 5 min: um livro esquecido aberto não vira horas; relógio que volta não desconta; com
+  `onde`, muda o ponto), `encerrar_sessao` (sessão de menos de `SESSAO_MINIMA` = 30 s que não saiu do lugar é
+  apagada: só abriu e fechou), `listar_sessoes` (mais recente primeiro). Cada aviso grava: fechar a janela
+  sem avisar não perde a sessão. Comandos finos e tipos TS. Frontend: `lib/sessao.svelte.ts`
+  (`SessaoDeLeitura`: começa no primeiro progresso do leitor, `mover` a cada mudança de lugar, `atividade`
+  no máximo 1×/min com tecla, clique ou roda; chamadas numa fila, na ordem), ligada no `App` (`abrir`,
+  `aoProgredir`, `fechar`). Eventos dentro do iframe do EPUB (clique, roda) não chegam à janela; as teclas
+  sim (são reenviadas) e as mudanças de página também contam.
+- Próximo passo: M20b (meta da sessão: minutos nos dois formatos, "até o fim do capítulo" no EPUB, páginas
+  no PDF; barra discreta; pausa suave e resumo ao atingir) e M20c (saída planejada do modo foco). Séries
+  continua adiado.

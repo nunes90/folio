@@ -249,6 +249,37 @@ export function salvarProgresso(id: string, progresso: Progresso): Promise<void>
   return invoke("salvar_progresso", { id, progresso });
 }
 
+/** Uma sessão de leitura (M20; ver crates/core/src/sessoes.rs). Datas em segundos (UTC). */
+export interface Sessao {
+  id: number;
+  livroId: string;
+  inicio: number;
+  /** O último aviso. */
+  fim: number;
+  /** Segundos lendo de fato, sem as pausas longas. */
+  ativo: number;
+  de: Progresso;
+  ate: Progresso;
+}
+
+export function iniciarSessao(livro: string, onde: Progresso): Promise<Sessao> {
+  return invoke<Sessao>("iniciar_sessao", { livro, onde });
+}
+
+/** A leitura continua; com `onde`, mudou de lugar. */
+export function registrarSessao(id: number, onde?: Progresso): Promise<Sessao> {
+  return invoke<Sessao>("registrar_sessao", { id, onde: onde ?? null });
+}
+
+/** `null`: a sessão foi curta demais e não saiu do lugar (não fica). */
+export function encerrarSessao(id: number, onde?: Progresso): Promise<Sessao | null> {
+  return invoke<Sessao | null>("encerrar_sessao", { id, onde: onde ?? null });
+}
+
+export function listarSessoes(livro: string): Promise<Sessao[]> {
+  return invoke<Sessao[]>("listar_sessoes", { livro });
+}
+
 /** URL da capa pelo protocolo de assets (escopo restrito ao cache de capas). */
 export function urlDaCapa(livro: Livro): string | null {
   if (!livro.capa) return null;

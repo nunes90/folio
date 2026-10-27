@@ -49,10 +49,13 @@
   import type { Filtro } from "./lib/filtro";
   import type { TemaEscolhido } from "./lib/temas";
   import type { Movimento } from "./lib/preferencias.svelte";
+  import { SessaoDeLeitura } from "./lib/sessao.svelte";
 
 
   let livros = $state<Livro[]>([]);
   let aberto = $state<{ livro: Livro; dados: ArrayBuffer; inicio?: string } | null>(null);
+  /** A sessão de leitura do livro aberto (M20): começa no primeiro progresso do leitor. */
+  let sessao: SessaoDeLeitura | null = null;
   let importando = $state(false);
   let ajudaAberta = $state(false);
   let paletaAberta = $state(false);
@@ -292,6 +295,7 @@
       ]);
       await transicionar(livro.id, "abrir", () => {
         aberto = { livro, dados, inicio: progresso?.localizacao };
+        sessao = new SessaoDeLeitura(livro.id);
       });
     } catch (e) {
       const texto = `Não foi possível abrir ${livro.titulo}: ${e}`;
@@ -309,6 +313,12 @@
     salvarProgresso(aberto.livro.id, { localizacao, fracao }).catch((e) =>
       log.warn(`falha ao salvar progresso: ${e}`),
     );
+    sessao?.mover({ localizacao, fracao });
+  }
+
+  /** Tecla, clique ou rolagem com um livro aberto: a leitura continua (sessão). */
+  function aoAgir() {
+    sessao?.atividade();
   }
 
   let gerandoCapas = false;
@@ -533,6 +543,8 @@
 
   async function fechar() {
     const id = aberto?.livro.id;
+    void sessao?.encerrar();
+    sessao = null;
     ultimoAberto = id;
     // A lista é recarregada antes, para a capa de destino já estar na tela nova.
     await recarregar();
@@ -545,7 +557,7 @@
   }
 </script>
 
-<svelte:window onkeydown={aoTeclar} />
+<svelte:window onkeydown={aoTeclar} onkeydowncapture={aoAgir} onpointerdown={aoAgir} onwheel={aoAgir} />
 
 <Atalhos {contexto} aberto={ajudaAberta} onFechar={() => (ajudaAberta = false)} />
 <Paleta
