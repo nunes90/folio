@@ -4,6 +4,8 @@
   import { sistema } from "../lib/ambiente.svelte";
   import Icone from "./Icone.svelte";
   import PainelLateral from "./PainelLateral.svelte";
+  import ResumoDaMeta from "./ResumoDaMeta.svelte";
+  import type { MetaDaSessao } from "../lib/meta.svelte";
   import { ATRIBUTO_AREA, ATRIBUTO_TELA } from "../lib/transicao";
   import { preferencias } from "../lib/preferencias.svelte";
   import { animarVirada, cancelarVirada, quadrosDaVirada, type Sentido } from "../lib/virada";
@@ -20,6 +22,7 @@
     modoFoco = $bindable(false),
     umaIdeia = $bindable(false),
     escOcupado = false,
+    meta,
     onFechar,
     acoes,
     indice,
@@ -40,6 +43,8 @@
     umaIdeia?: boolean;
     /** O Esc é de outra coisa no leitor (ex.: a barra de destaque aberta): não sai da uma ideia. */
     escOcupado?: boolean;
+    /** Meta da sessão (M20b): indicador no rodapé e a pausa ao cumprir. O leitor a move. */
+    meta?: MetaDaSessao;
     onFechar: () => void;
     /** Ações próprias do formato no cabeçalho (ex.: busca do PDF). */
     acoes?: Snippet;
@@ -198,6 +203,22 @@
     void revelada;
     publicarRodape();
   });
+  // O relógio da meta: um tique por segundo (só conta com a janela à vista e com atividade
+  // recente, ver lib/meta.svelte.ts). Teclas, cliques e a roda contam como atividade.
+  onMount(() => {
+    if (!meta) return;
+    const m = meta;
+    const relogio = setInterval(() => m.tique(document.visibilityState === "visible"), 1000);
+    const agir = () => m.atividade();
+    const opcoes = { capture: true, passive: true };
+    for (const tipo of ["keydown", "pointerdown", "wheel"]) window.addEventListener(tipo, agir, opcoes);
+    return () => {
+      clearInterval(relogio);
+      for (const tipo of ["keydown", "pointerdown", "wheel"])
+        window.removeEventListener(tipo, agir, opcoes);
+    };
+  });
+
   onMount(() => {
     const observador =
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => publicarRodape());
@@ -406,7 +427,31 @@
     onpointerleave={aoSairDasBarras}
   >
     {@render rodape()}
+    {#if meta?.meta}
+      <div class="meta" role="group" aria-label="Meta da sessão">
+        <span class="texto-meta">Meta: {meta.texto}</span>
+        <!-- Decorativa: o texto ao lado diz o mesmo. -->
+        <span class="barra-meta" aria-hidden="true">
+          <span style:transform="scaleX({meta.progresso})"></span>
+        </span>
+        <button type="button" class="tirar-meta" aria-label="Tirar a meta da sessão" onclick={() => meta.definir(null)}>
+          <Icone nome="fechar" />
+        </button>
+      </div>
+    {/if}
   </footer>
+
+  {#if meta}
+    <ResumoDaMeta
+      resumo={meta.resumo}
+      onContinuar={() => meta.continuar()}
+      onRepetir={() => meta.repetir()}
+      onVoltar={() => {
+        meta.continuar();
+        onFechar();
+      }}
+    />
+  {/if}
 
   <p class="so-leitor-de-tela" aria-live="polite">{anuncio}</p>
   <p class="so-leitor-de-tela" aria-live="polite">{anuncioFoco}</p>
@@ -649,6 +694,37 @@
 
   .revelada .progresso-canto {
     opacity: 0;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--suave);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .barra-meta {
+    width: 4rem;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--divisoria);
+    overflow: hidden;
+  }
+
+  .barra-meta span {
+    display: block;
+    height: 100%;
+    background: var(--destaque);
+    transform-origin: left;
+    transition: transform var(--duracao-media) var(--curva);
+  }
+
+  footer .tirar-meta {
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+    padding: 0.2rem;
   }
 
   footer {

@@ -22,6 +22,7 @@
     type Sentido,
   } from "../lib/umaIdeia";
   import { curva, duracao } from "../lib/animacao";
+  import { MetaDaSessao, comandosDaMeta, metaPorTermo } from "../lib/meta.svelte";
   import { estiloDoMarcaTexto, hexDaCor, posicaoDaBarra, resumo } from "../lib/destaques";
   import {
     acertou,
@@ -87,6 +88,8 @@
 
   let modoFoco = $state(false);
   let umaIdeia = $state(false);
+  /** Meta da sessão (M20b): a moldura mostra; aqui, só a página em que a leitura está. */
+  const meta = new MetaDaSessao();
 
   // Destaques (M16c): a lógica comum está no ControleDestaques; aqui, a seleção na camada de
   // texto do pdf.js e uma camada própria sobre cada página (o arquivo do PDF não muda).
@@ -265,6 +268,7 @@
       const n = Number(inicio?.match(/^pagina:(\d+)$/)?.[1]);
       if (n >= 1 && n <= v.pagesCount) v.currentPageNumber = n;
       pagina = v.currentPageNumber;
+      meta.mover({ rotulo: `página ${pagina}`, pagina });
       // Registra a abertura mesmo sem troca de página (senão o livro aparece como "Não iniciado").
       onProgresso?.(`pagina:${v.currentPageNumber}`, v.currentPageNumber / v.pagesCount);
     });
@@ -273,6 +277,7 @@
       if (!modoFrase) destaques.esconder();
       pagina = pageNumber;
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
+      meta.mover({ rotulo: `página ${pageNumber}`, pagina: pageNumber });
       // Rolando com o mouse, a uma ideia passa à página nova quando o bloco atual sai da tela.
       if (ideia && ideia.pagina !== pageNumber && !ideiaNaTela()) void irParaIdeiaDa(pageNumber);
     });
@@ -519,11 +524,15 @@
         executar: () => atualizarPreferencias({ modoPdf }),
       })),
       ...destaques.comandos(destacarSelecao),
+      ...comandosDaMeta(meta, "pdf"),
       ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
       ...comandosDaPagina(preferencias, atualizarPreferencias),
     ];
     const n = total;
-    onComandos?.({ comandos: lista, porTermo: (termo) => irParaPagina(termo, n, irPara) });
+    onComandos?.({
+      comandos: lista,
+      porTermo: (termo) => [...irParaPagina(termo, n, irPara), ...metaPorTermo(termo, meta, "pdf")],
+    });
   });
 
   /** O elemento da página `n` (o .page do pdf.js), se estiver no DOM. */
@@ -975,6 +984,7 @@
   bind:modoFoco
   bind:umaIdeia
   escOcupado={!!destaques.barra}
+  {meta}
   {titulo}
   {anuncio}
   progresso={total ? pagina / total : 0}

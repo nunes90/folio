@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import axe from "axe-core";
 import { createRawSnippet, tick } from "svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sistema } from "../lib/ambiente.svelte";
+import { MetaDaSessao } from "../lib/meta.svelte";
 import MolduraLeitor from "./MolduraLeitor.svelte";
 
 const trecho = (html: string) => createRawSnippet(() => ({ render: () => html }));
@@ -338,6 +339,34 @@ describe("MolduraLeitor", () => {
       renderizar({ umaIdeia: true, indiceAberto: false, escOcupado: true });
       await fireEvent.keyDown(window, { key: "Escape" });
       expect(botao().getAttribute("aria-pressed")).toBe("true");
+    });
+  });
+
+  describe("meta da sessão", () => {
+    it("o rodapé mostra a meta em texto, com um botão para tirá-la", async () => {
+      const meta = new MetaDaSessao();
+      meta.mover({ rotulo: "página 1", pagina: 1 });
+      renderizar({ meta });
+      expect(screen.queryByRole("group", { name: "Meta da sessão" })).toBeNull();
+      meta.definir({ tipo: "paginas", paginas: 10 });
+      await tick();
+      expect(screen.getByText("Meta: 0 de 10 páginas")).toBeTruthy();
+      await fireEvent.click(screen.getByRole("button", { name: "Tirar a meta da sessão" }));
+      expect(meta.meta).toBeNull();
+      expect(screen.queryByRole("group", { name: "Meta da sessão" })).toBeNull();
+    });
+
+    it("ao cumprir, a pausa aparece; Voltar à biblioteca fecha o livro", async () => {
+      const meta = new MetaDaSessao();
+      meta.mover({ rotulo: "página 1", pagina: 1 });
+      const { onFechar } = renderizar({ meta });
+      meta.definir({ tipo: "paginas", paginas: 2 });
+      meta.mover({ rotulo: "página 3", pagina: 3 });
+      await tick();
+      const pausa = screen.getByRole("dialog", { name: "Meta cumprida" });
+      await fireEvent.click(within(pausa).getByRole("button", { name: "Voltar à biblioteca" }));
+      expect(onFechar).toHaveBeenCalledOnce();
+      expect(meta.meta).toBeNull();
     });
   });
 

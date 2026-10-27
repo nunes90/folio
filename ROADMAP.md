@@ -145,7 +145,7 @@ pre-release, com o AppImage anexado pela CI.
   livro rola em vez de paginar: ↑/↓ passam de bloco e o texto rola até ele ficar no meio da tela; clicar num
   parágrafo o escolhe. Respeita o movimento reduzido. No PDF, os blocos seguem a ordem de leitura (recorte XY) e
   só o texto principal entra (figuras, legendas, margem, cabeçalho e rodapé ficam esmaecidos).
-- [ ] **M20 — Sessões e metas** (em três partes: M20a sessões no core ✓, M20b meta da sessão, M20c saída
+- [ ] **M20 — Sessões e metas** (em três partes: M20a sessões no core ✓, M20b meta da sessão ✓, M20c saída
   planejada do modo foco; meta em minutos nos dois formatos, "até o fim do capítulo" no EPUB e páginas só no
   PDF, onde são fixas): sessões de leitura no core (migração 8: início, fim, de onde a onde). Meta da
   sessão ("20 min" ou "15 páginas") com barra discreta e, ao fim, uma pausa suave e um resumo ("você parou em…"),
