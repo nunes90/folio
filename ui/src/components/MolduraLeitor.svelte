@@ -29,6 +29,7 @@
     escOcupado = false,
     meta,
     saidaDoFoco,
+    estimativa,
     onFechar,
     acoes,
     indice,
@@ -53,6 +54,8 @@
     meta?: MetaDaSessao;
     /** Saída planejada do modo foco (M20c): conta como uma meta; ao cumprir, o foco acaba. */
     saidaDoFoco?: MetaDaSessao;
+    /** Quanto falta no ritmo de quem lê (M21), ex.: "~12 min no capítulo". */
+    estimativa?: string;
     onFechar: () => void;
     /** Ações próprias do formato no cabeçalho (ex.: busca do PDF). */
     acoes?: Snippet;
@@ -483,6 +486,9 @@
     onpointerleave={aoSairDasBarras}
   >
     {@render rodape()}
+    {#if estimativa}
+      <span class="estimativa">{estimativa}</span>
+    {/if}
     {#if meta?.meta}
       <div class="meta" role="group" aria-label="Meta da sessão">
         <span class="texto-meta">Meta: {meta.texto}</span>
@@ -750,6 +756,11 @@
 
   .revelada .progresso-canto {
     opacity: 0;
+  }
+
+  .estimativa {
+    color: var(--suave);
+    font-size: 0.875rem;
   }
 
   .meta {

@@ -452,4 +452,14 @@ docs/decisions/  # ADRs
   só aparecem com o foco nelas (Tab). Nos dois modos, o `focusin` que o navegador repete ao devolver o foco
   quando a janela volta a ser ativa (no Hyprland, o mouse entrar nela basta) não revela as barras.
 - **M20 concluído.**
-- Próximo passo: M21 (progresso honesto, com o ritmo das sessões). Séries continua adiado.
+- **M21a** (branch `feat/m21a-ritmo`): ritmo e estimativas. Migração 9: `sessoes.avanco` (fração lida em
+  sequência: só passos para a frente de até `SALTO_MAXIMO` = 5% do livro por aviso; voltar e saltar pelo índice,
+  pela busca ou por um destaque não contam). `ritmo(sessoes)` (puro) = avanço ÷ tempo ativo das sessões de 1 min
+  ou mais que avançaram; `None` com menos de `RITMO_MINIMO` = 5 min (sem dado, sem estimativa).
+  `Biblioteca::ritmo_de_leitura` e o comando. As sessões gravadas antes da migração ficam com avanço 0 (não
+  entram). `lib/estimativa.ts`: `estimar(fracao, ritmo, fimDoCapitulo)`, `duracaoAproximada` ("~12 min",
+  "~1 h 20 min"), `textoDoRodape`, `textoCompleto`, `comandoQuantoFalta` (paleta "Quanto falta?", anuncia). Os
+  leitores buscam o ritmo ao abrir e de 5 em 5 min; o fim do capítulo é o da seção (EPUB) ou a página antes da
+  próxima entrada do sumário (PDF; sem sumário, só o documento). A moldura mostra `estimativa` no rodapé.
+- Próximo passo: M21b ("você voltou várias vezes a este trecho": visitas guardadas no core). Séries continua
+  adiado.

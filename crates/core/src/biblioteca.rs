@@ -112,6 +112,10 @@ const MIGRACOES: &[&str] = &[
     );
     CREATE INDEX sessoes_por_livro ON sessoes (livro_id, inicio);
 ",
+    "
+    -- Avanço em sequência na sessão (M21): a base do ritmo de leitura, sem os saltos.
+    ALTER TABLE sessoes ADD COLUMN avanco REAL NOT NULL DEFAULT 0;
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.

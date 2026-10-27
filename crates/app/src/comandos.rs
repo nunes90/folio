@@ -403,6 +403,18 @@ pub fn encerrar_sessao(
         .map_err(|e| registrar(&e))
 }
 
+/// O ritmo de leitura no livro (fração por segundo), ou `None` se ainda não há dado bastante.
+#[tauri::command]
+pub fn ritmo_de_leitura(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+) -> Result<Option<f64>, String> {
+    bib.lock()
+        .unwrap()
+        .ritmo_de_leitura(&livro)
+        .map_err(|e| registrar(&e))
+}
+
 /// As sessões do livro, da mais recente para a mais antiga.
 #[tauri::command]
 pub fn listar_sessoes(
