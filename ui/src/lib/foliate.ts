@@ -21,6 +21,8 @@ export interface DetalheRelocate {
   /** Posição atual como EPUB CFI; é o que guardamos para retomar a leitura. */
   cfi?: string;
   tocItem?: { href: string; label: string };
+  /** O trecho visível na tela. */
+  range?: Range;
 }
 
 /** Leitura em voz alta do foliate-js (tts.js): SSML por bloco, com uma marca por frase. */
@@ -36,6 +38,12 @@ export interface TtsFoliate {
 
 export interface Paginador extends HTMLElement {
   nextSection(): Promise<void>;
+  prevSection(): Promise<void>;
+  /**
+   * Na rolagem contínua (`flow="scrolled"`), rola até o trecho ficar no meio da tela, em
+   * `duracao` ms com a curva dada (alteração local, PATCHES.md).
+   */
+  centerAnchor(trecho: Range, duracao?: number, curva?: (t: number) => number): Promise<void>;
   getContents(): { doc: Document; index: number }[];
   setStyles(css: string): void;
   /** Põe o foco do teclado no capítulo (iframe). */

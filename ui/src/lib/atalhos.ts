@@ -36,6 +36,11 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
     { teclas: [["Page Up"], ["Page Down"]], acao: "Página anterior ou seguinte" },
     { teclas: [["Ctrl", "Shift", "F"]], acao: "Modo foco: só o livro na tela (Esc sai)" },
     {
+      teclas: [["Ctrl", "Shift", "B"]],
+      acao: "Uma ideia por vez: o livro passa a rolar e só o bloco atual fica em evidência, no meio da tela (Esc sai)",
+    },
+    { teclas: [["↑"], ["↓"]], acao: "Com a uma ideia por vez: bloco anterior ou seguinte" },
+    {
       teclas: [["Ctrl", "D"]],
       acao: "Destacar o trecho selecionado ou, sem seleção, a frase atual (abre a barra de cores; setas escolhem, Enter aplica)",
     },
@@ -59,6 +64,11 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
     { teclas: [["Ctrl", "+"], ["Ctrl", "−"]], acao: "Aumentar ou diminuir o zoom" },
     { teclas: [["Ctrl", "0"]], acao: "Ajustar à largura" },
     { teclas: [["Ctrl", "Shift", "F"]], acao: "Modo foco: só o livro na tela (Esc sai)" },
+    {
+      teclas: [["Ctrl", "Shift", "B"]],
+      acao: "Uma ideia por vez: o livro passa a rolar e só o bloco atual fica em evidência, no meio da tela (Esc sai)",
+    },
+    { teclas: [["↑"], ["↓"]], acao: "Com a uma ideia por vez: bloco anterior ou seguinte" },
     ...GERAIS,
   ],
 };

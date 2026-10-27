@@ -15,6 +15,7 @@
     continuar: "M7 5l12 7-12 7z",
     parar: "M7 7h10v10H7z",
     largura: "M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4",
+    ideia: "M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.3 1 2.1h5c0-.8.4-1.6 1-2.1A6 6 0 0012 3z",
     foco: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5",
     nota: "M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4",
     copiar: "M9 9h10v11H9zM5 15V4h10",
