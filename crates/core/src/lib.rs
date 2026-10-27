@@ -11,6 +11,7 @@ pub mod pdf;
 pub mod preferencias;
 pub mod sessoes;
 mod ssip;
+pub mod visitas;
 pub mod voz;
 
 /// Versão do núcleo, exposta para o app registrar no log de inicialização.

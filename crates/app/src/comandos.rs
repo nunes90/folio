@@ -8,6 +8,7 @@ use folio_core::destaques::{Cor, Destaque, Motivo, NovoDestaque};
 use folio_core::epub::Capa;
 use folio_core::preferencias::PreferenciasLeitura;
 use folio_core::sessoes::Sessao;
+use folio_core::visitas::{Trecho, Visita};
 use folio_core::voz::{ConfigVoz, MotorDeVoz};
 use serde::Serialize;
 use tauri::State;
@@ -412,6 +413,32 @@ pub fn ritmo_de_leitura(
     bib.lock()
         .unwrap()
         .ritmo_de_leitura(&livro)
+        .map_err(|e| registrar(&e))
+}
+
+/// O leitor entrou num trecho (M21b): registra e diz se foi uma volta.
+#[tauri::command]
+pub fn visitar_trecho(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+    trecho: Trecho,
+) -> Result<Visita, String> {
+    bib.lock()
+        .unwrap()
+        .visitar_trecho(&livro, &trecho)
+        .map_err(|e| registrar(&e))
+}
+
+/// Os trechos a que se voltou pelo menos `minimo` vezes, dos mais revisitados aos menos.
+#[tauri::command]
+pub fn trechos_revisitados(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+    minimo: i64,
+) -> Result<Vec<Visita>, String> {
+    bib.lock()
+        .unwrap()
+        .trechos_revisitados(&livro, minimo)
         .map_err(|e| registrar(&e))
 }
 

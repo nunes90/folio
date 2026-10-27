@@ -112,6 +112,8 @@ fn main() -> anyhow::Result<()> {
             comandos::encerrar_sessao,
             comandos::listar_sessoes,
             comandos::ritmo_de_leitura,
+            comandos::visitar_trecho,
+            comandos::trechos_revisitados,
             comandos::preferencias_leitura,
             comandos::salvar_preferencias_leitura,
             comandos::voz_disponivel,

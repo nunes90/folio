@@ -51,6 +51,9 @@
     type Ponto,
   } from "../lib/meta.svelte";
   import { comandoQuantoFalta, estimar, textoDoRodape } from "../lib/estimativa";
+  import { Revisitas, comandosDasRevisitas, trechoDePaginas } from "../lib/revisitas.svelte";
+  import { avisar } from "../lib/avisos.svelte";
+  import type { Trecho } from "../lib/biblioteca";
   import { ritmoDeLeitura } from "../lib/biblioteca";
   import {
     aplicarMarcaTexto,
@@ -126,9 +129,16 @@
         .then((r) => (ritmo = r))
         .catch((e) => log.warn(`ritmo de leitura: ${e}`));
     void buscar();
+    void revisitas.carregar();
     const intervalo = setInterval(buscar, 5 * 60_000);
     return () => clearInterval(intervalo);
   });
+
+  // Trechos revisitados (M21b): um trecho é o capítulo (a seção do livro).
+  const revisitas = new Revisitas(
+    () => livroId,
+    (texto) => avisar(texto),
+  );
 
   /** Saída planejada do modo foco (M20c): conta como uma meta, e a moldura sai ao cumprir. */
   const saidaDoFoco = new MetaDaSessao();
@@ -187,6 +197,11 @@
     const inicios = view.getSectionFractions();
     const [de, ate] = [inicios[indice] ?? 0, inicios[indice + 1] ?? 1];
     fimDoCapitulo = ate;
+    void revisitas.entrar({
+      ordem: indice,
+      rotulo: secao || `Seção ${indice + 1}`,
+      local: `secao:${indice}`,
+    });
     const noCapitulo = ate > de ? Math.min(1, Math.max(0, (fracao - de) / (ate - de))) : 0;
     const noLivro = porcento.format(fracao);
     moverContagens({
@@ -516,6 +531,14 @@
     moldura.focarTitulo();
   }
 
+  /** Um trecho revisitado ("secao:3"): vai ao início da seção, com o foco no texto. */
+  async function irParaTrecho(local: string) {
+    const indice = Number(local.match(/^secao:(\d+)$/)?.[1]);
+    if (!view || !Number.isInteger(indice)) return;
+    await view.goTo(indice);
+    view.renderer.focusView();
+  }
+
   async function irParaSecao(href: string) {
     if (!view) return;
     await view.goTo(href);
@@ -770,6 +793,7 @@
         },
       );
     lista.push(comandoQuantoFalta(estimativa, "epub", (texto) => (anuncio = texto)));
+    lista.push(...comandosDasRevisitas(revisitas.lista, irParaTrecho));
     lista.push(...destaques.comandos(destacarSelecao), ...comandosDaMeta(meta, "epub"),
       ...comandosDoFoco(saidaDoFoco, "epub", (m) => moldura.focarPor(m)),
     );

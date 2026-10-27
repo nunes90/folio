@@ -461,5 +461,17 @@ docs/decisions/  # ADRs
   "~1 h 20 min"), `textoDoRodape`, `textoCompleto`, `comandoQuantoFalta` (paleta "Quanto falta?", anuncia). Os
   leitores buscam o ritmo ao abrir e de 5 em 5 min; o fim do capítulo é o da seção (EPUB) ou a página antes da
   próxima entrada do sumário (PDF; sem sumário, só o documento). A moldura mostra `estimativa` no rodapé.
-- Próximo passo: M21b ("você voltou várias vezes a este trecho": visitas guardadas no core). Séries continua
-  adiado.
+- **M21b** (branch `feat/m21b-revisitas`): trechos revisitados. Core `visitas.rs` (migração 10: `visitas`,
+  chave livro + `trecho` = a ordem do trecho no livro; rótulo, `local` para onde ir, voltas, primeira visita,
+  última volta). `visitar_trecho`: na primeira vez registra; depois é **volta** se o trecho fica antes do mais
+  adiantado já visitado (ler um capítulo longo em várias sessões não conta; abrir pela primeira vez um capítulo
+  pulado também não) e a última volta foi há mais de `INTERVALO_ENTRE_VOLTAS` = 30 min (ir e vir conta uma
+  vez); devolve `voltou`. `trechos_revisitados(livro, minimo)`. Frontend `lib/revisitas.svelte.ts`
+  (`Revisitas.entrar`: só a entrada no trecho vai ao core; aviso discreto a partir da 3ª volta, "Você voltou a
+  “Capítulo 3” 3 vezes."; paleta "Ir para trecho revisitado: …" com 2+ voltas). Trecho: EPUB = seção
+  (`secao:N`, `view.goTo(N)`); PDF = seção do sumário (`pagina:N`) ou, sem sumário, blocos de 10 páginas
+  (`trechoDePaginas`); no PDF, as visitas só começam com o sumário carregado (para não misturar os dois jeitos
+  no mesmo livro).
+- **M21 concluído.**
+- Próximo passo: M22 (continuação ao reabrir: "Da última vez você estava em…" e as 2–3 frases anteriores, sem
+  IA). Séries continua adiado.
