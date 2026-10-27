@@ -387,8 +387,10 @@ docs/decisions/  # ADRs
   `io.github.nunes90.folio`, título e `productName` Folio, logs em `~/.local/state/folio/logs`, `CLIENT_NAME` do
   speech-dispatcher, `.desktop` (`crates/app/folio.desktop`), `<title>` e o plugin de capas do Vite. Migração das
   pastas: `core::pastas::pasta_migrada(nova, antiga)` move (`rename`, sem copiar) a pasta antiga para a nova se só a
-  antiga existir; se mover falhar, segue a antiga. O `main` a chama para dados e cache antes de abrir a biblioteca
-  (`IDENTIFICADOR_ANTIGO`). Os logs antigos ficam em `~/.local/state/leitor`. Ícone: página com lombada (cantos
+  antiga existir; se mover falhar, segue a antiga. O `main` a chama para dados e cache **antes do Tauri**
+  (`pastas_do_app`, com `directories::BaseDirs`, que dá as mesmas pastas que o Tauri): o WebKitGTK cria a pasta de
+  dados nova para o cache dele ao iniciar, e a primeira versão (que migrava no `setup`) achou a pasta nova "já
+  existente" e abriu uma biblioteca vazia. Os logs antigos ficam em `~/.local/state/leitor`. Ícone: página com lombada (cantos
   brancos tornados transparentes e a orla clara removida), fonte em `crates/app/icons/folio-1024.png` e tamanhos
   32/64/128/256/512 gerados com `cargo tauri icon -p`. O repositório no GitHub ainda se chama `leitor`.
 - Próximo passo: v0.7.0 (M17a, M17b, M6a, M18 e o nome Folio), depois M19. Séries continua adiado.
