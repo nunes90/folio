@@ -1,5 +1,5 @@
 [package]
-name = "leitor"
+name = "folio"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
@@ -8,7 +8,7 @@ publish.workspace = true
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-leitor-core.workspace = true
+folio-core.workspace = true
 anyhow.workspace = true
 serde = { version = "1", features = ["derive"] }
 tracing.workspace = true

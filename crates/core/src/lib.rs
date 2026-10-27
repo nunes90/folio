@@ -1,4 +1,4 @@
-//! Núcleo do Leitor: lógica pura, sem dependência de Tauri.
+//! Núcleo do Folio: lógica pura, sem dependência de Tauri.
 
 pub mod biblioteca;
 pub mod destaques;
@@ -6,6 +6,7 @@ pub mod epub;
 pub mod formato;
 pub mod livro;
 pub mod metadados;
+pub mod pastas;
 pub mod pdf;
 pub mod preferencias;
 mod ssip;

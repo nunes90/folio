@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use leitor_core::epub::{self, ErroEpub};
+use folio_core::epub::{self, ErroEpub};
 use proptest::prelude::*;
 
 fn fixture(nome: &str) -> Vec<u8> {

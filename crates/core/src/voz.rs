@@ -250,7 +250,7 @@ impl SpeechDispatcher {
         let mut conexao = Conexao::conectar(ESPERA_LEITURA).map_err(ErroVoz::Indisponivel)?;
         // As confirmações destes comandos chegam pelo laço e são ignoradas lá.
         for comando in [
-            "SET self CLIENT_NAME leitor:leitor:leitura",
+            "SET self CLIENT_NAME folio:folio:leitura",
             "SET self NOTIFICATION all on",
             "SET self SSML_MODE on",
         ] {
@@ -557,7 +557,7 @@ mod tests {
     }
 
     /// Teste com o speech-dispatcher de verdade (fala em voz alta!). Não roda na CI:
-    /// `cargo test -p leitor-core -- --ignored fala_de_verdade`
+    /// `cargo test -p folio-core -- --ignored fala_de_verdade`
     #[test]
     #[ignore]
     fn fala_de_verdade() {

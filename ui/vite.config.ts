@@ -24,7 +24,7 @@ const foliateSemPdf: Plugin = {
 // página vem de tauri:// e as capas continuam pelo asset://.
 const DIR_CAPAS = join(
   process.env.XDG_CACHE_HOME || join(homedir(), ".cache"),
-  "io.github.nunes90.leitor",
+  "io.github.nunes90.folio",
   "capas",
 );
 const TIPOS_IMAGEM: Record<string, string> = {

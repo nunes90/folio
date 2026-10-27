@@ -1,6 +1,7 @@
-# Leitor — leitor de EPUB e PDF
+# Folio — leitor de EPUB e PDF
 
-> Nome provisório. Atualize este arquivo ao fim de cada sessão de trabalho.
+> Antes chamado "Leitor" (nome provisório até out/2026; o repositório ainda tem esse nome). Atualize este arquivo ao
+> fim de cada sessão de trabalho.
 
 ## Visão
 Leitor de ebooks (EPUB e PDF) para **Linux**. **macOS e Windows ficam para o futuro** (ADR 0006).
@@ -33,8 +34,8 @@ docs/decisions/  # ADRs
 
 ## Convenções
 - Erros: `thiserror` no core (erros tipados), `anyhow` no app.
-- Logs: `tracing` + `tracing-subscriber` (`RUST_LOG=leitor=debug`), `tracing-appender` com rotação.
-  Diretório de logs via crate `directories`: Linux `~/.local/state/leitor/logs`, macOS `~/Library/Logs/leitor`.
+- Logs: `tracing` + `tracing-subscriber` (`RUST_LOG=folio=debug`), `tracing-appender` com rotação.
+  Diretório de logs via crate `directories`: Linux `~/.local/state/folio/logs`, macOS `~/Library/Logs/folio`.
   `tauri-plugin-log` encaminha os logs do frontend para o mesmo arquivo. Usar `#[instrument]` nas operações principais.
 - Testes: unitários + integração com fixtures (`crates/core/tests/`), `insta` (snapshots),
   `proptest` (parsers não podem dar panic), Vitest (frontend), `axe-core` (a11y),
@@ -80,8 +81,8 @@ docs/decisions/  # ADRs
   `ui/src/vendor/foliate-js/` (commit 78914ae, sem `pdf.js`: o Vite troca por um stub); `Leitor` e `Indice`;
   escala de texto via CSS (ADR 0004).
 - **M2**: `epub::ler` (metadados + capa), `biblioteca` em SQLite (ADR 0005): importar (copia, id = SHA-256),
-  listar por atividade recente, progresso. Dados em `~/.local/share/io.github.nunes90.leitor`, capas em
-  `~/.cache/io.github.nunes90.leitor/capas`. Para testar sem tocar nos dados reais: `XDG_DATA_HOME`/`XDG_CACHE_HOME`.
+  listar por atividade recente, progresso. Dados em `~/.local/share/io.github.nunes90.folio`, capas em
+  `~/.cache/io.github.nunes90.folio/capas` (até o nome Folio, `…nunes90.leitor`: ver "Nome Folio" abaixo). Para testar sem tocar nos dados reais: `XDG_DATA_HOME`/`XDG_CACHE_HOME`.
 - **M3**: `pdf::ler` (lopdf: título/autores do `Info`); PDFs entram na biblioteca e a capa é
   gerada pelo pdf.js no frontend (`definir_capa`, bytes crus com cabeçalhos `livro`/`tipo`). `LeitorPdf` com
   `PDFViewer`, busca, zoom e páginas; progresso `pagina:N`. Detalhes na ADR 0002.
@@ -380,4 +381,16 @@ docs/decisions/  # ADRs
   `aria-pressed`); `ControleDestaques.escolherMotivo`/`definirMotivo`/`exportar(motivo)`; na aba Destaques, filtro
   Todos · Dúvida · Citar · Revisar com contagem (`aria-pressed`), seletor de motivo em cada item (teclado, sem
   abrir a barra) e "Exportar só …" seguindo o filtro; paleta: "Exportar só …" para os motivos que existem.
-- Próximo passo: v0.7.0 (M17a, M17b, M6a, M18). Séries continua adiado.
+- **Nome Folio** (branch `feat/nome-folio`): o app passou de "Leitor" a **Folio** (o "Folio" de notas do Flathub,
+  `com.toolstack.Folio`, e a semelhança com o Foliate foram considerados e aceitos). Crates `folio` e `folio-core`
+  (`use folio_core::…`; snapshots do `insta` renomeados, porque o nome do crate entra no arquivo), identificador
+  `io.github.nunes90.folio`, título e `productName` Folio, logs em `~/.local/state/folio/logs`, `CLIENT_NAME` do
+  speech-dispatcher, `.desktop` (`crates/app/folio.desktop`), `<title>` e o plugin de capas do Vite. Migração das
+  pastas: `core::pastas::pasta_migrada(nova, antiga)` move (`rename`, sem copiar) a pasta antiga para a nova se só a
+  antiga existir; se mover falhar, segue a antiga. O `main` a chama para dados e cache **antes do Tauri**
+  (`pastas_do_app`, com `directories::BaseDirs`, que dá as mesmas pastas que o Tauri): o WebKitGTK cria a pasta de
+  dados nova para o cache dele ao iniciar, e a primeira versão (que migrava no `setup`) achou a pasta nova "já
+  existente" e abriu uma biblioteca vazia. Os logs antigos ficam em `~/.local/state/leitor`. Ícone: página com lombada (cantos
+  brancos tornados transparentes e a orla clara removida), fonte em `crates/app/icons/folio-1024.png` e tamanhos
+  32/64/128/256/512 gerados com `cargo tauri icon -p`. O repositório no GitHub ainda se chama `leitor`.
+- Próximo passo: v0.7.0 (M17a, M17b, M6a, M18 e o nome Folio), depois M19. Séries continua adiado.

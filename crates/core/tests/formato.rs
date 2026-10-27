@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use leitor_core::formato::{ErroFormato, Formato, detectar};
-use leitor_core::livro::{ErroAbrir, abrir};
+use folio_core::formato::{ErroFormato, Formato, detectar};
+use folio_core::livro::{ErroAbrir, abrir};
 use proptest::prelude::*;
 
 fn fixture(nome: &str) -> PathBuf {

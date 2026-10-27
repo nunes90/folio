@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Leitor",
+  "productName": "Folio",
   "version": "0.6.0",
-  "identifier": "io.github.nunes90.leitor",
+  "identifier": "io.github.nunes90.folio",
   "build": {
     "beforeDevCommand": {
       "script": "npm run dev",
@@ -18,7 +18,7 @@
   "app": {
     "windows": [
       {
-        "title": "Leitor",
+        "title": "Folio",
         "width": 1000,
         "height": 750
       }
@@ -50,7 +50,7 @@
     ],
     "category": "Productivity",
     "shortDescription": "Leitor de EPUB e PDF acessível",
-    "longDescription": "Leitor de livros EPUB e PDF para Linux, com foco em acessibilidade (teclado, leitor de tela, leitura em voz alta) e animações suaves.",
+    "longDescription": "Folio é um leitor de livros EPUB e PDF para Linux, com foco em acessibilidade (teclado, leitor de tela, leitura em voz alta) e animações suaves.",
     "icon": [
       "icons/32x32.png",
       "icons/64x64.png",
@@ -80,7 +80,7 @@
     ],
     "linux": {
       "deb": {
-        "desktopTemplate": "leitor.desktop"
+        "desktopTemplate": "folio.desktop"
       }
     }
   }
