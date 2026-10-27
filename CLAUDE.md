@@ -428,6 +428,16 @@ docs/decisions/  # ADRs
   no máximo 1×/min com tecla, clique ou roda; chamadas numa fila, na ordem), ligada no `App` (`abrir`,
   `aoProgredir`, `fechar`). Eventos dentro do iframe do EPUB (clique, roda) não chegam à janela; as teclas
   sim (são reenviadas) e as mudanças de página também contam.
-- Próximo passo: M20b (meta da sessão: minutos nos dois formatos, "até o fim do capítulo" no EPUB, páginas
-  no PDF; barra discreta; pausa suave e resumo ao atingir) e M20c (saída planejada do modo foco). Séries
-  continua adiado.
+- **M20b** (branch `feat/m20b-meta`): meta da sessão. `lib/meta.svelte.ts`: `Meta` = minutos (os dois
+  formatos) | páginas (só PDF: no EPUB as páginas mudam com a letra) | capítulo (só EPUB, até o fim dele);
+  `MetaDaSessao` (`definir`, `mover(ponto)`, `atividade`, `tique(visivel)`, `continuar`, `repetir`; `texto`,
+  `progresso`, `resumo`). O tempo conta como no core: com a janela à vista e até 5 min depois da última
+  atividade. Páginas = a maior página alcançada menos a do início (voltar não desconta); capítulo = fração da
+  seção desde onde a meta começou, cumprida ao chegar numa seção seguinte. `comandosDaMeta` (paleta, grupo
+  "Sessão": 10/20/30/45/60 min, 5/10/20/30 páginas ou até o fim do capítulo; "Tirar a meta") e `metaPorTermo`
+  ("25 min", "12 páginas"). `MolduraLeitor` recebe `meta`: tique de 1 s, atividade por tecla/clique/roda (na
+  captura), "Meta: 12 de 20 min" + barra decorativa + botão "Tirar a meta" no rodapé, e `ResumoDaMeta.svelte`
+  (diálogo "Meta cumprida": "Você leu 20 minutos: de página 128 até página 141."; Continuar lendo em foco,
+  Esc = continuar, "Mais 20 min", "Voltar à biblioteca"). Os leitores só movem a meta (EPUB: capítulo pela
+  seção e `getSectionFractions`; PDF: a página).
+- Próximo passo: M20c (saída planejada do modo foco). Séries continua adiado.

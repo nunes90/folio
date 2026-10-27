@@ -43,6 +43,7 @@
     type Sentido,
   } from "../lib/umaIdeia";
   import { CURVA_CSS, curva, duracao } from "../lib/animacao";
+  import { MetaDaSessao, comandosDaMeta, metaPorTermo } from "../lib/meta.svelte";
   import {
     aplicarMarcaTexto,
     fracaoNoDocumento,
@@ -103,6 +104,8 @@
   let pronto = $state(false);
   let modoFoco = $state(false);
   let umaIdeia = $state(false);
+  /** Meta da sessão (M20b): a moldura mostra; aqui, só onde a leitura está. */
+  const meta = new MetaDaSessao();
 
   // Destaques (M16): a lógica comum aos dois formatos está no ControleDestaques; aqui, só o
   // que é do EPUB (a seleção no iframe, o CFI, o desenho pelo overlayer do foliate-js).
@@ -144,6 +147,20 @@
     null;
   /** Ctrl+D pausou a voz para destacar a frase lida: retomar quando a barra fechar. */
   let retomarVozAoFechar = false;
+
+  /** Onde a leitura está, para a meta: o capítulo (a seção) e quanto dele já passou. */
+  function moverMeta(fracao: number, secao: string | undefined) {
+    const indice = view?.renderer.getContents()[0]?.index;
+    if (!view || indice === undefined) return;
+    const inicios = view.getSectionFractions();
+    const [de, ate] = [inicios[indice] ?? 0, inicios[indice + 1] ?? 1];
+    const noCapitulo = ate > de ? Math.min(1, Math.max(0, (fracao - de) / (ate - de))) : 0;
+    const noLivro = porcento.format(fracao);
+    meta.mover({
+      rotulo: secao ? `“${secao}” (${noLivro} do livro)` : `${noLivro} do livro`,
+      capitulo: { indice, fracao: noCapitulo },
+    });
+  }
 
   // Uma ideia por vez (M19): o bloco atual do capítulo; o resto, esmaecido. Enquanto ligada, o
   // livro fica em rolagem contínua e o bloco atual, no meio da tela; ao desligar, volta a ser
@@ -417,6 +434,7 @@
       hrefAtual = tocItem?.href;
       if (cfi) onProgresso?.(cfi, fraction);
       acompanharIdeia();
+      moverMeta(fraction, tocItem?.label.trim());
       const secao = tocItem?.label.trim();
       // O primeiro posicionamento não é anunciado: o foco no título já informa o livro.
       if (secao && secao !== secaoAnunciada) {
@@ -718,13 +736,13 @@
           executar: () => void pararLeitura(),
         },
       );
-    lista.push(...destaques.comandos(destacarSelecao));
+    lista.push(...destaques.comandos(destacarSelecao), ...comandosDaMeta(meta, "epub"));
     lista.push(
       ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
       ...comandosDaPagina(preferencias, atualizarPreferencias),
       ...comandosDoTexto(preferencias, atualizarPreferencias, restaurarPadrao),
     );
-    onComandos?.({ comandos: lista });
+    onComandos?.({ comandos: lista, porTermo: (termo) => metaPorTermo(termo, meta, "epub") });
   });
 
   function aoTeclar(e: KeyboardEvent) {
@@ -772,6 +790,7 @@
   bind:modoFoco
   bind:umaIdeia
   escOcupado={!!destaques.barra}
+  {meta}
   {titulo}
   {anuncio}
   {progresso}
