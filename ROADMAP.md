@@ -136,6 +136,9 @@ A base de vários recursos: saber onde estão os blocos (parágrafos) e as frase
 - [x] **M18 — Destaques que servem para reler**: motivo do destaque (dúvida, citar, revisar), independente da
   cor (migração 7); filtro na aba Destaques; exportar só "para citar" em Markdown; tudo também na paleta.
 
+**v0.7.0** (out/2026): M17a, M17b, M6a, M18 e o nome **Folio** (com ícone). Tag `v0.7.0`, Release como
+pre-release, com o AppImage anexado pela CI.
+
 ### v0.8 — o ritmo de quem lê
 - [ ] **M19 — Uma ideia por vez**: só o bloco atual em evidência, o resto esmaecido (só visual: o leitor de tela
   lê tudo); atalho para o próximo e o anterior bloco, que vira a página quando precisa; respeita o movimento

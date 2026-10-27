@@ -1,7 +1,7 @@
 # Folio — leitor de EPUB e PDF
 
-> Antes chamado "Leitor" (nome provisório até out/2026; o repositório ainda tem esse nome). Atualize este arquivo ao
-> fim de cada sessão de trabalho.
+> Antes chamado "Leitor" (nome provisório até out/2026). Repositório: `nunes90/folio` no GitHub (era `nunes90/leitor`;
+> o GitHub redireciona). A pasta local continua `~/Projects/leitor`. Atualize este arquivo ao fim de cada sessão.
 
 ## Visão
 Leitor de ebooks (EPUB e PDF) para **Linux**. **macOS e Windows ficam para o futuro** (ADR 0006).
@@ -392,5 +392,7 @@ docs/decisions/  # ADRs
   dados nova para o cache dele ao iniciar, e a primeira versão (que migrava no `setup`) achou a pasta nova "já
   existente" e abriu uma biblioteca vazia. Os logs antigos ficam em `~/.local/state/leitor`. Ícone: página com lombada (cantos
   brancos tornados transparentes e a orla clara removida), fonte em `crates/app/icons/folio-1024.png` e tamanhos
-  32/64/128/256/512 gerados com `cargo tauri icon -p`. O repositório no GitHub ainda se chama `leitor`.
-- Próximo passo: v0.7.0 (M17a, M17b, M6a, M18 e o nome Folio), depois M19. Séries continua adiado.
+  32/64/128/256/512 gerados com `cargo tauri icon -p`. O repositório no GitHub virou `nunes90/folio` (`gh repo rename`).
+- **v0.7.0** (out/2026): tag assinada `v0.7.0` (M17a, M17b, M6a, M18 e o nome Folio) e Release como pre-release;
+  o AppImage é anexado pela CI ao publicar a Release (primeira vez do M6a).
+- Próximo passo: M19 (uma ideia por vez). Séries continua adiado.
