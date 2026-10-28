@@ -162,8 +162,8 @@ trechos revisitados) e M22 (onde você parou). Tag `v0.8.0`, Release como pre-re
 ### v0.9 — voz, tipografia e comparação
 - [x] **M23 — Voz com acompanhamento** (M23a voz no PDF, M23b frase realçada e velocidade por trecho): destaque da frase estável (pendência do M4d), velocidade por trecho (mais
   devagar em listas e código; o SSIP permite por mensagem), voz no PDF com o mesmo modelo do EPUB.
-- [ ] **M24 — Tipografia que reage ao texto** (EPUB): `pre`/`code` sempre em monoespaçada, títulos com mais ar,
-  largura de coluna que respeita o livro e a preferência.
+- [x] **M24 — Tipografia que reage ao texto** (EPUB): `pre`/`code` sempre em monoespaçada, títulos com mais ar,
+  largura de coluna que respeita o livro e a preferência (em caracteres por linha: cresce com a letra).
 - [ ] **M25 — Comparar trechos**: dois pontos do mesmo livro lado a lado (a moldura dividida, cada lado com a
   sua posição), e um destaque ou nota fixado ao lado do texto. EPUB e PDF. Atenção ao custo de dois leitores no
   WebKitGTK (medir memória e quadros por segundo).

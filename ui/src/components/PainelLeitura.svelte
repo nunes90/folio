@@ -57,9 +57,9 @@
       formatar: (v: number) => porcento.format(v),
     },
     {
-      campo: "larguraMaxima",
-      rotulo: "Largura máxima da coluna",
-      formatar: (v: number) => `${v} px`,
+      campo: "caracteresPorLinha",
+      rotulo: "Caracteres por linha (no máximo)",
+      formatar: (v: number) => `~${v}`,
     },
     {
       campo: "velocidadeVoz",

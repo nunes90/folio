@@ -24,6 +24,7 @@
   import {
     atualizarPreferencias,
     cssDoLivro,
+    larguraDaColuna,
     preferencias,
     restaurarPadrao,
   } from "../lib/preferencias.svelte";
@@ -339,7 +340,8 @@
   // painel aberto: o livro funciona como prévia ao vivo).
   $effect(() => {
     const css = cssDoLivro(preferencias, escala.fator, temaEfetivo());
-    const largura = `${preferencias.larguraMaxima}px`;
+    // Em caracteres por linha (M24): a coluna cresce com a letra.
+    const largura = `${larguraDaColuna(preferencias, escala.fator)}px`;
     const colunas = String(preferencias.colunas);
     if (!pronto || !view) return;
     view.renderer.setStyles(css);
