@@ -4,6 +4,17 @@
   import type { PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
   import "pdfjs-dist/web/pdf_viewer.css";
   import BarraPdf from "./BarraPdf.svelte";
+  import ControlesVoz from "./ControlesVoz.svelte";
+  import {
+    blocoDasFrases,
+    comandosDaVoz,
+    falar,
+    ouvirVoz,
+    pararVoz,
+    vozDisponivel,
+    type EstadoVoz,
+    type EventoVoz,
+  } from "../lib/voz";
   import BuscaPdf from "./BuscaPdf.svelte";
   import Indice from "./Indice.svelte";
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
@@ -12,9 +23,15 @@
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
   import { unir } from "../lib/frases";
-  import { frasesDaCamada, ideiasDaCamada, textoDoTrecho } from "../lib/frasesPdf";
+  import {
+    frasesDaCamada,
+    frasesParaFalar,
+    ideiasDaCamada,
+    textoDoTrecho,
+  } from "../lib/frasesPdf";
   import {
     OPACIDADE_FORA,
+    cruza,
     rolarSuave,
     uniao,
     veuNaPagina,
@@ -163,6 +180,12 @@
     aoFecharBarra: () => {
       if (modoFrase) window.getSelection()?.removeAllRanges();
       modoFrase = null;
+      selecaoDaBarra = null;
+      // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou.
+      if (retomarVozAoFechar) {
+        retomarVozAoFechar = false;
+        if (voz === "pausado") void pausarOuRetomar();
+      }
     },
   });
 
@@ -258,6 +281,21 @@
 
   /** Estados do PDFFindController (FindState no pdf.js). */
   const BUSCA = { ENCONTRADO: 0, NADA: 1, VOLTOU_AO_INICIO: 2, PENDENTE: 3 };
+
+  onMount(() => {
+    let pararDeOuvir: (() => void) | undefined;
+    vozDisponivel()
+      .then((d) => (vozPossivel = d))
+      .catch(() => {});
+    ouvirVoz(aoEventoVoz)
+      .then((f) => (pararDeOuvir = f))
+      .catch(() => {});
+    return () => {
+      // Fechar o documento encerra a leitura em voz alta.
+      if (voz !== "parado") pararVoz().catch(() => {});
+      pararDeOuvir?.();
+    };
+  });
 
   onMount(() => {
     moldura.focarTitulo();
@@ -665,6 +703,12 @@
         executar: () => atualizarPreferencias({ modoPdf }),
       })),
       ...destaques.comandos(destacarSelecao),
+      ...comandosDaVoz(
+        voz,
+        () => void lerEmVozAlta(),
+        () => void pausarOuRetomar(),
+        () => void pararLeitura(),
+      ),
       comandoQuantoFalta(estimativa, "pdf", (texto) => (anuncio = texto)),
       ...comandosDasRevisitas(revisitas.lista, (local) => {
         const n = Number(local.match(/^pagina:(\d+)$/)?.[1]);
@@ -909,6 +953,9 @@
     // Uma seleção que passa da página fica só com a parte da página onde começou.
     const retangulos = retangulosNaPagina([...range.getClientRects()], caixa);
     if (!trecho.trim() || !retangulos.length) return false;
+    // Guardada para o "Ouvir": clicar no botão da barra pode desfazer a seleção da página (a
+    // camada de texto e a barra estão no mesmo documento; no EPUB, o capítulo é outro).
+    selecaoDaBarra = { pagina: n, trecho: range.cloneRange() };
     destaques.mostrarSelecao(
       {
         local: localPdf(n, retangulos),
@@ -922,10 +969,152 @@
     return true;
   }
 
-  /** Ctrl+D: a barra da seleção, com o foco nela. */
-  /** Ctrl+D: a barra da seleção, com o foco nela; sem seleção, a da frase atual. */
-  function destacarSelecao() {
-    if (!verSelecao(true)) void iniciarModoFrase(pagina, "inicio");
+  // Leitura em voz alta (M23), com o mesmo modelo do EPUB: uma página por vez, com uma marca
+  // por frase (as frases do M17b, na ordem de leitura); a frase lida fica selecionada na camada
+  // de texto e, no fim da página, a leitura passa à seguinte. Pausar cancela a fala; retomar
+  // fala de novo a partir da frase marcada (a pausa do speech-dispatcher pulava o resto).
+  let voz = $state<EstadoVoz>("parado");
+  let vozPossivel = $state(false);
+  /** O que está sendo lido: a página, as frases dela e a última frase marcada. */
+  let leitura: { pagina: number; frases: Range[]; marca: number } | null = null;
+  /** Muda a cada leitura nova ou parada: uma leitura antiga que acorda depois de um `await` desiste. */
+  let vez = 0;
+  /** Ctrl+D pausou a voz para destacar a frase lida: retomar quando a barra fechar. */
+  let retomarVozAoFechar = false;
+  /** A seleção sobre a qual a barra abriu (ver `verSelecao`). */
+  let selecaoDaBarra: { pagina: number; trecho: Range } | null = null;
+
+  /** Lê a partir da frase `frase` da página `n` (ou do início da página atual). */
+  async function lerEmVozAlta(n = pagina, frase = 0) {
+    if (!vozPossivel) {
+      anuncio =
+        "Leitura em voz alta indisponível: o speech-dispatcher não está instalado ou ativo.";
+      return;
+    }
+    if (voz !== "parado") await pararLeitura();
+    await lerDesde(n, frase);
+  }
+
+  /** Fala a página `n` a partir da frase `inicio`; páginas sem texto são puladas. */
+  async function lerDesde(n: number, inicio: number) {
+    const minha = ++vez;
+    for (let p = n, de = inicio; p <= total; p++, de = 0) {
+      if (p !== pagina) irPara(p);
+      const frases = await frasesDaPagina(p);
+      // Só o texto principal: a margem, as legendas e o número da página não são lidos.
+      const principais = (await ideiasDaPagina(p)).flat();
+      if (minha !== vez) return;
+      const bloco = blocoDasFrases(frasesParaFalar(frases, de, principais), de);
+      if (!bloco) continue;
+      leitura = { pagina: p, frases, marca: de };
+      voz = "falando";
+      await falar(bloco.ssml, { idioma: null, velocidade: preferencias.velocidadeVoz });
+      return;
+    }
+    voz = "parado";
+    leitura = null;
+    anuncio = "Fim do documento.";
+  }
+
+  function aoEventoVoz(e: EventoVoz) {
+    // Eventos atrasados depois de parar ou pausar são ignorados.
+    if (voz !== "falando" || !leitura) return;
+    if (e.tipo === "marca") {
+      const i = Number(e.marca);
+      const frase = leitura.frases[i];
+      leitura.marca = i;
+      // A frase lida fica selecionada (o mesmo destaque do EPUB); se a página mudou à mão, volta.
+      if (leitura.pagina !== pagina) irPara(leitura.pagina);
+      if (frase) {
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(frase);
+      }
+    } else if (e.tipo === "fim") {
+      void lerDesde(leitura.pagina + 1, 0);
+    } else {
+      voz = "parado";
+    }
+  }
+
+  async function pausarOuRetomar() {
+    if (voz === "falando") {
+      voz = "pausado";
+      vez++;
+      await pararVoz();
+    } else if (voz === "pausado" && leitura) {
+      await lerDesde(leitura.pagina, leitura.marca);
+    }
+  }
+
+  async function pararLeitura() {
+    voz = "parado";
+    vez++;
+    leitura = null;
+    window.getSelection()?.removeAllRanges();
+    await pararVoz();
+  }
+
+  /** Ouvir a partir do trecho da barra (seleção, frase ou destaque) até o fim do documento. */
+  async function ouvirDaqui() {
+    const barra = destaques.barra;
+    let n = pagina;
+    let ponto: { x: number; y: number } | null = null;
+    let trecho: Range | null = null;
+    if (modoFrase) {
+      n = modoFrase.pagina;
+      trecho = modoFrase.frases[modoFrase.de] ?? null;
+    } else if (barra?.destaque) {
+      const local = lerLocalPdf(barra.destaque.local);
+      if (local?.retangulos[0]) {
+        n = local.pagina;
+        const r = local.retangulos[0];
+        ponto = { x: r.x + r.l / 2, y: r.y + r.a / 2 };
+      }
+    } else if (selecaoDaBarra) {
+      n = selecaoDaBarra.pagina;
+      trecho = selecaoDaBarra.trecho;
+    }
+    retomarVozAoFechar = false;
+    destaques.fecharBarra();
+    const frases = await frasesDaPagina(n);
+    const caixa = paginaEl(n)?.getBoundingClientRect();
+    let i = -1;
+    if (trecho) {
+      const t = trecho;
+      // A frase em que a seleção começa; se ela começa entre duas frases (num espaço), a
+      // primeira frase que a seleção alcança.
+      i = frases.findIndex((f) => f.comparePoint(t.startContainer, t.startOffset) === 0);
+      if (i < 0) i = frases.findIndex((f) => cruza(f, t));
+    } else if (ponto && caixa) {
+      const p = ponto;
+      i = frases.findIndex((f) =>
+        [...f.getClientRects()].some((r) => {
+          const x = (r.left + r.width / 2 - caixa.left) / caixa.width;
+          const y = (r.top + r.height / 2 - caixa.top) / caixa.height;
+          return Math.abs(y - p.y) < 0.01 && Math.abs(x - p.x) < 0.5;
+        }),
+      );
+    }
+    await lerEmVozAlta(n, Math.max(0, i));
+  }
+
+  /**
+   * Ctrl+D: a barra da seleção, com o foco nela; sem seleção, a da frase atual. Com a voz
+   * lendo, a frase lida é a seleção: a voz pausa enquanto a barra está aberta (senão a página
+   * vira no meio da escolha e a barra fecha) e continua quando ela fecha.
+   */
+  async function destacarSelecao() {
+    if (voz === "falando") {
+      await pausarOuRetomar();
+      retomarVozAoFechar = true;
+    }
+    if (!verSelecao(true)) await iniciarModoFrase(pagina, "inicio");
+    // Nada para destacar (a barra não abriu): a voz continua na hora.
+    if (!destaques.barra && retomarVozAoFechar) {
+      retomarVozAoFechar = false;
+      if (voz === "pausado") await pausarOuRetomar();
+    }
   }
 
   /** A camada de texto da página `n`, esperando o pdf.js terminar de montá-la (até 1,5 s). */
@@ -1184,6 +1373,12 @@
   {/snippet}
 
   {#snippet rodape()}
+    <ControlesVoz
+      estado={voz}
+      onLer={() => void lerEmVozAlta()}
+      onPausarOuRetomar={() => void pausarOuRetomar()}
+      onParar={() => void pararLeitura()}
+    />
     <BarraPdf
       {pagina}
       {total}
@@ -1221,7 +1416,11 @@
   >
     <div class="pdfViewer"></div>
   </div>
-  <DestaquesDoLeitor controle={destaques} onTrecho={(m) => void mudarTrecho(m)} />
+  <DestaquesDoLeitor
+    controle={destaques}
+    onOuvir={vozPossivel ? () => void ouvirDaqui() : undefined}
+    onTrecho={(m) => void mudarTrecho(m)}
+  />
 </MolduraLeitor>
 
 <style>
