@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cssDoLivro, PADRAO, type Preferencias } from "./preferencias.svelte";
+import { cssDoLivro, larguraDaColuna, PADRAO, type Preferencias } from "./preferencias.svelte";
 
 const base = "tauri://localhost/";
 const css = (mudancas: Partial<Preferencias> = {}, escala = 1) =>
@@ -20,9 +20,9 @@ describe("cssDoLivro", () => {
 
   it("no padrão, não troca a fonte nem o alinhamento do livro", () => {
     const resultado = css();
-    expect(resultado).not.toMatch(/font-family: "/);
-    expect(resultado).not.toContain("text-align");
-    expect(resultado).not.toContain("letter-spacing");
+    expect(resultado).not.toContain("body *:not(");
+    expect(resultado).not.toMatch(/p, li, blockquote, dd \{[^}]*text-align/);
+    expect(resultado).not.toMatch(/body, p, li, blockquote, dd \{[^}]*letter-spacing/);
     expect(resultado).toContain("line-height: 1.5 !important");
     expect(resultado).toContain("hyphens: manual !important");
   });
@@ -54,7 +54,44 @@ describe("cssDoLivro", () => {
 
   it("Lexend só declara os arquivos que existem (sem itálico)", () => {
     const resultado = css({ fonte: "lexend" });
-    expect(resultado.match(/@font-face/g)).toHaveLength(2);
-    expect(resultado).not.toContain("font-style: italic");
+    expect(resultado.match(/@font-face \{ font-family: "Lexend"/g)).toHaveLength(2);
+    expect(resultado).not.toMatch(/"Lexend"; font-weight: \d+; font-style: italic/);
+  });
+
+  it("código sempre em monoespaçada (mesmo com a fonte original), sem os espaçamentos do texto", () => {
+    const resultado = css({ espacoLetras: 0.1, hifenizacao: true });
+    expect(resultado).toMatch(/@font-face \{ font-family: "Atkinson Hyperlegible Mono"; font-weight: 400;/);
+    const regra = resultado.match(/pre, code, kbd, samp, tt \{[^}]*\}/)?.[0] ?? "";
+    expect(regra).toContain('font-family: "Atkinson Hyperlegible Mono", monospace !important');
+    expect(regra).toContain("letter-spacing: normal !important");
+    expect(regra).toContain("word-spacing: normal !important");
+    expect(regra).toContain("hyphens: none !important");
+    // Linhas longas quebram dentro da coluna em vez de vazar.
+    expect(resultado).toMatch(/pre \{[^}]*white-space: pre-wrap !important/);
+  });
+
+  it("títulos: entrelinha menor que a do texto, sem hifenizar, sem ficar sozinhos no fim da coluna", () => {
+    const regra = (entrelinha: number) =>
+      css({ entrelinha }).match(/h1, h2, h3, h4, h5, h6 \{[^}]*\}/)?.[0] ?? "";
+    expect(regra(1.5)).toContain("line-height: 1.2 !important");
+    expect(regra(2.5)).toContain("line-height: 2 !important");
+    expect(regra(1)).toContain("line-height: 1.15 !important");
+    expect(regra(1.5)).toContain("hyphens: none !important");
+    expect(regra(1.5)).toContain("text-wrap: balance");
+    expect(regra(1.5)).toContain("break-after: avoid");
+  });
+
+  it("margens dos títulos só como padrão (sem !important: as do livro vencem)", () => {
+    const regra = css().match(/h1, h2, h3, h4, h5, h6 \{ margin[^}]*\}/)?.[0] ?? "";
+    expect(regra).toContain("margin-block-start: 1.6em");
+    expect(regra).not.toContain("!important");
+  });
+});
+
+describe("larguraDaColuna", () => {
+  it("caracteres por linha em px, crescendo com a letra e com a escala do sistema", () => {
+    expect(larguraDaColuna({ ...PADRAO, caracteresPorLinha: 90 }, 1)).toBe(720);
+    expect(larguraDaColuna({ ...PADRAO, caracteresPorLinha: 90, tamanho: 1.5 }, 1)).toBe(1080);
+    expect(larguraDaColuna({ ...PADRAO, caracteresPorLinha: 60 }, 1.25)).toBe(600);
   });
 });

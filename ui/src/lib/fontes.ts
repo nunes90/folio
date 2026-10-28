@@ -20,6 +20,9 @@ import dislexia400 from "@fontsource/opendyslexic/files/opendyslexic-latin-400-n
 import dislexia400i from "@fontsource/opendyslexic/files/opendyslexic-latin-400-italic.woff2?url";
 import dislexia700 from "@fontsource/opendyslexic/files/opendyslexic-latin-700-normal.woff2?url";
 import dislexia700i from "@fontsource/opendyslexic/files/opendyslexic-latin-700-italic.woff2?url";
+import mono400 from "@fontsource/atkinson-hyperlegible-mono/files/atkinson-hyperlegible-mono-latin-400-normal.woff2?url";
+import mono400i from "@fontsource/atkinson-hyperlegible-mono/files/atkinson-hyperlegible-mono-latin-400-italic.woff2?url";
+import mono700 from "@fontsource/atkinson-hyperlegible-mono/files/atkinson-hyperlegible-mono-latin-700-normal.woff2?url";
 
 import type { Fonte } from "./preferencias.svelte";
 
@@ -32,7 +35,7 @@ interface Arquivo {
 interface DefinicaoFonte {
   familia: string;
   /** Família genérica de reserva, caso a fonte não carregue. */
-  reserva: "serif" | "sans-serif";
+  reserva: "serif" | "sans-serif" | "monospace";
   arquivos: Arquivo[];
 }
 
@@ -78,9 +81,25 @@ export const FONTES: Record<Exclude<Fonte, "original">, DefinicaoFonte> = {
   },
 };
 
+/**
+ * A monoespaçada do código no EPUB (M24), sempre aplicada, qualquer que seja a fonte escolhida.
+ * Da mesma família da Atkinson Hyperlegible (letras fáceis de distinguir: 0/O, 1/l/I). Com o
+ * nome da fonte antes de `monospace`, o WebKit não aplica o tamanho menor (13 px) que dá à
+ * família genérica sozinha.
+ */
+export const MONO: DefinicaoFonte = {
+  familia: "Atkinson Hyperlegible Mono",
+  reserva: "monospace",
+  arquivos: [
+    { url: mono400, peso: 400, italico: false },
+    { url: mono400i, peso: 400, italico: true },
+    { url: mono700, peso: 700, italico: false },
+  ],
+};
+
 /** `font-family` CSS de uma fonte do app, com reserva genérica. */
-export function familiaCss(fonte: Exclude<Fonte, "original">): string {
-  const { familia, reserva } = FONTES[fonte];
+export function familiaCss(fonte: Exclude<Fonte, "original"> | DefinicaoFonte): string {
+  const { familia, reserva } = typeof fonte === "string" ? FONTES[fonte] : fonte;
   return `"${familia}", ${reserva}`;
 }
 
@@ -88,8 +107,11 @@ export function familiaCss(fonte: Exclude<Fonte, "original">): string {
  * @font-face para dentro do iframe do capítulo. As URLs precisam ser absolutas: o capítulo
  * é um documento `blob:` e resolveria caminhos relativos contra ele.
  */
-export function fontFace(fonte: Exclude<Fonte, "original">, base = location.href): string {
-  const { familia, arquivos } = FONTES[fonte];
+export function fontFace(
+  fonte: Exclude<Fonte, "original"> | DefinicaoFonte,
+  base = location.href,
+): string {
+  const { familia, arquivos } = typeof fonte === "string" ? FONTES[fonte] : fonte;
   return arquivos
     .map(
       ({ url, peso, italico }) =>

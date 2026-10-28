@@ -517,4 +517,13 @@ docs/decisions/  # ADRs
   o trecho seguinte). `frasesParaFalar(…, lerAPrimeira)`: ao continuar (outra página, outro trecho), a primeira
   frase não é mais forçada (o M23a lia o número da página no alto de cada página nova).
 - **M23 concluído.**
-- Próximo passo: M24 (tipografia do EPUB). Séries continua adiado.
+- **M24** (branch `feat/m24-tipografia`): tipografia que reage ao texto (EPUB), em `cssDoLivro`. Código (`pre`,
+  `code`, `kbd`, `samp`, `tt`) sempre na **Atkinson Hyperlegible Mono** (`MONO` em `lib/fontes.ts`, OFL, via
+  Fontsource; com o nome antes de `monospace`, o WebKit não reduz a 13 px), sem os espaçamentos e a hifenização do
+  texto; `pre` quebra as linhas longas (`pre-wrap`) em vez de vazar da coluna. Títulos: entrelinha
+  `max(1,15; entrelinha × 0,8)`, `text-wrap: balance`, sem hifenizar, `break-after: avoid`; margens 1,6em/0,6em
+  só como padrão (sem `!important`: as do livro vencem). Largura da coluna em **caracteres por linha**
+  (`caracteresPorLinha`, 40–160, padrão 90; `larguraDaColuna` = caracteres × 0,5em × 16 px × escala × tamanho):
+  aumentar a letra alarga a coluna junto. O core migra `larguraMaxima` (px ÷ 8, arredondado e como inteiro: o
+  serde não lê um float num `u32`, e o JSON inteiro viraria o padrão).
+- Próximo passo: M25 (comparar trechos). Séries continua adiado.

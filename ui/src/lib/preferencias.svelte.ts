@@ -1,7 +1,7 @@
 // Preferências de leitura (espelho de crates/core/src/preferencias.rs). O core valida e
 // normaliza; aqui ficam o estado reativo, a gravação com debounce e o CSS do livro.
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { familiaCss, fontFace } from "./fontes";
+import { familiaCss, fontFace, MONO } from "./fontes";
 import { log } from "./log";
 import { cssDaPagina, resolverPagina, type Pagina } from "./pagina";
 import type { TemaEfetivo, TemaEscolhido } from "./temas";
@@ -18,7 +18,8 @@ export interface Preferencias {
   entrelinha: number;
   espacoLetras: number;
   espacoPalavras: number;
-  larguraMaxima: number;
+  /** Largura máxima da coluna, em caracteres por linha (aproximados; ver `larguraDaColuna`). */
+  caracteresPorLinha: number;
   colunas: number;
   alinhamento: Alinhamento;
   hifenizacao: boolean;
@@ -44,7 +45,7 @@ export const PADRAO: Preferencias = {
   entrelinha: 1.5,
   espacoLetras: 0,
   espacoPalavras: 0,
-  larguraMaxima: 720,
+  caracteresPorLinha: 90,
   colunas: 2,
   alinhamento: "original",
   hifenizacao: false,
@@ -62,7 +63,7 @@ export const LIMITES = {
   entrelinha: { min: 1, max: 2.5, passo: 0.1 },
   espacoLetras: { min: 0, max: 0.3, passo: 0.01 },
   espacoPalavras: { min: 0, max: 1, passo: 0.05 },
-  larguraMaxima: { min: 320, max: 1600, passo: 20 },
+  caracteresPorLinha: { min: 40, max: 160, passo: 5 },
   velocidadeVoz: { min: -100, max: 100, passo: 10 },
 } as const;
 
@@ -150,5 +151,49 @@ export function cssDoLivro(
         `{ font-family: ${familiaCss(p.fonte)} !important; }`,
     );
   }
+  regras.push(...cssDoCodigo(base), cssDosTitulos(p.entrelinha));
   return regras.join("\n");
+}
+
+/**
+ * Código (M24) sempre na monoespaçada do app, qualquer que seja a fonte do livro ou a escolhida.
+ * Os espaçamentos e a hifenização do texto não valem ali (desalinhariam o código), e as linhas
+ * longas de um `pre` quebram dentro da coluna em vez de vazar para a seguinte.
+ */
+function cssDoCodigo(base?: string): string[] {
+  return [
+    fontFace(MONO, base),
+    `pre, code, kbd, samp, tt { font-family: ${familiaCss(MONO)} !important; ` +
+      `letter-spacing: normal !important; word-spacing: normal !important; ` +
+      `hyphens: none !important; -webkit-hyphens: none !important; }`,
+    `pre { white-space: pre-wrap !important; overflow-wrap: anywhere; text-align: start !important; }`,
+  ];
+}
+
+/**
+ * Títulos (M24): entrelinha menor que a do texto (um título em duas linhas com a entrelinha do
+ * texto parece dois títulos), linhas equilibradas, sem hifenizar e sem ficar sozinhos no fim
+ * da coluna. As margens são só um padrão: as do livro vencem (sem `!important`).
+ */
+function cssDosTitulos(entrelinha: number): string {
+  const titulos = "h1, h2, h3, h4, h5, h6";
+  const altura = +Math.max(1.15, entrelinha * 0.8).toFixed(2);
+  return [
+    `${titulos} { line-height: ${altura} !important; text-wrap: balance; ` +
+      `hyphens: none !important; -webkit-hyphens: none !important; ` +
+      `break-after: avoid; -webkit-column-break-after: avoid; }`,
+    `${titulos} { margin-block-start: 1.6em; margin-block-end: 0.6em; }`,
+  ].join("\n");
+}
+
+/** Largura média de um caractere, em `em` (meio `em`: 8 px na letra de 16 px). */
+const EM_POR_CARACTERE = 0.5;
+
+/**
+ * A largura máxima da coluna em px (para o `max-inline-size` do foliate-js): os caracteres por
+ * linha escolhidos, no tamanho de letra efetivo (16 px × escala do sistema × tamanho). Aumentar
+ * a letra alarga a coluna junto, até o limite da janela, e a linha continua com o mesmo tanto.
+ */
+export function larguraDaColuna(p: Preferencias, escala: number): number {
+  return Math.round(p.caracteresPorLinha * EM_POR_CARACTERE * 16 * escala * p.tamanho);
 }

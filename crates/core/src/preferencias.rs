@@ -108,7 +108,7 @@ pub mod limites {
     pub const ENTRELINHA: (f64, f64) = (1.0, 2.5);
     pub const ESPACO_LETRAS: (f64, f64) = (0.0, 0.3);
     pub const ESPACO_PALAVRAS: (f64, f64) = (0.0, 1.0);
-    pub const LARGURA: (u32, u32) = (320, 1600);
+    pub const CARACTERES: (u32, u32) = (40, 160);
     pub const COLUNAS: (u8, u8) = (1, 2);
     pub const VELOCIDADE_VOZ: (i8, i8) = (-100, 100);
 }
@@ -126,8 +126,9 @@ pub struct PreferenciasLeitura {
     pub espaco_letras: f64,
     /// Espaço extra entre palavras, em `em`.
     pub espaco_palavras: f64,
-    /// Largura máxima de cada coluna de texto, em px (CSS).
-    pub largura_maxima: u32,
+    /// Largura máxima de cada coluna de texto, em caracteres por linha (aproximados: o frontend
+    /// converte pelo tamanho da letra, então aumentar a letra alarga a coluna junto).
+    pub caracteres_por_linha: u32,
     /// Máximo de colunas lado a lado quando a janela é larga.
     pub colunas: u8,
     pub alinhamento: Alinhamento,
@@ -151,7 +152,7 @@ impl Default for PreferenciasLeitura {
             entrelinha: 1.5,
             espaco_letras: 0.0,
             espaco_palavras: 0.0,
-            largura_maxima: 720,
+            caracteres_por_linha: 90,
             colunas: 2,
             alinhamento: Alinhamento::Original,
             hifenizacao: false,
@@ -190,9 +191,9 @@ impl PreferenciasLeitura {
                 limites::ESPACO_PALAVRAS,
                 padrao.espaco_palavras,
             ),
-            largura_maxima: self
-                .largura_maxima
-                .clamp(limites::LARGURA.0, limites::LARGURA.1),
+            caracteres_por_linha: self
+                .caracteres_por_linha
+                .clamp(limites::CARACTERES.0, limites::CARACTERES.1),
             colunas: self.colunas.clamp(limites::COLUNAS.0, limites::COLUNAS.1),
             velocidade_voz: self
                 .velocidade_voz
@@ -221,6 +222,9 @@ impl PreferenciasLeitura {
     }
 }
 
+/// Largura média de um caractere na letra de 16 px (meio `em`), para a migração do M24.
+const PX_POR_CARACTERE: f64 = 8.0;
+
 /// Converte o JSON de versões anteriores para o modelo atual, antes de ler.
 ///
 /// M13 (interface e página separadas):
@@ -228,6 +232,9 @@ impl PreferenciasLeitura {
 /// - "paginaPdf" (só PDF) virou "pagina" (os dois formatos). O "original" dele era só o padrão
 ///   do M12: vira automática, para o EPUB continuar seguindo a interface como antes.
 ///   Uma página escolhida de verdade (creme, sépia, noite) vence o tema sépia.
+///
+/// M24: "larguraMaxima" (px) virou "caracteresPorLinha", a [`PX_POR_CARACTERE`]: no tamanho
+/// padrão, a coluna fica como estava.
 fn migrar(mut json: serde_json::Value) -> serde_json::Value {
     let Some(campos) = json.as_object_mut() else {
         return json;
@@ -237,6 +244,14 @@ fn migrar(mut json: serde_json::Value) -> serde_json::Value {
         if let (Some(p), false) = (escolhida, campos.contains_key("pagina")) {
             campos.insert("pagina".into(), p.into());
         }
+    }
+    if let Some(px) = campos.remove("larguraMaxima").and_then(|v| v.as_f64()) {
+        // Inteiro: o serde não lê um float (126.0) num u32, e o JSON inteiro viraria o padrão.
+        // O `as` satura (negativo vira 0); o `normalizada` traz para os limites.
+        let caracteres = (px / PX_POR_CARACTERE).round() as u64;
+        campos
+            .entry("caracteresPorLinha")
+            .or_insert(caracteres.into());
     }
     if campos.get("tema").and_then(|t| t.as_str()) == Some("sepia") {
         campos.insert("tema".into(), "claro".into());
@@ -262,7 +277,7 @@ mod tests {
             entrelinha: 0.1,
             espaco_letras: -1.0,
             espaco_palavras: f64::NAN,
-            largura_maxima: 5,
+            caracteres_por_linha: 5,
             colunas: 9,
             ..Default::default()
         }
@@ -271,7 +286,7 @@ mod tests {
         assert_eq!(p.entrelinha, limites::ENTRELINHA.0);
         assert_eq!(p.espaco_letras, 0.0);
         assert_eq!(p.espaco_palavras, 0.0, "NaN volta ao padrão");
-        assert_eq!(p.largura_maxima, limites::LARGURA.0);
+        assert_eq!(p.caracteres_por_linha, limites::CARACTERES.0);
         assert_eq!(p.colunas, 2);
     }
 
@@ -408,6 +423,20 @@ mod tests {
         assert_eq!((p.tema, p.pagina), (Tema::Claro, Pagina::Creme));
         let p = PreferenciasLeitura::de_json(r#"{"tema":"sepia","paginaPdf":"original"}"#);
         assert_eq!((p.tema, p.pagina), (Tema::Claro, Pagina::Sepia));
+    }
+
+    #[test]
+    fn migra_a_largura_em_px_para_caracteres_por_linha() {
+        // 8 px por caractere: a coluna de antes, no tamanho padrão, fica a mesma.
+        let p = PreferenciasLeitura::de_json(r#"{"larguraMaxima": 720}"#);
+        assert_eq!(p.caracteres_por_linha, 90);
+        let p = PreferenciasLeitura::de_json(r#"{"larguraMaxima": 1004}"#);
+        assert_eq!(p.caracteres_por_linha, 126, "arredonda");
+        let p = PreferenciasLeitura::de_json(r#"{"larguraMaxima": 1600}"#);
+        assert_eq!(p.caracteres_por_linha, limites::CARACTERES.1, "e normaliza");
+        let p = PreferenciasLeitura::de_json(r#"{"larguraMaxima": 720, "caracteresPorLinha": 70}"#);
+        assert_eq!(p.caracteres_por_linha, 70, "o valor novo vence");
+        assert!(!p.para_json().contains("larguraMaxima"));
     }
 
     #[test]
