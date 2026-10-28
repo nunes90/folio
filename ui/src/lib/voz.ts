@@ -125,3 +125,47 @@ export function comandosDaVoz(
     { id: "voz-parar", titulo: "Parar a leitura em voz alta", grupo: "Voz", executar: parar },
   ];
 }
+
+/**
+ * Velocidade por trecho (M23b): listas e código são lidos mais devagar que o texto corrido
+ * (cada item e cada símbolo pedem atenção). O speech-dispatcher aceita uma velocidade por
+ * mensagem, então cada trecho vai numa mensagem própria.
+ */
+export type TipoDeTrecho = "texto" | "lista" | "codigo";
+
+/** Quanto cada tipo desce na escala do speech-dispatcher (−100 a 100). */
+const LENTIDAO: Record<TipoDeTrecho, number> = { texto: 0, lista: 15, codigo: 30 };
+
+export function velocidadeDoTrecho(velocidade: number, tipo: TipoDeTrecho): number {
+  return Math.max(-100, velocidade - LENTIDAO[tipo]);
+}
+
+/** O tipo do bloco em que está `no` (EPUB): `pre` é código; `li`, `dt` e `dd`, lista. */
+export function tipoDoElemento(no: Node | null | undefined): TipoDeTrecho {
+  // nodeType em vez de instanceof: o nó vem do iframe do livro (outro Element).
+  const el = no?.nodeType === Node.ELEMENT_NODE ? (no as Element) : no?.parentElement;
+  if (el?.closest("pre")) return "codigo";
+  if (el?.closest("li, dt, dd")) return "lista";
+  return "texto";
+}
+
+/** Uma frase que começa com marcador (•, –, -) ou número de item ("1.", "2)", "a)") é de lista. */
+export function tipoDoTexto(texto: string): "lista" | "texto" {
+  return /^\s*([•◦▪▫‣∙·●○■□–—-]\s|\d{1,3}[.)]\s|[a-z][.)]\s)/.test(texto) ? "lista" : "texto";
+}
+
+/**
+ * O trecho a falar numa mensagem: as frases do início até antes da primeira de outro tipo
+ * (`ate`), e o tipo delas. Frases vazias (puladas) não separam trechos.
+ */
+export function trechoDeFala(
+  tipos: TipoDeTrecho[],
+  textos: string[],
+): { ate: number; tipo: TipoDeTrecho } {
+  const primeira = textos.findIndex(Boolean);
+  if (primeira < 0) return { ate: textos.length, tipo: "texto" };
+  const tipo = tipos[primeira] ?? "texto";
+  for (let k = primeira + 1; k < textos.length; k++)
+    if (textos[k] && tipos[k] !== tipo) return { ate: k, tipo };
+  return { ate: textos.length, tipo };
+}

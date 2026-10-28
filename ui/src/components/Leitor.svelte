@@ -82,10 +82,13 @@
     falar,
     ouvirVoz,
     pararVoz,
+    tipoDoElemento,
+    velocidadeDoTrecho,
     vozDisponivel,
     type EstadoVoz,
     type EventoVoz,
   } from "../lib/voz";
+  import { corDoRealce } from "../lib/realce";
 
   let {
     arquivo,
@@ -182,9 +185,11 @@
       // trataria como uma seleção feita com o mouse, fora do modo frase (sem Alt+↑/↓).
       modoFrase?.doc.getSelection()?.removeAllRanges();
       modoFrase = null;
-      // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou.
+      // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou, e a
+      // frase volta a ser só o realce.
       if (retomarVozAoFechar) {
         retomarVozAoFechar = false;
+        fraseLida?.startContainer.ownerDocument?.getSelection()?.removeAllRanges();
         if (voz === "pausado") void pausarOuRetomar();
       }
     },
@@ -198,6 +203,9 @@
     null;
   /** Ctrl+D pausou a voz para destacar a frase lida: retomar quando a barra fechar. */
   let retomarVozAoFechar = false;
+  /** A frase que a voz está lendo (ou leu por último, na pausa) e o CFI do realce dela. */
+  let fraseLida: Range | null = null;
+  let realceVoz: string | null = null;
 
   /** Onde a leitura está, para a meta: o capítulo (a seção) e quanto dele já passou. */
   function moverMeta(fracao: number, secao: string | undefined) {
@@ -388,7 +396,7 @@
       return;
     }
     if (voz !== "parado") await pararLeitura();
-    await view.initTTS("sentence");
+    await view.initTTS("sentence", mostrarFraseLida);
     // Começa na página atual (ou no trecho pedido), não no início do capítulo.
     const range = desde ?? view.lastLocation?.range;
     await seguirLendo(range ? view.tts?.from(range) : view.tts?.start());
@@ -411,9 +419,11 @@
       const bloco = blocoParaFala(ssml);
       if (bloco) {
         voz = "falando";
+        // Listas e código mais devagar (M23b): cada bloco do tts.js é uma mensagem.
+        const tipo = tipoDoElemento(view.tts.block?.commonAncestorContainer);
         await falar(bloco.ssml, {
           idioma: bloco.idioma ?? idiomaDoLivro,
-          velocidade: preferencias.velocidadeVoz,
+          velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
         });
         return;
       }
@@ -427,7 +437,7 @@
     const antes = view.renderer.getContents()[0]?.index;
     await view.renderer.nextSection();
     if (view.renderer.getContents()[0]?.index === antes) return null;
-    await view.initTTS("sentence");
+    await view.initTTS("sentence", mostrarFraseLida);
     return view.tts?.start();
   }
 
@@ -456,7 +466,36 @@
 
   async function pararLeitura() {
     voz = "parado";
+    fraseLida = null;
+    trocarRealce(null);
     await pararVoz();
+  }
+
+  /**
+   * A frase marcada pela voz (M23b), realçada como um destaque (uma anotação a mais do
+   * foliate-js, com a cor da interface): não usa a seleção (um clique não a desfaz e ela fica
+   * na pausa) e segue as linhas do texto. A página vai até ela.
+   */
+  function mostrarFraseLida(frase: Range) {
+    if (!view) return;
+    fraseLida = frase;
+    void view.renderer.scrollToAnchor(frase);
+    const doc = frase.startContainer.ownerDocument;
+    const indice = view.renderer.getContents().find((c) => c.doc === doc)?.index;
+    if (indice !== undefined) trocarRealce(view.getCFI(indice, frase));
+  }
+
+  function trocarRealce(cfi: string | null) {
+    const antes = realceVoz;
+    if (!view || antes === cfi) return;
+    realceVoz = cfi;
+    if (antes) {
+      // Mesmo lugar de um destaque: apagar o realce apagaria o desenho dele, que volta.
+      void view
+        .deleteAnnotation({ value: antes })
+        .then(() => destaques.porLocal(antes) && view?.addAnnotation({ value: antes }));
+    }
+    if (cfi) void view.addAnnotation({ value: cfi });
   }
 
   async function abrir() {
@@ -475,7 +514,8 @@
         annotation: { value: string };
       }>).detail;
       const d = destaques.porLocal(annotation.value);
-      if (marcaTexto) draw(marcaTexto, { color: hexDaCor(d?.cor ?? "amarelo") });
+      const cor = annotation.value === realceVoz ? corDoRealce() : hexDaCor(d?.cor ?? "amarelo");
+      if (marcaTexto) draw(marcaTexto, { color: cor });
     });
     // Clique num destaque: a barra dele (cor, nota, copiar, apagar).
     v.addEventListener("show-annotation", (e) => {
@@ -633,10 +673,9 @@
     return true;
   }
 
-  /** Ctrl+D: a barra da seleção, com o foco nela. */
   /**
    * Ctrl+D: a barra da seleção, com o foco nela; sem seleção, a da frase atual. Com a voz
-   * lendo, a frase lida é a seleção: a voz pausa enquanto a barra está aberta (senão a página
+   * lendo, a frase lida vira a seleção: a voz pausa enquanto a barra está aberta (senão a página
    * vira no meio da escolha e a barra fecha) e continua quando ela fecha.
    */
   async function destacarSelecao() {
@@ -644,6 +683,12 @@
     if (voz === "falando") {
       await pausarOuRetomar();
       retomarVozAoFechar = true;
+      // A frase lida está só realçada: vira a seleção, para a barra abrir sobre ela.
+      if (fraseLida?.startContainer.isConnected) {
+        const sel = fraseLida.startContainer.ownerDocument?.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(fraseLida);
+      }
     }
     const comSelecao = view.renderer
       .getContents()

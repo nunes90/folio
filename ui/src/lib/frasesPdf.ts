@@ -5,6 +5,7 @@
 // da letra (um título é maior que o texto). Dentro de cada bloco, as frases saem de `frasesDe`,
 // a mesma do EPUB.
 import { frasesDe } from "./frases";
+import { tipoDoTexto, type TipoDeTrecho } from "./voz";
 
 /** O que importa de cada pedaço de texto para agrupar: a caixa dele na tela. */
 export interface Caixa {
@@ -46,16 +47,42 @@ export function textoDoTrecho(trecho: Range): string {
  * O texto a falar de cada frase a partir de `primeira` (M23): só as do texto principal
  * (`principais`, os pedaços de `soOPrincipal`); as outras (margem, legendas, número da página)
  * ficam vazias, para os índices continuarem os da página (as marcas da voz). A primeira é
- * sempre lida: é de onde se pediu para ouvir. Sem texto principal reconhecido, lê tudo.
+ * lida (`lerAPrimeira`) quando é de onde se pediu para ouvir; não quando a leitura só continua
+ * (a página seguinte, o trecho seguinte). Sem texto principal reconhecido, lê tudo.
  */
-export function frasesParaFalar(frases: Range[], primeira: number, principais: Element[]): string[] {
+export function frasesParaFalar(
+  frases: Range[],
+  primeira: number,
+  principais: Element[],
+  lerAPrimeira = true,
+): string[] {
   return frases
     .slice(primeira)
     .map((f, k) =>
-      k === 0 || !principais.length || principais.some((p) => f.intersectsNode(p))
+      (k === 0 && lerAPrimeira) || !principais.length || principais.some((p) => f.intersectsNode(p))
         ? textoDoTrecho(f)
         : "",
     );
+}
+
+/**
+ * O tipo de uma frase para a velocidade da voz (M23b): código se a maior parte das letras está
+ * em monoespaçada (o pdf.js põe `font-family: monospace` nos pedaços das fontes de largura
+ * fixa); lista se começa com marcador; senão, texto.
+ */
+export function tipoDaFrasePdf(frase: Range): TipoDeTrecho {
+  const raiz = frase.commonAncestorContainer;
+  const camada = raiz.nodeType === Node.ELEMENT_NODE ? (raiz as Element) : raiz.parentElement;
+  let mono = 0;
+  let total = 0;
+  for (const span of camada?.closest(".textLayer")?.querySelectorAll("span") ?? []) {
+    if (span.querySelector("span") || !frase.intersectsNode(span)) continue;
+    const letras = span.textContent?.trim().length ?? 0;
+    total += letras;
+    if (span.style.fontFamily.includes("monospace")) mono += letras;
+  }
+  if (total && mono / total > 0.5) return "codigo";
+  return tipoDoTexto(textoDoTrecho(frase));
 }
 
 /** Uma caixa com a posição horizontal também (para achar as colunas). */

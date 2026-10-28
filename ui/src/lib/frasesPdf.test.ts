@@ -3,6 +3,7 @@ import {
   blocosEmOrdem,
   frasesDaCamada,
   frasesParaFalar,
+  tipoDaFrasePdf,
   ideiasEmOrdem,
   ordemDeLeitura,
   soOPrincipal,
@@ -204,9 +205,47 @@ describe("frasesParaFalar", () => {
     ]);
   });
 
+  it("continuando a leitura (outra página, outro trecho), a primeira não é forçada", () => {
+    const { spans, frases } = montar();
+    expect(frasesParaFalar(frases, 1, [spans[0]!, spans[2]!], false)).toEqual(["", "Texto dois.", ""]);
+  });
+
   it("sem texto principal reconhecido, lê tudo", () => {
     const { frases } = montar();
     expect(frasesParaFalar(frases, 0, [])).toHaveLength(4);
     expect(frasesParaFalar(frases, 0, []).every(Boolean)).toBe(true);
+  });
+});
+
+describe("tipoDaFrasePdf", () => {
+  const frase = (html: string) => {
+    const camada = document.createElement("div");
+    camada.className = "textLayer";
+    camada.innerHTML = html;
+    document.body.append(camada);
+    const r = document.createRange();
+    r.selectNodeContents(camada);
+    return r;
+  };
+
+  it("a maior parte em monoespaçada (como o pdf.js marca o código) é código", () => {
+    expect(
+      tipoDaFrasePdf(frase('<span style="font-family: monospace">let x = 5;</span>')),
+    ).toBe("codigo");
+  });
+
+  it("uma palavra em monoespaçada no meio do texto continua texto", () => {
+    expect(
+      tipoDaFrasePdf(
+        frase(
+          '<span style="font-family: serif">Entering </span><span style="font-family: monospace">quit</span>' +
+            '<span style="font-family: serif"> will quit the game, but so will any other input.</span>',
+        ),
+      ),
+    ).toBe("texto");
+  });
+
+  it("com marcador no começo é lista", () => {
+    expect(tipoDaFrasePdf(frase('<span style="font-family: serif">• Primeiro item</span>'))).toBe("lista");
   });
 });
