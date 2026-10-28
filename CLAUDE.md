@@ -490,4 +490,5 @@ docs/decisions/  # ADRs
   mistura dos destaques, opacidade 0 → 1 → 0 em 1,6 s; com movimento reduzido, sem transição): no EPUB, a frase
   que a página cortou (no documento do capítulo); no PDF, o primeiro bloco de texto da página salva.
 - **M22 concluído. v0.8 completa** (M19–M22).
-- Próximo passo: release v0.8.0; depois, M23 (voz com acompanhamento). Séries continua adiado.
+- **v0.8.0** (out/2026): tag assinada `v0.8.0` (M19–M22) e Release como pre-release, com o AppImage da CI.
+- Próximo passo: M23 (voz com acompanhamento). Séries continua adiado.

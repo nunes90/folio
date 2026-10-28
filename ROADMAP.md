@@ -156,6 +156,9 @@ pre-release, com o AppImage anexado pela CI.
 - [x] **M22 — Continuação ao reabrir**: "Da última vez você estava em <capítulo>" e as 2–3 frases anteriores ao
   ponto em que parou, tiradas do próprio texto (sem resumo gerado, sem IA).
 
+**v0.8.0** (out/2026): M19 (uma ideia por vez), M20 (sessões, meta da sessão, foco planejado), M21 (ritmo e
+trechos revisitados) e M22 (onde você parou). Tag `v0.8.0`, Release como pre-release, com o AppImage.
+
 ### v0.9 — voz, tipografia e comparação
 - [ ] **M23 — Voz com acompanhamento**: destaque da frase estável (pendência do M4d), velocidade por trecho (mais
   devagar em listas e código; o SSIP permite por mensagem), voz no PDF com o mesmo modelo do EPUB.
