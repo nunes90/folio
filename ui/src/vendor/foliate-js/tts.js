@@ -213,6 +213,8 @@ export class TTS {
         this.#list = new ListIterator(getBlocks(doc), range => {
             const { entries, ssml } = getFragmentWithMarks(range, textWalker, granularity)
             this.#ranges = new Map(entries)
+            // LEITOR: o bloco que vai ser falado (o Folio lê listas e código mais devagar)
+            this.block = range
             return [ssml, range]
         })
     }

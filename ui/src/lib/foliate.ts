@@ -32,8 +32,10 @@ export interface TtsFoliate {
   /** O bloco atual a partir da última marca (`setMark`): para retomar depois de uma pausa. */
   resume(): string | undefined;
   from(range: Range): string | undefined;
-  /** Destaca a frase da marca e vira a página até ela. */
+  /** Destaca a frase da marca (pelo `highlight` do `initTTS`) e vira a página até ela. */
   setMark(marca: string): void;
+  /** O bloco que vai ser falado (alteração local, ver PATCHES.md). */
+  block?: Range;
 }
 
 export interface Paginador extends HTMLElement {
@@ -67,7 +69,8 @@ export interface FoliateView extends HTMLElement {
   renderer: Paginador;
   tts?: TtsFoliate;
   lastLocation?: { range?: Range } | null;
-  initTTS(granularidade?: "word" | "sentence"): Promise<void>;
+  /** `realce` recebe a frase de cada marca (padrão: selecioná-la e virar a página até ela). */
+  initTTS(granularidade?: "word" | "sentence", realce?: (frase: Range) => void): Promise<void>;
   open(arquivo: File | Blob): Promise<void>;
   init(opcoes: { lastLocation?: string | null; showTextStart?: boolean }): Promise<void>;
   close(): void;

@@ -11,10 +11,13 @@
     falar,
     ouvirVoz,
     pararVoz,
+    trechoDeFala,
+    velocidadeDoTrecho,
     vozDisponivel,
     type EstadoVoz,
     type EventoVoz,
   } from "../lib/voz";
+  import { corDoRealce } from "../lib/realce";
   import BuscaPdf from "./BuscaPdf.svelte";
   import Indice from "./Indice.svelte";
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
@@ -27,6 +30,7 @@
     frasesDaCamada,
     frasesParaFalar,
     ideiasDaCamada,
+    tipoDaFrasePdf,
     textoDoTrecho,
   } from "../lib/frasesPdf";
   import {
@@ -181,9 +185,11 @@
       if (modoFrase) window.getSelection()?.removeAllRanges();
       modoFrase = null;
       selecaoDaBarra = null;
-      // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou.
+      // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou, e a
+      // frase volta a ser só o realce.
       if (retomarVozAoFechar) {
         retomarVozAoFechar = false;
+        window.getSelection()?.removeAllRanges();
         if (voz === "pausado") void pausarOuRetomar();
       }
     },
@@ -366,6 +372,7 @@
     // a cada desenho, em porcentagens (não depende do zoom).
     eventos.on("pagerendered", ({ pageNumber }: { pageNumber: number }) => {
       desenharDestaques(pageNumber);
+      desenharRealce(pageNumber);
       desenharIdeia(pageNumber);
     });
     // A camada de texto (de onde saem os blocos) pode ficar pronta depois do desenho.
@@ -969,14 +976,21 @@
     return true;
   }
 
-  // Leitura em voz alta (M23), com o mesmo modelo do EPUB: uma página por vez, com uma marca
-  // por frase (as frases do M17b, na ordem de leitura); a frase lida fica selecionada na camada
-  // de texto e, no fim da página, a leitura passa à seguinte. Pausar cancela a fala; retomar
+  // Leitura em voz alta (M23), com o mesmo modelo do EPUB: uma página por vez, em trechos do
+  // mesmo tipo (texto, lista, código; uma mensagem cada), com uma marca por frase (as frases do
+  // M17b, na ordem de leitura); a frase lida fica realçada na camada de texto e, no fim da
+  // página, a leitura passa à seguinte. Pausar cancela a fala; retomar
   // fala de novo a partir da frase marcada (a pausa do speech-dispatcher pulava o resto).
   let voz = $state<EstadoVoz>("parado");
   let vozPossivel = $state(false);
-  /** O que está sendo lido: a página, as frases dela e a última frase marcada. */
-  let leitura: { pagina: number; frases: Range[]; marca: number } | null = null;
+  /**
+   * O que está sendo lido: a página, as frases dela, a última frase marcada e onde acaba o
+   * trecho em fala (listas e código vão em mensagens próprias, mais devagar).
+   */
+  let leitura: { pagina: number; frases: Range[]; marca: number; fim: number } | null = null;
+  /** A frase marcada pela voz e o realce dela, em frações da página (como os destaques). */
+  let fraseLida: Range | null = null;
+  let realceVoz: { pagina: number; retangulos: Retangulo[] } | null = null;
   /** Muda a cada leitura nova ou parada: uma leitura antiga que acorda depois de um `await` desiste. */
   let vez = 0;
   /** Ctrl+D pausou a voz para destacar a frase lida: retomar quando a barra fechar. */
@@ -995,20 +1009,29 @@
     await lerDesde(n, frase);
   }
 
-  /** Fala a página `n` a partir da frase `inicio`; páginas sem texto são puladas. */
-  async function lerDesde(n: number, inicio: number) {
+  /**
+   * Fala, a partir da frase `inicio` da página `n`, o trecho seguinte de frases do mesmo tipo
+   * (texto, lista ou código); páginas sem texto são puladas. `lerAPrimeira`: a frase `inicio` é
+   * lida mesmo fora do texto principal (é de onde se pediu para ouvir).
+   */
+  async function lerDesde(n: number, inicio: number, lerAPrimeira = true) {
     const minha = ++vez;
-    for (let p = n, de = inicio; p <= total; p++, de = 0) {
+    for (let p = n, de = inicio, forcar = lerAPrimeira; p <= total; p++, de = 0, forcar = false) {
       if (p !== pagina) irPara(p);
       const frases = await frasesDaPagina(p);
       // Só o texto principal: a margem, as legendas e o número da página não são lidos.
       const principais = (await ideiasDaPagina(p)).flat();
       if (minha !== vez) return;
-      const bloco = blocoDasFrases(frasesParaFalar(frases, de, principais), de);
+      const textos = frasesParaFalar(frases, de, principais, forcar);
+      const { ate, tipo } = trechoDeFala(frases.slice(de).map(tipoDaFrasePdf), textos);
+      const bloco = blocoDasFrases(textos.slice(0, ate), de);
       if (!bloco) continue;
-      leitura = { pagina: p, frases, marca: de };
+      leitura = { pagina: p, frases, marca: de, fim: de + ate };
       voz = "falando";
-      await falar(bloco.ssml, { idioma: null, velocidade: preferencias.velocidadeVoz });
+      await falar(bloco.ssml, {
+        idioma: null,
+        velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
+      });
       return;
     }
     voz = "parado";
@@ -1023,15 +1046,12 @@
       const i = Number(e.marca);
       const frase = leitura.frases[i];
       leitura.marca = i;
-      // A frase lida fica selecionada (o mesmo destaque do EPUB); se a página mudou à mão, volta.
+      // A frase lida fica realçada (o mesmo do EPUB); se a página mudou à mão, volta.
       if (leitura.pagina !== pagina) irPara(leitura.pagina);
-      if (frase) {
-        const sel = window.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(frase);
-      }
+      if (frase) mostrarFraseLida(leitura.pagina, frase);
     } else if (e.tipo === "fim") {
-      void lerDesde(leitura.pagina + 1, 0);
+      // O trecho seguinte da página (ou, no fim dela, a página seguinte).
+      void lerDesde(leitura.pagina, leitura.fim, false);
     } else {
       voz = "parado";
     }
@@ -1051,8 +1071,54 @@
     voz = "parado";
     vez++;
     leitura = null;
-    window.getSelection()?.removeAllRanges();
+    fraseLida = null;
+    trocarRealce(null);
     await pararVoz();
+  }
+
+  /**
+   * A frase marcada pela voz (M23b), realçada numa camada como a dos destaques: não usa a
+   * seleção (um clique não a desfaz e ela fica na pausa) e segue as linhas do texto.
+   */
+  function mostrarFraseLida(n: number, frase: Range) {
+    fraseLida = frase;
+    const caixa = paginaEl(n)?.getBoundingClientRect();
+    const retangulos = caixa ? retangulosNaPagina([...frase.getClientRects()], caixa) : [];
+    trocarRealce({ pagina: n, retangulos });
+  }
+
+  function trocarRealce(novo: typeof realceVoz) {
+    const antes = realceVoz?.pagina;
+    realceVoz = novo;
+    if (antes !== undefined && antes !== novo?.pagina) desenharRealce(antes);
+    if (novo) desenharRealce(novo.pagina);
+  }
+
+  /** A camada do realce da voz na página `n` (refeita a cada desenho do pdf.js). */
+  function desenharRealce(n: number) {
+    const el = paginaEl(n);
+    if (!el) return;
+    el.querySelector(".camada-voz")?.remove();
+    if (realceVoz?.pagina !== n || !realceVoz.retangulos.length) return;
+    const camada = document.createElement("div");
+    camada.className = "camada-voz";
+    camada.setAttribute("aria-hidden", "true");
+    const cor = corDoRealce();
+    for (const r of realceVoz.retangulos) {
+      const marca = document.createElement("div");
+      Object.assign(marca.style, {
+        left: `${r.x * 100}%`,
+        top: `${r.y * 100}%`,
+        width: `${r.l * 100}%`,
+        height: `${r.a * 100}%`,
+        background: cor,
+      });
+      camada.append(marca);
+    }
+    // Como os destaques: acima do desenho da página e abaixo da camada de texto.
+    const antes = el.querySelector(".camada-destaques") ?? el.querySelector(".canvasWrapper");
+    if (antes) antes.after(camada);
+    else el.prepend(camada);
   }
 
   /** Ouvir a partir do trecho da barra (seleção, frase ou destaque) até o fim do documento. */
@@ -1101,13 +1167,19 @@
 
   /**
    * Ctrl+D: a barra da seleção, com o foco nela; sem seleção, a da frase atual. Com a voz
-   * lendo, a frase lida é a seleção: a voz pausa enquanto a barra está aberta (senão a página
+   * lendo, a frase lida vira a seleção: a voz pausa enquanto a barra está aberta (senão a página
    * vira no meio da escolha e a barra fecha) e continua quando ela fecha.
    */
   async function destacarSelecao() {
     if (voz === "falando") {
       await pausarOuRetomar();
       retomarVozAoFechar = true;
+      // A frase lida está só realçada: vira a seleção, para a barra abrir sobre ela.
+      if (fraseLida?.startContainer.isConnected) {
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(fraseLida);
+      }
     }
     if (!verSelecao(true)) await iniciarModoFrase(pagina, "inicio");
     // Nada para destacar (a barra não abriu): a voz continua na hora.
@@ -1458,13 +1530,15 @@
 
   /* Destaques (M16c): por cima do desenho da página, sem pegar o ponteiro (a seleção de texto
      continua). Mesma mistura do EPUB (lib/destaques.ts). */
-  .conteiner :global(.camada-destaques) {
+  .conteiner :global(.camada-destaques),
+  .conteiner :global(.camada-voz) {
     position: absolute;
     inset: 0;
     pointer-events: none;
   }
 
-  .conteiner :global(.camada-destaques > div) {
+  .conteiner :global(.camada-destaques > div),
+  .conteiner :global(.camada-voz > div) {
     position: absolute;
     opacity: var(--marca-opacidade);
     mix-blend-mode: var(--marca-mistura);

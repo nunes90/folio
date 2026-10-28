@@ -501,4 +501,20 @@ docs/decisions/  # ADRs
   Ctrl+D com a voz lendo pausa enquanto a barra está aberta e retoma ao fechar (`retomarVozAoFechar`), como no
   EPUB. "Ouvir" na barra de destaque do PDF (`ouvirDaqui`: do modo frase, da seleção ou do destaque, achando a
   frase pelo ponto). Comum aos dois: `ControlesVoz.svelte` (rodapé), `comandosDaVoz` (paleta) e `EstadoVoz`.
-- Próximo passo: M23b (destaque da frase estável e velocidade por trecho). Séries continua adiado.
+- **M23b** (branch `feat/m23b-voz-estavel`): frase lida estável e velocidade por trecho, iguais nos dois formatos.
+  A frase lida é desenhada como um destaque, na cor de destaque da interface (`corDoRealce`, `lib/realce.ts`), e
+  não mais pela seleção: um clique não a desfaz e ela fica na pausa; some ao parar. EPUB: uma anotação a mais do
+  foliate-js (`realceVoz` = CFI da frase; `draw-annotation` usa a cor da interface; se o CFI for o de um
+  destaque, ele é redesenhado ao trocar), via `initTTS("sentence", mostrarFraseLida)` + `scrollToAnchor(frase)`.
+  PDF: camada `.camada-voz` com os retângulos por linha (`retangulosNaPagina`, em frações), refeita no
+  `pagerendered`. **A CSS Custom Highlight API foi descartada**: no WebKitGTK 2.54 a frase anterior continuava
+  pintada e as caixas não seguiam as linhas. Ctrl+D com a voz lendo põe a
+  frase lida na seleção para abrir a barra (e tira ao retomar). Velocidade: `velocidadeDoTrecho` (lista −15,
+  código −30 na escala do speech-dispatcher, uma mensagem por trecho). EPUB: o bloco do `tts.js` (`block`,
+  alteração local) → `tipoDoElemento` (`pre` = código; `li`/`dt`/`dd` = lista). PDF: `tipoDaFrasePdf` (código se a
+  maioria das letras está em `font-family: monospace`, que o pdf.js põe nas fontes de largura fixa; lista pelo
+  marcador, `tipoDoTexto`) e `trechoDeFala` dividem a página em mensagens do mesmo tipo (`leitura.fim`; no "fim",
+  o trecho seguinte). `frasesParaFalar(…, lerAPrimeira)`: ao continuar (outra página, outro trecho), a primeira
+  frase não é mais forçada (o M23a lia o número da página no alto de cada página nova).
+- **M23 concluído.**
+- Próximo passo: M24 (tipografia do EPUB). Séries continua adiado.

@@ -160,7 +160,7 @@ pre-release, com o AppImage anexado pela CI.
 trechos revisitados) e M22 (onde você parou). Tag `v0.8.0`, Release como pre-release, com o AppImage.
 
 ### v0.9 — voz, tipografia e comparação
-- [ ] **M23 — Voz com acompanhamento** (M23a voz no PDF ✓): destaque da frase estável (pendência do M4d), velocidade por trecho (mais
+- [x] **M23 — Voz com acompanhamento** (M23a voz no PDF, M23b frase realçada e velocidade por trecho): destaque da frase estável (pendência do M4d), velocidade por trecho (mais
   devagar em listas e código; o SSIP permite por mensagem), voz no PDF com o mesmo modelo do EPUB.
 - [ ] **M24 — Tipografia que reage ao texto** (EPUB): `pre`/`code` sempre em monoespaçada, títulos com mais ar,
   largura de coluna que respeita o livro e a preferência.

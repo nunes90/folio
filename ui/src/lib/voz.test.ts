@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { blocoDasFrases, blocoParaFala, comandosDaVoz } from "./voz";
+import {
+  blocoDasFrases,
+  blocoParaFala,
+  comandosDaVoz,
+  tipoDoElemento,
+  tipoDoTexto,
+  trechoDeFala,
+  velocidadeDoTrecho,
+} from "./voz";
 
 const NS = 'xmlns="http://www.w3.org/2001/10/synthesis"';
 
@@ -63,5 +71,40 @@ describe("comandosDaVoz", () => {
       "Parar a leitura em voz alta",
     ]);
     expect(comandosDaVoz("pausado", f, f, f)[0]!.titulo).toBe("Continuar a leitura em voz alta");
+  });
+});
+
+describe("velocidade por trecho", () => {
+  it("listas e código mais devagar, sem passar do mínimo", () => {
+    expect(velocidadeDoTrecho(20, "texto")).toBe(20);
+    expect(velocidadeDoTrecho(20, "lista")).toBeLessThan(20);
+    expect(velocidadeDoTrecho(20, "codigo")).toBeLessThan(velocidadeDoTrecho(20, "lista"));
+    expect(velocidadeDoTrecho(-95, "codigo")).toBe(-100);
+  });
+
+  it("tipoDoElemento: pre é código; li, dt e dd são lista; o resto, texto", () => {
+    document.body.innerHTML =
+      "<pre><span id='a'>fn main()</span></pre><ul><li id='b'>item</li></ul><dl><dd id='c'>def</dd></dl><p id='d'>texto</p>";
+    const $ = (id: string) => document.getElementById(id)!;
+    expect(tipoDoElemento($("a").firstChild)).toBe("codigo");
+    expect(tipoDoElemento($("b"))).toBe("lista");
+    expect(tipoDoElemento($("c"))).toBe("lista");
+    expect(tipoDoElemento($("d").firstChild)).toBe("texto");
+    expect(tipoDoElemento(null)).toBe("texto");
+  });
+
+  it("tipoDoTexto: começa com marcador ou número de item = lista", () => {
+    for (const t of ["• Primeiro item", "– outro", "- hífen", "1. Passo um", "2) Passo", "a) letra", "▪ quadrado"])
+      expect(tipoDoTexto(t), t).toBe("lista");
+    for (const t of ["Texto comum.", "1984 foi um ano.", "-5 graus", "A) não", "3.14 é pi"])
+      expect(tipoDoTexto(t), t).toBe("texto");
+  });
+
+  it("trechoDeFala: as frases seguidas do mesmo tipo; as vazias não separam", () => {
+    const tipos = ["texto", "texto", "codigo", "codigo", "texto"] as const;
+    expect(trechoDeFala([...tipos], ["a", "b", "c", "d", "e"])).toEqual({ ate: 2, tipo: "texto" });
+    expect(trechoDeFala(["codigo", "texto", "codigo"], ["x", "", "y"])).toEqual({ ate: 3, tipo: "codigo" });
+    expect(trechoDeFala(["texto", "lista", "lista"], ["", "i", "j"])).toEqual({ ate: 3, tipo: "lista" });
+    expect(trechoDeFala([], [])).toEqual({ ate: 0, tipo: "texto" });
   });
 });
