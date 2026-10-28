@@ -42,6 +42,22 @@ export function textoDoTrecho(trecho: Range): string {
   return (copia.textContent ?? "").replace(/ {2,}/g, " ").trim();
 }
 
+/**
+ * O texto a falar de cada frase a partir de `primeira` (M23): só as do texto principal
+ * (`principais`, os pedaços de `soOPrincipal`); as outras (margem, legendas, número da página)
+ * ficam vazias, para os índices continuarem os da página (as marcas da voz). A primeira é
+ * sempre lida: é de onde se pediu para ouvir. Sem texto principal reconhecido, lê tudo.
+ */
+export function frasesParaFalar(frases: Range[], primeira: number, principais: Element[]): string[] {
+  return frases
+    .slice(primeira)
+    .map((f, k) =>
+      k === 0 || !principais.length || principais.some((p) => f.intersectsNode(p))
+        ? textoDoTrecho(f)
+        : "",
+    );
+}
+
 /** Uma caixa com a posição horizontal também (para achar as colunas). */
 export interface CaixaPlena extends Caixa {
   left: number;

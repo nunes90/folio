@@ -2,6 +2,10 @@
 // que o tts.js do foliate-js produz para o formato que o speech-dispatcher entende bem.
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { Comando } from "./comandos";
+
+/** Em que pé está a leitura em voz alta (igual nos dois leitores). */
+export type EstadoVoz = "parado" | "falando" | "pausado";
 
 export type EventoVoz = { tipo: "marca"; marca: string } | { tipo: "fim" } | { tipo: "interrompido" };
 
@@ -80,4 +84,44 @@ export function blocoParaFala(ssmlFoliate: string): BlocoDeFala | null {
     marcas: comTexto.flatMap((f) => (f.marca === null ? [] : [f.marca])),
     idioma: raiz.getAttributeNS(XML_NS, "lang") || null,
   };
+}
+
+/**
+ * O bloco de fala de uma lista de frases (voz no PDF, M23): `<s><mark name="i"/>frase</s>`, como o
+ * do EPUB. As marcas são os índices das frases a partir de `primeira` (ex.: retomar da 5ª frase
+ * da página dá as marcas "4", "5", …). Frases vazias não entram. `null` = nada a falar.
+ */
+export function blocoDasFrases(
+  frases: string[],
+  primeira = 0,
+  idioma: string | null = null,
+): BlocoDeFala | null {
+  const comTexto = frases
+    .map((texto, i) => ({ marca: String(primeira + i), texto: texto.replace(/\s+/g, " ").trim() }))
+    .filter((f) => f.texto);
+  if (!comTexto.length) return null;
+  const corpo = comTexto
+    .map((f) => `<s><mark name="${f.marca}"/>${escapar(f.texto)}</s>`)
+    .join("");
+  return { ssml: `<speak>${corpo}</speak>`, marcas: comTexto.map((f) => f.marca), idioma };
+}
+
+/** Os comandos de voz da paleta, conforme o estado (iguais nos dois leitores). */
+export function comandosDaVoz(
+  estado: EstadoVoz,
+  ler: () => void,
+  pausarOuRetomar: () => void,
+  parar: () => void,
+): Comando[] {
+  if (estado === "parado")
+    return [{ id: "voz-ler", titulo: "Ler em voz alta", grupo: "Voz", executar: ler }];
+  return [
+    {
+      id: "voz-pausar",
+      titulo: estado === "pausado" ? "Continuar a leitura em voz alta" : "Pausar a leitura em voz alta",
+      grupo: "Voz",
+      executar: pausarOuRetomar,
+    },
+    { id: "voz-parar", titulo: "Parar a leitura em voz alta", grupo: "Voz", executar: parar },
+  ];
 }

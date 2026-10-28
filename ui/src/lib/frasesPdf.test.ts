@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   blocosEmOrdem,
   frasesDaCamada,
+  frasesParaFalar,
   ideiasEmOrdem,
   ordemDeLeitura,
   soOPrincipal,
@@ -170,5 +171,42 @@ describe("textoDoTrecho", () => {
     const r = document.createRange();
     r.selectNodeContents(camada);
     expect(textoDoTrecho(r)).toBe("Encontrei no trem um rapaz. Fim");
+  });
+});
+
+describe("frasesParaFalar", () => {
+  const montar = () => {
+    const camada = document.createElement("div");
+    camada.innerHTML =
+      "<span>Texto um.</span><span>Nota na margem.</span><span>Texto dois.</span><span>Texto três.</span>";
+    const spans = [...camada.querySelectorAll("span")];
+    const frases = spans.map((s) => {
+      const r = document.createRange();
+      r.selectNodeContents(s);
+      return r;
+    });
+    return { spans, frases };
+  };
+
+  it("só as frases do texto principal; as outras ficam vazias (as marcas não mudam)", () => {
+    const { spans, frases } = montar();
+    const principais = [spans[0]!, spans[2]!, spans[3]!];
+    expect(frasesParaFalar(frases, 0, principais)).toEqual(["Texto um.", "", "Texto dois.", "Texto três."]);
+    expect(frasesParaFalar(frases, 2, principais)).toEqual(["Texto dois.", "Texto três."]);
+  });
+
+  it("a frase de onde se pediu para ouvir é lida mesmo fora do principal", () => {
+    const { spans, frases } = montar();
+    expect(frasesParaFalar(frases, 1, [spans[0]!, spans[2]!])).toEqual([
+      "Nota na margem.",
+      "Texto dois.",
+      "",
+    ]);
+  });
+
+  it("sem texto principal reconhecido, lê tudo", () => {
+    const { frases } = montar();
+    expect(frasesParaFalar(frases, 0, [])).toHaveLength(4);
+    expect(frasesParaFalar(frases, 0, []).every(Boolean)).toBe(true);
   });
 });

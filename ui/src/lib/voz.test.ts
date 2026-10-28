@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blocoParaFala } from "./voz";
+import { blocoDasFrases, blocoParaFala, comandosDaVoz } from "./voz";
 
 const NS = 'xmlns="http://www.w3.org/2001/10/synthesis"';
 
@@ -35,5 +35,33 @@ describe("blocoParaFala", () => {
 
   it("XML inválido não tem o que falar", () => {
     expect(blocoParaFala("<speak><mark name='0'>")).toBeNull();
+  });
+});
+
+describe("blocoDasFrases", () => {
+  it("uma marca por frase, com o índice a partir da primeira; escapa o texto", () => {
+    const bloco = blocoDasFrases(["Uma frase.", "  ", "A < B &\n C."], 4);
+    expect(bloco).toEqual({
+      ssml: '<speak><s><mark name="4"/>Uma frase.</s><s><mark name="6"/>A &lt; B &amp; C.</s></speak>',
+      marcas: ["4", "6"],
+      idioma: null,
+    });
+  });
+
+  it("sem texto, nada a falar", () => {
+    expect(blocoDasFrases([])).toBeNull();
+    expect(blocoDasFrases([" ", ""])).toBeNull();
+  });
+});
+
+describe("comandosDaVoz", () => {
+  it("conforme o estado", () => {
+    const f = () => {};
+    expect(comandosDaVoz("parado", f, f, f).map((c) => c.titulo)).toEqual(["Ler em voz alta"]);
+    expect(comandosDaVoz("falando", f, f, f).map((c) => c.titulo)).toEqual([
+      "Pausar a leitura em voz alta",
+      "Parar a leitura em voz alta",
+    ]);
+    expect(comandosDaVoz("pausado", f, f, f)[0]!.titulo).toBe("Continuar a leitura em voz alta");
   });
 });

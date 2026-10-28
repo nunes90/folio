@@ -491,4 +491,14 @@ docs/decisions/  # ADRs
   que a página cortou (no documento do capítulo); no PDF, o primeiro bloco de texto da página salva.
 - **M22 concluído. v0.8 completa** (M19–M22).
 - **v0.8.0** (out/2026): tag assinada `v0.8.0` (M19–M22) e Release como pre-release, com o AppImage da CI.
-- Próximo passo: M23 (voz com acompanhamento). Séries continua adiado.
+- **M23a** (branch `feat/m23a-voz-pdf`): leitura em voz alta no PDF, com o modelo do EPUB. `blocoDasFrases` em
+  `lib/voz.ts` (as frases de uma página como `<s><mark name="i"/>…</s>`; marcas = índice da frase na página, a
+  partir de onde a leitura começa). No `LeitorPdf`: `lerEmVozAlta(n, frase)`/`lerDesde` (uma página por vez,
+  com as frases do M17b na ordem de leitura; só o texto principal do `soOPrincipal` é lido, menos a frase de
+  onde se pediu para ouvir: `frasesParaFalar`; páginas sem texto são puladas; `vez` descarta uma leitura antiga que
+  acorda depois de um `await`), `aoEventoVoz` (a frase marcada vira a seleção na camada de texto; se a página
+  mudou à mão, volta a ela; no fim, a página seguinte), pausar = cancelar e retomar da frase marcada, parar.
+  Ctrl+D com a voz lendo pausa enquanto a barra está aberta e retoma ao fechar (`retomarVozAoFechar`), como no
+  EPUB. "Ouvir" na barra de destaque do PDF (`ouvirDaqui`: do modo frase, da seleção ou do destaque, achando a
+  frase pelo ponto). Comum aos dois: `ControlesVoz.svelte` (rodapé), `comandosDaVoz` (paleta) e `EstadoVoz`.
+- Próximo passo: M23b (destaque da frase estável e velocidade por trecho). Séries continua adiado.

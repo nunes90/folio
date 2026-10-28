@@ -6,6 +6,7 @@
   import ListaDestaques from "./ListaDestaques.svelte";
   import Carregando from "./Carregando.svelte";
   import Icone from "./Icone.svelte";
+  import ControlesVoz from "./ControlesVoz.svelte";
   import MolduraLeitor from "./MolduraLeitor.svelte";
   import PainelLeitura from "./PainelLeitura.svelte";
   import PainelPagina from "./PainelPagina.svelte";
@@ -77,10 +78,12 @@
   } from "../lib/comandos";
   import {
     blocoParaFala,
+    comandosDaVoz,
     falar,
     ouvirVoz,
     pararVoz,
     vozDisponivel,
+    type EstadoVoz,
     type EventoVoz,
   } from "../lib/voz";
 
@@ -320,7 +323,7 @@
   });
 
   // Leitura em voz alta: um bloco (parágrafo) por vez; ao terminar, o próximo.
-  let voz = $state<"parado" | "falando" | "pausado">("parado");
+  let voz = $state<EstadoVoz>("parado");
   let vozPossivel = $state(false);
   let idiomaDoLivro: string | null = null;
 
@@ -839,28 +842,14 @@
           executar: () => void andarIdeia("tras"),
         },
       );
-    if (voz === "parado")
-      lista.push({
-        id: "voz-ler",
-        titulo: "Ler em voz alta",
-        grupo: "Voz",
-        executar: () => void lerEmVozAlta(),
-      });
-    else
-      lista.push(
-        {
-          id: "voz-pausar",
-          titulo: voz === "pausado" ? "Continuar a leitura em voz alta" : "Pausar a leitura em voz alta",
-          grupo: "Voz",
-          executar: () => void pausarOuRetomar(),
-        },
-        {
-          id: "voz-parar",
-          titulo: "Parar a leitura em voz alta",
-          grupo: "Voz",
-          executar: () => void pararLeitura(),
-        },
-      );
+    lista.push(
+      ...comandosDaVoz(
+        voz,
+        () => void lerEmVozAlta(),
+        () => void pausarOuRetomar(),
+        () => void pararLeitura(),
+      ),
+    );
     lista.push(comandoQuantoFalta(estimativa, "epub", (texto) => (anuncio = texto)));
     lista.push(...comandosDasRevisitas(revisitas.lista, irParaTrecho));
     lista.push(...destaques.comandos(destacarSelecao), ...comandosDaMeta(meta, "epub"),
@@ -967,21 +956,12 @@
   {/snippet}
 
   {#snippet rodape()}
-    <div class="voz" role="group" aria-label="Leitura em voz alta">
-      {#if voz === "parado"}
-        <button type="button" onclick={() => lerEmVozAlta()}>
-          <Icone nome="voz" /><span class="rotulo">Ler em voz alta</span>
-        </button>
-      {:else}
-        <button type="button" onclick={pausarOuRetomar}>
-          <Icone nome={voz === "pausado" ? "continuar" : "pausar"} />
-          <span class="rotulo">{voz === "pausado" ? "Continuar leitura" : "Pausar leitura"}</span>
-        </button>
-        <button type="button" onclick={pararLeitura}>
-          <Icone nome="parar" /><span class="rotulo">Parar leitura</span>
-        </button>
-      {/if}
-    </div>
+    <ControlesVoz
+      estado={voz}
+      onLer={() => void lerEmVozAlta()}
+      onPausarOuRetomar={() => void pausarOuRetomar()}
+      onParar={() => void pararLeitura()}
+    />
     <div class="grupo-barra" role="group" aria-label="Páginas">
       <button type="button" onclick={anterior}>
         <Icone nome="anterior" /><span class="rotulo">Anterior</span>
@@ -1022,12 +1002,5 @@
   .porcento {
     min-width: 3rem;
     text-align: center;
-  }
-
-  /* Controles de voz à esquerda; a navegação continua no centro. */
-  .voz {
-    display: flex;
-    gap: 0.5rem;
-    margin-inline-end: auto;
   }
 </style>
