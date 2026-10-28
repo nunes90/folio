@@ -153,7 +153,7 @@ pre-release, com o AppImage anexado pela CI.
   revelar as barras só pelo teclado.
 - [x] **M21 — Progresso honesto** (M21a ritmo e estimativas, M21b trechos revisitados): ritmo real de quem lê (das sessões) para estimar "~40 min neste capítulo";
   "você voltou várias vezes a este trecho" (visitas guardadas no core). Dados só locais, tom neutro.
-- [ ] **M22 — Continuação ao reabrir**: "Da última vez você estava em <capítulo>" e as 2–3 frases anteriores ao
+- [x] **M22 — Continuação ao reabrir**: "Da última vez você estava em <capítulo>" e as 2–3 frases anteriores ao
   ponto em que parou, tiradas do próprio texto (sem resumo gerado, sem IA).
 
 ### v0.9 — voz, tipografia e comparação

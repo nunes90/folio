@@ -30,6 +30,8 @@
     type Ponto,
   } from "../lib/meta.svelte";
   import { comandoQuantoFalta, estimar, textoDoRodape } from "../lib/estimativa";
+  import { deveMostrar, haQuanto, ultimasFrases, type Continuacao } from "../lib/continuacao";
+  import { piscar } from "../lib/piscar";
   import { Revisitas, comandosDasRevisitas, trechoDePaginas } from "../lib/revisitas.svelte";
   import { avisar } from "../lib/avisos.svelte";
   import type { Trecho } from "../lib/biblioteca";
@@ -71,6 +73,7 @@
     livroId,
     titulo,
     inicio,
+    ultimaLeitura,
     onFechar,
     onProgresso,
     onComandos,
@@ -81,6 +84,8 @@
     titulo: string;
     /** Onde retomar, no formato `pagina:N` (salvo na biblioteca). */
     inicio?: string;
+    /** Fim da última leitura (segundos desde 1970), para "Da última vez…" (M22). */
+    ultimaLeitura?: number;
     onFechar: () => void;
     onProgresso?: (localizacao: string, fracao: number) => void;
     /** Publica os comandos deste documento para a paleta (Ctrl+K), de novo a cada mudança. */
@@ -380,7 +385,59 @@
       .finally(() => {
         sumarioPronto = true;
         visitarPagina(pagina);
+        // Com o sumário, o cartão já sabe o nome da seção.
+        // A página salva: o pdf.js pode ainda não ter ido até ela.
+        const salva = Number(inicio?.match(/^pagina:(\d+)$/)?.[1]) || pagina;
+        montarContinuacao(documento, salva).catch((e) => log.warn(`onde você parou: ${e}`));
       });
+  }
+
+  // "Onde você parou" (M22): ao reabrir depois de uma hora ou mais, a seção e a página, com as
+  // últimas frases da página anterior (do texto do próprio PDF, pelo pdf.js).
+  let continuacao = $state<Continuacao | null>(null);
+  /** A página salva: ao fechar o cartão, o primeiro bloco de texto dela pisca. */
+  let paginaDaContinuacao = 0;
+
+  async function piscarOndeParou() {
+    const n = paginaDaContinuacao;
+    const primeira = (await ideiasDaPagina(n))[0];
+    const el = paginaEl(n);
+    if (!primeira || !el) return;
+    const caixa = el.getBoundingClientRect();
+    const r = uniao(primeira.map((p) => p.getBoundingClientRect()));
+    const folga = 3;
+    piscar(
+      el,
+      [
+        {
+          left: r.left - caixa.left - folga,
+          top: r.top - caixa.top - folga,
+          width: r.width + 2 * folga,
+          height: r.height + 2 * folga,
+        },
+      ],
+      marcaTexto,
+    );
+  }
+
+  async function montarContinuacao(documento: PDFDocumentProxy, n: number) {
+    const agora = Date.now() / 1000;
+    if (!deveMostrar(!!inicio, ultimaLeitura, agora)) return;
+    let trecho: string[] = [];
+    if (n > 1) {
+      const conteudo = await (await documento.getPage(n - 1)).getTextContent();
+      const texto = conteudo.items
+        .map((item) => ("str" in item ? item.str + (item.hasEOL ? " " : "") : ""))
+        .join("");
+      trecho = ultimasFrases(texto, 3).map((f) => resumo(f, 300));
+    }
+    const secao = capituloDa(n);
+    paginaDaContinuacao = n;
+    continuacao = {
+      onde: secao ? `em “${secao}”, na página ${n}` : `na página ${n}`,
+      quando: ultimaLeitura ? haQuanto(ultimaLeitura, agora) : undefined,
+      trecho,
+    };
   }
 
   async function carregarSumario(documento: PDFDocumentProxy) {
@@ -549,6 +606,17 @@
               teclas: [["↑"]],
               palavras: "parágrafo",
               executar: () => void andarIdeia("tras"),
+            },
+          ]
+        : []),
+      ...(continuacao
+        ? [
+            {
+              id: "onde-parei",
+              titulo: "Mostrar onde eu tinha parado",
+              grupo: "Leitura",
+              palavras: "continuar última vez retomar",
+              executar: () => moldura.mostrarContinuacao(),
             },
           ]
         : []),
@@ -1065,6 +1133,8 @@
   escOcupado={!!destaques.barra}
   {meta}
   {saidaDoFoco}
+  {continuacao}
+  onContinuar={() => void piscarOndeParou()}
   estimativa={estimativa ? textoDoRodape(estimativa, "pdf") : undefined}
   {titulo}
   {anuncio}

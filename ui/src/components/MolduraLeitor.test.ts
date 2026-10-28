@@ -439,6 +439,53 @@ describe("MolduraLeitor", () => {
     expect(screen.getByText("~12 min no capítulo").closest("footer")).toBeTruthy();
   });
 
+  describe("onde você parou", () => {
+    const continuacao = { onde: "em “Capítulo 3”", quando: "ontem", trecho: ["Uma frase."] };
+    const cartao = () => screen.queryByRole("region", { name: "Onde você parou" });
+
+    it("aparece quando o leitor o dá, é anunciado e o Esc o fecha primeiro", async () => {
+      const { rerender } = renderizar({ modoFoco: true });
+      expect(cartao()).toBeNull();
+      await rerender({ continuacao });
+      expect(cartao()).toBeTruthy();
+      // No cartão e na região de anúncio (o leitor de tela ouve sem ir até ele).
+      const anuncio = screen
+        .getAllByText(/Da última vez \(ontem\), você estava em “Capítulo 3”/)
+        .find((el) => el.getAttribute("aria-live"));
+      expect(anuncio?.textContent).toContain("Onde você parou: Uma frase.");
+      await fireEvent.keyDown(window, { key: "Escape" });
+      await tick();
+      expect(cartao()).toBeNull();
+      expect(document.querySelector(".moldura")!.classList.contains("foco")).toBe(true);
+    });
+
+    it("“Continuar lendo” e Esc pedem ao leitor que mostre o ponto; virar a página, não", async () => {
+      const onContinuar = vi.fn();
+      const { component } = renderizar({ continuacao, onContinuar });
+      await fireEvent.click(screen.getByRole("button", { name: "Continuar lendo" }));
+      expect(onContinuar).toHaveBeenCalledOnce();
+      component.mostrarContinuacao();
+      await tick();
+      await fireEvent.keyDown(window, { key: "Escape" });
+      expect(onContinuar).toHaveBeenCalledTimes(2);
+      component.mostrarContinuacao();
+      await tick();
+      await component.virarPagina("direita", () => {});
+      expect(onContinuar).toHaveBeenCalledTimes(2);
+    });
+
+    it("virar a página o fecha; a paleta o mostra de novo", async () => {
+      const { component } = renderizar({ continuacao });
+      expect(cartao()).toBeTruthy();
+      await component.virarPagina("direita", () => {});
+      await tick();
+      expect(cartao()).toBeNull();
+      component.mostrarContinuacao();
+      await tick();
+      expect(cartao()).toBeTruthy();
+    });
+  });
+
   it("não tem violações de acessibilidade (axe)", async () => {
     const { container } = renderizar({ aparenciaAberta: true });
     const { violations } = await axe.run(container);
