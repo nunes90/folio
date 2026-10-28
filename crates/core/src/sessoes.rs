@@ -27,6 +27,11 @@ pub const SESSAO_MINIMA: i64 = 30;
 /// isso é um salto (índice, busca, um destaque lá na frente): não entra no ritmo.
 pub const SALTO_MAXIMO: f64 = 0.05;
 
+/// Quanto tempo (segundos) no ponto anterior faz de um passo para a frente uma leitura. Menos
+/// que isso é folhear ou navegar (ex.: clicar nas entradas do sumário uma depois da outra): não
+/// entra no ritmo. Ninguém lê uma página em menos de 5 s.
+pub const PERMANENCIA_MINIMA: i64 = 5;
+
 /// Leitura registrada (segundos) a partir da qual o ritmo é estimado. Com menos, a estimativa
 /// seria um chute: melhor não dizer nada.
 pub const RITMO_MINIMO: i64 = 5 * 60;
@@ -60,9 +65,10 @@ pub fn tempo_contado(intervalo: i64) -> i64 {
 }
 
 /// Quanto de uma mudança de lugar conta como leitura seguida: um passo para a frente de até
-/// [`SALTO_MAXIMO`]; voltar, ficar e saltar contam 0.
-pub fn avanco_sequencial(passo: f64) -> f64 {
-    if passo > 0.0 && passo <= SALTO_MAXIMO {
+/// [`SALTO_MAXIMO`], depois de pelo menos [`PERMANENCIA_MINIMA`] segundos no ponto anterior
+/// (`permanencia`); voltar, ficar, saltar e folhear contam 0.
+pub fn avanco_sequencial(passo: f64, permanencia: i64) -> f64 {
+    if passo > 0.0 && passo <= SALTO_MAXIMO && permanencia >= PERMANENCIA_MINIMA {
         passo
     } else {
         0.0
@@ -143,15 +149,30 @@ impl Biblioteca {
         let agora = (self.relogio)().max(antes.fim);
         let ate = onde.unwrap_or(&antes.ate);
         let fracao = fracao_valida(ate.fracao);
+        // Quando o leitor chegou ao ponto anterior: a permanência vem daí, não do último aviso
+        // (um aviso de atividade, como a tecla de virar a página, não é chegar a um lugar).
+        let chegou: i64 = self.conexao.query_row(
+            "SELECT COALESCE(movido_em, inicio) FROM sessoes WHERE id = ?1",
+            params![id],
+            |l| l.get(0),
+        )?;
+        let moveu = ate.localizacao != antes.ate.localizacao;
+        let avanco = if moveu {
+            avanco_sequencial(fracao - antes.ate.fracao, agora - chegou)
+        } else {
+            0.0
+        };
         self.conexao.execute(
-            "UPDATE sessoes SET fim = ?1, ativo = ?2, ate_local = ?3, ate_fracao = ?4, avanco = ?5
-             WHERE id = ?6",
+            "UPDATE sessoes SET fim = ?1, ativo = ?2, ate_local = ?3, ate_fracao = ?4, avanco = ?5,
+                movido_em = ?6
+             WHERE id = ?7",
             params![
                 agora,
                 antes.ativo + tempo_contado(agora - antes.fim),
                 ate.localizacao,
                 fracao,
-                antes.avanco + avanco_sequencial(fracao - antes.ate.fracao),
+                antes.avanco + avanco,
+                if moveu { agora } else { chegou },
                 id
             ],
         )?;
@@ -264,23 +285,51 @@ mod tests {
 
     #[test]
     fn avanco_soma_so_os_passos_para_a_frente_sem_saltos() {
-        let (_dir, bib, livro) = nova_com_livro();
+        // Um minuto em cada ponto: só a direção e o tamanho do passo decidem.
+        let (_dir, mut bib, livro) = nova_com_livro();
+        bib.relogio = || 0;
         let s = bib.iniciar_sessao(&livro, &em("a", 0.10)).unwrap();
+        bib.relogio = || 60;
         bib.registrar_na_sessao(s.id, Some(&em("b", 0.11))).unwrap(); // +0,01
+        bib.relogio = || 120;
         bib.registrar_na_sessao(s.id, Some(&em("c", 0.12))).unwrap(); // +0,01
+        bib.relogio = || 180;
         bib.registrar_na_sessao(s.id, Some(&em("d", 0.11))).unwrap(); // voltou
+        bib.relogio = || 240;
         bib.registrar_na_sessao(s.id, Some(&em("e", 0.60))).unwrap(); // saltou pelo índice
+        bib.relogio = || 300;
         let s = bib.registrar_na_sessao(s.id, Some(&em("f", 0.61))).unwrap(); // +0,01
         assert!((s.avanco - 0.03).abs() < 1e-9, "{}", s.avanco);
     }
 
     #[test]
+    fn folhear_ou_navegar_pelo_sumario_nao_conta_e_a_permanencia_vem_da_ultima_mudanca() {
+        let (_dir, mut bib, livro) = nova_com_livro();
+        bib.relogio = || 100;
+        let s = bib.iniciar_sessao(&livro, &em("a", 0.10)).unwrap();
+        // Cliques no sumário, um logo depois do outro: nada conta.
+        bib.relogio = || 102;
+        bib.registrar_na_sessao(s.id, Some(&em("b", 0.12))).unwrap();
+        bib.relogio = || 104;
+        let s = bib.registrar_na_sessao(s.id, Some(&em("c", 0.14))).unwrap();
+        assert_eq!(s.avanco, 0.0);
+        // Lê 60 s; a tecla de virar a página avisa atividade um instante antes da mudança.
+        bib.relogio = || 164;
+        bib.registrar_na_sessao(s.id, None).unwrap();
+        bib.relogio = || 165;
+        let s = bib.registrar_na_sessao(s.id, Some(&em("d", 0.15))).unwrap();
+        assert!((s.avanco - 0.01).abs() < 1e-9, "{}", s.avanco);
+    }
+
+    #[test]
     fn avanco_sequencial_so_para_a_frente_ate_o_salto_maximo() {
-        assert_eq!(avanco_sequencial(0.01), 0.01);
-        assert_eq!(avanco_sequencial(SALTO_MAXIMO), SALTO_MAXIMO);
-        assert_eq!(avanco_sequencial(SALTO_MAXIMO + 0.001), 0.0);
-        assert_eq!(avanco_sequencial(-0.01), 0.0);
-        assert_eq!(avanco_sequencial(0.0), 0.0);
+        let p = PERMANENCIA_MINIMA;
+        assert_eq!(avanco_sequencial(0.01, p), 0.01);
+        assert_eq!(avanco_sequencial(SALTO_MAXIMO, p), SALTO_MAXIMO);
+        assert_eq!(avanco_sequencial(SALTO_MAXIMO + 0.001, p), 0.0);
+        assert_eq!(avanco_sequencial(-0.01, p), 0.0);
+        assert_eq!(avanco_sequencial(0.0, p), 0.0);
+        assert_eq!(avanco_sequencial(0.01, p - 1), 0.0, "folhear não é ler");
     }
 
     fn sessao(ativo: i64, avanco: f64) -> Sessao {

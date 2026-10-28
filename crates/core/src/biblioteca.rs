@@ -116,6 +116,26 @@ const MIGRACOES: &[&str] = &[
     -- Avanço em sequência na sessão (M21): a base do ritmo de leitura, sem os saltos.
     ALTER TABLE sessoes ADD COLUMN avanco REAL NOT NULL DEFAULT 0;
 ",
+    "
+    -- Trechos visitados e quantas vezes se voltou a cada um (M21, ver visitas.rs).
+    CREATE TABLE visitas (
+        livro_id     TEXT    NOT NULL REFERENCES livros(id) ON DELETE CASCADE,
+        trecho       INTEGER NOT NULL,  -- a ordem do trecho no livro (o leitor decide o que é um trecho)
+        rotulo       TEXT    NOT NULL,
+        local        TEXT    NOT NULL,  -- para onde ir (ex.: secao:3, pagina:41)
+        voltas       INTEGER NOT NULL,
+        primeira     INTEGER NOT NULL,  -- primeira visita (segundos desde 1970, UTC)
+        ultima_volta INTEGER,
+        PRIMARY KEY (livro_id, trecho)
+    );
+",
+    "
+    -- Quando o leitor chegou ao ponto atual da sessão (M21): o avanço só conta depois de 5 s
+    -- no ponto anterior. NULL = desde o início da sessão.
+    ALTER TABLE sessoes ADD COLUMN movido_em INTEGER;
+    -- O avanço gravado antes desta regra contava a navegação pelo sumário como leitura.
+    UPDATE sessoes SET avanco = 0;
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.

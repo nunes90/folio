@@ -30,6 +30,9 @@
     type Ponto,
   } from "../lib/meta.svelte";
   import { comandoQuantoFalta, estimar, textoDoRodape } from "../lib/estimativa";
+  import { Revisitas, comandosDasRevisitas, trechoDePaginas } from "../lib/revisitas.svelte";
+  import { avisar } from "../lib/avisos.svelte";
+  import type { Trecho } from "../lib/biblioteca";
   import { ritmoDeLeitura } from "../lib/biblioteca";
   import { estiloDoMarcaTexto, hexDaCor, posicaoDaBarra, resumo } from "../lib/destaques";
   import {
@@ -98,6 +101,33 @@
   let umaIdeia = $state(false);
   /** Meta da sessão (M20b): a moldura mostra; aqui, só a página em que a leitura está. */
   const meta = new MetaDaSessao();
+  // Trechos revisitados (M21b): um trecho é a seção do sumário ou, sem sumário, um bloco de 10
+  // páginas. As visitas só começam com o sumário carregado: senão o mesmo livro misturaria os
+  // dois jeitos de contar.
+  const revisitas = new Revisitas(
+    () => livroId,
+    (texto) => avisar(texto),
+  );
+  let sumarioPronto = false;
+
+  /** O trecho da página `n`: a seção do sumário em que ela está, ou o bloco de páginas. */
+  function trechoDaPagina(n: number): Trecho {
+    const inicios = [...new Set(paginasDoIndice.values())].sort((a, b) => a - b);
+    if (!inicios.length) return trechoDePaginas(n, total);
+    let i = -1;
+    while (i + 1 < inicios.length && inicios[i + 1]! <= n) i++;
+    const inicio = i >= 0 ? inicios[i]! : 1;
+    return {
+      ordem: i + 1,
+      rotulo: capituloDa(n) ?? `Início (páginas 1–${(inicios[0] ?? 2) - 1})`,
+      local: `pagina:${inicio}`,
+    };
+  }
+
+  function visitarPagina(n: number) {
+    if (sumarioPronto && total) void revisitas.entrar(trechoDaPagina(n));
+  }
+
   /** Saída planejada do modo foco (M20c): conta como uma meta, e a moldura sai ao cumprir. */
   const saidaDoFoco = new MetaDaSessao();
 
@@ -170,6 +200,7 @@
         .then((r) => (ritmo = r))
         .catch((e) => log.warn(`ritmo de leitura: ${e}`));
     void buscar();
+    void revisitas.carregar();
     const intervalo = setInterval(buscar, 5 * 60_000);
     return () => clearInterval(intervalo);
   });
@@ -314,6 +345,7 @@
       pagina = pageNumber;
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
       moverContagens({ rotulo: `página ${pageNumber}`, pagina: pageNumber });
+      visitarPagina(pageNumber);
       // Rolando com o mouse, a uma ideia passa à página nova quando o bloco atual sai da tela.
       if (ideia && ideia.pagina !== pageNumber && !ideiaNaTela()) void irParaIdeiaDa(pageNumber);
     });
@@ -343,7 +375,12 @@
     total = documento.numPages;
     v.setDocument(documento);
     l.setDocument(documento);
-    carregarSumario(documento).catch((e) => log.warn(`sumário do PDF indisponível: ${e}`));
+    carregarSumario(documento)
+      .catch((e) => log.warn(`sumário do PDF indisponível: ${e}`))
+      .finally(() => {
+        sumarioPronto = true;
+        visitarPagina(pagina);
+      });
   }
 
   async function carregarSumario(documento: PDFDocumentProxy) {
@@ -561,6 +598,10 @@
       })),
       ...destaques.comandos(destacarSelecao),
       comandoQuantoFalta(estimativa, "pdf", (texto) => (anuncio = texto)),
+      ...comandosDasRevisitas(revisitas.lista, (local) => {
+        const n = Number(local.match(/^pagina:(\d+)$/)?.[1]);
+        if (n) irPara(n);
+      }),
       ...comandosDaMeta(meta, "pdf"),
       ...comandosDoFoco(saidaDoFoco, "pdf", (m) => moldura.focarPor(m)),
       ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),

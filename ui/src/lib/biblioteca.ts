@@ -282,6 +282,27 @@ export function listarSessoes(livro: string): Promise<Sessao[]> {
   return invoke<Sessao[]>("listar_sessoes", { livro });
 }
 
+/** Um trecho do livro (M21b): a ordem dele, o nome e para onde ir (`secao:3`, `pagina:41`). */
+export interface Trecho {
+  ordem: number;
+  rotulo: string;
+  local: string;
+}
+
+/** Um trecho visitado e quantas vezes se voltou a ele; `voltou`: esta visita foi uma volta. */
+export interface Visita extends Trecho {
+  voltas: number;
+  voltou: boolean;
+}
+
+export function visitarTrecho(livro: string, trecho: Trecho): Promise<Visita> {
+  return invoke<Visita>("visitar_trecho", { livro, trecho });
+}
+
+export function trechosRevisitados(livro: string, minimo: number): Promise<Visita[]> {
+  return invoke<Visita[]>("trechos_revisitados", { livro, minimo });
+}
+
 /** O ritmo no livro, em fração do livro por segundo de leitura; `null` sem dado bastante. */
 export function ritmoDeLeitura(livro: string): Promise<number | null> {
   return invoke<number | null>("ritmo_de_leitura", { livro });
