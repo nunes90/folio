@@ -5,6 +5,8 @@
   import Icone from "./Icone.svelte";
   import PainelLateral from "./PainelLateral.svelte";
   import ResumoDaMeta from "./ResumoDaMeta.svelte";
+  import CartaoContinuacao from "./CartaoContinuacao.svelte";
+  import { textoDaContinuacao, type Continuacao } from "../lib/continuacao";
   import {
     duracaoPorExtenso,
     nomeDoFocoPlanejado,
@@ -30,6 +32,8 @@
     meta,
     saidaDoFoco,
     estimativa,
+    continuacao = null,
+    onContinuar,
     onFechar,
     acoes,
     indice,
@@ -56,6 +60,10 @@
     saidaDoFoco?: MetaDaSessao;
     /** Quanto falta no ritmo de quem lê (M21), ex.: "~12 min no capítulo". */
     estimativa?: string;
+    /** "Onde você parou" (M22): aparece quando o leitor o dá, ao reabrir o livro. */
+    continuacao?: Continuacao | null;
+    /** O cartão fechou pelo botão ou pelo Esc: o leitor mostra o ponto (ex.: fazendo-o piscar). */
+    onContinuar?: () => void;
     onFechar: () => void;
     /** Ações próprias do formato no cabeçalho (ex.: busca do PDF). */
     acoes?: Snippet;
@@ -283,6 +291,28 @@
     };
   });
 
+  // "Onde você parou" (M22): aparece quando o leitor termina de montá-lo, some com "Continuar
+  // lendo", com Esc ou ao virar a página, e volta pela paleta (mostrarContinuacao).
+  let continuacaoAberta = $state(false);
+  $effect(() => {
+    const c = continuacao;
+    if (c) untrack(() => mostrarContinuacao());
+  });
+
+  /** Mostra o cartão de novo (paleta) e o anuncia. */
+  export function mostrarContinuacao() {
+    if (!continuacao) return;
+    continuacaoAberta = true;
+    anuncioFoco = textoDaContinuacao(continuacao);
+  }
+
+  /** Fecha o cartão pelo botão ou pelo Esc: o foco vai para o livro e o ponto é mostrado. */
+  function fecharContinuacao() {
+    continuacaoAberta = false;
+    areaEl.focus({ preventScroll: true });
+    onContinuar?.();
+  }
+
   /** Leva o foco ao título: o leitor de tela anuncia qual livro foi aberto. */
   export function focarTitulo() {
     tituloEl.focus();
@@ -298,6 +328,8 @@
    */
   export async function virarPagina(sentido: Sentido, navegar: () => unknown): Promise<void> {
     cancelarVirada();
+    // Virar a página é seguir lendo: o "onde você parou" já cumpriu o papel.
+    continuacaoAberta = false;
     const animar = duracao("curta") > 0 && quadrosDaVirada(preferencias.virada, sentido) !== null;
     if (animar) areaEl.style.opacity = "0";
     try {
@@ -324,6 +356,12 @@
       return;
     }
     if (e.key !== "Escape") return;
+    // O cartão de "onde você parou" fica por cima do livro: o Esc o fecha primeiro.
+    if (continuacaoAberta) {
+      e.preventDefault();
+      fecharContinuacao();
+      return;
+    }
     // No modo foco não há painel aberto: o Esc sai dele.
     if (modoFoco) {
       e.preventDefault();
@@ -452,6 +490,12 @@
     <span class="progresso-canto" aria-hidden="true">
       {Math.round(progresso * 100)}%{#if saidaDoFoco?.meta}&ensp;·&ensp;foco: {saidaDoFoco.texto}{/if}
     </span>
+  {/if}
+
+  {#if continuacaoAberta && continuacao}
+    <div class="area-continuacao">
+      <CartaoContinuacao {continuacao} onFechar={fecharContinuacao} />
+    </div>
   {/if}
 
   {#if cobrindo}
@@ -671,6 +715,22 @@
 
   .veu {
     background: rgb(0 0 0 / 30%);
+  }
+
+  /* "Onde você parou": por cima do livro, no alto, sem cobrir a tela inteira. */
+  .area-continuacao {
+    grid-area: conteudo;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-block-start: 1rem;
+    min-height: 0;
+    pointer-events: none;
+  }
+
+  .area-continuacao > :global(*) {
+    pointer-events: auto;
   }
 
   .estreita header {

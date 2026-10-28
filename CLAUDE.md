@@ -476,5 +476,18 @@ docs/decisions/  # ADRs
   (`trechoDePaginas`); no PDF, as visitas só começam com o sumário carregado (para não misturar os dois jeitos
   no mesmo livro).
 - **M21 concluído.**
-- Próximo passo: M22 (continuação ao reabrir: "Da última vez você estava em…" e as 2–3 frases anteriores, sem
-  IA). Séries continua adiado.
+- **M22** (branch `feat/m22-continuacao`): continuação ao reabrir. `lib/continuacao.ts`: `deveMostrar` (com
+  progresso e a última leitura há `AUSENCIA_MINIMA` = 1 h ou mais, ou sem sessão), `haQuanto`
+  (`Intl.RelativeTimeFormat`: "há 3 horas", "ontem", "anteontem"; menos de 1 min, "há instantes"),
+  `ultimasFrases` (Intl.Segmenter), `textoDaContinuacao`. O `App` busca a sessão mais recente em `abrir`,
+  antes de a nova começar, e passa `ultimaLeitura` aos leitores. EPUB: o capítulo e as frases em volta do ponto
+  salvo (as duas anteriores e a que a página cortou, pelas frases do M17). PDF: a seção do sumário e a página
+  salva, com as 3 últimas frases da página anterior (`getTextContent` do pdf.js); montado depois do sumário.
+  `CartaoContinuacao.svelte` (não é diálogo: não prende o foco), mostrado pela `MolduraLeitor` (`continuacao`)
+  no alto da área do livro e anunciado; some com "Continuar lendo", com Esc (antes de tudo) ou ao virar a
+  página (`virarPagina`); paleta "Mostrar onde eu tinha parado" (`mostrarContinuacao`). Pelo botão ou pelo Esc,
+  a moldura chama `onContinuar` e o leitor faz o ponto piscar (`lib/piscar.ts`: caixas com o amarelo e a
+  mistura dos destaques, opacidade 0 → 1 → 0 em 1,6 s; com movimento reduzido, sem transição): no EPUB, a frase
+  que a página cortou (no documento do capítulo); no PDF, o primeiro bloco de texto da página salva.
+- **M22 concluído. v0.8 completa** (M19–M22).
+- Próximo passo: release v0.8.0; depois, M23 (voz com acompanhamento). Séries continua adiado.

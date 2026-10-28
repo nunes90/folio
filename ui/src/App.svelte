@@ -19,6 +19,7 @@
     importarLivros,
     listarLivros,
     progressoDoLivro,
+    listarSessoes,
     adicionarAColecao,
     apagarColecao,
     apagarLivro,
@@ -53,7 +54,13 @@
 
 
   let livros = $state<Livro[]>([]);
-  let aberto = $state<{ livro: Livro; dados: ArrayBuffer; inicio?: string } | null>(null);
+  let aberto = $state<{
+    livro: Livro;
+    dados: ArrayBuffer;
+    inicio?: string;
+    /** Fim da sessão anterior (segundos desde 1970): "Da última vez (há 2 dias)…" (M22). */
+    ultimaLeitura?: number;
+  } | null>(null);
   /** A sessão de leitura do livro aberto (M20): começa no primeiro progresso do leitor. */
   let sessao: SessaoDeLeitura | null = null;
   let importando = $state(false);
@@ -286,15 +293,22 @@
   async function abrir(livro: Livro) {
     try {
       // Tudo o que é lento acontece antes da transição: durante ela a tela fica congelada.
-      const [dados, progresso] = await Promise.all([
+      const [dados, progresso, sessoes] = await Promise.all([
         carregarLivro(livro),
         progressoDoLivro(livro.id),
+        // Antes de a sessão nova começar: a mais recente é a da última leitura.
+        listarSessoes(livro.id).catch(() => []),
         livro.formato === "pdf" && !LeitorPdf
           ? import("./components/LeitorPdf.svelte").then((m) => (LeitorPdf = m.default))
           : null,
       ]);
       await transicionar(livro.id, "abrir", () => {
-        aberto = { livro, dados, inicio: progresso?.localizacao };
+        aberto = {
+          livro,
+          dados,
+          inicio: progresso?.localizacao,
+          ultimaLeitura: sessoes[0]?.fim,
+        };
         sessao = new SessaoDeLeitura(livro.id);
       });
     } catch (e) {
@@ -631,6 +645,7 @@
       livroId={aberto.livro.id}
       titulo={aberto.livro.titulo}
       inicio={aberto.inicio}
+      ultimaLeitura={aberto.ultimaLeitura}
       onFechar={fechar}
       onProgresso={aoProgredir}
       onComandos={(c: ComandosDoLeitor) => (doLeitor = c)}
@@ -641,6 +656,7 @@
     arquivo={new File([aberto.dados], `${aberto.livro.id}.epub`, { type: "application/epub+zip" })}
     livroId={aberto.livro.id}
     inicio={aberto.inicio}
+    ultimaLeitura={aberto.ultimaLeitura}
     onFechar={fechar}
     onProgresso={aoProgredir}
     onComandos={(c) => (doLeitor = c)}

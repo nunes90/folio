@@ -51,12 +51,15 @@
     type Ponto,
   } from "../lib/meta.svelte";
   import { comandoQuantoFalta, estimar, textoDoRodape } from "../lib/estimativa";
+  import { deveMostrar, haQuanto, limpar, type Continuacao } from "../lib/continuacao";
+  import { piscar } from "../lib/piscar";
   import { Revisitas, comandosDasRevisitas, trechoDePaginas } from "../lib/revisitas.svelte";
   import { avisar } from "../lib/avisos.svelte";
   import type { Trecho } from "../lib/biblioteca";
   import { ritmoDeLeitura } from "../lib/biblioteca";
   import {
     aplicarMarcaTexto,
+    estiloDoMarcaTexto,
     fracaoNoDocumento,
     hexDaCor,
     paginaEscura,
@@ -85,6 +88,7 @@
     arquivo,
     livroId,
     inicio,
+    ultimaLeitura,
     onFechar,
     onProgresso,
     onComandos,
@@ -94,6 +98,8 @@
     livroId: string;
     /** Onde retomar a leitura (EPUB CFI salvo na biblioteca). */
     inicio?: string;
+    /** Fim da última leitura (segundos desde 1970), para "Da última vez…" (M22). */
+    ultimaLeitura?: number;
     onFechar: () => void;
     onProgresso?: (localizacao: string, fracao: number) => void;
     /** Publica os comandos deste livro para a paleta (Ctrl+K), de novo a cada mudança. */
@@ -529,6 +535,58 @@
     await destaques.carregar();
     await v.init({ lastLocation: inicio ?? null, showTextStart: !inicio });
     moldura.focarTitulo();
+    montarContinuacao();
+  }
+
+  // "Onde você parou" (M22): ao reabrir depois de uma hora ou mais, o capítulo e as frases em
+  // volta do ponto salvo (as duas anteriores e a que a página cortou), do próprio texto.
+  let continuacao = $state<Continuacao | null>(null);
+  /** A frase em que a página cortou: pisca ao fechar o cartão ("continue daqui"). */
+  let pontoDaContinuacao: Range | null = null;
+
+  /** Faz piscar a frase do ponto salvo, se o capítulo dela ainda estiver na tela. */
+  function piscarOndeParou() {
+    const frase = pontoDaContinuacao;
+    const doc = frase?.startContainer.ownerDocument;
+    const janela = doc?.defaultView;
+    if (!frase || !doc || !janela || !view?.renderer.getContents().some((c) => c.doc === doc)) return;
+    const caixas = [...frase.getClientRects()]
+      .filter((r) => r.width > 0 && r.height > 0)
+      .map((r) => ({
+        left: r.left + janela.scrollX,
+        top: r.top + janela.scrollY,
+        width: r.width,
+        height: r.height,
+      }));
+    const iface = temaEfetivo();
+    const escura = iface === "alto-contraste" || paginaEscura(resolverPagina(preferencias.pagina, iface));
+    piscar(doc.documentElement, caixas, estiloDoMarcaTexto(escura));
+  }
+
+  function montarContinuacao() {
+    const agora = Date.now() / 1000;
+    if (!deveMostrar(!!inicio, ultimaLeitura, agora)) return;
+    const capitulo = capituloVisivel();
+    const ponto = view?.lastLocation?.range;
+    let trecho: string[] = [];
+    if (capitulo && ponto) {
+      const frases =
+        frasesPorCapitulo.get(capitulo.doc) ?? frasesDoDocumento(capitulo.doc, idiomaDoLivro);
+      frasesPorCapitulo.set(capitulo.doc, frases);
+      if (frases.length) {
+        const i = indiceDaFraseEm(frases, ponto);
+        pontoDaContinuacao = frases[i] ?? null;
+        trecho = frases
+          .slice(Math.max(0, i - 2), i + 1)
+          .map((f) => resumo(limpar(f.toString()), 300))
+          .filter(Boolean);
+      }
+    }
+    continuacao = {
+      onde: secaoAnunciada ? `em “${secaoAnunciada}”` : `em ${porcento.format(progresso)} do livro`,
+      quando: ultimaLeitura ? haQuanto(ultimaLeitura, agora) : undefined,
+      trecho,
+    };
   }
 
   /** Um trecho revisitado ("secao:3"): vai ao início da seção, com o foco no texto. */
@@ -736,6 +794,17 @@
         palavras: "bloco parágrafo esmaecer concentrar",
         executar: () => moldura.alternarUmaIdeia(),
       },
+      ...(continuacao
+        ? [
+            {
+              id: "onde-parei",
+              titulo: "Mostrar onde eu tinha parado",
+              grupo: "Leitura",
+              palavras: "continuar última vez retomar",
+              executar: () => moldura.mostrarContinuacao(),
+            },
+          ]
+        : []),
       {
         id: "mostrar-indice",
         titulo: "Mostrar o índice",
@@ -852,6 +921,8 @@
   escOcupado={!!destaques.barra}
   {meta}
   {saidaDoFoco}
+  {continuacao}
+  onContinuar={piscarOndeParou}
   estimativa={estimativa ? textoDoRodape(estimativa, "epub") : undefined}
   {titulo}
   {anuncio}
