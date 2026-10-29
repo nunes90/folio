@@ -575,4 +575,14 @@ docs/decisions/  # ADRs
   de linha sem espaço. Um grid de três colunas centralizado sobrepunha o "Fechar o lado" na meia tela.
 - **M25 concluído. v0.9 completa** (M23–M25).
 - **v0.9.0** (out/2026): tag assinada `v0.9.0` (M23–M25) e Release como pre-release, com o AppImage da CI.
-- Próximo passo: v1.0, com o M26 (acabamento) e o M6b (AppImage final). Séries continua adiado.
+- **M26a** (branch `feat/m26a-densidade`): densidade do leitor. `MenuLeitor.svelte` ("Mais opções", ⋯ no
+  cabeçalho, entre Aparência e Voltar): padrão ARIA de menu (foco no primeiro item, ↑↓/Home/End, Enter escolhe e
+  devolve o foco ao botão, Esc fecha só o menu com `stopPropagation`, Tab e clique fora fecham); itens de
+  liga/desliga são `menuitemcheckbox` com ✓ e a tecla ao lado. "Uma ideia por vez" e "Abrir ao lado" saíram da
+  barra para ele (regra: o que não se usa em toda sessão vai para o menu, a paleta e o atalho; o modo foco fica).
+  F1 agrupado: `Atalho.grupo` (`GRUPOS`: Navegação, Leitura, Marcar, Comparar, Livros, Geral), `porGrupo` e uma
+  tabela por grupo no `Atalhos.svelte`; listas comuns aos dois formatos (`LEITURA`, `MARCAR`, `COMPARAR`): o F1 do
+  PDF ganhou Ctrl+D, a barra de destaque e PageUp/PageDown. F6 anuncia o lado do foco ("Ao lado: <seção>, 45%";
+  "Documento principal, página 12").
+- Próximo passo: M26b (livros grandes e arquivos quebrados; roteiro de medição), depois M26c (E2E), M26d (Orca e
+  "tudo sem mouse"), M26e (README, guia e licença) e M6b. Séries continua adiado.
