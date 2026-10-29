@@ -3,6 +3,7 @@
   import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
   import type { PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
   import "pdfjs-dist/web/pdf_viewer.css";
+  import "../lib/paginasPdf.css";
   import BarraPdf from "./BarraPdf.svelte";
   import ControlesVoz from "./ControlesVoz.svelte";
   import {
@@ -23,6 +24,8 @@
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
   import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
   import CartaoFixado from "./CartaoFixado.svelte";
+  import LadoPdf from "./LadoPdf.svelte";
+  import ControlesLado from "./ControlesLado.svelte";
   import ListaDestaques from "./ListaDestaques.svelte";
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
@@ -58,15 +61,15 @@
   import { avisar } from "../lib/avisos.svelte";
   import type { Trecho } from "../lib/biblioteca";
   import { ritmoDeLeitura } from "../lib/biblioteca";
-  import { estiloDoMarcaTexto, hexDaCor, posicaoDaBarra, resumo } from "../lib/destaques";
+  import { estiloDoMarcaTexto, posicaoDaBarra, resumo } from "../lib/destaques";
   import {
     acertou,
     lerLocalPdf,
     type Retangulo,
-    localPdf,
     naJanela,
-    posicaoNoPdf,
     retangulosNaPagina,
+    desenharCamadaDestaques,
+    selecaoNoPdf,
   } from "../lib/destaquesPdf";
   import Carregando from "./Carregando.svelte";
   import MolduraLeitor from "./MolduraLeitor.svelte";
@@ -76,7 +79,7 @@
   import type { ItemIndice } from "../lib/foliate";
   import { log } from "../lib/log";
   import { inverterCanvas, PAGINAS, resolverPagina } from "../lib/pagina";
-  import { carregarPdf, carregarVisor } from "../lib/pdf";
+  import { carregarPdf, carregarVisor, paginaRenderizada } from "../lib/pdf";
   import { atualizarPreferencias, preferencias } from "../lib/preferencias.svelte";
   import { achatar, converterSumario, itemAtual, type ItemSumarioPdf } from "../lib/sumario";
   import { resolverTema } from "../lib/temas";
@@ -84,6 +87,8 @@
   import {
     comandosDaPagina,
     comandosDoIndice,
+    comandosDoLado,
+    ladoPorTermo,
     irParaPagina,
     type Comando,
     type ComandosDoLeitor,
@@ -173,10 +178,18 @@
       return livroId;
     },
     titulo: () => titulo,
-    desenhar: (d) => redesenharDe(d),
-    apagarDesenho: (d) => redesenharDe(d),
+    // Com o lado aberto (M25c), os destaques são desenhados nos dois.
+    desenhar: (d) => {
+      redesenharDe(d);
+      lado?.desenhar(d);
+    },
+    apagarDesenho: (d) => {
+      redesenharDe(d);
+      lado?.apagarDesenho(d);
+    },
     irPara: irParaDestaque,
-    focarTexto: () => conteiner.focus({ preventScroll: true }),
+    focarTexto: () =>
+      lado?.temSelecao() ? lado.focar() : conteiner.focus({ preventScroll: true }),
     limparSelecao: () => window.getSelection()?.removeAllRanges(),
     anunciar: (texto) => (anuncio = texto),
     mostrarLista: mostrarDestaques,
@@ -423,6 +436,7 @@
     await destaques.carregar();
     tarefa = carregarPdf(dados);
     const documento = await tarefa.promise;
+    documentoPdf = documento;
     total = documento.numPages;
     v.setDocument(documento);
     l.setDocument(documento);
@@ -536,30 +550,7 @@
     });
   }
 
-  /** Estado "terminada" de uma página no pdf.js (RenderingStates.FINISHED). */
-  const RENDERIZADA = 3;
-  /** Limite de espera pela renderização: depois disso, anima assim mesmo. */
-  const ESPERA_MAXIMA_MS = 400;
 
-  /**
-   * Resolve quando o pdf.js terminar de desenhar a página `n` (na hora, se já estiver pronta):
-   * a virada só começa depois, para não disputar a thread com a renderização.
-   */
-  function paginaRenderizada(v: PDFViewer, n: number): Promise<void> {
-    if (v.getPageView(n - 1)?.renderingState === RENDERIZADA) return Promise.resolve();
-    return new Promise((resolver) => {
-      const aoRenderizar = ({ pageNumber }: { pageNumber: number }) => {
-        if (pageNumber === n) terminar();
-      };
-      const limite = setTimeout(() => terminar(), ESPERA_MAXIMA_MS);
-      function terminar() {
-        clearTimeout(limite);
-        v.eventBus.off("pagerendered", aoRenderizar);
-        resolver();
-      }
-      v.eventBus.on("pagerendered", aoRenderizar);
-    });
-  }
 
   function buscar(termo: string, anterior: boolean) {
     visor?.eventBus.dispatch("find", {
@@ -724,13 +715,27 @@
       }),
       ...comandosDaMeta(meta, "pdf"),
       ...comandosDoFoco(saidaDoFoco, "pdf", (m) => moldura.focarPor(m)),
+      ...comandosDoLado(ladoInicio !== null, itensIndice, {
+        abrir: (href) => {
+          const p = paginasDoIndice.get(href);
+          if (p) void abrirAoLado(p);
+        },
+        abrirAqui: () => void abrirAoLado(pagina),
+        fechar: fecharLado,
+        alternar: alternarLado,
+      }),
       ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
       ...comandosDaPagina(preferencias, atualizarPreferencias),
     ];
     const n = total;
+    const aberto = ladoInicio !== null;
     onComandos?.({
       comandos: lista,
-      porTermo: (termo) => [...irParaPagina(termo, n, irPara), ...metaPorTermo(termo, meta, "pdf")],
+      porTermo: (termo) => [
+        ...ladoPorTermo(termo, n, aberto, (p) => void abrirAoLado(p)),
+        ...irParaPagina(termo, n, irPara),
+        ...metaPorTermo(termo, meta, "pdf"),
+      ],
     });
   });
 
@@ -739,35 +744,10 @@
     return conteiner.querySelector<HTMLElement>(`.page[data-page-number="${n}"]`);
   }
 
-  /** (Re)desenha a camada de destaques da página `n`, logo acima do desenho da página. */
+  /** (Re)desenha a camada de destaques da página `n` (e a do lado, se aberto: M25c). */
   function desenharDestaques(n: number) {
     const el = paginaEl(n);
-    if (!el) return;
-    el.querySelector(".camada-destaques")?.remove();
-    const daPagina = destaques.lista.flatMap((d) => {
-      const local = lerLocalPdf(d.local);
-      return local?.pagina === n ? [{ d, retangulos: local.retangulos }] : [];
-    });
-    if (!daPagina.length) return;
-    const camada = document.createElement("div");
-    camada.className = "camada-destaques";
-    camada.setAttribute("aria-hidden", "true");
-    for (const { d, retangulos } of daPagina)
-      for (const r of retangulos) {
-        const marca = document.createElement("div");
-        Object.assign(marca.style, {
-          left: `${r.x * 100}%`,
-          top: `${r.y * 100}%`,
-          width: `${r.l * 100}%`,
-          height: `${r.a * 100}%`,
-          background: hexDaCor(d.cor),
-        });
-        camada.append(marca);
-      }
-    // Acima do desenho da página e abaixo da camada de texto (que continua selecionável).
-    const desenho = el.querySelector(".canvasWrapper");
-    if (desenho) desenho.after(camada);
-    else el.prepend(camada);
+    if (el) desenharCamadaDestaques(el, n, destaques.lista);
   }
 
   function redesenharDe(d: Destaque) {
@@ -952,30 +932,15 @@
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.rangeCount) return false;
     const range = sel.getRangeAt(0);
-    const inicio = range.startContainer;
-    const el = (inicio instanceof Element ? inicio : inicio.parentElement)?.closest<HTMLElement>(".page");
-    if (!el || !conteiner.contains(el)) return false;
-    const trecho = textoDoTrecho(range);
-    const n = Number(el.dataset.pageNumber);
-    const caixa = el.getBoundingClientRect();
-    // Uma seleção que passa da página fica só com a parte da página onde começou.
-    const retangulos = retangulosNaPagina([...range.getClientRects()], caixa);
-    if (!trecho.trim() || !retangulos.length) return false;
+    const achada = selecaoNoPdf(range, conteiner, total, capituloDa);
+    if (!achada) return false;
     // Guardada para o "Ouvir": clicar no botão da barra pode desfazer a seleção da página (a
     // camada de texto e a barra estão no mesmo documento; no EPUB, o capítulo é outro).
-    selecaoDaBarra = { pagina: n, trecho: range.cloneRange() };
-    destaques.mostrarSelecao(
-      {
-        local: localPdf(n, retangulos),
-        trecho,
-        capitulo: capituloDa(n),
-        posicao: posicaoNoPdf(n, total, retangulos[0]!.y),
-      },
-      posicaoDaBarra(naJanela(retangulos[0]!, caixa)),
-      focar,
-    );
+    selecaoDaBarra = { pagina: achada.pagina, trecho: range.cloneRange() };
+    destaques.mostrarSelecao(achada.selecao, achada.posicao, focar);
     return true;
   }
+
 
   // Leitura em voz alta (M23), com o mesmo modelo do EPUB: uma página por vez, em trechos do
   // mesmo tipo (texto, lista, código; uma mensagem cada), com uma marca por frase (as frases do
@@ -1329,9 +1294,59 @@
     if (document.activeElement === document.body) document.getElementById("aba-destaques")?.focus();
   }
 
+  // Duas páginas lado a lado (M25c): o lado novo lê e destaca (LadoPdf); o resto (voz, meta,
+  // sessão, progresso, busca, uma ideia por vez) é só deste lado. Páginas de PDF são fixas:
+  // abrir na mesma página dá a mesma página.
+  let documentoPdf = $state.raw<PDFDocumentProxy>();
+  let ladoInicio = $state<number | null>(null);
+  let lado = $state<LadoPdf>();
+  let paginaLado = $state(0);
+  let zoomLado = $state(1);
+  /** O zoom do principal quando o lado abriu: os dois com o mesmo tamanho de página. */
+  let escalaLado = $state("page-fit");
+
+  /** Abre o lado na página `n` ou, se já aberto, leva-o até ela. */
+  async function abrirAoLado(n: number) {
+    if (lado) {
+      await lado.ir(n);
+      lado.focar();
+      return;
+    }
+    escalaLado = String(visor?.currentScaleValue ?? "page-fit");
+    ladoInicio = n;
+    anuncio = `Página ${n} aberta ao lado. F6 alterna entre os lados.`;
+  }
+
+  function fecharLado() {
+    if (ladoInicio === null) return;
+    ladoInicio = null;
+    anuncio = "Lado fechado.";
+    conteiner.focus({ preventScroll: true });
+  }
+
+  /** O botão e o Ctrl+Shift+L: abre o lado na página em que o documento está, ou o fecha. */
+  function alternarAbertura() {
+    if (ladoInicio !== null) fecharLado();
+    else void abrirAoLado(pagina);
+  }
+
+  /** F6: o foco vai ao outro lado. */
+  function alternarLado() {
+    if (!lado) return;
+    if (lado.contem(document.activeElement)) conteiner.focus({ preventScroll: true });
+    else lado.focar();
+  }
+
   function aoTeclar(e: KeyboardEvent) {
     // Com um diálogo aberto (ex.: atalhos), as teclas são dele.
     if (e.target instanceof Element && e.target.closest("dialog")) return;
+    // Já tratada (ex.: o lado virou a própria página).
+    if (e.defaultPrevented) return;
+    if (e.key === "F6" && ladoInicio !== null && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      alternarLado();
+      return;
+    }
     if (!visor) return;
     const ctrl = e.ctrlKey || e.metaKey;
     if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "d") {
@@ -1395,8 +1410,46 @@
       onIr={() => void irParaDestaque(d)}
       onNota={() => destaques.editarNota(d)}
       onDesafixar={() => destaques.desafixar(d)}
+      onAbrirAoLado={() => {
+        const p = lerLocalPdf(d.local)?.pagina;
+        if (p) void abrirAoLado(p);
+      }}
     />
   {/each}
+{/snippet}
+
+{#snippet ladoNovo()}
+  {#if ladoInicio !== null && documentoPdf}
+    <LadoPdf
+      bind:this={lado}
+      bind:pagina={paginaLado}
+      bind:zoom={zoomLado}
+      documento={documentoPdf}
+      inicio={ladoInicio}
+      escala={escalaLado}
+      {invertida}
+      camada={!!estiloPagina.camada}
+      papel={estiloPagina.papel}
+      marcaOpacidade={marcaTexto.opacidade}
+      marcaMistura={marcaTexto.mistura}
+      {destaques}
+      {capituloDa}
+    />
+  {/if}
+{/snippet}
+
+{#snippet controlesLado()}
+  <ControlesLado onFechar={fecharLado}>
+    <BarraPdf
+      pagina={paginaLado}
+      {total}
+      zoom={zoomLado}
+      onIrPara={(n) => void lado?.ir(n)}
+      onZoomMenos={() => lado?.zoomMenos()}
+      onZoomMais={() => lado?.zoomMais()}
+      onAjustarLargura={() => lado?.ajustarLargura()}
+    />
+  </ControlesLado>
 {/snippet}
 
 <MolduraLeitor
@@ -1410,6 +1463,9 @@
   onContinuar={() => void piscarOndeParou()}
   estimativa={estimativa ? textoDoRodape(estimativa, "pdf") : undefined}
   fixado={destaques.fixados.length ? cartoesFixados : undefined}
+  lado={ladoInicio !== null ? ladoNovo : undefined}
+  rodapeLado={controlesLado}
+  onAlternarLado={alternarAbertura}
   {titulo}
   {anuncio}
   progresso={total ? pagina / total : 0}
@@ -1460,12 +1516,16 @@
   {/snippet}
 
   {#snippet rodape()}
-    <ControlesVoz
-      estado={voz}
-      onLer={() => void lerEmVozAlta()}
-      onPausarOuRetomar={() => void pausarOuRetomar()}
-      onParar={() => void pararLeitura()}
-    />
+    <!-- Com o lado aberto, o rodapé dos dois fica igual: "Ler em voz alta" sai (continua na
+         paleta); lendo ou pausada, os controles da voz ficam. -->
+    {#if ladoInicio === null || voz !== "parado"}
+      <ControlesVoz
+        estado={voz}
+        onLer={() => void lerEmVozAlta()}
+        onPausarOuRetomar={() => void pausarOuRetomar()}
+        onParar={() => void pararLeitura()}
+      />
+    {/if}
     <BarraPdf
       {pagina}
       {total}
@@ -1487,7 +1547,7 @@
   <!-- svelte-ignore a11y_no_noninteractive_tabindex: o WCAG exige que áreas roláveis
        sejam alcançáveis pelo teclado (regra scrollable-region-focusable do axe). -->
   <div
-    class="conteiner"
+    class="conteiner paginas-pdf"
     class:camada={!!estiloPagina.camada}
     class:invertida
     style:--papel-pdf={estiloPagina.papel}
@@ -1516,47 +1576,6 @@
     inset: 0;
     overflow: auto;
     background: var(--app);
-  }
-
-  /* Cor da página (lib/pagina.ts): só efeitos sobre a página já desenhada. */
-  /* O pdf.js usa este mesmo ::after para o ícone de carregando e o esconde fora do
-     carregamento (`.page:not(.loading)::after { display: none }`): daí o display explícito. */
-  .conteiner.camada :global(.page)::after {
-    content: "";
-    display: block;
-    position: absolute;
-    inset: 0;
-    background: var(--papel-pdf);
-    mix-blend-mode: multiply;
-    pointer-events: none;
-  }
-
-  /* Noite: os pixels são invertidos ao desenhar (lib/pagina.ts). Antes disso, a página
-     já aparece na cor final, sem clarão branco. */
-  /* Canvas ainda não invertido (desenho parcial de página lenta, ou o antigo durante o
-     redesenho ao entrar na noite): escondido até a inversão, para não clarear a tela. */
-  .conteiner.invertida :global(.page canvas:not([data-invertida])) {
-    visibility: hidden;
-  }
-
-  .conteiner.invertida :global(.page) {
-    background-color: var(--papel-pdf);
-  }
-
-  /* Destaques (M16c): por cima do desenho da página, sem pegar o ponteiro (a seleção de texto
-     continua). Mesma mistura do EPUB (lib/destaques.ts). */
-  .conteiner :global(.camada-destaques),
-  .conteiner :global(.camada-voz) {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-  }
-
-  .conteiner :global(.camada-destaques > div),
-  .conteiner :global(.camada-voz > div) {
-    position: absolute;
-    opacity: var(--marca-opacidade);
-    mix-blend-mode: var(--marca-mistura);
   }
 
   /* Uma ideia por vez (M19): um véu da cor do papel sobre a página, com um furo no bloco

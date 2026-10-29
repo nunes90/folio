@@ -13,6 +13,40 @@ export function carregarVisor() {
   return import("pdfjs-dist/web/pdf_viewer.mjs");
 }
 
+/** Estado "terminada" de uma página no pdf.js (RenderingStates.FINISHED). */
+const RENDERIZADA = 3;
+/** Limite de espera pela renderização: depois disso, anima assim mesmo. */
+const ESPERA_MAXIMA_MS = 400;
+
+/** O mínimo do PDFViewer de que a espera precisa. */
+interface VisorComEventos {
+  getPageView(i: number): { renderingState: number } | undefined;
+  eventBus: {
+    on(nome: string, f: (e: { pageNumber: number }) => void): void;
+    off(nome: string, f: (e: { pageNumber: number }) => void): void;
+  };
+}
+
+/**
+ * Espera o pdf.js desenhar a página `n` (para a virada só animar com ela pronta), até 400 ms.
+ * Igual nos dois lados (M25c).
+ */
+export function paginaRenderizada(v: VisorComEventos, n: number): Promise<void> {
+  if (v.getPageView(n - 1)?.renderingState === RENDERIZADA) return Promise.resolve();
+  return new Promise((resolver) => {
+    const aoRenderizar = ({ pageNumber }: { pageNumber: number }) => {
+      if (pageNumber === n) terminar();
+    };
+    const limite = setTimeout(() => terminar(), ESPERA_MAXIMA_MS);
+    function terminar() {
+      clearTimeout(limite);
+      v.eventBus.off("pagerendered", aoRenderizar);
+      resolver();
+    }
+    v.eventBus.on("pagerendered", aoRenderizar);
+  });
+}
+
 /** Recursos copiados para public/pdfjs por scripts/copiar-pdfjs.mjs. */
 const RECURSOS = `${import.meta.env.BASE_URL}pdfjs/`;
 

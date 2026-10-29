@@ -16,7 +16,8 @@
   } = $props();
 </script>
 
-<div class="voz" role="group" aria-label="Leitura em voz alta">
+<!-- data-fim-rodape: com o lado aberto, a moldura alinha estes controles ao fim do rodapé. -->
+<div class="voz" role="group" aria-label="Leitura em voz alta" data-fim-rodape>
   {#if estado === "parado"}
     <button type="button" onclick={onLer}>
       <Icone nome="voz" /><span class="rotulo">Ler em voz alta</span>

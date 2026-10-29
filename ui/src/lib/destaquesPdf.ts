@@ -1,6 +1,10 @@
 // Destaques no PDF (M16c): o endereço do trecho e a geometria. O PDF não tem CFI: o destaque
 // é a página e os retângulos do trecho nela, em frações da página (0 a 1). Assim não depende
 // do zoom, e o desenho é em porcentagens. O arquivo do PDF nunca é alterado.
+import type { Destaque } from "./biblioteca";
+import type { Selecao } from "./controleDestaques.svelte";
+import { hexDaCor, posicaoDaBarra } from "./destaques";
+import { textoDoTrecho } from "./frasesPdf";
 
 /** Um retângulo em frações da página: x e y do canto superior esquerdo, largura e altura. */
 export interface Retangulo {
@@ -97,4 +101,67 @@ export function naJanela(r: Retangulo, pagina: Caixa) {
   const width = r.l * pagina.width;
   const height = r.a * pagina.height;
   return { left, top, width, height, bottom: top + height };
+}
+
+/**
+ * (Re)desenha a camada de destaques da página `n` (o elemento `.page` do pdf.js), logo acima
+ * do desenho da página e abaixo da camada de texto (que continua selecionável). Em %, então
+ * não depende do zoom. Igual nos dois lados (M25c).
+ */
+export function desenharCamadaDestaques(el: HTMLElement, n: number, lista: Destaque[]): void {
+  el.querySelector(".camada-destaques")?.remove();
+  const daPagina = lista.flatMap((d) => {
+    const local = lerLocalPdf(d.local);
+    return local?.pagina === n ? [{ d, retangulos: local.retangulos }] : [];
+  });
+  if (!daPagina.length) return;
+  const camada = document.createElement("div");
+  camada.className = "camada-destaques";
+  camada.setAttribute("aria-hidden", "true");
+  for (const { d, retangulos } of daPagina)
+    for (const r of retangulos) {
+      const marca = document.createElement("div");
+      Object.assign(marca.style, {
+        left: `${r.x * 100}%`,
+        top: `${r.y * 100}%`,
+        width: `${r.l * 100}%`,
+        height: `${r.a * 100}%`,
+        background: hexDaCor(d.cor),
+      });
+      camada.append(marca);
+    }
+  const desenho = el.querySelector(".canvasWrapper");
+  if (desenho) desenho.after(camada);
+  else el.prepend(camada);
+}
+
+/**
+ * A seleção (`range`) numa página do PDF pronta para virar destaque: a página, o trecho, os
+ * retângulos e onde a barra fica. Uma seleção que passa da página fica só com a parte da
+ * página onde começou. `null` se não estiver numa página de `conteiner` ou não tiver texto.
+ */
+export function selecaoNoPdf(
+  range: Range,
+  conteiner: Element,
+  total: number,
+  capituloDa: (pagina: number) => string | null,
+): { pagina: number; selecao: Selecao; posicao: ReturnType<typeof posicaoDaBarra> } | null {
+  const inicio = range.startContainer;
+  const el = (inicio instanceof Element ? inicio : inicio.parentElement)?.closest<HTMLElement>(".page");
+  if (!el || !conteiner.contains(el)) return null;
+  const trecho = textoDoTrecho(range);
+  const n = Number(el.dataset.pageNumber);
+  const caixa = el.getBoundingClientRect();
+  const retangulos = retangulosNaPagina([...range.getClientRects()], caixa);
+  if (!trecho.trim() || !retangulos.length) return null;
+  return {
+    pagina: n,
+    selecao: {
+      local: localPdf(n, retangulos),
+      trecho,
+      capitulo: capituloDa(n),
+      posicao: posicaoNoPdf(n, total, retangulos[0]!.y),
+    },
+    posicao: posicaoDaBarra(naJanela(retangulos[0]!, caixa)),
+  };
 }

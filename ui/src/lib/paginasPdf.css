@@ -1,0 +1,46 @@
+/* As páginas do PDF, iguais no leitor e no lado (M25c): a cor da página e as camadas de
+   destaque e da voz. O contêiner do PDFViewer leva a classe `paginas-pdf` (e `camada` ou
+   `invertida`, conforme a página) e as variáveis --papel-pdf, --marca-opacidade e
+   --marca-mistura. */
+
+/* Cor da página (lib/pagina.ts): só efeitos sobre a página já desenhada. */
+/* O pdf.js usa este mesmo ::after para o ícone de carregando e o esconde fora do
+   carregamento (`.pdfViewer .page:not(.loading)::after { display: none }`): daí o display
+   explícito, num seletor mais específico que o dele. */
+.paginas-pdf.camada .pdfViewer .page::after {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: var(--papel-pdf);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* Noite: os pixels são invertidos ao desenhar (lib/pagina.ts). Antes disso, a página
+   já aparece na cor final, sem clarão branco. */
+/* Canvas ainda não invertido (desenho parcial de página lenta, ou o antigo durante o
+   redesenho ao entrar na noite): escondido até a inversão, para não clarear a tela. */
+.paginas-pdf.invertida .page canvas:not([data-invertida]) {
+  visibility: hidden;
+}
+
+.paginas-pdf.invertida .page {
+  background-color: var(--papel-pdf);
+}
+
+/* Destaques (M16c): por cima do desenho da página, sem pegar o ponteiro (a seleção de texto
+   continua). Mesma mistura do EPUB (lib/destaques.ts). */
+.paginas-pdf .camada-destaques,
+.paginas-pdf .camada-voz {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.paginas-pdf .camada-destaques > div,
+.paginas-pdf .camada-voz > div {
+  position: absolute;
+  opacity: var(--marca-opacidade);
+  mix-blend-mode: var(--marca-mistura);
+}

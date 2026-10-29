@@ -103,14 +103,16 @@ dialog.modal[open]::backdrop {
 
 /* Botões com ícone e rótulo (<Icone/><span class="rotulo">…</span>). Em janela estreita
    (moldura do leitor), só o ícone aparece; o rótulo continua sendo o nome do botão para
-   leitores de tela, então nada muda para quem não enxerga a tela. */
+   leitores de tela, então nada muda para quem não enxerga a tela. O mesmo no rodapé com dois
+   lados abertos (M25), em que cada metade tem metade do espaço. */
 button:has(> .rotulo) {
   display: inline-flex;
   align-items: center;
   gap: 0.4em;
 }
 
-.estreita .rotulo {
+.estreita .rotulo,
+.com-lado footer .rotulo {
   position: absolute;
   width: 1px;
   height: 1px;
