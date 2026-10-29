@@ -173,7 +173,7 @@ M25 (destaques fixados ao lado, dois pontos do livro lado a lado no EPUB e no PD
 pre-release, com o AppImage.
 
 ### v1.0 — pronto para distribuir
-- [ ] **M26 — Acabamento** (M26a densidade do leitor: menu ⋯, F1 agrupado ✓): ~~nome definitivo e ícone~~ (feito antes: **Folio**, com a migração das pastas);
+- [ ] **M26 — Acabamento** (M26a densidade do leitor: menu ⋯, F1 agrupado, rótulos quando cabem ✓): ~~nome definitivo e ícone~~ (feito antes: **Folio**, com a migração das pastas);
   roteiro do Orca refeito com todos os recursos; revisão "tudo sem mouse"; testes E2E
   dos fluxos principais com `tauri-driver`; livros grandes e arquivos quebrados; README e guia de uso.
 - [ ] **M6b — Empacotamento final**: AppImage com o nome e o ícone definitivos, arquivo `.desktop` e associação a

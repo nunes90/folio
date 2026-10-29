@@ -3,6 +3,7 @@
   import { fade } from "svelte/transition";
   import { sistema } from "../lib/ambiente.svelte";
   import { cartoesEmbaixo } from "../lib/destaques";
+  import { medirRotulos, type EstadoRotulos } from "../lib/densidade";
   import { escala } from "../lib/escala.svelte";
   import Icone from "./Icone.svelte";
   import PainelLateral from "./PainelLateral.svelte";
@@ -323,6 +324,47 @@
     void revelada;
     publicarRodape();
   });
+  // Rótulos quando cabem (M26a-2, lib/densidade.ts): o cabeçalho e o rodapé mostram ícone +
+  // rótulo enquanto cabem e só o ícone quando não. Medido nas próprias barras: na mudança de
+  // tamanho delas e quando o conteúdo muda (a página, a estimativa, a voz…).
+  let cabecalhoEl: HTMLElement;
+  let rotulosCabecalho = $state<EstadoRotulos>({ compacto: false, necessario: 0 });
+  let rotulosRodape = $state<EstadoRotulos>({ compacto: false, necessario: 0 });
+  function medirBarras() {
+    if (!cabecalhoEl || !rodapeEl) return;
+    const folga = remPx * 2;
+    const c = medirRotulos(rotulosCabecalho, cabecalhoEl.clientWidth, cabecalhoEl.scrollWidth, folga);
+    // Com o lado aberto, o rodapé já é só ícones (cada metade tem metade do espaço).
+    const r = lado
+      ? rotulosRodape
+      : medirRotulos(rotulosRodape, rodapeEl.clientWidth, rodapeEl.scrollWidth, folga);
+    const voltaram =
+      (rotulosCabecalho.compacto && !c.compacto) || (rotulosRodape.compacto && !r.compacto);
+    rotulosCabecalho = c;
+    rotulosRodape = r;
+    // Os rótulos voltaram: confere de novo com eles na tela.
+    if (voltaram) requestAnimationFrame(medirBarras);
+  }
+  onMount(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    let quadro = 0;
+    const agendar = () => {
+      cancelAnimationFrame(quadro);
+      quadro = requestAnimationFrame(medirBarras);
+    };
+    const tamanho = new ResizeObserver(agendar);
+    const conteudo = new MutationObserver(agendar);
+    for (const el of [cabecalhoEl, rodapeEl]) {
+      tamanho.observe(el);
+      conteudo.observe(el, { childList: true, subtree: true, characterData: true });
+    }
+    return () => {
+      cancelAnimationFrame(quadro);
+      tamanho.disconnect();
+      conteudo.disconnect();
+    };
+  });
+
   // O relógio da meta: um tique por segundo (só conta com a janela à vista e com atividade
   // recente, ver lib/meta.svelte.ts). Teclas, cliques e a roda contam como atividade.
   onMount(() => {
@@ -475,6 +517,8 @@
   class:estreita
   class:foco={modoFoco}
   class:fixados-embaixo={embaixo}
+  class:cabecalho-compacto={rotulosCabecalho.compacto}
+  class:rodape-compacto={rotulosRodape.compacto}
   class:com-lado={!!lado && !modoFoco}
   bind:this={molduraEl}
   class:revelada
@@ -482,6 +526,7 @@
 >
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <header
+    bind:this={cabecalhoEl}
     onfocusin={aoFocarBarra}
     onfocusout={aoDesfocarBarra}
     onpointerenter={aoEntrarNasBarras}
@@ -610,6 +655,9 @@
     <!-- Sem o lado, só agrupa (display: contents); com ele, fica embaixo do livro principal. -->
     <div class="rodape-principal">
       {@render rodape()}
+      <!-- À direita, numa coluna própria: o texto que muda de tamanho não move os controles. -->
+      {#if estimativa || meta?.meta}
+        <div class="rodape-info">
       {#if estimativa}
         <span class="estimativa">{estimativa}</span>
       {/if}
@@ -623,6 +671,8 @@
           <button type="button" class="tirar-meta" aria-label="Tirar a meta da sessão" onclick={() => meta.definir(null)}>
             <Icone nome="fechar" />
           </button>
+        </div>
+      {/if}
         </div>
       {/if}
     </div>
@@ -988,16 +1038,63 @@
     padding: 0.2rem;
   }
 
+  /* Três colunas (M26a-2): a voz à esquerda, encostada; os controles de página e zoom no centro
+     exato; a estimativa e a meta à direita. O que muda de tamanho dos lados não move o centro.
+     Não caber aparece como transbordar, e o rodapé passa a só ícones (medirBarras); só então,
+     se ainda faltar espaço, vira uma linha que quebra (.rodape-compacto). */
   footer {
     grid-area: rodape;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+    display: grid;
+    /* A coluna da voz nunca fica menor que ela (encolhendo, a voz transbordava para baixo dos
+       controles sem que a medição percebesse); a da estimativa encolhe, com "…". */
+    grid-template-columns: minmax(min-content, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    gap: 1.5rem;
+    column-gap: 1.5rem;
     padding: 0.35rem 0.75rem;
     background: var(--painel);
     border-block-start: 1px solid var(--divisoria);
+  }
+
+  .rodape-principal > :global(*) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .rodape-principal > :global([data-fim-rodape]) {
+    grid-column: 1;
+    justify-self: end;
+  }
+
+  .rodape-principal > .rodape-info {
+    grid-column: 3;
+    justify-self: start;
+  }
+
+  /* Cortada com "…" se faltar espaço: é informação (a paleta tem "Quanto falta?"). */
+  .rodape-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .rodape-info > * {
+    min-width: 0;
+  }
+
+  .rodape-info .estimativa {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rodape-compacto:not(.com-lado) footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem 1.5rem;
   }
 
   .rodape-principal,
@@ -1027,8 +1124,7 @@
     padding-inline: 0.75rem;
   }
 
-  .com-lado .rodape-principal > :global(.estimativa),
-  .com-lado .rodape-principal > :global(.meta) {
+  .com-lado .rodape-principal > .rodape-info {
     order: 1;
   }
 

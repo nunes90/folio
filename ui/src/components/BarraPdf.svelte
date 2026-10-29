@@ -37,7 +37,15 @@
     </button>
     <label>
       Página
-      <input type="number" min="1" max={total} value={pagina} onchange={aoMudarPagina} />
+      <!-- Largura dos dígitos do total: mudar de página não mexe nos controles. -->
+      <input
+        type="number"
+        min="1"
+        max={total}
+        value={pagina}
+        onchange={aoMudarPagina}
+        style:width="calc({String(total).length}ch + 2rem)"
+      />
       de {total}
     </label>
     <button type="button" onclick={() => onIrPara(pagina + 1)} disabled={pagina >= total}>
@@ -56,9 +64,10 @@
 </div>
 
 <style>
+  /* Sem quebrar: no rodapé, não caber passa os botões a só ícones; quebra só no modo compacto. */
   .barra {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
     gap: 1.5rem;
   }
@@ -67,18 +76,25 @@
     gap: 0.75rem;
   }
 
+  :global(.rodape-compacto) .barra {
+    flex-wrap: wrap;
+  }
+
   .grupo {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
 
-  input {
-    width: 4rem;
+  input,
+  output,
+  label {
+    font-variant-numeric: tabular-nums;
   }
 
+  /* "1.000%" é o mais largo: o zoom não empurra os botões ao mudar. */
   output {
-    min-width: 3.5rem;
+    min-width: 6ch;
     text-align: center;
   }
 </style>

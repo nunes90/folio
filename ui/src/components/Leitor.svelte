@@ -1203,8 +1203,10 @@
     height: 100%;
   }
 
+  /* "100%" é o mais largo: a porcentagem não empurra os botões ao mudar. */
   .porcento {
-    min-width: 3rem;
+    min-width: 4.5ch;
     text-align: center;
+    font-variant-numeric: tabular-nums;
   }
 </style>
