@@ -32,6 +32,8 @@
     onCor={(cor) => controle.escolherCor(cor)}
     onNota={() => controle.pedirNota()}
     onCopiar={() => controle.copiar()}
+    onFixar={() => controle.fixarDaBarra()}
+    fixado={!!barra.destaque && controle.estaFixado(barra.destaque)}
     {onOuvir}
     {onTrecho}
     onApagar={barra.destaque ? () => controle.apagar(barra.destaque!) : undefined}

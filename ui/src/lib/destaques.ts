@@ -127,3 +127,19 @@ export function descreverDestaque(d: Destaque): string {
   const nota = d.nota ? `. Nota: ${resumo(d.nota, 120)}` : "";
   return `Destaque ${nomeDaCor(d.cor).toLowerCase()}${motivo}: ${resumo(d.trecho, 120)}${nota}`;
 }
+
+/** Largura da coluna dos destaques fixados (o cartão de 18rem e a folga em volta). */
+const COLUNA_FIXADOS = 19.5;
+/** Abaixo disso, ao lado da coluna, o livro fica estreito demais. */
+const LIVRO_MINIMO = 40;
+
+/**
+ * Os destaques fixados (M25a) vão para baixo do livro em vez da coluna ao lado? Sim se, com a
+ * coluna, sobrariam menos de 40rem para o livro. `paineis`: os rem dos painéis abertos ao
+ * lado do livro. Medido na moldura, não na janela: a escala de texto e o monitor mudam o
+ * quanto cabe numa mesma meia tela.
+ */
+export function cartoesEmbaixo(larguraPx: number, remPx: number, paineis: number): boolean {
+  if (!larguraPx || !remPx) return false;
+  return larguraPx / remPx - paineis - COLUNA_FIXADOS < LIVRO_MINIMO;
+}

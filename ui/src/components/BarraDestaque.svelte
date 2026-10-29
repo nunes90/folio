@@ -1,6 +1,6 @@
 <script lang="ts">
   // Barra sobre o trecho selecionado (ou sobre um destaque clicado): as cores, Nota, Copiar,
-  // Ouvir (se o leitor tiver voz) e, num destaque que já existe, Apagar. Padrão ARIA de
+  // Fixar ao lado, Ouvir (se o leitor tiver voz) e, num destaque que já existe, Apagar. Padrão ARIA de
   // toolbar: uma parada de Tab, setas entre os botões, Esc fecha. Aberta pelo mouse, não
   // rouba o foco (a seleção continua); aberta pelo teclado (Ctrl+D), o foco vai para a
   // primeira cor. Alt+↑/↓ trocam de frase e Alt+Shift+↑/↓ encolhem ou estendem o trecho.
@@ -21,6 +21,8 @@
     onMotivo,
     onNota,
     onCopiar,
+    onFixar,
+    fixado = false,
     onOuvir,
     onApagar,
     onTrecho,
@@ -43,6 +45,10 @@
     onMotivo?: (motivo: MotivoDestaque) => void;
     onNota: () => void;
     onCopiar: () => void;
+    /** Fixar ao lado do texto (M25a): numa seleção, cria o destaque e o fixa. */
+    onFixar?: () => void;
+    /** O destaque da barra é o fixado (o botão fica pressionado e desafixa). */
+    fixado?: boolean;
     /** Ouvir a partir do trecho (leitura em voz alta). */
     onOuvir?: () => void;
     /** Só num destaque existente. */
@@ -60,7 +66,8 @@
   const iMotivos = CORES_DESTAQUE.length;
   const iNota = $derived(iMotivos + (onMotivo ? MOTIVOS.length : 0));
   const iCopiar = $derived(iNota + 1);
-  const iOuvir = $derived(iCopiar + 1);
+  const iFixar = $derived(iCopiar + 1);
+  const iOuvir = $derived(iFixar + (onFixar ? 1 : 0));
   const iApagar = $derived(iOuvir + (onOuvir ? 1 : 0));
 
   // Centralizada no trecho, sem sair da janela.
@@ -161,6 +168,16 @@
   >
     <Icone nome="copiar" /><span class="rotulo">Copiar</span>
   </button>
+  {#if onFixar}
+    <button
+      type="button"
+      aria-pressed={corAtual ? fixado : undefined}
+      tabindex={ativo === iFixar ? 0 : -1}
+      onclick={onFixar}
+    >
+      <Icone nome="fixar" /><span class="rotulo">Fixar ao lado</span>
+    </button>
+  {/if}
   {#if onOuvir}
     <button type="button" tabindex={ativo === iOuvir ? 0 : -1} onclick={onOuvir}>
       <Icone nome="voz" /><span class="rotulo">Ouvir</span>

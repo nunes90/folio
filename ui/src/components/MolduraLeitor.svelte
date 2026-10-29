@@ -2,6 +2,8 @@
   import { onMount, tick, untrack, type Snippet } from "svelte";
   import { fade } from "svelte/transition";
   import { sistema } from "../lib/ambiente.svelte";
+  import { cartoesEmbaixo } from "../lib/destaques";
+  import { escala } from "../lib/escala.svelte";
   import Icone from "./Icone.svelte";
   import PainelLateral from "./PainelLateral.svelte";
   import ResumoDaMeta from "./ResumoDaMeta.svelte";
@@ -39,6 +41,7 @@
     indice,
     aparencia,
     rodape,
+    fixado,
     children,
   }: {
     titulo: string;
@@ -70,6 +73,8 @@
     indice: Snippet;
     aparencia: Snippet;
     rodape: Snippet;
+    /** Destaques fixados ao lado do texto (M25a): numa coluna à direita; fora do modo foco. */
+    fixado?: Snippet;
     /** O conteúdo do livro. */
     children: Snippet;
   } = $props();
@@ -87,6 +92,20 @@
     if (estreita && untrack(() => indiceAberto && aparenciaAberta)) indiceAberto = false;
   });
   const cobrindo = $derived(estreita && (indiceAberto || aparenciaAberta));
+
+  // Destaques fixados (M25a): ao lado do livro ou, sem largura para a coluna, embaixo dele.
+  let molduraEl: HTMLDivElement;
+  let larguraMoldura = $state(0);
+  const remPx = $derived.by(() => {
+    void escala.fator; // a letra da interface acompanha a escala do sistema
+    return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  });
+  const embaixo = $derived.by(() => {
+    if (!fixado || modoFoco) return false;
+    // Na janela estreita, os painéis cobrem o livro: não tiram largura dele.
+    const paineis = estreita ? 0 : (indiceAberto ? 19.5 : 0) + (aparenciaAberta ? 21.5 : 0);
+    return cartoesEmbaixo(larguraMoldura, remPx, paineis);
+  });
 
   async function alternar(painel: "indice" | "aparencia") {
     const abrir = painel === "indice" ? !indiceAberto : !aparenciaAberta;
@@ -284,8 +303,15 @@
     const observador =
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => publicarRodape());
     observador?.observe(rodapeEl);
+    // A largura da moldura decide onde ficam os destaques fixados (`embaixo`).
+    const largura =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => (larguraMoldura = molduraEl.clientWidth));
+    largura?.observe(molduraEl);
     return () => {
       observador?.disconnect();
+      largura?.disconnect();
       clearTimeout(esconder);
       document.documentElement.style.removeProperty("--rodape-leitor");
     };
@@ -400,6 +426,8 @@
   class="moldura"
   class:estreita
   class:foco={modoFoco}
+  class:fixados-embaixo={embaixo}
+  bind:this={molduraEl}
   class:revelada
   {...{ [ATRIBUTO_TELA]: "" }}
 >
@@ -492,6 +520,10 @@
     </span>
   {/if}
 
+  {#if fixado && !modoFoco}
+    <div class="area-fixado">{@render fixado()}</div>
+  {/if}
+
   {#if continuacaoAberta && continuacao}
     <div class="area-continuacao">
       <CartaoContinuacao {continuacao} onFechar={fecharContinuacao} />
@@ -566,12 +598,12 @@
 <style>
   .moldura {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto 1fr auto auto;
     grid-template-rows: auto 1fr auto;
     grid-template-areas:
-      "topo topo topo"
-      "indice conteudo aparencia"
-      "rodape rodape rodape";
+      "topo topo topo topo"
+      "indice conteudo fixado aparencia"
+      "rodape rodape rodape rodape";
     height: 100vh;
     background: var(--app);
     /* clip, não hidden: nada aqui é rolável, nem pelo teclado. No WebKitGTK, as setas rolavam
@@ -665,6 +697,43 @@
 
   .area-aparencia {
     grid-area: aparencia;
+  }
+
+  /* Destaques fixados (M25a): uma coluna de cartões entre o livro e a Aparência. */
+  .area-fixado {
+    grid-area: fixado;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+    padding: 0.75rem;
+    overflow-y: auto;
+  }
+
+  /* Sem largura para a coluna (o livro ficaria estreito demais): os cartões vão para uma
+     faixa embaixo do livro, lado a lado, sem cobrir o texto. */
+  /* Sem largura para a coluna (o livro ficaria estreito demais; ver `cartoesEmbaixo`): os
+     cartões vão para uma faixa embaixo do livro, lado a lado, sem cobrir o texto. */
+  .fixados-embaixo {
+    grid-template-rows: auto 1fr auto auto;
+    grid-template-areas:
+      "topo topo topo topo"
+      "indice conteudo conteudo aparencia"
+      "fixado fixado fixado fixado"
+      "rodape rodape rodape rodape";
+  }
+
+  .fixados-embaixo .area-fixado {
+    flex-direction: row;
+    max-height: 40vh;
+    padding-block: 0 0.75rem;
+    overflow-x: auto;
+  }
+
+  .fixados-embaixo .area-fixado > :global(.cartao) {
+    flex: 1 0 16rem;
+    width: auto;
+    max-width: 40rem;
   }
 
   .area-indice :global(.painel) {

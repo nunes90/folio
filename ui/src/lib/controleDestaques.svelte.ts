@@ -66,6 +66,15 @@ export class ControleDestaques {
   barra = $state<(PosicaoBarra & { focar: boolean; destaque: Destaque | null }) | null>(null);
   /** Destaque cuja nota está sendo editada. */
   notaDe = $state<Destaque | null>(null);
+  /**
+   * Os destaques fixados ao lado do texto (M25a), pelos ids, na ordem em que foram fixados: os
+   * cartões mostram sempre a versão da lista (cor, nota e motivo novos), e o de um destaque
+   * apagado some (volta com o Desfazer).
+   */
+  #fixadosIds = $state<number[]>([]);
+  fixados = $derived(
+    this.#fixadosIds.flatMap((id) => this.lista.find((d) => d.id === id) ?? []),
+  );
   #selecao: Selecao | null = null;
   #a: AdaptadorDestaques;
 
@@ -176,6 +185,52 @@ export class ControleDestaques {
     } catch (erro) {
       avisar(`Não foi possível mudar o motivo: ${erro}`, "erro");
     }
+  }
+
+  estaFixado(destaque: Destaque): boolean {
+    return this.#fixadosIds.includes(destaque.id);
+  }
+
+  /** Fixa o destaque ao lado do texto (depois dos já fixados). */
+  fixar(destaque: Destaque): void {
+    if (!this.estaFixado(destaque)) this.#fixadosIds = [...this.#fixadosIds, destaque.id];
+    this.#a.anunciar("Destaque fixado ao lado.");
+  }
+
+  /** Tira o cartão; se o foco estava nos cartões (o botão some), devolve-o ao texto. */
+  desafixar(destaque: Destaque): void {
+    if (!this.estaFixado(destaque)) return;
+    this.#tirarFixados(this.#fixadosIds.filter((id) => id !== destaque.id));
+    this.#a.anunciar("Destaque desafixado.");
+  }
+
+  desafixarTodos(): void {
+    this.#tirarFixados([]);
+    this.#a.anunciar("Destaques desafixados.");
+  }
+
+  #tirarFixados(ficam: number[]): void {
+    const tinhaFoco = !!document.activeElement?.closest(".area-fixado");
+    this.#fixadosIds = ficam;
+    if (tinhaFoco) this.#a.focarTexto();
+  }
+
+  /** O botão "Fixar ao lado" da aba Destaques: fixa ou desafixa. */
+  alternarFixado(destaque: Destaque): void {
+    if (this.estaFixado(destaque)) this.desafixar(destaque);
+    else this.fixar(destaque);
+  }
+
+  /** "Fixar ao lado" na barra: num destaque, fixa (ou desafixa); numa seleção, cria e fixa. */
+  async fixarDaBarra(): Promise<void> {
+    const existente = this.barra?.destaque ?? null;
+    this.fecharBarra();
+    if (existente) {
+      this.alternarFixado(existente);
+      return;
+    }
+    const d = await this.#criar("amarelo");
+    if (d) this.fixar(d);
   }
 
   /** Nota na barra: num destaque, edita; numa seleção, cria o destaque (amarelo) e abre a nota. */
@@ -294,15 +349,51 @@ export class ControleDestaques {
           palavras: "markdown motivo",
           executar: () => void this.exportar(m.valor),
         });
-    for (const d of this.lista)
+    for (const d of this.fixados)
+      lista.push(
+        {
+          id: `ir-ao-fixado-${d.id}`,
+          titulo: `Ir ao fixado: ${resumo(d.trecho, 60)}`,
+          grupo: "Destaques",
+          palavras: "fixar lado comparar",
+          executar: () => void this.#a.irPara(d),
+        },
+        {
+          id: `desafixar-${d.id}`,
+          titulo: `Desafixar: ${resumo(d.trecho, 60)}`,
+          grupo: "Destaques",
+          palavras: "fixar lado fechar cartão",
+          executar: () => this.desafixar(d),
+        },
+      );
+    if (this.fixados.length > 1)
+      lista.push({
+        id: "desafixar-todos",
+        titulo: "Desafixar todos",
+        grupo: "Destaques",
+        palavras: "fixar lado fechar cartões destaques",
+        executar: () => this.desafixarTodos(),
+      });
+    for (const d of this.lista) {
+      const dica = d.motivo ? `${nomeDaCor(d.cor)} · ${nomeDoMotivo(d.motivo)}` : nomeDaCor(d.cor);
       lista.push({
         id: `destaque-${d.id}`,
         titulo: `Ir para destaque: ${resumo(d.trecho, 60)}`,
         grupo: "Destaques",
-        dica: d.motivo ? `${nomeDaCor(d.cor)} · ${nomeDoMotivo(d.motivo)}` : nomeDaCor(d.cor),
+        dica,
         palavras: d.nota ?? "",
         executar: () => void this.#a.irPara(d),
       });
+      if (!this.estaFixado(d))
+        lista.push({
+          id: `fixar-${d.id}`,
+          titulo: `Fixar ao lado: ${resumo(d.trecho, 60)}`,
+          grupo: "Destaques",
+          dica,
+          palavras: `comparar ${d.nota ?? ""}`,
+          executar: () => this.fixar(d),
+        });
+    }
     return lista;
   }
 }
