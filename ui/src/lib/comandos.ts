@@ -94,6 +94,63 @@ export function comandosDoIndice(
   return lista;
 }
 
+/** As ações do lado (M25b) que a paleta oferece. */
+export interface AcoesDoLado {
+  /** Abre (ou leva) o lado até a seção. */
+  abrir(href: string): void;
+  /** Abre o lado no ponto em que o livro está. */
+  abrirAqui(): void;
+  fechar(): void;
+  /** Leva o foco ao outro lado (F6). */
+  alternar(): void;
+}
+
+/**
+ * Dois pontos do livro lado a lado (M25b). Fechado: "Abrir este ponto ao lado" e "Abrir ao
+ * lado: <seção>"; aberto: alternar (F6), fechar e "Lado: ir para <seção>".
+ */
+export function comandosDoLado(aberto: boolean, itens: ItemIndice[], a: AcoesDoLado): Comando[] {
+  const lista: Comando[] = aberto
+    ? [
+        {
+          id: "lado-alternar",
+          titulo: "Alternar entre os lados",
+          grupo: "Lado a lado",
+          teclas: [["F6"]],
+          palavras: "comparar foco outro lado",
+          executar: () => a.alternar(),
+        },
+        {
+          id: "lado-fechar",
+          titulo: "Fechar o lado",
+          grupo: "Lado a lado",
+          teclas: [["Ctrl", "Shift", "L"]],
+          palavras: "comparar",
+          executar: () => a.fechar(),
+        },
+      ]
+    : [
+        {
+          id: "lado-aqui",
+          titulo: "Abrir este ponto ao lado",
+          grupo: "Lado a lado",
+          teclas: [["Ctrl", "Shift", "L"]],
+          palavras: "comparar dividir",
+          executar: () => a.abrirAqui(),
+        },
+      ];
+  const prefixo = aberto ? "Lado: ir para " : "Abrir ao lado: ";
+  for (const c of comandosDoIndice(itens, undefined, (href) => a.abrir(href)))
+    lista.push({
+      ...c,
+      id: `lado-${c.id}`,
+      titulo: c.titulo.replace(/^Ir para: /, prefixo),
+      grupo: "Lado a lado",
+      palavras: "comparar",
+    });
+  return lista;
+}
+
 const NOMES_PAGINA: [Pagina, string][] = [
   ["automatica", "Automática"],
   ...(Object.entries(PAGINAS) as [Pagina, { nome: string }][]).map(

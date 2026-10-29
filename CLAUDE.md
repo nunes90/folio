@@ -539,5 +539,22 @@ docs/decisions/  # ADRs
   painéis abertos), uma faixa embaixo do livro, cartões lado a lado e roláveis, sem cobrir o texto; some no
   modo foco. Medido na moldura (`ResizeObserver`), não por media query: com o monitor 4K a 1,6 e a escala de
   texto 1,36, meia tela tem ~1190 px de CSS, acima de qualquer limite fixo razoável.
-- Próximo passo: M25b (dois pontos do livro lado a lado, medindo memória e quadros por segundo). Séries
-  continua adiado.
+- **M25b** (branch `feat/m25b-lado-a-lado`): dois pontos do EPUB lado a lado. `LadoEpub.svelte`: uma segunda
+  `<foliate-view>` com o mesmo arquivo, o mesmo CSS e a mesma largura (`cssLivro`/`larguraLivro` derivados no
+  `Leitor`), uma coluna; lê e destaca com o mesmo `ControleDestaques` (o adaptador desenha e limpa a seleção nos
+  dois; `focarTexto` volta ao lado que tinha a seleção); voz, meta, sessão e progresso só no principal. Setas e
+  PageUp/PageDown viram o lado com a virada das preferências quando o foco está nele (teclas do iframe dele
+  tratadas ali; as outras seguem para a janela); Ctrl+D destaca a seleção do lado. `selecaoNoEpub` e
+  `posicaoNoIframe` em `lib/destaques.ts` (comuns aos dois). Abrir: botão "Abrir ao lado" no cabeçalho
+  (`onAlternarLado`, ícone `dividir`, `aria-pressed`) e **Ctrl+Shift+L**, no mesmo ponto; ao abrir assim, o
+  principal vai ao mesmo CFI e, depois de os dois assentarem (`assentar`: 150 ms sem mudar de página), o lado vai
+  ao início da página do principal. Paleta (`comandosDoLado`): "Abrir este ponto ao lado", "Abrir ao lado: <seção>",
+  aberto: "Alternar entre os lados" (**F6**), "Fechar o lado", "Lado: ir para <seção>"; "Abrir ao lado" no cartão
+  fixado. Moldura: coluna `lado` (`minmax(0,1fr)` dos dois lados; também na janela estreita: empilhados
+  confundiam); sem barra própria no lado: os controles (`ControlesLado.svelte`: seção, ‹ % ›, fechar) ficam no
+  rodapé (`rodapeLado`), que vira `subgrid` e põe os de cada livro embaixo dele. **As duas áreas precisam ter a
+  mesma largura e altura**: com a barra no alto, ou com 1 px de borda no lado (a linha divisória agora é um
+  `::before` por cima), os dois paginavam diferente e as quebras de página saíam desalinhadas. `cartoesEmbaixo`
+  conta a largura dividida. Medido: memória +1–2 MB (o lado roda no mesmo WebKitWebProcess); virada esmaecer
+  ~47–65 qps com o lado aberto (~60 sem).
+- Próximo passo: M25c (o lado no PDF, por página). Séries continua adiado.
