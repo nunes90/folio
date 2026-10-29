@@ -291,6 +291,46 @@ describe("MolduraLeitor", () => {
     });
   });
 
+  describe("lado a lado", () => {
+    it("o botão Abrir ao lado só aparece com o leitor que o oferece; Ctrl+Shift+L o aciona", async () => {
+      renderizar();
+      expect(screen.queryByRole("button", { name: "Abrir ao lado" })).toBeNull();
+      const onAlternarLado = vi.fn();
+      renderizar({ onAlternarLado });
+      const botao = screen.getByRole("button", { name: "Abrir ao lado" });
+      expect(botao.getAttribute("aria-pressed")).toBe("false");
+      expect(botao.getAttribute("aria-keyshortcuts")).toBe("Control+Shift+L");
+      await fireEvent.click(botao);
+      await fireEvent.keyDown(window, { key: "L", ctrlKey: true, shiftKey: true });
+      expect(onAlternarLado).toHaveBeenCalledTimes(2);
+    });
+
+    it("com o lado aberto, o botão fica pressionado e a área do lado aparece", () => {
+      renderizar({ onAlternarLado: vi.fn(), lado: trecho("<section>Outro ponto</section>") });
+      expect(screen.getByRole("button", { name: "Abrir ao lado" }).getAttribute("aria-pressed")).toBe("true");
+      expect(document.querySelector(".moldura")!.classList.contains("com-lado")).toBe(true);
+      expect(screen.getByText("Outro ponto")).toBeTruthy();
+    });
+
+    it("os controles do lado ficam no rodapé, num grupo próprio (as duas áreas com a mesma altura)", () => {
+      renderizar({
+        onAlternarLado: vi.fn(),
+        lado: trecho("<section>Outro ponto</section>"),
+        rodapeLado: trecho('<button type="button">Fechar o lado</button>'),
+      });
+      const rodape = screen.getByRole("contentinfo");
+      const grupo = within(rodape).getByRole("group", { name: "Ao lado" });
+      expect(within(grupo).getByRole("button", { name: "Fechar o lado" })).toBeTruthy();
+    });
+
+    it("na janela estreita, os dois continuam lado a lado", () => {
+      sistema.estreita = true;
+      renderizar({ onAlternarLado: vi.fn(), lado: trecho("<section>Outro ponto</section>") });
+      expect(document.querySelector(".moldura")!.classList.contains("com-lado")).toBe(true);
+      sistema.estreita = false;
+    });
+  });
+
   describe("uma ideia por vez", () => {
     const moldura = () => document.querySelector<HTMLElement>(".moldura")!;
     const botao = () => screen.getByRole("button", { name: "Uma ideia por vez" });

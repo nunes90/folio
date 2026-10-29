@@ -119,6 +119,13 @@ describe("cartoesEmbaixo", () => {
     expect(cartoesEmbaixo(960, 16, 18)).toBe(true);
   });
 
+  it("com dois lados, a largura do livro é dividida entre eles", () => {
+    // Tela cheia: cada lado fica com ~45rem; com o índice aberto, ~36rem.
+    expect(cartoesEmbaixo(2400, rem, 0, 2)).toBe(false);
+    expect(cartoesEmbaixo(2400, rem, 18, 2)).toBe(true);
+    expect(cartoesEmbaixo(1190, rem, 0, 2)).toBe(true);
+  });
+
   it("sem medida (0), não decide nada", () => {
     expect(cartoesEmbaixo(0, 16, 0)).toBe(false);
   });

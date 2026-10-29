@@ -4,6 +4,8 @@
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
   import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
   import CartaoFixado from "./CartaoFixado.svelte";
+  import LadoEpub from "./LadoEpub.svelte";
+  import ControlesLado from "./ControlesLado.svelte";
   import ListaDestaques from "./ListaDestaques.svelte";
   import Carregando from "./Carregando.svelte";
   import Icone from "./Icone.svelte";
@@ -63,17 +65,17 @@
   import {
     aplicarMarcaTexto,
     estiloDoMarcaTexto,
-    fracaoNoDocumento,
     hexDaCor,
     paginaEscura,
-    posicaoDaBarra,
-    posicaoNoLivro,
+    posicaoNoIframe,
     resumo,
+    selecaoNoEpub,
   } from "../lib/destaques";
   import { resolverPagina } from "../lib/pagina";
   import {
     comandosDaPagina,
     comandosDoIndice,
+    comandosDoLado,
     comandosDoTexto,
     type Comando,
     type ComandosDoLeitor,
@@ -173,12 +175,21 @@
       return livroId;
     },
     titulo: () => titulo,
-    desenhar: (d) => view?.addAnnotation({ value: d.local }),
-    apagarDesenho: (d) => view?.deleteAnnotation({ value: d.local }),
+    // Com o lado aberto (M25b), os destaques são desenhados nos dois, e a seleção pode estar em
+    // qualquer um deles.
+    desenhar: (d) => {
+      void view?.addAnnotation({ value: d.local });
+      lado?.desenhar(d);
+    },
+    apagarDesenho: (d) => {
+      void view?.deleteAnnotation({ value: d.local });
+      lado?.apagarDesenho(d);
+    },
     irPara: irParaDestaque,
-    focarTexto: () => view?.renderer.focusView(),
+    focarTexto: () => (lado?.temSelecao() ? lado.focar() : view?.renderer.focusView()),
     limparSelecao: () => {
       for (const { doc } of view?.renderer.getContents() ?? []) doc.getSelection()?.removeAllRanges();
+      lado?.limparSelecao();
     },
     anunciar: (texto) => (anuncio = texto),
     mostrarLista: mostrarDestaques,
@@ -326,10 +337,13 @@
   }
 
   // O marca-texto se mistura com a página: multiply no papel claro, screen no escuro.
-  $effect(() => {
+  const escura = $derived.by(() => {
     const iface = temaEfetivo();
-    const escura = iface === "alto-contraste" || paginaEscura(resolverPagina(preferencias.pagina, iface));
-    if (pronto && view) aplicarMarcaTexto(view, escura);
+    return iface === "alto-contraste" || paginaEscura(resolverPagina(preferencias.pagina, iface));
+  });
+  $effect(() => {
+    const e = escura;
+    if (pronto && view) aplicarMarcaTexto(view, e);
   });
 
   // Leitura em voz alta: um bloco (parágrafo) por vez; ao terminar, o próximo.
@@ -337,12 +351,16 @@
   let vozPossivel = $state(false);
   let idiomaDoLivro: string | null = null;
 
+  // O CSS do livro e a largura da coluna, iguais nos dois lados (M25b).
+  const cssLivro = $derived(cssDoLivro(preferencias, escala.fator, temaEfetivo()));
+  // Em caracteres por linha (M24): a coluna cresce com a letra.
+  const larguraLivro = $derived(`${larguraDaColuna(preferencias, escala.fator)}px`);
+
   // Reaplica sempre que a escala do sistema ou as preferências mudarem (inclusive com o
   // painel aberto: o livro funciona como prévia ao vivo).
   $effect(() => {
-    const css = cssDoLivro(preferencias, escala.fator, temaEfetivo());
-    // Em caracteres por linha (M24): a coluna cresce com a letra.
-    const largura = `${larguraDaColuna(preferencias, escala.fator)}px`;
+    const css = cssLivro;
+    const largura = larguraLivro;
     const colunas = String(preferencias.colunas);
     if (!pronto || !view) return;
     view.renderer.setStyles(css);
@@ -531,6 +549,7 @@
       if (!modoFrase) destaques.esconder();
       const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;
       progresso = fraction;
+      if (cfi) cfiAtual = cfi;
       hrefAtual = tocItem?.href;
       if (cfi) onProgresso?.(cfi, fraction);
       acompanharIdeia();
@@ -650,29 +669,14 @@
     view.renderer.focusView();
   }
 
-  /** Onde a barra fica: o retângulo do trecho, somado ao do iframe do capítulo. */
-  function posicaoNoIframe(range: Range) {
-    const quadro = range.startContainer.ownerDocument?.defaultView?.frameElement;
-    return posicaoDaBarra(range.getBoundingClientRect(), quadro?.getBoundingClientRect());
-  }
-
   /** Há texto selecionado em `doc`? Abre a barra sobre ele (com o CFI já calculado). */
   function verSelecao(doc: Document, indice: number, focar: boolean): boolean {
     const sel = doc.getSelection();
     if (!view || !sel || sel.isCollapsed || !sel.rangeCount) return false;
     const range = sel.getRangeAt(0);
-    const trecho = range.toString();
-    if (!trecho.trim()) return false;
-    destaques.mostrarSelecao(
-      {
-        local: view.getCFI(indice, range),
-        trecho,
-        capitulo: view.getProgressOf(indice, range)?.tocItem?.label?.trim() ?? null,
-        posicao: posicaoNoLivro(view.getSectionFractions(), indice, fracaoNoDocumento(range)),
-      },
-      posicaoNoIframe(range),
-      focar,
-    );
+    const selecao = selecaoNoEpub(view, indice, range);
+    if (!selecao) return false;
+    destaques.mostrarSelecao(selecao, posicaoNoIframe(range), focar);
     return true;
   }
 
@@ -904,6 +908,12 @@
       ...comandosDoFoco(saidaDoFoco, "epub", (m) => moldura.focarPor(m)),
     );
     lista.push(
+      ...comandosDoLado(!!ladoAlvo, itensIndice, {
+        abrir: (href) => void abrirAoLado(href),
+        abrirAqui: () => cfiAtual && void abrirAoLado(cfiAtual, true),
+        fechar: fecharLado,
+        alternar: alternarLado,
+      }),
       ...comandosDoIndice(itensIndice, hrefAtual, irParaSecao),
       ...comandosDaPagina(preferencias, atualizarPreferencias),
       ...comandosDoTexto(preferencias, atualizarPreferencias, restaurarPadrao),
@@ -911,9 +921,96 @@
     onComandos?.({ comandos: lista, porTermo: (termo) => metaPorTermo(termo, meta, "epub") });
   });
 
+  // Dois pontos do livro lado a lado (M25b): o lado novo lê e destaca (LadoEpub); o resto
+  // (voz, meta, sessão, progresso) é só deste lado.
+  let ladoAlvo = $state<string | null>(null);
+  let lado = $state<LadoEpub>();
+  let secaoLado = $state("");
+  let progressoLado = $state(0);
+  /** O ponto em que o livro está (para "Abrir este ponto ao lado"). */
+  let cfiAtual: string | undefined;
+
+  /** O ponto em que o lado abriu, quando foi "este ponto": o principal volta a ele (ladoPronto). */
+  let mesmoPonto: string | null = null;
+
+  /** Abre o lado em `alvo` (seção ou CFI) ou, se já aberto, leva-o até lá. */
+  async function abrirAoLado(alvo: string, noMesmoPonto = false) {
+    if (lado) {
+      await lado.ir(alvo);
+      return;
+    }
+    mesmoPonto = noMesmoPonto ? alvo : null;
+    ladoAlvo = alvo;
+    anuncio = "Lado aberto. F6 alterna entre os lados.";
+  }
+
+  function fecharLado() {
+    if (!ladoAlvo) return;
+    ladoAlvo = null;
+    secaoLado = "";
+    anuncio = "Lado fechado.";
+    view?.renderer.focusView();
+  }
+
+  /** O botão e o Ctrl+Shift+L: abre o lado no ponto em que o livro está, ou o fecha. */
+  function alternarAbertura() {
+    if (ladoAlvo) fecharLado();
+    else if (cfiAtual) void abrirAoLado(cfiAtual, true);
+  }
+
+  /**
+   * O lado abriu. Se foi no mesmo ponto, o principal vai até ele também: ao dividir a tela, o
+   * principal repagina a partir do que estava visível na tela larga (às vezes duas colunas) e
+   * podia parar numa página vizinha. Com o mesmo CFI, os dois mostram a mesma página.
+   */
+  async function ladoPronto() {
+    const ponto = mesmoPonto;
+    mesmoPonto = null;
+    if (!ponto || !view) return;
+    await view.goTo(ponto);
+    // Os dois ainda repaginam enquanto a tela termina de se dividir (e o lado às vezes para uma
+    // página adiante): espera tudo assentar e leva o lado ao início da página do principal,
+    // uma posição sem ambiguidade (o ponto podia estar no meio de um parágrafo).
+    await assentar();
+    if (lado && cfiAtual) await lado.ir(cfiAtual);
+  }
+
+  /** Espera até o livro ficar 150 ms sem mudar de página (no máximo 1 s). */
+  function assentar(): Promise<void> {
+    return new Promise((resolver) => {
+      const limite = setTimeout(fim, 1000);
+      let espera = setTimeout(fim, 150);
+      const aoMudar = () => {
+        clearTimeout(espera);
+        espera = setTimeout(fim, 150);
+      };
+      view?.addEventListener("relocate", aoMudar);
+      lado?.aoMudar(aoMudar);
+      function fim() {
+        clearTimeout(limite);
+        clearTimeout(espera);
+        view?.removeEventListener("relocate", aoMudar);
+        lado?.aoMudar(null);
+        resolver();
+      }
+    });
+  }
+
+  /** F6: o foco vai ao outro lado. */
+  function alternarLado() {
+    if (!lado) return;
+    if (lado.contem(document.activeElement)) view?.renderer.focusView();
+    else lado.focar();
+  }
+
   function aoTeclar(e: KeyboardEvent) {
     // Com um diálogo aberto (ex.: atalhos), as teclas são dele.
     if (e.target instanceof Element && e.target.closest("dialog")) return;
+    if (e.key === "F6" && ladoAlvo && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      alternarLado();
+      return;
+    }
     // Setas dentro de controles (ex.: deslizantes do painel) são do controle, não do livro.
     if (e.target instanceof HTMLInputElement) return;
     if (!view || e.defaultPrevented) return;
@@ -958,8 +1055,36 @@
       onIr={() => void irParaDestaque(d)}
       onNota={() => destaques.editarNota(d)}
       onDesafixar={() => destaques.desafixar(d)}
+      onAbrirAoLado={() => void abrirAoLado(d.local)}
     />
   {/each}
+{/snippet}
+
+{#snippet ladoNovo()}
+  {#if ladoAlvo}
+    <LadoEpub
+      bind:this={lado}
+      {arquivo}
+      alvo={ladoAlvo}
+      css={cssLivro}
+      largura={larguraLivro}
+      {escura}
+      {destaques}
+      bind:secao={secaoLado}
+      bind:progresso={progressoLado}
+      onPronto={() => void ladoPronto()}
+    />
+  {/if}
+{/snippet}
+
+{#snippet controlesLado()}
+  <ControlesLado
+    secao={secaoLado}
+    posicao="{Math.round(progressoLado * 100)}%"
+    onAnterior={() => void lado?.virar("esquerda")}
+    onProxima={() => void lado?.virar("direita")}
+    onFechar={fecharLado}
+  />
 {/snippet}
 
 <MolduraLeitor
@@ -973,6 +1098,9 @@
   onContinuar={piscarOndeParou}
   estimativa={estimativa ? textoDoRodape(estimativa, "epub") : undefined}
   fixado={destaques.fixados.length ? cartoesFixados : undefined}
+  lado={ladoAlvo ? ladoNovo : undefined}
+  rodapeLado={controlesLado}
+  onAlternarLado={alternarAbertura}
   {titulo}
   {anuncio}
   {progresso}

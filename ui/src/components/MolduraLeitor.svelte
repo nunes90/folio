@@ -42,6 +42,9 @@
     aparencia,
     rodape,
     fixado,
+    lado,
+    rodapeLado,
+    onAlternarLado,
     children,
   }: {
     titulo: string;
@@ -75,6 +78,18 @@
     rodape: Snippet;
     /** Destaques fixados ao lado do texto (M25a): numa coluna à direita; fora do modo foco. */
     fixado?: Snippet;
+    /**
+     * Outro ponto do livro ao lado do principal (M25b): o livro se divide em dois, lado a lado
+     * (também na janela estreita: um em cima do outro confundia qual era qual). Fora do modo foco.
+     */
+    lado?: Snippet;
+    /**
+     * Os controles do lado (seção, páginas, fechar), no rodapé, à direita: o lado não tem barra
+     * própria, para as duas áreas terem a mesma altura (e paginarem igual).
+     */
+    rodapeLado?: Snippet;
+    /** Abre o lado no ponto em que o livro está, ou o fecha (botão e Ctrl+Shift+L). */
+    onAlternarLado?: () => void;
     /** O conteúdo do livro. */
     children: Snippet;
   } = $props();
@@ -104,7 +119,9 @@
     if (!fixado || modoFoco) return false;
     // Na janela estreita, os painéis cobrem o livro: não tiram largura dele.
     const paineis = estreita ? 0 : (indiceAberto ? 19.5 : 0) + (aparenciaAberta ? 21.5 : 0);
-    return cartoesEmbaixo(larguraMoldura, remPx, paineis);
+    // Com o lado aberto, o livro se divide em dois.
+    const lados = lado ? 2 : 1;
+    return cartoesEmbaixo(larguraMoldura, remPx, paineis, lados);
   });
 
   async function alternar(painel: "indice" | "aparencia") {
@@ -376,6 +393,11 @@
       alternarFoco();
       return;
     }
+    if (onAlternarLado && e.ctrlKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === "l") {
+      e.preventDefault();
+      onAlternarLado();
+      return;
+    }
     if (e.ctrlKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === "b") {
       e.preventDefault();
       alternarUmaIdeia();
@@ -427,6 +449,7 @@
   class:estreita
   class:foco={modoFoco}
   class:fixados-embaixo={embaixo}
+  class:com-lado={!!lado && !modoFoco}
   bind:this={molduraEl}
   class:revelada
   {...{ [ATRIBUTO_TELA]: "" }}
@@ -452,6 +475,16 @@
     <h1 tabindex="-1" bind:this={tituloEl}>{titulo}</h1>
     <div class="lado fim">
       {@render acoes?.()}
+      {#if onAlternarLado}
+        <button
+          type="button"
+          aria-pressed={!!lado}
+          aria-keyshortcuts="Control+Shift+L"
+          onclick={onAlternarLado}
+        >
+          <Icone nome="dividir" /><span class="rotulo">Abrir ao lado</span>
+        </button>
+      {/if}
       <button
         type="button"
         aria-pressed={umaIdeia}
@@ -520,6 +553,10 @@
     </span>
   {/if}
 
+  {#if lado && !modoFoco}
+    <div class="area-lado">{@render lado()}</div>
+  {/if}
+
   {#if fixado && !modoFoco}
     <div class="area-fixado">{@render fixado()}</div>
   {/if}
@@ -561,21 +598,27 @@
     onpointerenter={aoEntrarNasBarras}
     onpointerleave={aoSairDasBarras}
   >
-    {@render rodape()}
-    {#if estimativa}
-      <span class="estimativa">{estimativa}</span>
-    {/if}
-    {#if meta?.meta}
-      <div class="meta" role="group" aria-label="Meta da sessão">
-        <span class="texto-meta">Meta: {meta.texto}</span>
-        <!-- Decorativa: o texto ao lado diz o mesmo. -->
-        <span class="barra-meta" aria-hidden="true">
-          <span style:transform="scaleX({meta.progresso})"></span>
-        </span>
-        <button type="button" class="tirar-meta" aria-label="Tirar a meta da sessão" onclick={() => meta.definir(null)}>
-          <Icone nome="fechar" />
-        </button>
-      </div>
+    <!-- Sem o lado, só agrupa (display: contents); com ele, fica embaixo do livro principal. -->
+    <div class="rodape-principal">
+      {@render rodape()}
+      {#if estimativa}
+        <span class="estimativa">{estimativa}</span>
+      {/if}
+      {#if meta?.meta}
+        <div class="meta" role="group" aria-label="Meta da sessão">
+          <span class="texto-meta">Meta: {meta.texto}</span>
+          <!-- Decorativa: o texto ao lado diz o mesmo. -->
+          <span class="barra-meta" aria-hidden="true">
+            <span style:transform="scaleX({meta.progresso})"></span>
+          </span>
+          <button type="button" class="tirar-meta" aria-label="Tirar a meta da sessão" onclick={() => meta.definir(null)}>
+            <Icone nome="fechar" />
+          </button>
+        </div>
+      {/if}
+    </div>
+    {#if lado && rodapeLado && !modoFoco}
+      <div class="rodape-lado" role="group" aria-label="Ao lado">{@render rodapeLado()}</div>
     {/if}
   </footer>
 
@@ -598,12 +641,13 @@
 <style>
   .moldura {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    /* A 3ª coluna é o lado (M25b): sem largura até ele abrir (.com-lado). */
+    grid-template-columns: auto minmax(0, 1fr) 0 auto auto;
     grid-template-rows: auto 1fr auto;
     grid-template-areas:
-      "topo topo topo topo"
-      "indice conteudo fixado aparencia"
-      "rodape rodape rodape rodape";
+      "topo topo topo topo topo"
+      "indice conteudo lado fixado aparencia"
+      "rodape rodape rodape rodape rodape";
     height: 100vh;
     background: var(--app);
     /* clip, não hidden: nada aqui é rolável, nem pelo teclado. No WebKitGTK, as setas rolavam
@@ -717,11 +761,23 @@
   .fixados-embaixo {
     grid-template-rows: auto 1fr auto auto;
     grid-template-areas:
-      "topo topo topo topo"
-      "indice conteudo conteudo aparencia"
-      "fixado fixado fixado fixado"
-      "rodape rodape rodape rodape";
+      "topo topo topo topo topo"
+      "indice conteudo lado lado aparencia"
+      "fixado fixado fixado fixado fixado"
+      "rodape rodape rodape rodape rodape";
   }
+
+  /* Dois pontos do livro lado a lado (M25b): a área do livro se divide ao meio. */
+  .com-lado {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  }
+
+  .area-lado {
+    grid-area: lado;
+    min-width: 0;
+    min-height: 0;
+  }
+
 
   .fixados-embaixo .area-fixado {
     flex-direction: row;
@@ -933,5 +989,38 @@
     padding: 0.35rem 0.75rem;
     background: var(--painel);
     border-block-start: 1px solid var(--divisoria);
+  }
+
+  .rodape-principal,
+  .rodape-lado {
+    display: contents;
+  }
+
+  /* Com o lado (M25b), o rodapé segue as colunas do grid: os controles de cada livro ficam
+     embaixo dele (o principal na coluna do livro, os do lado na coluna do lado). */
+  .com-lado footer {
+    display: grid;
+    grid-template-columns: subgrid;
+    padding-inline: 0;
+  }
+
+  .com-lado .rodape-principal,
+  .com-lado .rodape-lado {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+    padding-inline: 0.75rem;
+  }
+
+  .com-lado .rodape-principal {
+    grid-column: 2;
+  }
+
+  .com-lado .rodape-lado {
+    grid-column: 3;
+    border-inline-start: 1px solid var(--divisoria);
   }
 </style>

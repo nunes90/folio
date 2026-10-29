@@ -41,6 +41,11 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
     },
     { teclas: [["↑"], ["↓"]], acao: "Com a uma ideia por vez: bloco anterior ou seguinte" },
     {
+      teclas: [["Ctrl", "Shift", "L"]],
+      acao: "Abrir ao lado o ponto em que o livro está (cada lado anda por conta própria) ou fechar o lado",
+    },
+    { teclas: [["F6"]], acao: "Com o lado aberto: alternar o foco entre os lados" },
+    {
       teclas: [["Ctrl", "D"]],
       acao: "Destacar o trecho selecionado ou, sem seleção, a frase atual (abre a barra de cores; setas escolhem, Enter aplica)",
     },

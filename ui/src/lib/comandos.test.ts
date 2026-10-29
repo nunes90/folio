@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   comandosDaPagina,
+  comandosDoLado,
   comandosDoIndice,
   comandosDoTexto,
   filtrarComandos,
@@ -139,5 +140,41 @@ describe("comandos do leitor", () => {
     expect(irParaPagina("noite", 300, ir)).toEqual([]);
     irParaPagina(" 12 ", 300, ir)[0]!.executar();
     expect(ir).toHaveBeenCalledWith(12);
+  });
+});
+
+describe("comandosDoLado", () => {
+  const itens = [
+    { label: "I. Do título", href: "c1" },
+    { label: "II. Do livro", href: "c2", subitems: [{ label: "Parte A", href: "c2a" }] },
+  ];
+  const acoes = () => ({ abrir: vi.fn(), abrirAqui: vi.fn(), fechar: vi.fn(), alternar: vi.fn() });
+
+  it("fechado: abrir este ponto ou uma seção ao lado", () => {
+    const a = acoes();
+    const lista = comandosDoLado(false, itens, a);
+    expect(lista.map((c) => c.titulo)).toEqual([
+      "Abrir este ponto ao lado",
+      "Abrir ao lado: I. Do título",
+      "Abrir ao lado: II. Do livro",
+      "Abrir ao lado: Parte A",
+    ]);
+    expect(lista[0]!.teclas).toEqual([["Ctrl", "Shift", "L"]]);
+    lista[3]!.executar();
+    expect(a.abrir).toHaveBeenCalledWith("c2a");
+    lista[0]!.executar();
+    expect(a.abrirAqui).toHaveBeenCalled();
+  });
+
+  it("aberto: alternar (F6) e fechar vêm primeiro; as seções levam o lado até elas", () => {
+    const a = acoes();
+    const lista = comandosDoLado(true, itens, a);
+    expect(lista.slice(0, 2).map((c) => c.titulo)).toEqual(["Alternar entre os lados", "Fechar o lado"]);
+    expect(lista[0]!.teclas).toEqual([["F6"]]);
+    expect(lista[1]!.teclas).toEqual([["Ctrl", "Shift", "L"]]);
+    expect(lista.map((c) => c.titulo)).toContain("Lado: ir para II. Do livro");
+    expect(lista.map((c) => c.titulo)).not.toContain("Abrir este ponto ao lado");
+    lista[1]!.executar();
+    expect(a.fechar).toHaveBeenCalled();
   });
 });

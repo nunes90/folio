@@ -1,6 +1,8 @@
 // Destaques no leitor (M16): cores do marca-texto, posição na ordem de leitura e textos para
 // o leitor de tela. Funções puras; o desenho é do overlayer do foliate-js.
 import type { CorDestaque, Destaque, MotivoDestaque } from "./biblioteca";
+import type { Selecao } from "./controleDestaques.svelte";
+import type { FoliateView } from "./foliate";
 import type { PaginaEfetiva } from "./pagina";
 
 /** As cores, na ordem da barra. O nome sempre acompanha a cor (nunca só a cor). */
@@ -115,6 +117,27 @@ export function posicaoDaBarra(
   };
 }
 
+/** Onde a barra fica sobre um trecho do EPUB: o retângulo dele, somado ao do iframe do capítulo. */
+export function posicaoNoIframe(range: Range): { x: number; y: number; abaixo: boolean } {
+  const quadro = range.startContainer.ownerDocument?.defaultView?.frameElement;
+  return posicaoDaBarra(range.getBoundingClientRect(), quadro?.getBoundingClientRect());
+}
+
+/**
+ * Um trecho do EPUB pronto para virar destaque: o CFI, o texto, o capítulo e a posição no
+ * livro. `null` se não houver texto. Igual nos dois lados (M25b): cada um passa a sua vista.
+ */
+export function selecaoNoEpub(view: FoliateView, indice: number, range: Range): Selecao | null {
+  const trecho = range.toString();
+  if (!trecho.trim()) return null;
+  return {
+    local: view.getCFI(indice, range),
+    trecho,
+    capitulo: view.getProgressOf(indice, range)?.tocItem?.label?.trim() ?? null,
+    posicao: posicaoNoLivro(view.getSectionFractions(), indice, fracaoNoDocumento(range)),
+  };
+}
+
 /** Trecho encurtado para listas e comandos: espaços juntados, até `max` caracteres. */
 export function resumo(trecho: string, max = 80): string {
   const t = trecho.replace(/\s+/g, " ").trim();
@@ -135,11 +158,16 @@ const LIVRO_MINIMO = 40;
 
 /**
  * Os destaques fixados (M25a) vão para baixo do livro em vez da coluna ao lado? Sim se, com a
- * coluna, sobrariam menos de 40rem para o livro. `paineis`: os rem dos painéis abertos ao
- * lado do livro. Medido na moldura, não na janela: a escala de texto e o monitor mudam o
+ * coluna, sobrariam menos de 40rem para o livro (para cada um, com dois lados abertos, M25b).
+ * `paineis`: os rem dos painéis abertos ao lado do livro. Medido na moldura, não na janela: a escala de texto e o monitor mudam o
  * quanto cabe numa mesma meia tela.
  */
-export function cartoesEmbaixo(larguraPx: number, remPx: number, paineis: number): boolean {
+export function cartoesEmbaixo(
+  larguraPx: number,
+  remPx: number,
+  paineis: number,
+  lados = 1,
+): boolean {
   if (!larguraPx || !remPx) return false;
-  return larguraPx / remPx - paineis - COLUNA_FIXADOS < LIVRO_MINIMO;
+  return (larguraPx / remPx - paineis - COLUNA_FIXADOS) / lados < LIVRO_MINIMO;
 }

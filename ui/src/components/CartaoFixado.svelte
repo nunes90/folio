@@ -14,11 +14,14 @@
     onIr,
     onNota,
     onDesafixar,
+    onAbrirAoLado,
   }: {
     destaque: Destaque;
     onIr: () => void;
     onNota: () => void;
     onDesafixar: () => void;
+    /** Abre o trecho no lado novo, para lê-lo em volta (M25b). */
+    onAbrirAoLado?: () => void;
   } = $props();
 </script>
 
@@ -40,6 +43,11 @@
     <button type="button" onclick={onIr}>
       <Icone nome="proxima" /><span class="rotulo">Ir até lá</span>
     </button>
+    {#if onAbrirAoLado}
+      <button type="button" onclick={onAbrirAoLado}>
+        <Icone nome="largura" /><span class="rotulo">Abrir ao lado</span>
+      </button>
+    {/if}
     <button type="button" onclick={onNota}>
       <Icone nome="nota" /><span class="rotulo">{destaque.nota ? "Editar nota" : "Nota"}</span>
     </button>
