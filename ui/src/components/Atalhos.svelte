@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ATALHOS, NOMES_CONTEXTO, type Contexto } from "../lib/atalhos";
+  import { NOMES_CONTEXTO, porGrupo, type Contexto } from "../lib/atalhos";
 
   let {
     contexto,
@@ -27,30 +27,34 @@
 
 <dialog class="modal" bind:this={dialogo} aria-labelledby="titulo-atalhos" onclose={onFechar}>
   <h2 id="titulo-atalhos">Atalhos de teclado</h2>
-  <table>
-    <caption>{NOMES_CONTEXTO[contexto]}</caption>
-    <thead>
-      <tr>
-        <th scope="col">Teclas</th>
-        <th scope="col">Ação</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each ATALHOS[contexto] as atalho (atalho.acao)}
+  <p class="contexto">{NOMES_CONTEXTO[contexto]}</p>
+  <!-- Um grupo por tabela (M26a): Navegação, Leitura, Marcar, Comparar, Livros, Geral. -->
+  {#each porGrupo(contexto) as { grupo, atalhos } (grupo)}
+    <table>
+      <caption>{grupo}</caption>
+      <thead>
         <tr>
-          <td>
-            {#each atalho.teclas as combinacao, i (i)}
-              {#if i > 0}<span class="ou">ou</span>{/if}
-              {#each combinacao as tecla, j (j)}
-                {#if j > 0}+{/if}<kbd>{tecla}</kbd>
-              {/each}
-            {/each}
-          </td>
-          <td>{atalho.acao}</td>
+          <th scope="col">Teclas</th>
+          <th scope="col">Ação</th>
         </tr>
-      {/each}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {#each atalhos as atalho (atalho.acao)}
+          <tr>
+            <td>
+              {#each atalho.teclas as combinacao, i (i)}
+                {#if i > 0}<span class="ou">ou</span>{/if}
+                {#each combinacao as tecla, j (j)}
+                  {#if j > 0}+{/if}<kbd>{tecla}</kbd>
+                {/each}
+              {/each}
+            </td>
+            <td>{atalho.acao}</td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  {/each}
   <form method="dialog">
     <button type="submit">Fechar</button>
   </form>
@@ -63,12 +67,21 @@
   }
 
   h2 {
-    margin-block-start: 0;
+    margin-block: 0 0.25rem;
+  }
+
+  .contexto {
+    margin-block: 0 1rem;
+    color: var(--suave);
   }
 
   table {
     border-collapse: collapse;
     width: 100%;
+  }
+
+  table + table {
+    margin-block-start: 1.25rem;
   }
 
   caption {

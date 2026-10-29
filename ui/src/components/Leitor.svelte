@@ -999,8 +999,14 @@
   /** F6: o foco vai ao outro lado. */
   function alternarLado() {
     if (!lado) return;
-    if (lado.contem(document.activeElement)) view?.renderer.focusView();
-    else lado.focar();
+    // Para o leitor de tela: em qual lado o foco ficou (M26a).
+    if (lado.contem(document.activeElement)) {
+      view?.renderer.focusView();
+      anuncio = `Livro principal, ${porcento.format(progresso)}.`;
+    } else {
+      lado.focar();
+      anuncio = `Ao lado${secaoLado ? `: ${secaoLado}` : ""}, ${porcento.format(progressoLado)}.`;
+    }
   }
 
   function aoTeclar(e: KeyboardEvent) {

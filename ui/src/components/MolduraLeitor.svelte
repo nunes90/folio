@@ -6,6 +6,7 @@
   import { escala } from "../lib/escala.svelte";
   import Icone from "./Icone.svelte";
   import PainelLateral from "./PainelLateral.svelte";
+  import MenuLeitor, { type ItemMenuLeitor } from "./MenuLeitor.svelte";
   import ResumoDaMeta from "./ResumoDaMeta.svelte";
   import CartaoContinuacao from "./CartaoContinuacao.svelte";
   import { textoDaContinuacao, type Continuacao } from "../lib/continuacao";
@@ -107,6 +108,31 @@
     if (estreita && untrack(() => indiceAberto && aparenciaAberta)) indiceAberto = false;
   });
   const cobrindo = $derived(estreita && (indiceAberto || aparenciaAberta));
+
+  // "Mais opções" (M26a): o que não se usa em toda sessão sai da barra (fica também na paleta
+  // e no atalho). O modo foco continua na barra.
+  const itensDoMenu = $derived.by(() => {
+    const itens: ItemMenuLeitor[] = [
+      {
+        id: "uma-ideia",
+        nome: "Uma ideia por vez",
+        marcado: umaIdeia,
+        teclas: "Ctrl+Shift+B",
+        atalho: "Control+Shift+B",
+        executar: alternarUmaIdeia,
+      },
+    ];
+    if (onAlternarLado)
+      itens.push({
+        id: "lado",
+        nome: "Abrir ao lado",
+        marcado: !!lado,
+        teclas: "Ctrl+Shift+L",
+        atalho: "Control+Shift+L",
+        executar: onAlternarLado,
+      });
+    return itens;
+  });
 
   // Destaques fixados (M25a): ao lado do livro ou, sem largura para a coluna, embaixo dele.
   let molduraEl: HTMLDivElement;
@@ -475,24 +501,6 @@
     <h1 tabindex="-1" bind:this={tituloEl}>{titulo}</h1>
     <div class="lado fim">
       {@render acoes?.()}
-      {#if onAlternarLado}
-        <button
-          type="button"
-          aria-pressed={!!lado}
-          aria-keyshortcuts="Control+Shift+L"
-          onclick={onAlternarLado}
-        >
-          <Icone nome="dividir" /><span class="rotulo">Abrir ao lado</span>
-        </button>
-      {/if}
-      <button
-        type="button"
-        aria-pressed={umaIdeia}
-        aria-keyshortcuts="Control+Shift+B"
-        onclick={alternarUmaIdeia}
-      >
-        <Icone nome="ideia" /><span class="rotulo">Uma ideia por vez</span>
-      </button>
       <button
         type="button"
         aria-pressed={modoFoco}
@@ -510,6 +518,7 @@
       >
         <Icone nome="aparencia" /><span class="rotulo">Aparência</span>
       </button>
+      <MenuLeitor itens={itensDoMenu} />
       <button type="button" onclick={onFechar}>
         <Icone nome="voltar" /><span class="rotulo">Voltar à biblioteca</span>
       </button>

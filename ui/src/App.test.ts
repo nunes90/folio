@@ -25,7 +25,9 @@ describe("App", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     await fireEvent.keyDown(window, { key: "F1" });
     expect(screen.getByRole("dialog", { name: "Atalhos de teclado" })).toBeTruthy();
-    expect(screen.getByRole("table", { name: "Biblioteca" })).toBeTruthy();
+    // O contexto e os grupos de atalhos dele (M26a).
+    expect(screen.getByText("Biblioteca", { selector: ".contexto" })).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Livros" })).toBeTruthy();
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {

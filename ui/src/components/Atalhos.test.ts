@@ -1,16 +1,22 @@
 import { render, screen, within } from "@testing-library/svelte";
 import axe from "axe-core";
 import { describe, expect, it, vi } from "vitest";
-import { ATALHOS } from "../lib/atalhos";
+import { ATALHOS, porGrupo } from "../lib/atalhos";
 import Atalhos from "./Atalhos.svelte";
 
 describe("Atalhos", () => {
-  it("lista os atalhos do contexto numa tabela", () => {
+  it("lista os atalhos do contexto, uma tabela por grupo, na ordem dos grupos", () => {
     render(Atalhos, { contexto: "pdf", aberto: true, onFechar: () => {} });
-    const tabela = screen.getByRole("table", { name: "Leitura de PDF" });
-    // Uma linha de cabeçalho + uma por atalho.
-    expect(within(tabela).getAllByRole("row")).toHaveLength(ATALHOS.pdf.length + 1);
-    expect(within(tabela).getByText("Buscar no documento")).toBeTruthy();
+    expect(screen.getByText("Leitura de PDF")).toBeTruthy();
+    const tabelas = screen.getAllByRole("table");
+    expect(tabelas.map((t) => t.querySelector("caption")?.textContent)).toEqual(
+      porGrupo("pdf").map((g) => g.grupo),
+    );
+    // Uma linha de cabeçalho por tabela + uma por atalho.
+    const linhas = tabelas.flatMap((t) => within(t).getAllByRole("row"));
+    expect(linhas).toHaveLength(ATALHOS.pdf.length + tabelas.length);
+    const navegacao = screen.getByRole("table", { name: "Navegação" });
+    expect(within(navegacao).getByText("Buscar no documento")).toBeTruthy();
   });
 
   it("fica fechado quando não está aberto", () => {

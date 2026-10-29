@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/svelte";
 import axe from "axe-core";
 import { createRawSnippet, tick } from "svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +8,21 @@ import { atualizarPreferencias } from "../lib/preferencias.svelte";
 import MolduraLeitor from "./MolduraLeitor.svelte";
 
 const trecho = (html: string) => createRawSnippet(() => ({ render: () => html }));
+
+/** Abre "Mais opções" e devolve o item; `fechar` fecha o menu de novo (Esc, só no menu). */
+async function itemDoMenu(nome: string) {
+  await fireEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+  const item = screen.getByRole("menuitemcheckbox", { name: nome });
+  return { item, fechar: () => fireEvent.keyDown(item, { key: "Escape" }) };
+}
+
+/** O estado de um item de liga/desliga do menu ("true" ou "false"). */
+async function marcado(nome: string) {
+  const { item, fechar } = await itemDoMenu(nome);
+  const valor = item.getAttribute("aria-checked");
+  await fechar();
+  return valor;
+}
 
 function renderizar(extra = {}) {
   const onFechar = vi.fn();
@@ -34,9 +49,9 @@ describe("MolduraLeitor", () => {
       "Índice",
       "Dom Casmurro",
       "Buscar",
-      "Uma ideia por vez",
       "Modo foco",
       "Aparência",
+      "Mais opções",
       "Voltar à biblioteca",
     ]);
   });
@@ -292,22 +307,25 @@ describe("MolduraLeitor", () => {
   });
 
   describe("lado a lado", () => {
-    it("o botão Abrir ao lado só aparece com o leitor que o oferece; Ctrl+Shift+L o aciona", async () => {
+    it("Abrir ao lado fica em Mais opções só com o leitor que o oferece; Ctrl+Shift+L o aciona", async () => {
       renderizar();
-      expect(screen.queryByRole("button", { name: "Abrir ao lado" })).toBeNull();
+      await fireEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+      expect(screen.queryByRole("menuitemcheckbox", { name: "Abrir ao lado" })).toBeNull();
+      cleanup();
       const onAlternarLado = vi.fn();
       renderizar({ onAlternarLado });
-      const botao = screen.getByRole("button", { name: "Abrir ao lado" });
-      expect(botao.getAttribute("aria-pressed")).toBe("false");
-      expect(botao.getAttribute("aria-keyshortcuts")).toBe("Control+Shift+L");
-      await fireEvent.click(botao);
+      const { item } = await itemDoMenu("Abrir ao lado");
+      expect(item.getAttribute("aria-checked")).toBe("false");
+      expect(item.getAttribute("aria-keyshortcuts")).toBe("Control+Shift+L");
+      await fireEvent.click(item);
+      expect(screen.queryByRole("menu")).toBeNull();
       await fireEvent.keyDown(window, { key: "L", ctrlKey: true, shiftKey: true });
       expect(onAlternarLado).toHaveBeenCalledTimes(2);
     });
 
-    it("com o lado aberto, o botão fica pressionado e a área do lado aparece", () => {
+    it("com o lado aberto, o item fica marcado e a área do lado aparece", async () => {
       renderizar({ onAlternarLado: vi.fn(), lado: trecho("<section>Outro ponto</section>") });
-      expect(screen.getByRole("button", { name: "Abrir ao lado" }).getAttribute("aria-pressed")).toBe("true");
+      expect(await marcado("Abrir ao lado")).toBe("true");
       expect(document.querySelector(".moldura")!.classList.contains("com-lado")).toBe(true);
       expect(screen.getByText("Outro ponto")).toBeTruthy();
     });
@@ -333,53 +351,67 @@ describe("MolduraLeitor", () => {
 
   describe("uma ideia por vez", () => {
     const moldura = () => document.querySelector<HTMLElement>(".moldura")!;
-    const botao = () => screen.getByRole("button", { name: "Uma ideia por vez" });
+    const ligada = () => marcado("Uma ideia por vez");
 
-    it("o botão liga e desliga (aria-pressed) e anuncia", async () => {
+    it("o item liga e desliga (aria-checked), anuncia e devolve o foco ao botão do menu", async () => {
       renderizar();
-      expect(botao().getAttribute("aria-pressed")).toBe("false");
-      await fireEvent.click(botao());
-      expect(botao().getAttribute("aria-pressed")).toBe("true");
+      expect(await ligada()).toBe("false");
+      let { item } = await itemDoMenu("Uma ideia por vez");
+      await fireEvent.click(item);
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Mais opções" }));
       expect(screen.getByText(/Uma ideia por vez ativada/)).toBeTruthy();
-      await fireEvent.click(botao());
-      expect(botao().getAttribute("aria-pressed")).toBe("false");
+      expect(await ligada()).toBe("true");
+      ({ item } = await itemDoMenu("Uma ideia por vez"));
+      await fireEvent.click(item);
       expect(screen.getByText("Uma ideia por vez desativada.")).toBeTruthy();
+    });
+
+    it("o menu: setas andam entre os itens; Esc fecha só o menu (não desliga um modo)", async () => {
+      renderizar({ umaIdeia: true, onAlternarLado: vi.fn() });
+      const { item } = await itemDoMenu("Uma ideia por vez");
+      expect(document.activeElement).toBe(item);
+      await fireEvent.keyDown(item, { key: "ArrowDown" });
+      expect(document.activeElement).toBe(screen.getByRole("menuitemcheckbox", { name: "Abrir ao lado" }));
+      await fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Mais opções" }));
+      expect(await ligada()).toBe("true");
     });
 
     it("Ctrl+Shift+B liga e desliga; Esc desliga", async () => {
       renderizar({ indiceAberto: false });
       await fireEvent.keyDown(window, { key: "B", ctrlKey: true, shiftKey: true });
-      expect(botao().getAttribute("aria-pressed")).toBe("true");
+      expect(await ligada()).toBe("true");
       await fireEvent.keyDown(window, { key: "B", ctrlKey: true, shiftKey: true });
-      expect(botao().getAttribute("aria-pressed")).toBe("false");
+      expect(await ligada()).toBe("false");
       await fireEvent.keyDown(window, { key: "b", ctrlKey: true, shiftKey: true });
       await fireEvent.keyDown(window, { key: "Escape" });
-      expect(botao().getAttribute("aria-pressed")).toBe("false");
+      expect(await ligada()).toBe("false");
     });
 
     it("o Esc fecha antes o painel aberto e o modo foco", async () => {
       renderizar({ umaIdeia: true, indiceAberto: false, aparenciaAberta: true });
       await fireEvent.keyDown(window, { key: "Escape" });
       expect(screen.queryByRole("complementary", { name: "Aparência" })).toBeNull();
-      expect(botao().getAttribute("aria-pressed")).toBe("true");
+      expect(await ligada()).toBe("true");
       await fireEvent.click(screen.getByRole("button", { name: "Modo foco" }));
       await fireEvent.keyDown(window, { key: "Escape" });
       expect(moldura().classList.contains("foco")).toBe(false);
-      expect(botao().getAttribute("aria-pressed")).toBe("true");
+      expect(await ligada()).toBe("true");
       await fireEvent.keyDown(window, { key: "Escape" });
-      expect(botao().getAttribute("aria-pressed")).toBe("false");
+      expect(await ligada()).toBe("false");
     });
 
     it("com o índice aberto ao lado (janela larga) e o foco no livro, o Esc desliga", async () => {
       renderizar({ umaIdeia: true });
       await fireEvent.keyDown(window, { key: "Escape" });
-      expect(botao().getAttribute("aria-pressed")).toBe("false");
+      expect(await ligada()).toBe("false");
     });
 
     it("com o Esc ocupado no leitor (ex.: barra de destaque), não desliga", async () => {
       renderizar({ umaIdeia: true, indiceAberto: false, escOcupado: true });
       await fireEvent.keyDown(window, { key: "Escape" });
-      expect(botao().getAttribute("aria-pressed")).toBe("true");
+      expect(await ligada()).toBe("true");
     });
   });
 

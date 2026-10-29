@@ -1333,8 +1333,14 @@
   /** F6: o foco vai ao outro lado. */
   function alternarLado() {
     if (!lado) return;
-    if (lado.contem(document.activeElement)) conteiner.focus({ preventScroll: true });
-    else lado.focar();
+    // Para o leitor de tela: em qual lado o foco ficou (M26a).
+    if (lado.contem(document.activeElement)) {
+      conteiner.focus({ preventScroll: true });
+      anuncio = `Documento principal, página ${pagina}.`;
+    } else {
+      lado.focar();
+      anuncio = `Ao lado, página ${paginaLado}.`;
+    }
   }
 
   function aoTeclar(e: KeyboardEvent) {
