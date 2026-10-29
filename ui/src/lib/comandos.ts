@@ -265,6 +265,30 @@ function numeroDePagina(termo: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
+/**
+ * Comando gerado pelo termo (PDF, M25c): "ao lado 87" ou "lado 87" abre a página no lado (ou,
+ * com ele aberto, leva-o até ela), se ela existir.
+ */
+export function ladoPorTermo(
+  termo: string,
+  total: number,
+  aberto: boolean,
+  abrir: (n: number) => void,
+): Comando[] {
+  const resto = termo.trim().match(/^(?:ao\s+)?lado\s+(.+)$/i)?.[1];
+  const n = resto ? numeroDePagina(resto) : null;
+  if (n === null || n < 1 || n > total) return [];
+  return [
+    {
+      id: "lado-pagina",
+      titulo: aberto ? `Lado: ir para a página ${n}` : `Abrir a página ${n} ao lado`,
+      grupo: "Lado a lado",
+      dica: `de ${total}`,
+      executar: () => abrir(n),
+    },
+  ];
+}
+
 /** Comando gerado pelo termo (PDF): "Ir para a página N", se N existir no documento. */
 export function irParaPagina(termo: string, total: number, ir: (n: number) => void): Comando[] {
   const n = numeroDePagina(termo);

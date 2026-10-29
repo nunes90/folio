@@ -1078,13 +1078,17 @@
 {/snippet}
 
 {#snippet controlesLado()}
-  <ControlesLado
-    secao={secaoLado}
-    posicao="{Math.round(progressoLado * 100)}%"
-    onAnterior={() => void lado?.virar("esquerda")}
-    onProxima={() => void lado?.virar("direita")}
-    onFechar={fecharLado}
-  />
+  <ControlesLado onFechar={fecharLado}>
+    <div class="grupo-barra" role="group" aria-label="Páginas deste lado">
+      <button type="button" onclick={() => void lado?.virar("esquerda")}>
+        <Icone nome="anterior" /><span class="rotulo">Anterior</span>
+      </button>
+      <span class="porcento">{porcento.format(progressoLado)}</span>
+      <button type="button" onclick={() => void lado?.virar("direita")}>
+        <Icone nome="proxima" /><span class="rotulo">Próxima</span>
+      </button>
+    </div>
+  </ControlesLado>
 {/snippet}
 
 <MolduraLeitor
@@ -1146,12 +1150,16 @@
   {/snippet}
 
   {#snippet rodape()}
-    <ControlesVoz
-      estado={voz}
-      onLer={() => void lerEmVozAlta()}
-      onPausarOuRetomar={() => void pausarOuRetomar()}
-      onParar={() => void pararLeitura()}
-    />
+    <!-- Com o lado aberto, o rodapé dos dois fica igual: "Ler em voz alta" sai (continua na
+         paleta); lendo ou pausada, os controles da voz ficam. -->
+    {#if !ladoAlvo || voz !== "parado"}
+      <ControlesVoz
+        estado={voz}
+        onLer={() => void lerEmVozAlta()}
+        onPausarOuRetomar={() => void pausarOuRetomar()}
+        onParar={() => void pararLeitura()}
+      />
+    {/if}
     <div class="grupo-barra" role="group" aria-label="Páginas">
       <button type="button" onclick={anterior}>
         <Icone nome="anterior" /><span class="rotulo">Anterior</span>

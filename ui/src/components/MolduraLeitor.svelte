@@ -1004,15 +1004,29 @@
     padding-inline: 0;
   }
 
+  /* Cada metade igual nos dois lados: os controles de página no começo, a estimativa e a meta
+     logo depois, e o que é só daquele lado ([data-fim-rodape]: a voz, "Fechar o lado")
+     empurrado para o fim. Os controles de página ficam na mesma posição nos dois; sem espaço,
+     quebram de linha (os botões mostram só o ícone: regra .com-lado footer .rotulo, app.css). */
   .com-lado .rodape-principal,
   .com-lado .rodape-lado {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
     align-items: center;
-    gap: 1rem;
+    gap: 0.25rem 1rem;
     min-width: 0;
     padding-inline: 0.75rem;
+  }
+
+  .com-lado .rodape-principal > :global(.estimativa),
+  .com-lado .rodape-principal > :global(.meta) {
+    order: 1;
+  }
+
+  .com-lado .rodape-principal > :global([data-fim-rodape]),
+  .com-lado .rodape-lado > :global([data-fim-rodape]) {
+    order: 2;
+    margin-inline-start: auto;
   }
 
   .com-lado .rodape-principal {

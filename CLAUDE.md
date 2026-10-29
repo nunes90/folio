@@ -557,4 +557,22 @@ docs/decisions/  # ADRs
   `::before` por cima), os dois paginavam diferente e as quebras de página saíam desalinhadas. `cartoesEmbaixo`
   conta a largura dividida. Medido: memória +1–2 MB (o lado roda no mesmo WebKitWebProcess); virada esmaecer
   ~47–65 qps com o lado aberto (~60 sem).
-- Próximo passo: M25c (o lado no PDF, por página). Séries continua adiado.
+- **M25c** (branch `feat/m25c-lado-pdf`): o lado no PDF. `LadoPdf.svelte`: um segundo `PDFViewer` sobre o mesmo
+  `PDFDocumentProxy` (o principal o guarda em `documentoPdf`; o lado não o destrói ao fechar), com o modo, o zoom
+  (`escalaLado`, o do principal ao abrir), a cor da página e os destaques do principal; abre na mesma página
+  (páginas de PDF são fixas: os dois mostram a mesma). Lê e destaca (seleção com o mouse, Ctrl+D, clique num
+  destaque); setas e PageUp/PageDown viram com a virada das preferências (na rolagem, as setas rolam). Comum aos
+  dois lados: `desenharCamadaDestaques` e `selecaoNoPdf` (`lib/destaquesPdf.ts`), `paginaRenderizada`
+  (`lib/pdf.ts`) e o CSS das páginas (`lib/paginasPdf.css`, classe `paginas-pdf`; a camada de creme/sépia num
+  seletor mais específico que o `.pdfViewer .page:not(.loading)::after` do pdf.js). Paleta: "ao lado 87"/"lado 87"
+  (`ladoPorTermo`), "Abrir ao lado: <seção>" (página pelo sumário); "Abrir ao lado" no cartão fixado vai à página
+  do destaque. O `aoTeclar` do PDF ignora teclas já tratadas (`defaultPrevented`). Rodapé com o lado aberto, nos
+  dois formatos: no lado, os mesmos controles do principal (`ControlesLado` só envolve e põe "Fechar o lado"; no
+  PDF, a `BarraPdf` ligada ao visor do lado, com zoom e largura), sem textos que mudam de tamanho (a seção fazia os
+  controles pularem); "Ler em voz alta" sai do principal (fica na paleta; lendo ou pausada, os controles ficam).
+  Cada metade é um flex: controles de página no começo (mesma posição nos dois), o que é só daquele lado
+  (`data-fim-rodape`: voz, "Fechar o lado") no fim, os botões só com o ícone (`.com-lado footer .rotulo`), quebra
+  de linha sem espaço. Um grid de três colunas centralizado sobrepunha o "Fechar o lado" na meia tela.
+- **M25 concluído. v0.9 completa** (M23–M25).
+- Próximo passo: v0.9.0 (tag e Release) e depois a v1.0: M26 (acabamento) e M6b (AppImage final). Séries
+  continua adiado.

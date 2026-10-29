@@ -6,6 +6,7 @@ import {
   comandosDoTexto,
   filtrarComandos,
   irParaPagina,
+  ladoPorTermo,
   type Comando,
 } from "./comandos";
 import { LIMITES, PADRAO } from "./preferencias.svelte";
@@ -176,5 +177,22 @@ describe("comandosDoLado", () => {
     expect(lista.map((c) => c.titulo)).not.toContain("Abrir este ponto ao lado");
     lista[1]!.executar();
     expect(a.fechar).toHaveBeenCalled();
+  });
+});
+
+describe("ladoPorTermo", () => {
+  it("“ao lado 87”, “lado 87”: abre (ou leva) o lado à página, se ela existir", () => {
+    const abrir = vi.fn();
+    const lista = ladoPorTermo("ao lado 87", 300, false, abrir);
+    expect(lista.map((c) => c.titulo)).toEqual(["Abrir a página 87 ao lado"]);
+    lista[0]!.executar();
+    expect(abrir).toHaveBeenCalledWith(87);
+    expect(ladoPorTermo("lado 12", 300, true, abrir).map((c) => c.titulo)).toEqual([
+      "Lado: ir para a página 12",
+    ]);
+    expect(ladoPorTermo("ao lado página 5", 300, false, abrir)).toHaveLength(1);
+    expect(ladoPorTermo("ao lado 301", 300, false, abrir)).toEqual([]);
+    expect(ladoPorTermo("87", 300, false, abrir)).toEqual([]);
+    expect(ladoPorTermo("lado", 300, false, abrir)).toEqual([]);
   });
 });

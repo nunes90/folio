@@ -74,6 +74,11 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
       acao: "Uma ideia por vez: o livro passa a rolar e só o bloco atual fica em evidência, no meio da tela (Esc sai)",
     },
     { teclas: [["↑"], ["↓"]], acao: "Com a uma ideia por vez: bloco anterior ou seguinte" },
+    {
+      teclas: [["Ctrl", "Shift", "L"]],
+      acao: "Abrir ao lado a página em que o documento está (na paleta: “ao lado 87”) ou fechar o lado",
+    },
+    { teclas: [["F6"]], acao: "Com o lado aberto: alternar o foco entre os lados" },
     ...GERAIS,
   ],
 };

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { Destaque } from "./biblioteca";
 import {
   acertou,
+  desenharCamadaDestaques,
   lerLocalPdf,
   localPdf,
   naJanela,
@@ -90,5 +92,51 @@ describe("posição, acerto e volta para a janela", () => {
       height: 12,
       bottom: 122,
     });
+  });
+});
+
+describe("desenharCamadaDestaques", () => {
+  const destaque = (id: number, local: string, cor: Destaque["cor"] = "verde"): Destaque => ({
+    id,
+    livroId: "l",
+    local,
+    trecho: "t",
+    cor,
+    motivo: null,
+    nota: null,
+    capitulo: null,
+    posicao: 0,
+    criadoEm: 0,
+    atualizadoEm: 0,
+  });
+  const pagina = () => {
+    const el = document.createElement("div");
+    el.innerHTML = '<div class="canvasWrapper"></div><div class="textLayer"></div>';
+    return el;
+  };
+
+  it("desenha os da página, em %, logo depois do desenho dela (abaixo da camada de texto)", () => {
+    const el = pagina();
+    desenharCamadaDestaques(el, 3, [
+      destaque(1, localPdf(3, [{ x: 0.1, y: 0.2, l: 0.5, a: 0.05 }])),
+      destaque(2, localPdf(4, [{ x: 0, y: 0, l: 1, a: 1 }])),
+    ]);
+    const camada = el.querySelector(".camada-destaques")!;
+    expect(camada.previousElementSibling?.className).toBe("canvasWrapper");
+    expect(camada.getAttribute("aria-hidden")).toBe("true");
+    const marcas = [...camada.children] as HTMLElement[];
+    expect(marcas).toHaveLength(1);
+    expect(marcas[0]!.style.left).toBe("10%");
+    expect(marcas[0]!.style.width).toBe("50%");
+  });
+
+  it("redesenhar troca a camada; sem destaques na página, não deixa camada", () => {
+    const el = pagina();
+    const d = destaque(1, localPdf(3, [{ x: 0, y: 0, l: 1, a: 0.1 }]));
+    desenharCamadaDestaques(el, 3, [d]);
+    desenharCamadaDestaques(el, 3, [d]);
+    expect(el.querySelectorAll(".camada-destaques")).toHaveLength(1);
+    desenharCamadaDestaques(el, 3, []);
+    expect(el.querySelector(".camada-destaques")).toBeNull();
   });
 });
