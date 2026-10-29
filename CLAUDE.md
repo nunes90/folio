@@ -584,5 +584,15 @@ docs/decisions/  # ADRs
   tabela por grupo no `Atalhos.svelte`; listas comuns aos dois formatos (`LEITURA`, `MARCAR`, `COMPARAR`): o F1 do
   PDF ganhou Ctrl+D, a barra de destaque e PageUp/PageDown. F6 anuncia o lado do foco ("Ao lado: <seção>, 45%";
   "Documento principal, página 12").
+- **M26a-2** (branch `feat/m26a2-rotulos-que-cabem`): rótulos quando cabem. `lib/densidade.ts` (`medirRotulos`,
+  puro): com rótulos, transbordar (`scrollWidth` > `clientWidth`) passa a só ícones e guarda quanto precisava; os
+  rótulos voltam com 2rem de folga além disso (sem piscar). A moldura mede o cabeçalho e o rodapé (cada um por si)
+  com `ResizeObserver` e `MutationObserver` (o conteúdo muda: página, estimativa, voz) e marca
+  `.cabecalho-compacto`/`.rodape-compacto` (rótulos escondidos só da tela, `app.css`). Sem pontos de quebra fixos.
+  Rodapé (sem o lado) em três colunas: a voz (`data-fim-rodape`) à esquerda, encostada, numa coluna
+  `minmax(min-content, 1fr)` (encolhendo, a voz transbordava para baixo dos controles sem a medição perceber); os
+  controles de página e zoom no centro; a estimativa e a meta (`.rodape-info`) à direita, cortadas com "…". Só no
+  modo compacto o rodapé vira uma linha que quebra. Números de largura fixa: o campo da página do PDF com os
+  dígitos do total, o zoom (6ch), a porcentagem do EPUB (4,5ch), `tabular-nums`; a `BarraPdf` não quebra sozinha.
 - Próximo passo: M26b (livros grandes e arquivos quebrados; roteiro de medição), depois M26c (E2E), M26d (Orca e
   "tudo sem mouse"), M26e (README, guia e licença) e M6b. Séries continua adiado.
