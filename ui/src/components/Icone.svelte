@@ -19,6 +19,7 @@
     foco: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5",
     nota: "M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4",
     copiar: "M9 9h10v11H9zM5 15V4h10",
+    fixar: "M9 4h6M10 4v6l-3 4h10l-3-4V4M12 14v6",
     exportar: "M12 4v11M8 11l4 4 4-4M5 19h14",
     destaque: "M4 20h7M14.5 4.5l5 5L11 18H6v-5z",
     duvida: "M12 21a9 9 0 100-18 9 9 0 000 18zM9.2 9.2a3 3 0 015.6 1.3c0 2-2.8 2.5-2.8 4M12 17.5h.01",

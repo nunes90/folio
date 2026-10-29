@@ -22,6 +22,7 @@
   import Indice from "./Indice.svelte";
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
   import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
+  import CartaoFixado from "./CartaoFixado.svelte";
   import ListaDestaques from "./ListaDestaques.svelte";
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
@@ -1387,6 +1388,17 @@
   }
 </script>
 
+{#snippet cartoesFixados()}
+  {#each destaques.fixados as d (d.id)}
+    <CartaoFixado
+      destaque={d}
+      onIr={() => void irParaDestaque(d)}
+      onNota={() => destaques.editarNota(d)}
+      onDesafixar={() => destaques.desafixar(d)}
+    />
+  {/each}
+{/snippet}
+
 <MolduraLeitor
   bind:this={moldura}
   bind:modoFoco
@@ -1397,6 +1409,7 @@
   {continuacao}
   onContinuar={() => void piscarOndeParou()}
   estimativa={estimativa ? textoDoRodape(estimativa, "pdf") : undefined}
+  fixado={destaques.fixados.length ? cartoesFixados : undefined}
   {titulo}
   {anuncio}
   progresso={total ? pagina / total : 0}
@@ -1423,6 +1436,8 @@
           onApagar={apagarDaLista}
           onMotivo={(d, m) => destaques.definirMotivo(d, m)}
           onExportar={(m) => destaques.exportar(m)}
+          fixados={destaques.fixados}
+          onFixar={(d) => destaques.alternarFixado(d)}
         />
       {/snippet}
     </AbasIndice>

@@ -526,4 +526,18 @@ docs/decisions/  # ADRs
   (`caracteresPorLinha`, 40–160, padrão 90; `larguraDaColuna` = caracteres × 0,5em × 16 px × escala × tamanho):
   aumentar a letra alarga a coluna junto. O core migra `larguraMaxima` (px ÷ 8, arredondado e como inteiro: o
   serde não lê um float num `u32`, e o JSON inteiro viraria o padrão).
-- Próximo passo: M25 (comparar trechos). Séries continua adiado.
+- **M25a** (branch `feat/m25a-fixar-ao-lado`): destaques fixados ao lado do texto, iguais nos dois formatos.
+  `ControleDestaques`: `fixados` (derivado dos ids, na ordem em que foram fixados: seguem cor, nota e motivo;
+  o de um destaque apagado some e volta com o Desfazer), `estaFixado`, `fixar`, `desafixar(d)`,
+  `desafixarTodos` (devolvem o foco ao texto se ele estava nos cartões), `alternarFixado` (aba Destaques) e
+  `fixarDaBarra` (numa seleção, cria em amarelo e fixa; num fixado, desafixa). Paleta: "Fixar ao lado: …"
+  (os não fixados), "Ir ao fixado: …", "Desafixar: …" e, com 2+, "Desafixar todos". "Fixar ao lado" na barra
+  (ícone `fixar`, `aria-pressed` num destaque) e na aba Destaques. `CartaoFixado.svelte` (`aside`: trecho
+  inteiro, cor · motivo · capítulo, nota; Ir até lá, Nota, Desafixar). `MolduraLeitor.fixado` (snippet):
+  coluna `fixado` de cartões entre o livro e a Aparência (o livro repagina, como ao abrir um painel); sem largura
+  para a coluna (`cartoesEmbaixo` em `lib/destaques.ts`: sobrariam menos de 40rem para o livro, contando os
+  painéis abertos), uma faixa embaixo do livro, cartões lado a lado e roláveis, sem cobrir o texto; some no
+  modo foco. Medido na moldura (`ResizeObserver`), não por media query: com o monitor 4K a 1,6 e a escala de
+  texto 1,36, meia tela tem ~1190 px de CSS, acima de qualquer limite fixo razoável.
+- Próximo passo: M25b (dois pontos do livro lado a lado, medindo memória e quadros por segundo). Séries
+  continua adiado.

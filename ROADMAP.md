@@ -164,7 +164,7 @@ trechos revisitados) e M22 (onde você parou). Tag `v0.8.0`, Release como pre-re
   devagar em listas e código; o SSIP permite por mensagem), voz no PDF com o mesmo modelo do EPUB.
 - [x] **M24 — Tipografia que reage ao texto** (EPUB): `pre`/`code` sempre em monoespaçada, títulos com mais ar,
   largura de coluna que respeita o livro e a preferência (em caracteres por linha: cresce com a letra).
-- [ ] **M25 — Comparar trechos**: dois pontos do mesmo livro lado a lado (a moldura dividida, cada lado com a
+- [ ] **M25 — Comparar trechos** (M25a destaque fixado ao lado ✓): dois pontos do mesmo livro lado a lado (a moldura dividida, cada lado com a
   sua posição), e um destaque ou nota fixado ao lado do texto. EPUB e PDF. Atenção ao custo de dois leitores no
   WebKitGTK (medir memória e quadros por segundo).
 

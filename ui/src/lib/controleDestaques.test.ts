@@ -197,10 +197,87 @@ describe("ControleDestaques", () => {
       "Mostrar os destaques",
       "Exportar os destaques…",
       "Ir para destaque: escondi-me atrás da porta",
+      "Fixar ao lado: escondi-me atrás da porta",
     ]);
     lista[3]!.executar();
     expect(a.irPara).toHaveBeenCalledWith(c.lista[0]);
     lista[0]!.executar();
     expect(destacar).toHaveBeenCalled();
+  });
+
+  it("fixar ao lado: segue as mudanças do destaque e some se ele for apagado (volta com Desfazer)", async () => {
+    const { a, c } = novo();
+    const d = destaque();
+    c.lista = [d];
+    c.fixar(d);
+    expect(c.fixados).toEqual([d]);
+    expect(a.anunciar).toHaveBeenCalledWith("Destaque fixado ao lado.");
+    api.definirNotaDestaque.mockResolvedValue({ ...d, nota: "nova" });
+    c.editarNota(d);
+    await c.salvarNota("nova");
+    expect(c.fixados[0]?.nota).toBe("nova");
+    api.apagarDestaque.mockResolvedValue(d);
+    await c.apagar(d);
+    expect(c.fixados).toEqual([]);
+    api.restaurarDestaque.mockResolvedValue(d);
+    await c.restaurar(d);
+    expect(c.fixados).toEqual([d]);
+    c.desafixar(d);
+    expect(c.fixados).toEqual([]);
+  });
+
+  it("vários fixados, na ordem em que foram fixados; fixar de novo não repete", () => {
+    const { c } = novo();
+    const d1 = destaque();
+    const d2 = destaque({ id: 2, local: "l2", posicao: 0.1 });
+    c.lista = [d2, d1];
+    c.fixar(d1);
+    c.fixar(d2);
+    c.fixar(d1);
+    expect(c.fixados.map((d) => d.id)).toEqual([1, 2]);
+    c.alternarFixado(d1);
+    expect(c.fixados.map((d) => d.id)).toEqual([2]);
+    c.alternarFixado(d1);
+    c.desafixarTodos();
+    expect(c.fixados).toEqual([]);
+  });
+
+  it("fixar pela barra: num destaque, fixa (ou desafixa se já fixado); numa seleção, cria e fixa", async () => {
+    const { c } = novo();
+    const d = destaque();
+    c.lista = [d];
+    c.mostrarDestaque(d, pos);
+    await c.fixarDaBarra();
+    expect(c.barra).toBeNull();
+    expect(c.fixados.map((x) => x.id)).toEqual([1]);
+    expect(c.estaFixado(d)).toBe(true);
+    c.mostrarDestaque(d, pos);
+    await c.fixarDaBarra();
+    expect(c.fixados).toEqual([]);
+    const criado = destaque({ id: 9, local: "l9" });
+    api.criarDestaque.mockResolvedValue(criado);
+    c.mostrarSelecao(selecao, pos, false);
+    await c.fixarDaBarra();
+    expect(api.criarDestaque).toHaveBeenCalledWith("livro", { ...selecao, cor: "amarelo", motivo: null });
+    expect(c.fixados.map((x) => x.id)).toEqual([9]);
+  });
+
+  it("comandos dos fixados: ir e desafixar cada um, desafixar todos com 2 ou mais", () => {
+    const { a, c } = novo();
+    const d = destaque();
+    const outro = destaque({ id: 2, local: "l2", trecho: "outro trecho", posicao: 0.9 });
+    c.lista = [d, outro];
+    c.fixar(d);
+    let titulos = c.comandos(vi.fn()).map((x) => x.titulo);
+    expect(titulos).toContain("Ir ao fixado: escondi-me atrás da porta");
+    expect(titulos).toContain("Desafixar: escondi-me atrás da porta");
+    expect(titulos).not.toContain("Fixar ao lado: escondi-me atrás da porta");
+    expect(titulos).toContain("Fixar ao lado: outro trecho");
+    expect(titulos).not.toContain("Desafixar todos");
+    c.fixar(outro);
+    titulos = c.comandos(vi.fn()).map((x) => x.titulo);
+    expect(titulos).toContain("Desafixar todos");
+    c.comandos(vi.fn()).find((x) => x.titulo === "Ir ao fixado: escondi-me atrás da porta")!.executar();
+    expect(a.irPara).toHaveBeenCalledWith(d);
   });
 });

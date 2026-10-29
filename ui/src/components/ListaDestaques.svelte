@@ -1,7 +1,7 @@
 <script lang="ts">
   // Destaques do livro, na ordem de leitura (aba "Destaques" do índice). Cada um: o trecho
   // (leva até ele), a cor e o motivo em palavras e o capítulo, a nota; o motivo (seletor) e os
-  // botões Nota e Apagar. Filtro por motivo (M18), e o exportar segue o filtro.
+  // botões Nota, Fixar ao lado (M25a) e Apagar. Filtro por motivo (M18), e o exportar segue o filtro.
   import type { Destaque, MotivoDestaque } from "../lib/biblioteca";
   import { hexDaCor, MOTIVOS, nomeDaCor, nomeDoMotivo, resumo } from "../lib/destaques";
   import Icone from "./Icone.svelte";
@@ -13,6 +13,8 @@
     onApagar,
     onMotivo,
     onExportar,
+    fixados = [],
+    onFixar,
   }: {
     destaques: Destaque[];
     onIr: (destaque: Destaque) => void;
@@ -21,6 +23,9 @@
     onMotivo?: (destaque: Destaque, motivo: MotivoDestaque | null) => void;
     /** Exporta todos (null) ou só os do motivo filtrado. */
     onExportar?: (motivo: MotivoDestaque | null) => void;
+    /** Os destaques fixados ao lado (o botão deles fica pressionado e desafixa). */
+    fixados?: Destaque[];
+    onFixar?: (destaque: Destaque) => void;
   } = $props();
 
   let filtro = $state<MotivoDestaque | null>(null);
@@ -83,6 +88,17 @@
           >
             <Icone nome="nota" />
           </button>
+          {#if onFixar}
+            <button
+              type="button"
+              aria-label="Fixar ao lado: {resumo(destaque.trecho, 40)}"
+              aria-pressed={fixados.some((f) => f.id === destaque.id)}
+              title="Fixar ao lado"
+              onclick={() => onFixar(destaque)}
+            >
+              <Icone nome="fixar" />
+            </button>
+          {/if}
           <button
             type="button"
             aria-label="Apagar destaque: {resumo(destaque.trecho, 40)}"

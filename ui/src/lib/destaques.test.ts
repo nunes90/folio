@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Destaque } from "./biblioteca";
 import {
+  cartoesEmbaixo,
   CORES_DESTAQUE,
   descreverDestaque,
   estiloDoMarcaTexto,
@@ -98,5 +99,27 @@ describe("textos", () => {
     expect(descreverDestaque({ ...d, nota: null, motivo: "citar" })).toBe(
       "Destaque verde (citar): escondi-me atrás da porta",
     );
+  });
+});
+
+describe("cartoesEmbaixo", () => {
+  // rem de 16 px × escala 1,36 ≈ 21,8 px; meia tela de 2400 px lógicos ≈ 1190 px.
+  const rem = 21.8;
+  it("a coluna fica quando sobra largura para o livro", () => {
+    expect(cartoesEmbaixo(2400, rem, 18)).toBe(false);
+  });
+
+  it("descem quando o livro ficaria estreito (meia tela, com o índice aberto ou não)", () => {
+    expect(cartoesEmbaixo(1190, rem, 18)).toBe(true);
+    expect(cartoesEmbaixo(1190, rem, 0)).toBe(true);
+  });
+
+  it("sem escala, meia tela de 1920 px ainda tem coluna sem painéis", () => {
+    expect(cartoesEmbaixo(960, 16, 0)).toBe(false);
+    expect(cartoesEmbaixo(960, 16, 18)).toBe(true);
+  });
+
+  it("sem medida (0), não decide nada", () => {
+    expect(cartoesEmbaixo(0, 16, 0)).toBe(false);
   });
 });
