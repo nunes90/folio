@@ -574,5 +574,5 @@ docs/decisions/  # ADRs
   (`data-fim-rodape`: voz, "Fechar o lado") no fim, os botões só com o ícone (`.com-lado footer .rotulo`), quebra
   de linha sem espaço. Um grid de três colunas centralizado sobrepunha o "Fechar o lado" na meia tela.
 - **M25 concluído. v0.9 completa** (M23–M25).
-- Próximo passo: v0.9.0 (tag e Release) e depois a v1.0: M26 (acabamento) e M6b (AppImage final). Séries
-  continua adiado.
+- **v0.9.0** (out/2026): tag assinada `v0.9.0` (M23–M25) e Release como pre-release, com o AppImage da CI.
+- Próximo passo: v1.0, com o M26 (acabamento) e o M6b (AppImage final). Séries continua adiado.

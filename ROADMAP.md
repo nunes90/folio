@@ -168,6 +168,10 @@ trechos revisitados) e M22 (onde você parou). Tag `v0.8.0`, Release como pre-re
   sua posição), e um destaque ou nota fixado ao lado do texto. EPUB e PDF. Atenção ao custo de dois leitores no
   WebKitGTK (medir memória e quadros por segundo).
 
+**v0.9.0** (out/2026): M23 (voz no PDF, frase lida realçada, velocidade por trecho), M24 (tipografia do EPUB) e
+M25 (destaques fixados ao lado, dois pontos do livro lado a lado no EPUB e no PDF). Tag `v0.9.0`, Release como
+pre-release, com o AppImage.
+
 ### v1.0 — pronto para distribuir
 - [ ] **M26 — Acabamento**: ~~nome definitivo e ícone~~ (feito antes: **Folio**, com a migração das pastas);
   roteiro do Orca refeito com todos os recursos; revisão "tudo sem mouse"; testes E2E
