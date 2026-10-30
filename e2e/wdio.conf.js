@@ -108,6 +108,7 @@ export const config = {
           textoLado: document.querySelectorAll(".area-lado .textLayer span").length,
           paginasLado: document.querySelectorAll(".area-lado .page").length,
           anuncios: [...document.querySelectorAll('[aria-live]')].map((a) => a.textContent).filter(Boolean),
+          diagBarra: globalThis.__diagBarra ?? [],
         };
       })
       .catch((erro) => String(erro));

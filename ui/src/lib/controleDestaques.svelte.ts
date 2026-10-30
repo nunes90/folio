@@ -114,12 +114,16 @@ export class ControleDestaques {
   /** Esconde a barra sem mexer no foco (ex.: virou a página, clicou fora). */
   esconder(): void {
     if (!this.barra) return;
+    // [diag] M26d: quem fecha a barra na CI.
+    ((globalThis as unknown as { __diagBarra?: string[] }).__diagBarra ??= []).push(`esconder ${new Error().stack}`);
     this.barra = null;
     this.#a.aoFecharBarra?.();
   }
 
   /** Fecha a barra; se ela tinha o foco (teclado), devolve-o ao texto. */
   fecharBarra(): void {
+    // [diag] M26d: quem fecha a barra na CI.
+    ((globalThis as unknown as { __diagBarra?: string[] }).__diagBarra ??= []).push(`fecharBarra ${new Error().stack}`);
     const tinhaFoco = !!document.activeElement?.closest(".barra-destaque");
     this.barra = null;
     this.#a.aoFecharBarra?.();
