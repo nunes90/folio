@@ -1,6 +1,7 @@
 {
   "name": "folio-e2e",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "description": "Testes de ponta a ponta do Folio (M26c): WebdriverIO + tauri-driver, no app compilado.",
   "scripts": {

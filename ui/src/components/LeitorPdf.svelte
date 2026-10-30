@@ -88,6 +88,7 @@
   import { aguardarTransicao } from "../lib/transicao";
   import {
     comandosDaPagina,
+    comandosDaVelocidade,
     comandosDoIndice,
     comandosDoLado,
     ladoPorTermo,
@@ -734,6 +735,7 @@
         () => void pausarOuRetomar(),
         () => void pararLeitura(),
       ),
+      ...comandosDaVelocidade(preferencias, atualizarPreferencias),
       comandoQuantoFalta(estimativa, "pdf", (texto) => (anuncio = texto)),
       ...comandosDasRevisitas(revisitas.lista, (local) => {
         const n = Number(local.match(/^pagina:(\d+)$/)?.[1]);

@@ -52,6 +52,10 @@ jobs:
         working-directory: ui
         run: npm ci
 
+      # Os avisos de terceiros vão no AppImage: sempre os dos lockfiles desta versão.
+      - name: Avisos de terceiros
+        run: python3 scripts/avisos_de_terceiros.py
+
       - name: tauri-cli
         run: cargo install tauri-cli --version "^2" --locked
 

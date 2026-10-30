@@ -1,6 +1,6 @@
 <script lang="ts">
   import { PAGINAS, resolverPagina, type Pagina, type PaginaEfetiva } from "../lib/pagina";
-  import type { ModoPdf, Preferencias } from "../lib/preferencias.svelte";
+  import { LIMITES, type ModoPdf, type Preferencias } from "../lib/preferencias.svelte";
   import type { TemaEfetivo } from "../lib/temas";
   import type { EstiloVirada } from "../lib/virada";
 
@@ -21,6 +21,7 @@
   } = $props();
 
   const agora = $derived(resolverPagina("automatica", interface_));
+  const v = $derived(preferencias.velocidadeVoz);
   const PAGINAS_FIXAS = Object.entries(PAGINAS) as [PaginaEfetiva, (typeof PAGINAS)[PaginaEfetiva]][];
 
   const VIRADAS: { valor: EstiloVirada; nome: string }[] = [
@@ -152,10 +153,38 @@
         </label>
       {/each}
     </fieldset>
+
+    <!-- No EPUB, fica na seção Texto, que o PDF não tem. -->
+    <div class="velocidade">
+      <label for="pref-velocidade-voz">Velocidade da leitura em voz alta</label>
+      <output for="pref-velocidade-voz">
+        {v === 0 ? "normal" : v > 0 ? `+${v}` : v}
+      </output>
+      <input
+        id="pref-velocidade-voz"
+        type="range"
+        min={LIMITES.velocidadeVoz.min}
+        max={LIMITES.velocidadeVoz.max}
+        step={LIMITES.velocidadeVoz.passo}
+        value={v}
+        oninput={(e) => onMudar({ velocidadeVoz: Number(e.currentTarget.value) })}
+      />
+    </div>
   {/if}
 </div>
 
 <style>
+  .velocidade {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.25rem 0.5rem;
+  }
+
+  .velocidade input {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
   .painel {
     display: flex;
     flex-direction: column;

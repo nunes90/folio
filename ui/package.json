@@ -2,6 +2,7 @@
   "name": "folio-ui",
   "private": true,
   "version": "0.9.0",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
     "predev": "node scripts/copiar-pdfjs.mjs",

@@ -75,6 +75,7 @@
   import { resolverPagina } from "../lib/pagina";
   import {
     comandosDaPagina,
+    comandosDaVelocidade,
     comandosDoIndice,
     comandosDoLado,
     comandosDoTexto,
@@ -900,6 +901,7 @@
         () => void pararLeitura(),
       ),
     );
+    lista.push(...comandosDaVelocidade(preferencias, atualizarPreferencias));
     lista.push(comandoQuantoFalta(estimativa, "epub", (texto) => (anuncio = texto)));
     lista.push(...comandosDasRevisitas(revisitas.lista, irParaTrecho));
     lista.push(...destaques.comandos(destacarSelecao), ...comandosDaMeta(meta, "epub"),

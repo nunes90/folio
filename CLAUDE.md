@@ -633,5 +633,13 @@ docs/decisions/  # ADRs
   `esconderDe(doLado)` só a fecha se o zoom ou a página mudarem naquele lado; ao abrir o lado, o principal refaz o
   zoom e fechava a barra do lado (só na CI: o WebKitGTK 2.52 entrega isso mais tarde que o 2.54).
   **Falta executar o roteiro com o Orca** (só o Lucas).
-- Próximo passo: executar o roteiro do Orca e corrigir o que aparecer; M26e (README, guia e licença) e M6b. Séries
-  continua adiado.
+- **M26e** (branch `docs/m26e-licenca-readme`): licença **GPL-3.0-or-later** (`LICENSE`; `license` no Cargo, nos
+  `package.json` e no `tauri.conf.json`). As dependências são todas permissivas (MIT, Apache-2.0, BSD, Zlib, OFL,
+  MPL-2.0 por arquivo), então a escolha foi pelo projeto: um app, não uma biblioteca, e forks devem abrir o código.
+  `scripts/avisos_de_terceiros.py` gera `THIRD-PARTY-NOTICES.md` dos lockfiles (o que vai no binário, com os textos
+  de licença, sem repetir); vai no AppImage (`bundle.resources`) e é gerado de novo no workflow do AppImage. O
+  arquivo commitado precisa existir: o `tauri build` falha sem o recurso. `Sobre.svelte` (paleta "Sobre o Folio"):
+  versão, licença e aviso de garantia. `README.md` e `docs/guia.md`. A velocidade da voz, que só estava na seção
+  Texto (o PDF não a tem), foi também para a seção Página no PDF e para a paleta (`comandosDaVelocidade`).
+- Próximo passo: executar o roteiro do Orca e corrigir o que aparecer; depois, o M6b (AppImage final e Release
+  estável). Séries continua adiado.
