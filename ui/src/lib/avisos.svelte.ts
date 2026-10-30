@@ -84,9 +84,21 @@ export function mensagensDaImportacao(r: Importacao): Omit<Aviso, "id">[] {
       texto: `${r.restaurados.length} livros voltaram da lixeira.`,
     });
   }
-  for (const falha of r.falhas) {
-    const nome = falha.caminho.split(/[\\/]/).pop();
-    mensagens.push({ tipo: "erro", texto: `Não foi possível importar ${nome}: ${falha.erro}` });
+  const nome = (caminho: string) => caminho.split(/[\\/]/).pop();
+  const [falha] = r.falhas;
+  if (r.falhas.length === 1 && falha) {
+    mensagens.push({
+      tipo: "erro",
+      texto: `Não foi possível importar ${nome(falha.caminho)}: ${falha.erro}`,
+    });
+  } else if (r.falhas.length > 1) {
+    // Um aviso só: avisos de erro ficam até serem fechados, e uma pasta de arquivos ruins
+    // deixaria uma pilha deles.
+    const lista = r.falhas.map((f) => `${nome(f.caminho)} (${f.erro})`).join("; ");
+    mensagens.push({
+      tipo: "erro",
+      texto: `${r.falhas.length} arquivos não foram importados: ${lista}.`,
+    });
   }
   return mensagens;
 }

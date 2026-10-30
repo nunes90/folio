@@ -3,7 +3,10 @@
 dom-casmurro.epub não é gerado: veio do Project Gutenberg (#55752, domínio público).
 """
 
+import re
+import shutil
 import struct
+import subprocess
 import zipfile
 import zlib
 from pathlib import Path
@@ -90,12 +93,22 @@ OPF_CAPA_EPUB2 = OPF.replace(
 )
 
 
+# Sem índice: nem nav nem NCX (o leitor mostra "Este livro não tem índice").
+OPF_SEM_INDICE = OPF.replace(
+    '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>\n    ', ""
+)
+
+# OPF cortado no meio de uma tag: XML inválido (o livro não abre; a importação o recusa).
+OPF_INVALIDO = OPF[: OPF.index("<manifest>") + 20]
+
+
 def epub(
     caminho: Path,
     mimetype: bytes | None,
     *,
     comprimir_mimetype: bool = False,
     opf: str = OPF,
+    com_nav: bool = True,
     extras: dict[str, bytes] | None = None,
 ) -> None:
     with zipfile.ZipFile(caminho, "w") as z:
@@ -109,6 +122,8 @@ def epub(
             "OEBPS/cap1.xhtml": capitulo(1),
             "OEBPS/cap2.xhtml": capitulo(2),
         }
+        if not com_nav:
+            del arquivos["OEBPS/nav.xhtml"]
         for nome, conteudo in arquivos.items():
             info = zipfile.ZipInfo(nome, (2026, 1, 1, 0, 0, 0))
             z.writestr(info, conteudo, compress_type=zipfile.ZIP_DEFLATED)
@@ -149,6 +164,33 @@ def pdf_com_info(info: bytes) -> bytes:
     return bytes(saida)
 
 
+def pdfs_problematicos() -> None:
+    """PDFs protegidos, com senha, com a xref errada e cortado (M26b), a partir de metadados-utf16.pdf.
+
+    A criptografia vem do qpdf (precisa estar instalado); os outros são editados aqui.
+    """
+    base = AQUI / "metadados-utf16.pdf"
+    q = AQUI / "quebrados"
+    if shutil.which("qpdf"):
+        # Só senha de dono: abre sem pedir senha (os "protegidos contra cópia").
+        subprocess.run(["qpdf", "--encrypt", "", "dono", "256", "--", base, q / "pdf-protegido-aes.pdf"], check=True)
+        subprocess.run(
+            ["qpdf", "--allow-weak-crypto", "--encrypt", "", "dono", "128", "--use-aes=n", "--",
+             base, q / "pdf-protegido-rc4.pdf"],
+            check=True,
+        )
+        # Senha de usuário ("usuario"): sem ela não abre.
+        subprocess.run(["qpdf", "--encrypt", "usuario", "dono", "256", "--", base, q / "pdf-com-senha.pdf"], check=True)
+    else:
+        print("qpdf não encontrado: os PDFs criptografados não foram gerados")
+    b = base.read_bytes()
+    m = re.search(rb"startxref\s+(\d+)", b)
+    assert m
+    # startxref apontando para o lugar errado: os leitores reconstroem a tabela.
+    (q / "pdf-xref-errada.pdf").write_bytes(b[: m.start(1)] + str(int(m.group(1)) + 7).encode() + b[m.end(1) :])
+    (q / "pdf-cortado.pdf").write_bytes(b[: len(b) // 2])
+
+
 def utf16(texto: str) -> bytes:
     """String hexadecimal de PDF em UTF-16BE com BOM."""
     return b"<FEFF" + texto.encode("utf-16-be").hex().upper().encode() + b">"
@@ -183,3 +225,6 @@ if __name__ == "__main__":
         pdf_com_info(b"<< /Title (Caf\\351 \\(edi\\347\\343o\\)) /Author (   ) >>")
     )
     (AQUI / "pdf-com-lixo-antes.pdf").write_bytes(b"\x00" * 100 + PDF_MINIMO)
+    epub(AQUI / "quebrados/sem-indice.epub", b"application/epub+zip", opf=OPF_SEM_INDICE, com_nav=False)
+    epub(AQUI / "quebrados/opf-invalido.epub", b"application/epub+zip", opf=OPF_INVALIDO)
+    pdfs_problematicos()

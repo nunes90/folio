@@ -136,6 +136,21 @@ describe("mensagensDaImportacao", () => {
     ]);
   });
 
+  it("várias falhas: um aviso só, com cada arquivo e o motivo (não uma pilha de avisos)", () => {
+    const falhas = [
+      { caminho: "/l/pdf-cortado.pdf", erro: "o PDF está danificado ou incompleto" },
+      { caminho: "/l/vazio.epub", erro: "o arquivo está vazio" },
+    ];
+    expect(mensagensDaImportacao({ ...vazio, falhas })).toEqual([
+      {
+        tipo: "erro",
+        texto:
+          "2 arquivos não foram importados: pdf-cortado.pdf (o PDF está danificado ou incompleto); " +
+          "vazio.epub (o arquivo está vazio).",
+      },
+    ]);
+  });
+
   it("nada importado e nada a dizer: nenhum aviso", () => {
     expect(mensagensDaImportacao(vazio)).toEqual([]);
   });

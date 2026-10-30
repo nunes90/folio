@@ -259,7 +259,8 @@ pub enum ErroBiblioteca {
     Banco(#[from] rusqlite::Error),
     #[error(transparent)]
     Abrir(#[from] ErroAbrir),
-    #[error("EPUB inválido")]
+    /// A mensagem é para quem importa; o detalhe (qual arquivo, que XML) fica na causa.
+    #[error("o EPUB está danificado: não foi possível ler o conteúdo")]
     Epub(#[from] ErroEpub),
     #[error(transparent)]
     Pdf(#[from] ErroPdf),
@@ -927,6 +928,36 @@ mod tests {
         let capa = livro.capa.expect("tem capa");
         assert!(capa.extension().is_some_and(|e| e == "jpg"));
         assert_eq!(std::fs::metadata(capa).unwrap().len(), 40_980);
+    }
+
+    #[test]
+    fn importar_arquivos_problematicos() {
+        let (_dir, bib) = nova();
+        // Protegido só com senha de dono: entra com os metadados.
+        let protegido = bib
+            .importar(&fixture("quebrados/pdf-protegido-aes.pdf"))
+            .unwrap()
+            .into_livro();
+        assert_eq!(protegido.titulo, "Memórias Póstumas");
+        // Com senha de usuário: entra com o nome do arquivo (a senha é pedida ao abrir).
+        let com_senha = bib
+            .importar(&fixture("quebrados/pdf-com-senha.pdf"))
+            .unwrap()
+            .into_livro();
+        assert_eq!(com_senha.titulo, "pdf-com-senha");
+        // Sem índice: entra (o leitor diz que o livro não tem índice).
+        assert!(bib.importar(&fixture("quebrados/sem-indice.epub")).is_ok());
+        // Danificados: recusados, com uma mensagem que diz o que houve.
+        let erro = |nome: &str| bib.importar(&fixture(nome)).unwrap_err().to_string();
+        assert_eq!(
+            erro("quebrados/pdf-cortado.pdf"),
+            "o PDF está danificado ou incompleto"
+        );
+        assert_eq!(
+            erro("quebrados/opf-invalido.epub"),
+            "o EPUB está danificado: não foi possível ler o conteúdo"
+        );
+        assert_eq!(bib.listar().unwrap().len(), 3);
     }
 
     #[test]

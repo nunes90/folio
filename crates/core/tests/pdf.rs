@@ -37,6 +37,39 @@ fn texto_nao_e_pdf() {
     assert!(pdf::ler(&fixture("quebrados/texto.epub")).is_err());
 }
 
+#[test]
+fn protegidos_so_com_senha_de_dono_sao_lidos() {
+    // Os "protegidos contra cópia": a senha de usuário é vazia (AES-256 e RC4).
+    for nome in [
+        "quebrados/pdf-protegido-aes.pdf",
+        "quebrados/pdf-protegido-rc4.pdf",
+    ] {
+        let m = pdf::ler(&fixture(nome)).unwrap();
+        assert_eq!(m.titulo.as_deref(), Some("Memórias Póstumas"), "{nome}");
+    }
+}
+
+#[test]
+fn com_senha_de_usuario_nao_e_erro_mas_fica_sem_metadados() {
+    // Sem a senha não dá para ler o Info; o livro entra com o nome do arquivo e o leitor pede
+    // a senha ao abrir.
+    let m = pdf::ler(&fixture("quebrados/pdf-com-senha.pdf")).unwrap();
+    assert_eq!(m.titulo, None);
+    assert!(m.autores.is_empty());
+}
+
+#[test]
+fn xref_errada_e_reconstruida() {
+    let m = pdf::ler(&fixture("quebrados/pdf-xref-errada.pdf")).unwrap();
+    assert_eq!(m.titulo.as_deref(), Some("Memórias Póstumas"));
+}
+
+#[test]
+fn cortado_e_erro_com_mensagem_clara() {
+    let erro = pdf::ler(&fixture("quebrados/pdf-cortado.pdf")).unwrap_err();
+    assert_eq!(erro.to_string(), "o PDF está danificado ou incompleto");
+}
+
 proptest! {
     #[test]
     fn ler_nunca_da_panic(bytes in proptest::collection::vec(any::<u8>(), 0..2048)) {

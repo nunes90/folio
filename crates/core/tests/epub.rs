@@ -55,6 +55,20 @@ fn texto_nao_e_zip() {
     assert!(matches!(erro, ErroEpub::Zip(_)), "{erro:?}");
 }
 
+#[test]
+fn sem_indice_e_lido() {
+    let m = epub::ler(&fixture("quebrados/sem-indice.epub")).unwrap();
+    assert_eq!(m.metadados.titulo.as_deref(), Some("Livro Mínimo"));
+}
+
+#[test]
+fn opf_com_xml_invalido_e_erro() {
+    assert!(matches!(
+        epub::ler(&fixture("quebrados/opf-invalido.epub")),
+        Err(ErroEpub::Xml { .. })
+    ));
+}
+
 proptest! {
     #[test]
     fn ler_nunca_da_panic(bytes in proptest::collection::vec(any::<u8>(), 0..2048)) {

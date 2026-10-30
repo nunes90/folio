@@ -25,6 +25,8 @@
   import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
   import CartaoFixado from "./CartaoFixado.svelte";
   import LadoPdf from "./LadoPdf.svelte";
+  import PedirSenha from "./PedirSenha.svelte";
+  import { mensagemAoAbrir } from "../lib/errosAoAbrir";
   import ControlesLado from "./ControlesLado.svelte";
   import ListaDestaques from "./ListaDestaques.svelte";
   import type { Destaque } from "../lib/biblioteca";
@@ -128,6 +130,20 @@
   let pronto = $state(false);
   let links: PDFLinkService | undefined;
   let tarefa: PDFDocumentLoadingTask | undefined;
+  /** O pdf.js pediu a senha do PDF: a resposta vai para `atualizar` (PedirSenha). */
+  let pedidoSenha = $state<{ atualizar: (senha: string) => void; erradas: number } | null>(null);
+
+  /** Cancelou a senha: não é um erro, é não querer abrir agora. */
+  let senhaCancelada = false;
+
+  /** Cancelar a senha: fecha o PDF e volta à biblioteca, sem mensagem de erro. */
+  function cancelarSenha() {
+    pedidoSenha = null;
+    senhaCancelada = true;
+    log.info("senha do PDF cancelada: o documento não foi aberto");
+    void tarefa?.destroy();
+    onFechar();
+  }
 
   let modoFoco = $state(false);
   let umaIdeia = $state(false);
@@ -322,8 +338,11 @@
     window.addEventListener("keydown", aoTeclar);
     window.addEventListener("pointerdown", aoApontar);
     abrir().catch((e) => {
-      erro = `Não foi possível abrir o PDF: ${e}`;
-      log.error(erro);
+      // Cancelar a senha também rejeita a abertura (o pdf.js desiste com o último motivo).
+      if (senhaCancelada) return;
+      // Uma frase sobre o que houve (M26b); o erro técnico vai para o log.
+      erro = mensagemAoAbrir(e, "pdf");
+      log.error(`não foi possível abrir o PDF: ${e}`);
     });
     // A área do documento muda de tamanho (modo foco, painéis, janela): os zooms "página
     // inteira" e "largura" são recalculados, uma vez por quadro.
@@ -435,7 +454,13 @@
 
     await destaques.carregar();
     tarefa = carregarPdf(dados);
+    // Senha de usuário (M26b): o pdf.js pede uma vez sem senha e de novo a cada senha errada
+    // (motivo 2 = PasswordResponses.INCORRECT_PASSWORD).
+    tarefa.onPassword = (atualizar: (senha: string) => void, motivo: number) => {
+      pedidoSenha = { atualizar, erradas: motivo === 2 ? (pedidoSenha?.erradas ?? 0) + 1 : 0 };
+    };
     const documento = await tarefa.promise;
+    pedidoSenha = null;
     documentoPdf = documento;
     total = documento.numPages;
     v.setDocument(documento);
@@ -1543,6 +1568,12 @@
     />
   {/snippet}
 
+  <PedirSenha
+    aberto={pedidoSenha !== null}
+    erradas={pedidoSenha?.erradas ?? 0}
+    onConfirmar={(senha) => pedidoSenha?.atualizar(senha)}
+    onCancelar={cancelarSenha}
+  />
   {#if erro}
     <p role="alert">{erro}</p>
   {:else if !pronto}

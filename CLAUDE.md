@@ -594,5 +594,17 @@ docs/decisions/  # ADRs
   controles de página e zoom no centro; a estimativa e a meta (`.rodape-info`) à direita, cortadas com "…". Só no
   modo compacto o rodapé vira uma linha que quebra. Números de largura fixa: o campo da página do PDF com os
   dígitos do total, o zoom (6ch), a porcentagem do EPUB (4,5ch), `tabular-nums`; a `BarraPdf` não quebra sozinha.
-- Próximo passo: M26b (livros grandes e arquivos quebrados; roteiro de medição), depois M26c (E2E), M26d (Orca e
-  "tudo sem mouse"), M26e (README, guia e licença) e M6b. Séries continua adiado.
+- **M26b** (branch `feat/m26b-robustez`): arquivos problemáticos. Fixtures novas em `tests/fixtures/quebrados/`
+  (geradas pelo `gerar.py`; os PDFs criptografados pelo `qpdf`): EPUB sem índice (entra) e com OPF inválido
+  (recusado); PDF protegido só com senha de dono, AES e RC4 (entra com metadados: o `lopdf` lê com a senha vazia),
+  com senha de usuário (entra com o nome do arquivo), com `startxref` errado (entra; o pdf.js reconstrói) e cortado
+  (recusado: o pdf.js também não o abre). Mensagens: "o PDF está danificado ou incompleto" e "o EPUB está
+  danificado: não foi possível ler o conteúdo" (a causa técnica fica na cadeia de erros, no log); ao abrir,
+  `mensagemAoAbrir` (`lib/errosAoAbrir.ts`) troca o nome da exceção por uma frase. PDF com senha: `onPassword` do
+  pdf.js → `PedirSenha.svelte` (não guarda a senha; `erradas` conta as recusadas: o alerta e o campo limpo a cada
+  uma); Cancelar fecha e volta à biblioteca, sem erro (o pdf.js rejeita a abertura com o último motivo:
+  `senhaCancelada`). Várias falhas de importação viram um aviso só. A capa de um PDF que não abre é tentada uma
+  vez por sessão (`semCapa` no `App`), e o `gerarCapa` libera a tarefa do pdf.js mesmo quando falha. Roteiro de
+  desempenho em `docs/testes/desempenho.md` (10 cenários e os arquivos problemáticos) e `scripts/memoria.sh`.
+- Próximo passo: M26c (E2E com `tauri-driver` na CI), M26d (Orca e "tudo sem mouse"), M26e (README, guia e
+  licença) e M6b. Séries continua adiado.
