@@ -42,6 +42,12 @@
     padding-inline-start: 1rem;
   }
 
+  /* Sem caixa própria (o item de lista continua na árvore de acessibilidade): com ela, o WebKitGTK
+     aborta o processo quando um leitor de tela lê o item (ver e2e/atspi/rodar.sh). */
+  li {
+    display: contents;
+  }
+
   button {
     position: relative;
     display: block;

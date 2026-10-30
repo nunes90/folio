@@ -1,5 +1,7 @@
 // O que os testes têm em comum. Os elementos são procurados de novo a cada tentativa: a tela
 // troca (biblioteca, leitor) e uma referência guardada fica velha.
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { Key } from "webdriverio";
 
 export { Key };
@@ -45,4 +47,16 @@ export async function destacar(cor = "Amarelo") {
   await barra.waitForDisplayed();
   await botao(cor, '//*[contains(@class,"barra-destaque")]').click();
   await barra.waitForDisplayed({ reverse: true });
+}
+
+/**
+ * Percorre a árvore de acessibilidade pedindo o que o Orca pede (atspi/percorrer.py). Falha se o
+ * processo da página cair, e diz em qual objeto.
+ */
+export function semQueda() {
+  const r = spawnSync("python3", [fileURLToPath(new URL("../atspi/percorrer.py", import.meta.url))], {
+    encoding: "utf8",
+    timeout: 45000,
+  });
+  if (r.status !== 0) throw new Error(`leitor de tela: ${r.stdout}${r.stderr}`);
 }

@@ -31,36 +31,40 @@
 </script>
 
 <div class="barra">
-  <div class="grupo grupo-barra" role="group" aria-label="Páginas">
-    <button type="button" onclick={() => onIrPara(pagina - 1)} disabled={pagina <= 1}>
-      <Icone nome="anterior" /><span class="rotulo">Página anterior</span>
-    </button>
-    <label>
-      <!-- A palavra some da tela junto com os outros rótulos (o nome do campo fica). -->
-      <span class="rotulo">Página</span>
-      <!-- Largura dos dígitos do total: mudar de página não mexe nos controles. -->
-      <input
-        type="number"
-        min="1"
-        max={total}
-        value={pagina}
-        onchange={aoMudarPagina}
-        style:width="calc({String(total).length}ch + 2rem)"
-      />
-      de {total}
-    </label>
-    <button type="button" onclick={() => onIrPara(pagina + 1)} disabled={pagina >= total}>
-      <Icone nome="proxima" /><span class="rotulo">Próxima página</span>
-    </button>
+  <div class="grupo grupo-barra">
+    <div class="grupo-sem-caixa" role="group" aria-label="Páginas">
+      <button type="button" onclick={() => onIrPara(pagina - 1)} disabled={pagina <= 1}>
+        <Icone nome="anterior" /><span class="rotulo">Página anterior</span>
+      </button>
+      <label>
+        <!-- A palavra some da tela junto com os outros rótulos (o nome do campo fica). -->
+        <span class="rotulo">Página</span>
+        <!-- Largura dos dígitos do total: mudar de página não mexe nos controles. -->
+        <input
+          type="number"
+          min="1"
+          max={total}
+          value={pagina}
+          onchange={aoMudarPagina}
+          style:width="calc({String(total).length}ch + 2rem)"
+        />
+        de {total}
+      </label>
+      <button type="button" onclick={() => onIrPara(pagina + 1)} disabled={pagina >= total}>
+        <Icone nome="proxima" /><span class="rotulo">Próxima página</span>
+      </button>
+    </div>
   </div>
 
-  <div class="grupo grupo-barra" role="group" aria-label="Zoom">
-    <button type="button" onclick={onZoomMenos} aria-label="Diminuir zoom">−</button>
-    <output aria-live="polite">{porcento.format(zoom)}</output>
-    <button type="button" onclick={onZoomMais} aria-label="Aumentar zoom">+</button>
-    <button type="button" onclick={onAjustarLargura}>
-      <Icone nome="largura" /><span class="rotulo">Ajustar à largura</span>
-    </button>
+  <div class="grupo grupo-barra">
+    <div class="grupo-sem-caixa" role="group" aria-label="Zoom">
+      <button type="button" onclick={onZoomMenos} aria-label="Diminuir zoom">−</button>
+      <output aria-live="polite">{porcento.format(zoom)}</output>
+      <button type="button" onclick={onZoomMais} aria-label="Aumentar zoom">+</button>
+      <button type="button" onclick={onAjustarLargura}>
+        <Icone nome="largura" /><span class="rotulo">Ajustar à largura</span>
+      </button>
+    </div>
   </div>
 </div>
 

@@ -126,6 +126,13 @@ button:has(> .rotulo) {
 }
 
 /* Grupo compacto numa barra (ex.: "‹ 12% ›", página e zoom do PDF): uma só caixa. */
+/* Grupo de botões para o leitor de tela, sem caixa própria: com caixa, o WebKitGTK aborta o processo
+   quando um leitor de tela lê um contêiner só de botões (ver e2e/atspi/rodar.sh). O layout fica num
+   elemento em volta. */
+.grupo-sem-caixa {
+  display: contents;
+}
+
 .grupo-barra {
   display: inline-flex;
   align-items: center;

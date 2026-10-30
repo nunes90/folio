@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Testes de ponta a ponta do Folio (M26c): WebdriverIO + tauri-driver, no app compilado.",
   "scripts": {
-    "test": "wdio run wdio.conf.js"
+    "test": "wdio run wdio.conf.js",
+    "test:leitor-de-tela": "./atspi/rodar.sh"
   },
   "devDependencies": {
     "@wdio/cli": "^9.19.0",

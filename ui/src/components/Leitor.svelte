@@ -38,6 +38,7 @@
   import { aguardarTransicao } from "../lib/transicao";
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
+  import { tirarEspacoAposUltimaQuebra } from "../lib/contornosWebkit";
   import { frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "../lib/frases";
   import {
     blocoNaTela,
@@ -569,6 +570,7 @@
     // é reenviada à janela, onde ficam todos os atalhos (inclusive o F1 do App e o Esc da moldura).
     v.addEventListener("load", (e) => {
       const { doc, index } = (e as CustomEvent<{ doc: Document; index: number }>).detail;
+      tirarEspacoAposUltimaQuebra(doc);
       // Seleção com o mouse: a barra aparece ao soltar (sem tirar o foco do texto).
       doc.addEventListener("pointerup", () =>
         setTimeout(() => {
@@ -1085,14 +1087,16 @@
 
 {#snippet controlesLado()}
   <ControlesLado onFechar={fecharLado}>
-    <div class="grupo-barra" role="group" aria-label="Páginas deste lado">
-      <button type="button" onclick={() => void lado?.virar("esquerda")}>
-        <Icone nome="anterior" /><span class="rotulo">Anterior</span>
-      </button>
-      <span class="porcento">{porcento.format(progressoLado)}</span>
-      <button type="button" onclick={() => void lado?.virar("direita")}>
-        <Icone nome="proxima" /><span class="rotulo">Próxima</span>
-      </button>
+    <div class="grupo-barra">
+      <div class="grupo-sem-caixa" role="group" aria-label="Páginas deste lado">
+        <button type="button" onclick={() => void lado?.virar("esquerda")}>
+          <Icone nome="anterior" /><span class="rotulo">Anterior</span>
+        </button>
+        <span class="porcento">{porcento.format(progressoLado)}</span>
+        <button type="button" onclick={() => void lado?.virar("direita")}>
+          <Icone nome="proxima" /><span class="rotulo">Próxima</span>
+        </button>
+      </div>
     </div>
   </ControlesLado>
 {/snippet}
@@ -1166,14 +1170,16 @@
         onParar={() => void pararLeitura()}
       />
     {/if}
-    <div class="grupo-barra" role="group" aria-label="Páginas">
-      <button type="button" onclick={anterior}>
-        <Icone nome="anterior" /><span class="rotulo">Anterior</span>
-      </button>
-      <span class="porcento">{porcento.format(progresso)}</span>
-      <button type="button" onclick={proxima}>
-        <Icone nome="proxima" /><span class="rotulo">Próxima</span>
-      </button>
+    <div class="grupo-barra">
+      <div class="grupo-sem-caixa" role="group" aria-label="Páginas">
+        <button type="button" onclick={anterior}>
+          <Icone nome="anterior" /><span class="rotulo">Anterior</span>
+        </button>
+        <span class="porcento">{porcento.format(progresso)}</span>
+        <button type="button" onclick={proxima}>
+          <Icone nome="proxima" /><span class="rotulo">Próxima</span>
+        </button>
+      </div>
     </div>
   {/snippet}
 
