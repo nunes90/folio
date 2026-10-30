@@ -15,6 +15,8 @@ describe("EPUB", () => {
     let antes = await fracao();
     for (let i = 0; i < 3; i++) await browser.keys(Key.ArrowRight);
     await ate(async () => (await fracao()) !== antes, "a seta não virou a página");
+    // O foliate ignora o que chega nos 100 ms seguintes a uma virada (#locked).
+    await browser.pause(400);
     antes = await fracao();
     await botao("Próxima", "//footer").click();
     await ate(async () => (await fracao()) !== antes, "o botão não virou a página");
@@ -47,7 +49,7 @@ describe("EPUB", () => {
     expect(await texto("#aba-destaques")).toContain("1");
   });
 
-  it("pela paleta, abre o mesmo ponto ao lado; F6 alterna; Ctrl+Shift+L fecha", async () => {
+  it("pela paleta, abre o mesmo ponto ao lado; F6 alterna; no lado, Ctrl+D destaca sem o mouse; Ctrl+Shift+L fecha", async () => {
     await browser.keys(Key.Escape);
     await paleta("abrir este ponto ao lado");
     await ate(() => moldura("com-lado"), "o lado não abriu");
@@ -56,6 +58,19 @@ describe("EPUB", () => {
     await ate(noLado, "o foco não foi ao lado");
     await browser.keys(Key.F6);
     await ate(async () => !(await noLado()), "o F6 não voltou ao principal");
+    await browser.keys(Key.F6);
+    await ate(noLado, "o F6 não foi de novo ao lado");
+    // Modo frase no lado: Ctrl+D abre a barra na frase, Alt+↓ passa à seguinte.
+    await browser.keys([Key.Ctrl, "d"]);
+    const barra = await $(".barra-destaque");
+    await barra.waitForDisplayed();
+    await browser.keys([Key.Alt, Key.ArrowDown]);
+    await barra.waitForDisplayed();
+    await botao("Rosa", '//*[contains(@class,"barra-destaque")]').click();
+    await barra.waitForDisplayed({ reverse: true });
+    await paleta("mostrar os destaques");
+    await ate(async () => (await texto("#aba-destaques")).includes("2"), "o destaque do lado não entrou na lista");
+    await browser.keys(Key.Escape);
     await browser.keys([Key.Ctrl, Key.Shift, "l"]);
     await ate(async () => !(await moldura("com-lado")), "o lado não fechou");
   });

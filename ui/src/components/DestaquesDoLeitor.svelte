@@ -34,7 +34,7 @@
     onCopiar={() => controle.copiar()}
     onFixar={() => controle.fixarDaBarra()}
     fixado={!!barra.destaque && controle.estaFixado(barra.destaque)}
-    {onOuvir}
+    onOuvir={barra.doLado ? undefined : onOuvir}
     {onTrecho}
     onApagar={barra.destaque ? () => controle.apagar(barra.destaque!) : undefined}
     onFechar={() => controle.fecharBarra()}

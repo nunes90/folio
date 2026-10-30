@@ -2,6 +2,7 @@
 // atual", "ouvir a partir daqui" e, depois, "uma ideia por vez". As regras são as do tts.js do
 // foliate-js (as mesmas tags de bloco; frases pelo Intl.Segmenter), para que a frase aqui seja
 // a mesma que a leitura em voz alta destaca.
+import type { MudancaDeTrecho } from "./controleDestaques.svelte";
 
 /** Elementos que começam um bloco (os mesmos do tts.js do foliate-js). */
 const TAGS_DE_BLOCO = new Set([
@@ -141,4 +142,20 @@ export function unir(frases: Range[], de: number, ate: number): Range {
   const r = frases[de]!.cloneRange();
   r.setEnd(frases[ate]!.endContainer, frases[ate]!.endOffset);
   return r;
+}
+
+/**
+ * O trecho depois de Alt+↑/↓ (outra frase) ou Alt+Shift+↑/↓ (maior ou menor), entre `total` frases.
+ * `null` se não há para onde ir (quem chama decide: avisar, ou passar à página vizinha).
+ */
+export function trechoSeguinte(
+  total: number,
+  de: number,
+  ate: number,
+  mudanca: MudancaDeTrecho,
+): [number, number] | null {
+  if (mudanca === "proxima") return ate + 1 < total ? [ate + 1, ate + 1] : null;
+  if (mudanca === "anterior") return de > 0 ? [de - 1, de - 1] : null;
+  if (mudanca === "estender") return ate + 1 < total ? [de, ate + 1] : null;
+  return ate > de ? [de, ate - 1] : null;
 }

@@ -616,4 +616,13 @@ docs/decisions/  # ADRs
   `FOLIO_APP`; `CARGO_TARGET_DIR` relativo é resolvido a partir de `crates/app`: usar caminho absoluto). Armadilhas
   do WebKitWebDriver: `getText` não enxerga títulos com `text-overflow` (ler `textContent`, `texto()` em
   `specs/ajuda.js`); o seletor `aria/` acha também os itens da paleta fechada (procurar dentro do cabeçalho).
-- Próximo passo: M26d (Orca e "tudo sem mouse"), M26e (README, guia e licença) e M6b. Séries continua adiado.
+- **M26d** (branch `docs/m26d-orca`): roteiro do Orca reescrito (`docs/testes/orca.md`, 12 partes, com tudo o que
+  entrou depois do M5). Revisão "tudo sem mouse": a lacuna era destacar no lado novo, então o **modo frase foi para
+  os dois lados** (`LadoEpub`, `LadoPdf`: Ctrl+D sem seleção começa na frase da página; `temModoFrase`,
+  `mudarTrecho`, `sairDoModoFrase`; a barra manda o Alt+↑/↓ ao lado certo). Regra comum em `trechoSeguinte`
+  (`lib/frases.ts`) e camada de texto comum em `lib/pdf.ts`. A barra aberta no lado não oferece "Ouvir"
+  (`barra.doLado`): a voz é só do principal, e no PDF leria o início da página dele. Os testes E2E cobrem o modo
+  frase no lado. O foliate ignora navegação nos 100 ms seguintes a uma virada (`#locked`): nos testes, esperar.
+  **Falta executar o roteiro com o Orca** (só o Lucas).
+- Próximo passo: executar o roteiro do Orca e corrigir o que aparecer; M26e (README, guia e licença) e M6b. Séries
+  continua adiado.

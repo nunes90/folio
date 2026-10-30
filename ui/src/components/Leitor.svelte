@@ -38,7 +38,7 @@
   import { aguardarTransicao } from "../lib/transicao";
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
-  import { frasesDoDocumento, indiceDaFraseEm, unir } from "../lib/frases";
+  import { frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "../lib/frases";
   import {
     blocoNaTela,
     blocosDoDocumento,
@@ -199,6 +199,7 @@
       // trataria como uma seleção feita com o mouse, fora do modo frase (sem Alt+↑/↓).
       modoFrase?.doc.getSelection()?.removeAllRanges();
       modoFrase = null;
+      lado?.sairDoModoFrase();
       // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou, e a
       // frase volta a ser só o realce.
       if (retomarVozAoFechar) {
@@ -758,17 +759,12 @@
   function mudarTrecho(mudanca: MudancaDeTrecho) {
     if (!modoFrase) return;
     const { frases, de, ate } = modoFrase;
-    const ultima = frases.length - 1;
-    let [novoDe, novoAte] = [de, ate];
-    if (mudanca === "proxima") novoDe = novoAte = Math.min(ate + 1, ultima);
-    else if (mudanca === "anterior") novoDe = novoAte = Math.max(de - 1, 0);
-    else if (mudanca === "estender") novoAte = Math.min(ate + 1, ultima);
-    else novoAte = Math.max(ate - 1, de);
-    if (novoDe === de && novoAte === ate) {
+    const novo = trechoSeguinte(frases.length, de, ate, mudanca);
+    if (!novo) {
       anuncio = mudanca === "anterior" ? "Início do capítulo." : mudanca === "encolher" ? "Só uma frase." : "Fim do capítulo.";
       return;
     }
-    modoFrase = { ...modoFrase, de: novoDe, ate: novoAte };
+    modoFrase = { ...modoFrase, de: novo[0], ate: novo[1] };
     void mostrarFrases();
   }
 
@@ -1182,7 +1178,7 @@
   <DestaquesDoLeitor
     controle={destaques}
     onOuvir={vozPossivel ? () => void ouvirDaqui() : undefined}
-    onTrecho={mudarTrecho}
+    onTrecho={(m) => (lado?.temModoFrase() ? lado.mudarTrecho(m) : mudarTrecho(m))}
   />
 
   <div class="palco" bind:this={palco}>

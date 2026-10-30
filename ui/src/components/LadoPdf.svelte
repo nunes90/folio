@@ -20,9 +20,12 @@
     naJanela,
     selecaoNoPdf,
   } from "../lib/destaquesPdf";
-  import { posicaoDaBarra } from "../lib/destaques";
+  import { posicaoDaBarra, resumo } from "../lib/destaques";
   import { inverterCanvas } from "../lib/pagina";
-  import { carregarVisor, paginaRenderizada } from "../lib/pdf";
+  import { camadaDeTexto, carregarVisor, paginaRenderizada } from "../lib/pdf";
+  import { frasesDaCamada, textoDoTrecho } from "../lib/frasesPdf";
+  import { trechoSeguinte, unir } from "../lib/frases";
+  import type { MudancaDeTrecho } from "../lib/controleDestaques.svelte";
   import { preferencias } from "../lib/preferencias.svelte";
   import { animarVirada, cancelarVirada, quadrosDaVirada } from "../lib/virada";
 
@@ -88,10 +91,11 @@
   export const apagarDesenho = desenhar;
 
   /** Leva o lado à página `n`, com a virada das preferências (no modo página a página). */
-  export async function ir(n: number) {
+  export async function ir(n: number, seguindoFrase = false) {
     const v = visor;
     if (!v || n < 1 || n > total || n === pagina) return;
-    destaques.esconder();
+    // Virar à mão encerra a barra; no modo frase, a página vira para acompanhar a frase.
+    if (!seguindoFrase) destaques.esconder();
     if (preferencias.modoPdf === "rolagem") {
       v.currentPageNumber = n;
       return;
@@ -146,8 +150,69 @@
     if (!sel || sel.isCollapsed || !sel.rangeCount) return false;
     const achada = selecaoNoPdf(sel.getRangeAt(0), conteiner, total, capituloDa);
     if (!achada) return false;
-    destaques.mostrarSelecao(achada.selecao, achada.posicao, focar);
+    destaques.mostrarSelecao(achada.selecao, achada.posicao, focar, true);
     return true;
+  }
+
+  // Modo frase, como no principal: Ctrl+D sem seleção seleciona a primeira frase da página e abre
+  // a barra; Alt+↑/↓ trocam de frase (passando de página nas pontas) e Alt+Shift+↑/↓ mudam o
+  // tamanho do trecho (a barra os manda para cá: `temModoFrase`). Para destacar sem o mouse.
+  let modoFrase: { pagina: number; frases: Range[]; de: number; ate: number } | null = null;
+  const frasesPorCamada = new WeakMap<Element, Range[]>();
+
+  export function temModoFrase(): boolean {
+    return modoFrase !== null;
+  }
+
+  /** A barra fechou: a seleção do modo frase era só a prévia. */
+  export function sairDoModoFrase() {
+    if (modoFrase) window.getSelection()?.removeAllRanges();
+    modoFrase = null;
+  }
+
+  async function iniciarModoFrase(n: number, onde: "inicio" | "fim") {
+    const camada = await camadaDeTexto(visor, () => paginaEl(n), n);
+    const frases = camada ? (frasesPorCamada.get(camada) ?? frasesDaCamada(camada, null)) : [];
+    if (camada) frasesPorCamada.set(camada, frases);
+    if (!frases.length) {
+      anuncio = "Não há texto selecionável nesta página para destacar.";
+      return;
+    }
+    const i = onde === "inicio" ? 0 : frases.length - 1;
+    modoFrase = { pagina: n, frases, de: i, ate: i };
+    mostrarFrases();
+  }
+
+  /** Seleciona o trecho do modo frase e abre a barra sobre ele (com o foco). */
+  function mostrarFrases() {
+    if (!modoFrase) return;
+    const trecho = unir(modoFrase.frases, modoFrase.de, modoFrase.ate);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(trecho);
+    verSelecao(true);
+    anuncio = `Frase: ${resumo(textoDoTrecho(trecho), 300)}`;
+  }
+
+  /** Alt+↑/↓ (outra frase; nas pontas, a página vizinha) e Alt+Shift+↑/↓ (trecho na página). */
+  export async function mudarTrecho(mudanca: MudancaDeTrecho) {
+    if (!modoFrase) return;
+    const { pagina: n, frases, de, ate } = modoFrase;
+    const novo = trechoSeguinte(frases.length, de, ate, mudanca);
+    if (novo) {
+      modoFrase = { ...modoFrase, de: novo[0], ate: novo[1] };
+      mostrarFrases();
+    } else if (mudanca === "proxima" || mudanca === "anterior") {
+      const vizinha = n + (mudanca === "proxima" ? 1 : -1);
+      if (vizinha < 1 || vizinha > total) {
+        anuncio = mudanca === "proxima" ? "Fim do documento." : "Início do documento.";
+        return;
+      }
+      await ir(vizinha, true);
+      await iniciarModoFrase(vizinha, mudanca === "proxima" ? "inicio" : "fim");
+    } else {
+      anuncio = mudanca === "estender" ? "Fim da página." : "Só uma frase.";
+    }
   }
 
   /** Soltar o ponteiro: a barra sobre a seleção ou, num destaque, a dele. */
@@ -174,7 +239,7 @@
   function aoTeclar(e: KeyboardEvent) {
     if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "d") {
       e.preventDefault();
-      if (!verSelecao(true)) anuncio = "Selecione um trecho deste lado para destacar.";
+      if (!verSelecao(true)) void iniciarModoFrase(pagina, "inicio");
       return;
     }
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
@@ -233,7 +298,7 @@
         zoom = scale;
       });
       eventos.on("pagechanging", ({ pageNumber }: { pageNumber: number }) => {
-        destaques.esconder();
+        if (!modoFrase) destaques.esconder();
         pagina = pageNumber;
       });
       v.setDocument(documento);

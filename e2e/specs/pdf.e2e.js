@@ -1,5 +1,5 @@
 // O caminho principal num PDF: abrir, virar, destacar e a página ao lado.
-import { Key, ate, destacar, esperarLivro, moldura, paleta } from "./ajuda.js";
+import { Key, ate, botao, destacar, esperarLivro, moldura, paleta } from "./ajuda.js";
 
 const paginaEm = (onde) =>
   browser.execute((o) => document.querySelector(`${o} input[type=number]`)?.value ?? "", onde);
@@ -39,5 +39,22 @@ describe("PDF", () => {
     await ate(() => moldura("com-lado"), "o lado não abriu");
     await ate(async () => (await paginaEm(".rodape-lado")) === "3", "o lado não está na página 3");
     expect(await paginaEm(".rodape-principal")).toBe("2");
+  });
+
+  it("no lado, Ctrl+D destaca sem o mouse: Alt+↓ passa de frase; a barra não oferece Ouvir", async () => {
+    await browser.keys([Key.Ctrl, "d"]);
+    const barra = await $(".barra-destaque");
+    await barra.waitForDisplayed();
+    const selecao = () => browser.execute(() => window.getSelection()?.toString() ?? "");
+    await ate(async () => (await selecao()).startsWith("Terceira"), "a seleção não está na frase do lado");
+    await browser.keys([Key.Alt, Key.ArrowDown]);
+    await ate(async () => (await selecao()).startsWith("Ultima"), "o Alt+↓ não passou de frase");
+    expect(await botao("Ouvir", '//*[contains(@class,"barra-destaque")]').isExisting()).toBe(false);
+    await botao("Verde", '//*[contains(@class,"barra-destaque")]').click();
+    await barra.waitForDisplayed({ reverse: true });
+    await ate(
+      () => browser.execute(() => document.querySelectorAll(".area-lado .camada-destaques > div").length > 0),
+      "o destaque não foi desenhado no lado",
+    );
   });
 });
