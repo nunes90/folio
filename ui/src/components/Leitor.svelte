@@ -5,6 +5,7 @@
   import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
   import CartaoFixado from "./CartaoFixado.svelte";
   import LadoEpub from "./LadoEpub.svelte";
+  import { mensagemAoAbrir } from "../lib/errosAoAbrir";
   import ControlesLado from "./ControlesLado.svelte";
   import ListaDestaques from "./ListaDestaques.svelte";
   import Carregando from "./Carregando.svelte";
@@ -375,8 +376,9 @@
     window.addEventListener("keydown", aoTeclar);
     window.addEventListener("pointerdown", aoApontarFora);
     abrir().catch((e) => {
-      erro = `Não foi possível abrir o livro: ${e}`;
-      log.error(erro);
+      // Uma frase sobre o que houve (M26b); o erro técnico vai para o log.
+      erro = mensagemAoAbrir(e, "epub");
+      log.error(`não foi possível abrir o livro: ${e}`);
     });
     let pararDeOuvir: (() => void) | undefined;
     vozDisponivel()

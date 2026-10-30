@@ -336,6 +336,11 @@
   }
 
   let gerandoCapas = false;
+  /**
+   * PDFs cuja capa não saiu nesta sessão (ex.: com senha): não tenta de novo a cada importação.
+   * Na próxima vez que o app abrir, tenta uma vez de novo.
+   */
+  const semCapa = new Set<string>();
 
   /** PDFs chegam sem capa: renderiza a primeira página com o pdf.js, um livro por vez. */
   async function gerarCapasDePdfs() {
@@ -344,13 +349,14 @@
     try {
       // Import dinâmico: o pdf.js só é carregado se houver PDF sem capa.
       let pdf: typeof import("./lib/pdf") | undefined;
-      for (const livro of livros.filter((l) => l.formato === "pdf" && !l.capa)) {
+      for (const livro of livros.filter((l) => l.formato === "pdf" && !l.capa && !semCapa.has(l.id))) {
         try {
           pdf ??= await import("./lib/pdf");
           const capa = await pdf.gerarCapa(await arquivoDoLivro(livro.id));
           const atualizado = await definirCapa(livro.id, capa);
           livros = livros.map((l) => (l.id === atualizado.id ? atualizado : l));
         } catch (e) {
+          semCapa.add(livro.id);
           log.warn(`falha ao gerar capa de ${livro.titulo}: ${e}`);
         }
       }

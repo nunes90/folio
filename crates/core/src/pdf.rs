@@ -8,7 +8,8 @@ use lopdf::Document;
 use crate::metadados::Metadados;
 
 #[derive(Debug, thiserror::Error)]
-#[error("PDF inválido")]
+// Para quem importa: o detalhe técnico (a causa do lopdf) fica na cadeia de erros, para o log.
+#[error("o PDF está danificado ou incompleto")]
 pub struct ErroPdf(#[from] lopdf::Error);
 
 /// Lê título e autores. PDFs criptografados só com senha de dono (restrições de cópia ou

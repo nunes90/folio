@@ -67,8 +67,9 @@ const LARGURA_CAPA = 400;
 /** Renderiza a primeira página como JPEG, para usar de capa. */
 export async function gerarCapa(dados: ArrayBuffer): Promise<Blob> {
   const tarefa = carregarPdf(dados);
-  const documento = await tarefa.promise;
   try {
+    // Dentro do try: um PDF que não abre (com senha, danificado) também libera a tarefa.
+    const documento = await tarefa.promise;
     const pagina = await documento.getPage(1);
     const viewport = pagina.getViewport({ scale: LARGURA_CAPA / pagina.getViewport({ scale: 1 }).width });
     const canvas = document.createElement("canvas");
