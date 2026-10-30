@@ -42,6 +42,10 @@ describe("PDF", () => {
   });
 
   it("no lado, Ctrl+D destaca sem o mouse: Alt+↓ passa de frase; a barra não oferece Ouvir", async () => {
+    await ate(
+      () => browser.execute(() => !!document.querySelector(".area-lado .textLayer span")),
+      "a camada de texto do lado não apareceu",
+    );
     await browser.keys([Key.Ctrl, "d"]);
     const barra = await $(".barra-destaque");
     await barra.waitForDisplayed();

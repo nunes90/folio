@@ -3,3 +3,4 @@
 node_modules/
 /ui/dist
 /ui/public/pdfjs
+/e2e/falhas

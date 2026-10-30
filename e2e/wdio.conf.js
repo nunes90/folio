@@ -79,6 +79,32 @@ export const config = {
 
   afterSession: () => fecharDriver(),
 
+  // Teste que falhou: a captura de tela (o workflow a guarda como artefato) e o estado da página,
+  // para entender a falha sem reproduzi-la.
+  afterTest: async (teste, _contexto, { passed }) => {
+    if (passed) return;
+    const pasta = path.join(aqui, "falhas");
+    fs.mkdirSync(pasta, { recursive: true });
+    const nome = teste.title.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 60);
+    await browser.saveScreenshot(path.join(pasta, `${nome}.png`)).catch(() => {});
+    const estado = await browser
+      .execute(() => {
+        const ativo = document.activeElement;
+        return {
+          janela: `${innerWidth}x${innerHeight}`,
+          foco: `${ativo?.tagName}.${ativo?.className}`,
+          focoNoLado: !!ativo?.closest(".area-lado"),
+          selecao: window.getSelection()?.toString() ?? "",
+          textoPrincipal: document.querySelectorAll(".conteudo .textLayer span").length,
+          textoLado: document.querySelectorAll(".area-lado .textLayer span").length,
+          paginasLado: document.querySelectorAll(".area-lado .page").length,
+          anuncios: [...document.querySelectorAll('[aria-live]')].map((a) => a.textContent).filter(Boolean),
+        };
+      })
+      .catch((erro) => String(erro));
+    console.log(`[falha] ${teste.title}: ${JSON.stringify(estado)}`);
+  },
+
   // O livro ainda abrindo, o pdf.js desenhando: as esperas são longas de propósito.
   connectionRetryTimeout: 120000,
 };

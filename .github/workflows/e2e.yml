@@ -59,3 +59,11 @@ jobs:
       - name: Testes
         working-directory: e2e
         run: xvfb-run --auto-servernum dbus-run-session -- npm test
+
+      # As capturas de tela dos testes que falharam (e2e/wdio.conf.js, afterTest).
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-falhas
+          path: e2e/falhas/
+          if-no-files-found: ignore
