@@ -641,5 +641,18 @@ docs/decisions/  # ADRs
   arquivo commitado precisa existir: o `tauri build` falha sem o recurso. `Sobre.svelte` (paleta "Sobre o Folio"):
   versão, licença e aviso de garantia. `README.md` e `docs/guia.md`. A velocidade da voz, que só estava na seção
   Texto (o PDF não a tem), foi também para a seção Página no PDF e para a paleta (`comandosDaVelocidade`).
+- **Queda com o Orca** (branch `fix/orca-crash-atributos`): o WebKitGTK (2.54) aborta o `WebKitWebProcess` quando um
+  leitor de tela pede os atributos de texto (`GetAttributeRun`) de certos objetos; bug aberto do WebKit, muito
+  provavelmente o 284246 (duplicata do 270354), sem símbolos para confirmar. O que derruba: um contêiner sem texto
+  próprio com botões da mesma fonte e cor (`li > button`, `div[role=group] > button`) e versos com `<br>` e espaço antes
+  de `</p>`. **Regra: contêiner só de botões não tem caixa própria**: `li { display: contents }` (segue item de lista
+  na árvore) ou `<div class="grupo-barra"><div class="grupo-sem-caixa" role="group" …>`; `font-weight` diferente no
+  botão não basta (a queda volta com botões vizinhos iguais). Nos livros, `tirarEspacoAposUltimaQuebra`
+  (`lib/contornosWebkit.ts`, no `load` dos dois lados); outra marcação de livro ainda pode derrubar: o defeito é do
+  WebKit. Teste: `./virtual.sh npm run test:leitor-de-tela` em `e2e/` (`atspi/rodar.sh`: barramento próprio, sem Orca;
+  `atspi/percorrer.py` percorre cada tela e todas as seções do Dom Casmurro; passo na CI). `./virtual.sh` em vez de
+  `xvfb-run … dbus-run-session`: sem portais (`XDG_DESKTOP_PORTAL_DIR` vazio), senão o `xdg-desktop-portal-hyprland` é
+  ativado na sessão isolada e cai a cada execução. O app ainda não percebe se o processo da página morrer (a janela fica
+  parada, sem aviso).
 - Próximo passo: executar o roteiro do Orca e corrigir o que aparecer; depois, o M6b (AppImage final e Release
   estável). Séries continua adiado.

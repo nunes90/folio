@@ -9,6 +9,7 @@
   import type { ControleDestaques } from "../lib/controleDestaques.svelte";
   import type { MudancaDeTrecho } from "../lib/controleDestaques.svelte";
   import { aplicarMarcaTexto, hexDaCor, posicaoNoIframe, resumo, selecaoNoEpub } from "../lib/destaques";
+  import { tirarEspacoAposUltimaQuebra } from "../lib/contornosWebkit";
   import { frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "../lib/frases";
   import {
     criarView,
@@ -270,6 +271,7 @@
       // do lado são tratadas aqui; as outras (Esc, F1, F6, Ctrl+K…) seguem para a janela.
       v.addEventListener("load", (e) => {
         const { doc, index } = (e as CustomEvent<{ doc: Document; index: number }>).detail;
+        tirarEspacoAposUltimaQuebra(doc);
         doc.addEventListener("pointerup", () => setTimeout(() => verSelecao(doc, index, false)));
         doc.addEventListener("pointerdown", () => destaques.esconder());
         doc.addEventListener("keydown", (original) => {

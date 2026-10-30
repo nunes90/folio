@@ -4,9 +4,8 @@
 // e cada sessão usa pastas de dados novas (XDG_*), sem tocar nos dados de ninguém.
 //
 // Rodar: compilar o app (`cargo tauri build --debug --no-bundle`; com o `cargo tauri dev` aberto,
-// use outra pasta e FOLIO_APP) e, nesta pasta, `npm ci` e
-// `xvfb-run --auto-servernum dbus-run-session -- npm test`. As janelas abrem na tela virtual do
-// xvfb-run (ver GDK_BACKEND abaixo): nada aparece na tela de quem está usando o computador.
+// use outra pasta e FOLIO_APP) e, nesta pasta, `npm ci` e `./virtual.sh npm test`. As janelas abrem
+// numa tela virtual (ver GDK_BACKEND abaixo): nada aparece na tela de quem está usando o computador.
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
@@ -40,11 +39,18 @@ export const config = {
   maxInstances: 1,
   // Uma sessão do app por arquivo de teste: o livro chega como no "Abrir com" do sistema (o app
   // o importa e abre). Pastas de dados novas a cada sessão.
-  capabilities: [
-    sessao("specs/epub.e2e.js", "dom-casmurro.epub"),
-    sessao("specs/pdf.e2e.js", "texto.pdf"),
-    sessao("specs/senha.e2e.js", "quebrados/pdf-com-senha.pdf"),
-  ],
+  // Com o barramento de acessibilidade (atspi/rodar.sh), só as verificações de leitor de tela.
+  capabilities: process.env.AT_SPI_BUS_ADDRESS
+    ? [
+        process.env.FOLIO_SPEC === "pdf"
+          ? sessao("specs/leitor-de-tela-pdf.e2e.js", "texto.pdf")
+          : sessao("specs/leitor-de-tela.e2e.js", "dom-casmurro.epub"),
+      ]
+    : [
+        sessao("specs/epub.e2e.js", "dom-casmurro.epub"),
+        sessao("specs/pdf.e2e.js", "texto.pdf"),
+        sessao("specs/senha.e2e.js", "quebrados/pdf-com-senha.pdf"),
+      ],
   reporters: ["spec"],
   framework: "mocha",
   mochaOpts: { ui: "bdd", timeout: 60000 },
