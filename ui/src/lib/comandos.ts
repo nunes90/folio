@@ -94,6 +94,36 @@ export function comandosDoIndice(
   return lista;
 }
 
+/** A velocidade da voz, um passo por vez (some no limite). Nos dois formatos (M26e). */
+export function comandosDaVelocidade(
+  p: Preferencias,
+  mudar: (mudancas: Partial<Preferencias>) => void,
+): Comando[] {
+  const { min, max, passo } = LIMITES.velocidadeVoz;
+  const v = p.velocidadeVoz;
+  const dica = `agora: ${v === 0 ? "normal" : v > 0 ? `+${v}` : v}`;
+  const lista: Comando[] = [];
+  if (v < max)
+    lista.push({
+      id: "voz-mais-rapida",
+      titulo: "Voz mais rápida",
+      grupo: "Voz",
+      dica,
+      palavras: "velocidade leitura em voz alta",
+      executar: () => mudar({ velocidadeVoz: Math.min(max, v + passo) }),
+    });
+  if (v > min)
+    lista.push({
+      id: "voz-mais-lenta",
+      titulo: "Voz mais lenta",
+      grupo: "Voz",
+      dica,
+      palavras: "velocidade leitura em voz alta",
+      executar: () => mudar({ velocidadeVoz: Math.max(min, v - passo) }),
+    });
+  return lista;
+}
+
 /** As ações do lado (M25b) que a paleta oferece. */
 export interface AcoesDoLado {
   /** Abre (ou leva) o lado até a seção. */

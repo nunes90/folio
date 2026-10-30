@@ -3,6 +3,8 @@ name = "folio-core"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 lopdf = { version = "0.45.0", default-features = false }

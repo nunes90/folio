@@ -49,6 +49,13 @@
       "appimage"
     ],
     "category": "Productivity",
+    "license": "GPL-3.0-or-later",
+    "licenseFile": "../../LICENSE",
+    "copyright": "Copyright © 2026 nunes90",
+    "resources": {
+      "../../LICENSE": "LICENSE",
+      "../../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md"
+    },
     "shortDescription": "Leitor de EPUB e PDF acessível",
     "longDescription": "Folio é um leitor de livros EPUB e PDF para Linux, com foco em acessibilidade (teclado, leitor de tela, leitura em voz alta) e animações suaves.",
     "icon": [

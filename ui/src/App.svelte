@@ -2,6 +2,7 @@
   import { onMount, type Component } from "svelte";
   import { isTauri } from "@tauri-apps/api/core";
   import Atalhos from "./components/Atalhos.svelte";
+  import Sobre from "./components/Sobre.svelte";
   import Paleta from "./components/Paleta.svelte";
   import Avisos from "./components/Avisos.svelte";
   import Biblioteca from "./components/Biblioteca.svelte";
@@ -65,6 +66,7 @@
   let sessao: SessaoDeLeitura | null = null;
   let importando = $state(false);
   let ajudaAberta = $state(false);
+  let sobreAberto = $state(false);
   let paletaAberta = $state(false);
   /** O que o leitor aberto oferece à paleta (índice, página, texto…); vazio na biblioteca. */
   let doLeitor = $state<ComandosDoLeitor>({ comandos: [] });
@@ -202,6 +204,13 @@
       grupo: "Ajuda",
       teclas: [["F1"]],
       executar: () => (ajudaAberta = true),
+    });
+    lista.push({
+      id: "sobre",
+      titulo: "Sobre o Folio",
+      grupo: "Ajuda",
+      palavras: "versão licença",
+      executar: () => (sobreAberto = true),
     });
     // Livros por último: são muitos, e o nome do comando costuma ser o que se procura.
     if (naBiblioteca)
@@ -580,6 +589,7 @@
 <svelte:window onkeydown={aoTeclar} onkeydowncapture={aoAgir} onpointerdown={aoAgir} onwheel={aoAgir} />
 
 <Atalhos {contexto} aberto={ajudaAberta} onFechar={() => (ajudaAberta = false)} />
+<Sobre aberto={sobreAberto} onFechar={() => (sobreAberto = false)} />
 <Paleta
   aberto={paletaAberta}
   {comandos}

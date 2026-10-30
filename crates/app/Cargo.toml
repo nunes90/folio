@@ -3,6 +3,8 @@ name = "folio"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

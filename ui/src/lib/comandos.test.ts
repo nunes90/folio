@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   comandosDaPagina,
+  comandosDaVelocidade,
   comandosDoLado,
   comandosDoIndice,
   comandosDoTexto,
@@ -194,5 +195,29 @@ describe("ladoPorTermo", () => {
     expect(ladoPorTermo("ao lado 301", 300, false, abrir)).toEqual([]);
     expect(ladoPorTermo("87", 300, false, abrir)).toEqual([]);
     expect(ladoPorTermo("lado", 300, false, abrir)).toEqual([]);
+  });
+});
+
+describe("comandosDaVelocidade", () => {
+  it("mais rápida e mais lenta, um passo por vez, dizendo a atual", () => {
+    const mudar = vi.fn();
+    const lista = comandosDaVelocidade({ ...PADRAO, velocidadeVoz: 20 }, mudar);
+    expect(lista.map((c) => c.titulo)).toEqual(["Voz mais rápida", "Voz mais lenta"]);
+    expect(lista[0]!.dica).toBe("agora: +20");
+    lista[0]!.executar();
+    expect(mudar).toHaveBeenCalledWith({ velocidadeVoz: 30 });
+    lista[1]!.executar();
+    expect(mudar).toHaveBeenCalledWith({ velocidadeVoz: 10 });
+  });
+
+  it("some no limite", () => {
+    const max = LIMITES.velocidadeVoz.max;
+    const min = LIMITES.velocidadeVoz.min;
+    expect(comandosDaVelocidade({ ...PADRAO, velocidadeVoz: max }, nada).map((c) => c.titulo)).toEqual([
+      "Voz mais lenta",
+    ]);
+    expect(comandosDaVelocidade({ ...PADRAO, velocidadeVoz: min }, nada).map((c) => c.titulo)).toEqual([
+      "Voz mais rápida",
+    ]);
   });
 });
