@@ -164,6 +164,39 @@ def pdf_com_info(info: bytes) -> bytes:
     return bytes(saida)
 
 
+def pdf_com_texto(titulo: bytes, paginas: list[list[bytes]]) -> bytes:
+    """PDF com texto de verdade (Helvetica), uma lista de linhas por página (testes E2E, M26c)."""
+    n = len(paginas)
+    filhos = b" ".join(b"%d 0 R" % (5 + 2 * i) for i in range(n))
+    objetos = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [" + filhos + b"] /Count %d >>" % n,
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Title (" + titulo + b") >>",
+    ]
+    for i, linhas in enumerate(paginas):
+        corpo = b"BT /F1 14 Tf 18 TL 72 720 Td " + b" ".join(b"(" + l + b") Tj T*" for l in linhas) + b" ET"
+        objetos.append(
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents %d 0 R "
+            b"/Resources << /Font << /F1 3 0 R >> >> >>" % (6 + 2 * i)
+        )
+        objetos.append(b"<< /Length %d >>\nstream\n" % len(corpo) + corpo + b"\nendstream")
+    saida = bytearray(b"%PDF-1.7\n")
+    posicoes = []
+    for numero, corpo in enumerate(objetos, start=1):
+        posicoes.append(len(saida))
+        saida += b"%d 0 obj\n" % numero + corpo + b"\nendobj\n"
+    xref = len(saida)
+    saida += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objetos) + 1)
+    for pos in posicoes:
+        saida += b"%010d 00000 n \n" % pos
+    saida += b"trailer\n<< /Size %d /Root 1 0 R /Info 4 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (
+        len(objetos) + 1,
+        xref,
+    )
+    return bytes(saida)
+
+
 def pdfs_problematicos() -> None:
     """PDFs protegidos, com senha, com a xref errada e cortado (M26b), a partir de metadados-utf16.pdf.
 
@@ -227,4 +260,14 @@ if __name__ == "__main__":
     (AQUI / "pdf-com-lixo-antes.pdf").write_bytes(b"\x00" * 100 + PDF_MINIMO)
     epub(AQUI / "quebrados/sem-indice.epub", b"application/epub+zip", opf=OPF_SEM_INDICE, com_nav=False)
     epub(AQUI / "quebrados/opf-invalido.epub", b"application/epub+zip", opf=OPF_INVALIDO)
+    (AQUI / "texto.pdf").write_bytes(
+        pdf_com_texto(
+            b"Documento de Teste",
+            [
+                [b"Primeira pagina do documento. Esta e a segunda frase da pagina um.", b"", b"Mais um paragrafo curto."],
+                [b"Segunda pagina do documento. Outra frase para destacar.", b"", b"Fim da pagina dois."],
+                [b"Terceira pagina do documento. Ultima frase do arquivo."],
+            ],
+        )
+    )
     pdfs_problematicos()

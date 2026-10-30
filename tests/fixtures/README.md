@@ -9,6 +9,7 @@
 | `minimo.pdf` | PDF de uma página em branco, sem metadados |
 | `metadados-utf16.pdf` | 2 páginas; título e autores em UTF-16BE (`Memórias Póstumas`, dois autores separados por `;`) |
 | `metadados-pdfdoc.pdf` | 2 páginas; título em PDFDocEncoding com escapes octais e parênteses; autor só com espaços |
+| `texto.pdf` | 3 páginas com texto de verdade (Helvetica), título "Documento de Teste" (testes E2E) |
 | `pdf-com-lixo-antes.pdf` | PDF com 100 bytes nulos antes de `%PDF-` (leitores como o Acrobat aceitam) |
 | `quebrados/mimetype-errado.epub` | ZIP cujo `mimetype` diz `application/zip` (rejeitado) |
 | `quebrados/sem-mimetype.epub` | ZIP sem o arquivo `mimetype`, mas com `META-INF/container.xml` (aceito: irregular, mas legível) |

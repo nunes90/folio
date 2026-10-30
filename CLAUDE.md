@@ -606,5 +606,14 @@ docs/decisions/  # ADRs
   `senhaCancelada`). Várias falhas de importação viram um aviso só. A capa de um PDF que não abre é tentada uma
   vez por sessão (`semCapa` no `App`), e o `gerarCapa` libera a tarefa do pdf.js mesmo quando falha. Roteiro de
   desempenho em `docs/testes/desempenho.md` (10 cenários e os arquivos problemáticos) e `scripts/memoria.sh`.
-- Próximo passo: M26c (E2E com `tauri-driver` na CI), M26d (Orca e "tudo sem mouse"), M26e (README, guia e
-  licença) e M6b. Séries continua adiado.
+- **M26c** (branch `test/m26c-e2e`): testes E2E em `e2e/` (projeto próprio: WebdriverIO + `tauri-driver` +
+  WebKitWebDriver), no app compilado, numa tela virtual (`xvfb-run`). Workflow `.github/workflows/e2e.yml`. Uma
+  sessão do app por arquivo: `epub.e2e.js` (abrir, virar, F1, modo foco, destacar, lado a lado, voltar),
+  `pdf.e2e.js` (abrir, texto, virar, destacar, "ao lado 3") e `senha.e2e.js` (Cancelar, senha errada e certa);
+  14 testes, ~21 s. O livro chega por `tauri:options.args`, como no "Abrir com" (o WebDriver não alcança o diálogo
+  de arquivo), e cada sessão usa `XDG_*` numa pasta temporária. Fixture `texto.pdf`. **Rodam aqui sem incomodar**:
+  o Xvfb é invisível (requer `xorg-server-xvfb`; com o `cargo tauri dev` aberto, compilar em outra pasta e passar
+  `FOLIO_APP`; `CARGO_TARGET_DIR` relativo é resolvido a partir de `crates/app`: usar caminho absoluto). Armadilhas
+  do WebKitWebDriver: `getText` não enxerga títulos com `text-overflow` (ler `textContent`, `texto()` em
+  `specs/ajuda.js`); o seletor `aria/` acha também os itens da paleta fechada (procurar dentro do cabeçalho).
+- Próximo passo: M26d (Orca e "tudo sem mouse"), M26e (README, guia e licença) e M6b. Séries continua adiado.
