@@ -31,7 +31,7 @@
   import ListaDestaques from "./ListaDestaques.svelte";
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
-  import { unir } from "../lib/frases";
+  import { trechoSeguinte, unir } from "../lib/frases";
   import {
     frasesDaCamada,
     frasesParaFalar,
@@ -81,7 +81,7 @@
   import type { ItemIndice } from "../lib/foliate";
   import { log } from "../lib/log";
   import { inverterCanvas, PAGINAS, resolverPagina } from "../lib/pagina";
-  import { carregarPdf, carregarVisor, paginaRenderizada } from "../lib/pdf";
+  import { camadaDeTexto as camadaDe, carregarPdf, carregarVisor, paginaRenderizada } from "../lib/pdf";
   import { atualizarPreferencias, preferencias } from "../lib/preferencias.svelte";
   import { achatar, converterSumario, itemAtual, type ItemSumarioPdf } from "../lib/sumario";
   import { resolverTema } from "../lib/temas";
@@ -214,6 +214,7 @@
     aoFecharBarra: () => {
       if (modoFrase) window.getSelection()?.removeAllRanges();
       modoFrase = null;
+      lado?.sairDoModoFrase();
       selecaoDaBarra = null;
       // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou, e a
       // frase volta a ser só o realce.
@@ -424,7 +425,7 @@
     });
     eventos.on("pagechanging", ({ pageNumber }: { pageNumber: number }) => {
       // No modo frase, a página muda para acompanhar a frase: a barra vai junto.
-      if (!modoFrase) destaques.esconder();
+      if (!modoFrase) destaques.esconderDe(false);
       pagina = pageNumber;
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
       moverContagens({ rotulo: `página ${pageNumber}`, pagina: pageNumber });
@@ -434,7 +435,7 @@
     });
     eventos.on("scalechanging", ({ scale }: { scale: number }) => {
       // A barra fica fora de lugar só se o zoom mudou de fato.
-      if (scale !== zoom) destaques.esconder();
+      if (scale !== zoom) destaques.esconderDe(false);
       zoom = scale;
     });
     eventos.on(
@@ -1180,24 +1181,9 @@
     }
   }
 
-  /** A camada de texto da página `n`, esperando o pdf.js terminar de montá-la (até 1,5 s). */
-  async function camadaDeTexto(n: number): Promise<Element | null> {
-    const pronta = () => paginaEl(n)?.querySelector(".textLayer:has(span)") ?? null;
-    if (pronta() || !visor) return pronta();
-    const v = visor;
-    await new Promise<void>((resolver) => {
-      const aoMontar = ({ pageNumber }: { pageNumber: number }) => {
-        if (pageNumber === n) terminar();
-      };
-      const limite = setTimeout(terminar, 1500);
-      function terminar() {
-        clearTimeout(limite);
-        v.eventBus.off("textlayerrendered", aoMontar);
-        resolver();
-      }
-      v.eventBus.on("textlayerrendered", aoMontar);
-    });
-    return pronta();
+  /** A camada de texto da página `n`, esperando o pdf.js terminar de montá-la. */
+  function camadaDeTexto(n: number): Promise<Element | null> {
+    return camadaDe(visor, () => paginaEl(n), n);
   }
 
   /** As frases da página `n` (vazio se ela não tiver texto, ex.: um PDF escaneado). */
@@ -1262,16 +1248,12 @@
       await iniciarModoFrase(n - 1, "fim");
       return;
     }
-    let [novoDe, novoAte] = [de, ate];
-    if (mudanca === "proxima") novoDe = novoAte = ate + 1;
-    else if (mudanca === "anterior") novoDe = novoAte = de - 1;
-    else if (mudanca === "estender") novoAte = Math.min(ate + 1, ultima);
-    else novoAte = Math.max(ate - 1, de);
-    if (novoDe === de && novoAte === ate) {
+    const novo = trechoSeguinte(frases.length, de, ate, mudanca);
+    if (!novo) {
       anuncio = mudanca === "estender" ? "Fim da página." : "Só uma frase.";
       return;
     }
-    modoFrase = { ...modoFrase, de: novoDe, ate: novoAte };
+    modoFrase = { ...modoFrase, de: novo[0], ate: novo[1] };
     mostrarFrases();
   }
 
@@ -1603,7 +1585,7 @@
   <DestaquesDoLeitor
     controle={destaques}
     onOuvir={vozPossivel ? () => void ouvirDaqui() : undefined}
-    onTrecho={(m) => void mudarTrecho(m)}
+    onTrecho={(m) => (lado?.temModoFrase() ? void lado.mudarTrecho(m) : void mudarTrecho(m))}
   />
 </MolduraLeitor>
 

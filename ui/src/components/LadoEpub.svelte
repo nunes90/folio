@@ -7,7 +7,9 @@
   // própria: os controles ficam no rodapé (ControlesLado), e as duas áreas têm a mesma altura.
   import { onMount } from "svelte";
   import type { ControleDestaques } from "../lib/controleDestaques.svelte";
-  import { aplicarMarcaTexto, hexDaCor, posicaoNoIframe, selecaoNoEpub } from "../lib/destaques";
+  import type { MudancaDeTrecho } from "../lib/controleDestaques.svelte";
+  import { aplicarMarcaTexto, hexDaCor, posicaoNoIframe, resumo, selecaoNoEpub } from "../lib/destaques";
+  import { frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "../lib/frases";
   import {
     criarView,
     desenhoMarcaTexto,
@@ -118,8 +120,72 @@
     const range = sel.getRangeAt(0);
     const selecao = selecaoNoEpub(view, indice, range);
     if (!selecao) return false;
-    destaques.mostrarSelecao(selecao, posicaoNoIframe(range), focar);
+    destaques.mostrarSelecao(selecao, posicaoNoIframe(range), focar, true);
     return true;
+  }
+
+  // Modo frase, como no principal: Ctrl+D sem seleção seleciona a frase atual (a primeira da
+  // página) e abre a barra; Alt+↑/↓ trocam de frase e Alt+Shift+↑/↓ mudam o tamanho do trecho
+  // (a barra os manda para cá: `temModoFrase`). Para destacar deste lado sem o mouse.
+  let modoFrase: { doc: Document; indice: number; frases: Range[]; de: number; ate: number } | null =
+    null;
+  const frasesPorCapitulo = new WeakMap<Document, Range[]>();
+
+  export function temModoFrase(): boolean {
+    return modoFrase !== null;
+  }
+
+  /** A barra fechou: a seleção do modo frase era só a prévia. */
+  export function sairDoModoFrase() {
+    modoFrase?.doc.getSelection()?.removeAllRanges();
+    modoFrase = null;
+  }
+
+  async function iniciarModoFrase() {
+    const inicio = view?.lastLocation?.range;
+    const doc = inicio?.startContainer.ownerDocument;
+    const indice = view?.renderer.getContents().find((c) => c.doc === doc)?.index;
+    if (!inicio || !doc || indice === undefined) return;
+    const idioma = view?.book.metadata?.language;
+    const frases =
+      frasesPorCapitulo.get(doc) ??
+      frasesDoDocumento(doc, (Array.isArray(idioma) ? idioma[0] : idioma) ?? null);
+    frasesPorCapitulo.set(doc, frases);
+    if (!frases.length) {
+      anuncio = "Não há texto nesta página para destacar.";
+      return;
+    }
+    const i = indiceDaFraseEm(frases, inicio);
+    modoFrase = { doc, indice, frases, de: i, ate: i };
+    await mostrarFrases();
+  }
+
+  /** Seleciona o trecho do modo frase, vira a página até ele e abre a barra (com o foco). */
+  async function mostrarFrases() {
+    if (!view || !modoFrase) return;
+    const { doc, indice, frases, de, ate } = modoFrase;
+    const trecho = unir(frases, de, ate);
+    await view.renderer.scrollToAnchor(trecho, true);
+    const sel = doc.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(trecho);
+    await new Promise(requestAnimationFrame);
+    if (!modoFrase) return;
+    verSelecao(doc, indice, true);
+    anuncio = `Frase: ${resumo(trecho.toString(), 300)}`;
+  }
+
+  /** Alt+↑/↓ (outra frase) e Alt+Shift+↑/↓ (trecho menor ou maior), dentro do capítulo. */
+  export function mudarTrecho(mudanca: MudancaDeTrecho) {
+    if (!modoFrase) return;
+    const novo = trechoSeguinte(modoFrase.frases.length, modoFrase.de, modoFrase.ate, mudanca);
+    if (!novo) {
+      anuncio =
+        mudanca === "anterior" ? "Início do capítulo." : mudanca === "encolher" ? "Só uma frase." : "Fim do capítulo.";
+      return;
+    }
+    modoFrase = { ...modoFrase, de: novo[0], ate: novo[1] };
+    void mostrarFrases();
   }
 
   /**
@@ -146,7 +212,7 @@
         doc && indice !== undefined
           ? verSelecao(doc, indice, true)
           : (view?.renderer.getContents() ?? []).some((c) => verSelecao(c.doc, c.index, true));
-      if (!comSelecao) anuncio = "Selecione um trecho deste lado para destacar.";
+      if (!comSelecao) void iniciarModoFrase();
       return true;
     }
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return false;
@@ -188,10 +254,11 @@
       v.addEventListener("show-annotation", (e) => {
         const { value, range } = (e as CustomEvent<{ value: string; range: Range }>).detail;
         const d = destaques.porLocal(value);
-        if (d) destaques.mostrarDestaque(d, posicaoNoIframe(range));
+        if (d) destaques.mostrarDestaque(d, posicaoNoIframe(range), true);
       });
       v.addEventListener("relocate", (e) => {
-        destaques.esconder();
+        // No modo frase, a página vira para acompanhar a frase: a barra vai junto.
+        if (!modoFrase) destaques.esconderDe(true);
         const { fraction, tocItem } = (e as CustomEvent<DetalheRelocate>).detail;
         aoRelocar?.();
         progresso = fraction;

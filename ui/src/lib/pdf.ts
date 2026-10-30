@@ -47,6 +47,32 @@ export function paginaRenderizada(v: VisorComEventos, n: number): Promise<void> 
   });
 }
 
+/**
+ * A camada de texto da página (o `.page` que `pagina()` devolve), esperando o pdf.js terminar de
+ * montá-la (até 1,5 s). Igual nos dois lados (M25c).
+ */
+export async function camadaDeTexto(
+  v: VisorComEventos | undefined,
+  pagina: () => Element | null,
+  n: number,
+): Promise<Element | null> {
+  const pronta = () => pagina()?.querySelector(".textLayer:has(span)") ?? null;
+  if (pronta() || !v) return pronta();
+  await new Promise<void>((resolver) => {
+    const aoMontar = ({ pageNumber }: { pageNumber: number }) => {
+      if (pageNumber === n) terminar();
+    };
+    const limite = setTimeout(terminar, 1500);
+    function terminar() {
+      clearTimeout(limite);
+      v!.eventBus.off("textlayerrendered", aoMontar);
+      resolver();
+    }
+    v.eventBus.on("textlayerrendered", aoMontar);
+  });
+  return pronta();
+}
+
 /** Recursos copiados para public/pdfjs por scripts/copiar-pdfjs.mjs. */
 const RECURSOS = `${import.meta.env.BASE_URL}pdfjs/`;
 

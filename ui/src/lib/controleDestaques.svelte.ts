@@ -63,7 +63,9 @@ function ordenar(lista: Destaque[]): Destaque[] {
 export class ControleDestaques {
   lista = $state<Destaque[]>([]);
   /** A barra aberta: sobre a seleção (`destaque` null) ou sobre um destaque existente. */
-  barra = $state<(PosicaoBarra & { focar: boolean; destaque: Destaque | null }) | null>(null);
+  barra = $state<
+    (PosicaoBarra & { focar: boolean; destaque: Destaque | null; doLado: boolean }) | null
+  >(null);
   /** Destaque cuja nota está sendo editada. */
   notaDe = $state<Destaque | null>(null);
   /**
@@ -94,16 +96,19 @@ export class ControleDestaques {
     return this.lista.find((d) => d.local === local);
   }
 
-  /** Abre a barra sobre um trecho selecionado. `focar`: aberta pelo teclado (Ctrl+D). */
-  mostrarSelecao(selecao: Selecao, posicao: PosicaoBarra, focar: boolean): void {
+  /**
+   * Abre a barra sobre um trecho selecionado. `focar`: aberta pelo teclado (Ctrl+D). `doLado`: o
+   * trecho está no lado novo (M25), onde a barra não oferece a voz, que é só do principal.
+   */
+  mostrarSelecao(selecao: Selecao, posicao: PosicaoBarra, focar: boolean, doLado = false): void {
     this.#selecao = selecao;
-    this.barra = { ...posicao, focar, destaque: null };
+    this.barra = { ...posicao, focar, destaque: null, doLado };
   }
 
   /** Abre a barra sobre um destaque (clicado). */
-  mostrarDestaque(destaque: Destaque, posicao: PosicaoBarra): void {
+  mostrarDestaque(destaque: Destaque, posicao: PosicaoBarra, doLado = false): void {
     this.#selecao = null;
-    this.barra = { ...posicao, focar: false, destaque };
+    this.barra = { ...posicao, focar: false, destaque, doLado };
   }
 
   /** Esconde a barra sem mexer no foco (ex.: virou a página, clicou fora). */
@@ -111,6 +116,14 @@ export class ControleDestaques {
     if (!this.barra) return;
     this.barra = null;
     this.#a.aoFecharBarra?.();
+  }
+
+  /**
+   * Um lado mudou de zoom ou de página: esconde a barra só se ela for daquele lado. Ao abrir o lado
+   * novo, o principal refaz o zoom, às vezes depois de a barra já estar aberta no lado.
+   */
+  esconderDe(doLado: boolean): void {
+    if (this.barra?.doLado === doLado) this.esconder();
   }
 
   /** Fecha a barra; se ela tinha o foco (teclado), devolve-o ao texto. */

@@ -36,7 +36,8 @@
       <Icone nome="anterior" /><span class="rotulo">Página anterior</span>
     </button>
     <label>
-      Página
+      <!-- A palavra some da tela junto com os outros rótulos (o nome do campo fica). -->
+      <span class="rotulo">Página</span>
       <!-- Largura dos dígitos do total: mudar de página não mexe nos controles. -->
       <input
         type="number"
@@ -76,8 +77,15 @@
     gap: 0.75rem;
   }
 
+  /* Sem espaço, os grupos quebram de linha em vez de invadir o vizinho. */
   :global(.rodape-compacto) .barra {
     flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+  }
+
+  /* Os grupos entram direto na linha da metade do rodapé, ao lado da voz ou do "Fechar o lado". */
+  :global(.com-lado) .barra {
+    display: contents;
   }
 
   .grupo {
@@ -90,6 +98,18 @@
   output,
   label {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Numa linha só: "Página [12] de 300" empilhado deixava o rodapé alto. */
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    white-space: nowrap;
+  }
+
+  .grupo {
+    flex: none;
   }
 
   /* "1.000%" é o mais largo: o zoom não empurra os botões ao mudar. */

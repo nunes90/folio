@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { blocosDe, frasesDe, frasesDoDocumento, indiceDaFraseEm, unir } from "./frases";
+import { blocosDe, frasesDe, frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "./frases";
 
 function doc(html: string): Document {
   const d = document.implementation.createHTMLDocument("t");
@@ -78,5 +78,24 @@ describe("frasesDoDocumento", () => {
   it("unir junta frases seguidas num intervalo só", () => {
     const frases = frasesDoDocumento(d, "pt");
     expect(unir(frases, 1, 3).toString()).toBe("Primeira. Segunda.Terceira.");
+  });
+});
+
+describe("trechoSeguinte (Alt+↑/↓ e Alt+Shift+↑/↓)", () => {
+  it("próxima e anterior vão a uma frase só, a partir das pontas do trecho", () => {
+    expect(trechoSeguinte(5, 1, 3, "proxima")).toEqual([4, 4]);
+    expect(trechoSeguinte(5, 1, 3, "anterior")).toEqual([0, 0]);
+  });
+
+  it("estender e encolher mexem só no fim do trecho", () => {
+    expect(trechoSeguinte(5, 1, 3, "estender")).toEqual([1, 4]);
+    expect(trechoSeguinte(5, 1, 3, "encolher")).toEqual([1, 2]);
+  });
+
+  it("nas pontas, null: não há para onde ir", () => {
+    expect(trechoSeguinte(5, 4, 4, "proxima")).toBeNull();
+    expect(trechoSeguinte(5, 0, 0, "anterior")).toBeNull();
+    expect(trechoSeguinte(5, 1, 4, "estender")).toBeNull();
+    expect(trechoSeguinte(5, 2, 2, "encolher")).toBeNull();
   });
 });
