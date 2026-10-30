@@ -280,4 +280,27 @@ describe("ControleDestaques", () => {
     c.comandos(vi.fn()).find((x) => x.titulo === "Ir ao fixado: escondi-me atrás da porta")!.executar();
     expect(a.irPara).toHaveBeenCalledWith(d);
   });
+
+  it("esconderDe: o zoom ou a página de um lado só fecha a barra daquele lado", () => {
+    const { c } = novo();
+    c.mostrarSelecao(selecao, pos, true, true);
+    expect(c.barra?.doLado).toBe(true);
+    c.esconderDe(false); // o principal refez o zoom: a barra é do lado novo
+    expect(c.barra).not.toBeNull();
+    c.esconderDe(true);
+    expect(c.barra).toBeNull();
+    c.mostrarSelecao(selecao, pos, false);
+    c.esconderDe(true);
+    expect(c.barra).not.toBeNull();
+    c.esconderDe(false);
+    expect(c.barra).toBeNull();
+  });
+
+  it("um destaque clicado no lado também é uma barra do lado", () => {
+    const { c } = novo();
+    c.mostrarDestaque(destaque(), pos, true);
+    expect(c.barra?.doLado).toBe(true);
+    c.mostrarDestaque(destaque(), pos);
+    expect(c.barra?.doLado).toBe(false);
+  });
 });

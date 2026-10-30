@@ -228,7 +228,7 @@
       for (const d of destaques.lista) {
         const local = lerLocalPdf(d.local);
         if (local?.pagina === n && acertou(local.retangulos, x, y)) {
-          destaques.mostrarDestaque(d, posicaoDaBarra(naJanela(local.retangulos[0]!, caixa)));
+          destaques.mostrarDestaque(d, posicaoDaBarra(naJanela(local.retangulos[0]!, caixa)), true);
           return;
         }
       }
@@ -294,11 +294,11 @@
         focar();
       });
       eventos.on("scalechanging", ({ scale }: { scale: number }) => {
-        if (scale !== zoom) destaques.esconder();
+        if (scale !== zoom) destaques.esconderDe(true);
         zoom = scale;
       });
       eventos.on("pagechanging", ({ pageNumber }: { pageNumber: number }) => {
-        if (!modoFrase) destaques.esconder();
+        if (!modoFrase) destaques.esconderDe(true);
         pagina = pageNumber;
       });
       v.setDocument(documento);

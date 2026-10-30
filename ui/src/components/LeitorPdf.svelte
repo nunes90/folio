@@ -425,7 +425,7 @@
     });
     eventos.on("pagechanging", ({ pageNumber }: { pageNumber: number }) => {
       // No modo frase, a página muda para acompanhar a frase: a barra vai junto.
-      if (!modoFrase) destaques.esconder();
+      if (!modoFrase) destaques.esconderDe(false);
       pagina = pageNumber;
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
       moverContagens({ rotulo: `página ${pageNumber}`, pagina: pageNumber });
@@ -435,7 +435,7 @@
     });
     eventos.on("scalechanging", ({ scale }: { scale: number }) => {
       // A barra fica fora de lugar só se o zoom mudou de fato.
-      if (scale !== zoom) destaques.esconder();
+      if (scale !== zoom) destaques.esconderDe(false);
       zoom = scale;
     });
     eventos.on(

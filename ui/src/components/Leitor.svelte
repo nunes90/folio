@@ -549,7 +549,7 @@
     });
     v.addEventListener("relocate", (e) => {
       // No modo frase, a página vira para acompanhar a frase: a barra vai junto.
-      if (!modoFrase) destaques.esconder();
+      if (!modoFrase) destaques.esconderDe(false);
       const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;
       progresso = fraction;
       if (cfi) cfiAtual = cfi;

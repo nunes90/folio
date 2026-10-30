@@ -106,24 +106,28 @@ export class ControleDestaques {
   }
 
   /** Abre a barra sobre um destaque (clicado). */
-  mostrarDestaque(destaque: Destaque, posicao: PosicaoBarra): void {
+  mostrarDestaque(destaque: Destaque, posicao: PosicaoBarra, doLado = false): void {
     this.#selecao = null;
-    this.barra = { ...posicao, focar: false, destaque, doLado: false };
+    this.barra = { ...posicao, focar: false, destaque, doLado };
   }
 
   /** Esconde a barra sem mexer no foco (ex.: virou a página, clicou fora). */
   esconder(): void {
     if (!this.barra) return;
-    // [diag] M26d: quem fecha a barra na CI.
-    ((globalThis as unknown as { __diagBarra?: string[] }).__diagBarra ??= []).push(`esconder ${new Error().stack}`);
     this.barra = null;
     this.#a.aoFecharBarra?.();
   }
 
+  /**
+   * Um lado mudou de zoom ou de página: esconde a barra só se ela for daquele lado. Ao abrir o lado
+   * novo, o principal refaz o zoom, às vezes depois de a barra já estar aberta no lado.
+   */
+  esconderDe(doLado: boolean): void {
+    if (this.barra?.doLado === doLado) this.esconder();
+  }
+
   /** Fecha a barra; se ela tinha o foco (teclado), devolve-o ao texto. */
   fecharBarra(): void {
-    // [diag] M26d: quem fecha a barra na CI.
-    ((globalThis as unknown as { __diagBarra?: string[] }).__diagBarra ??= []).push(`fecharBarra ${new Error().stack}`);
     const tinhaFoco = !!document.activeElement?.closest(".barra-destaque");
     this.barra = null;
     this.#a.aoFecharBarra?.();

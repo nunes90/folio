@@ -629,6 +629,9 @@ docs/decisions/  # ADRs
   Rodapé com o lado aberto numa janela apertada (a captura da CI mostrou: 1000 px com o índice aberto): a `BarraPdf`
   sem `flex-wrap` transbordava para a outra metade e saía da janela. Agora os grupos dela entram direto na linha
   da metade (`display: contents`), que quebra sem invadir; "Página" é um `.rotulo`, e "[3] de 3" não quebra. O E2E
-  confere que nada sai da metade nem da janela. **Falta executar o roteiro com o Orca** (só o Lucas).
+  confere que nada sai da metade nem da janela. A barra de destaque pertence a um lado (`barra.doLado`):
+  `esconderDe(doLado)` só a fecha se o zoom ou a página mudarem naquele lado; ao abrir o lado, o principal refaz o
+  zoom e fechava a barra do lado (só na CI: o WebKitGTK 2.52 entrega isso mais tarde que o 2.54).
+  **Falta executar o roteiro com o Orca** (só o Lucas).
 - Próximo passo: executar o roteiro do Orca e corrigir o que aparecer; M26e (README, guia e licença) e M6b. Séries
   continua adiado.

@@ -254,11 +254,11 @@
       v.addEventListener("show-annotation", (e) => {
         const { value, range } = (e as CustomEvent<{ value: string; range: Range }>).detail;
         const d = destaques.porLocal(value);
-        if (d) destaques.mostrarDestaque(d, posicaoNoIframe(range));
+        if (d) destaques.mostrarDestaque(d, posicaoNoIframe(range), true);
       });
       v.addEventListener("relocate", (e) => {
         // No modo frase, a página vira para acompanhar a frase: a barra vai junto.
-        if (!modoFrase) destaques.esconder();
+        if (!modoFrase) destaques.esconderDe(true);
         const { fraction, tocItem } = (e as CustomEvent<DetalheRelocate>).detail;
         aoRelocar?.();
         progresso = fraction;
