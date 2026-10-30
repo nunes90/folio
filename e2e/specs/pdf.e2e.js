@@ -61,4 +61,26 @@ describe("PDF", () => {
       "o destaque não foi desenhado no lado",
     );
   });
+
+  it("com o lado aberto, o rodapé cabe: nada invade a outra metade nem sai da janela", async () => {
+    const caixas = await browser.execute(() => {
+      const caixa = (s) => document.querySelector(s).getBoundingClientRect();
+      const dentro = (s, de) =>
+        [...document.querySelectorAll(`${s} button, ${s} output, ${s} input`)].every((el) => {
+          const r = el.getBoundingClientRect();
+          return r.left >= de.left - 1 && r.right <= de.right + 1;
+        });
+      const principal = caixa(".rodape-principal");
+      const lado = caixa(".rodape-lado");
+      return {
+        principalDentro: dentro(".rodape-principal", principal),
+        ladoDentro: dentro(".rodape-lado", lado),
+        naJanela: lado.right <= innerWidth + 1,
+        altura: caixa("footer").height,
+      };
+    });
+    expect(caixas).toMatchObject({ principalDentro: true, ladoDentro: true, naJanela: true });
+    // Duas linhas, no máximo: mais que isso rouba a altura do livro.
+    expect(caixas.altura).toBeLessThan(100);
+  });
 });

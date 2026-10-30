@@ -5,8 +5,8 @@
 //
 // Rodar: compilar o app (`cargo tauri build --debug --no-bundle`; com o `cargo tauri dev` aberto,
 // use outra pasta e FOLIO_APP) e, nesta pasta, `npm ci` e
-// `xvfb-run --auto-servernum dbus-run-session -- npm test`. O xvfb-run abre as janelas numa tela
-// virtual: nada aparece na tela de quem está usando o computador.
+// `xvfb-run --auto-servernum dbus-run-session -- npm test`. As janelas abrem na tela virtual do
+// xvfb-run (ver GDK_BACKEND abaixo): nada aparece na tela de quem está usando o computador.
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
@@ -59,7 +59,16 @@ export const config = {
       XDG_DATA_HOME: path.join(dados, "dados"),
       XDG_CACHE_HOME: path.join(dados, "cache"),
       XDG_STATE_HOME: path.join(dados, "estado"),
+      // Sempre na tela do xvfb-run. Numa sessão Wayland, o GTK preferiria o compositor de verdade:
+      // as janelas dos testes abririam na tela de quem está usando o computador.
+      GDK_BACKEND: "x11",
+      // Sem a escala de texto de quem está rodando (o GSettings da sessão).
+      GSETTINGS_BACKEND: "memory",
     };
+    delete ambiente.WAYLAND_DISPLAY;
+    // Sem as escalas do ambiente: o mesmo tamanho de janela daqui e da CI.
+    delete ambiente.GDK_SCALE;
+    delete ambiente.GDK_DPI_SCALE;
     saindo = false;
     driver = spawn(process.env.TAURI_DRIVER ?? path.resolve(os.homedir(), ".cargo/bin/tauri-driver"), [], {
       stdio: [null, process.stdout, process.stderr],

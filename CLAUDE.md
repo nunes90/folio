@@ -613,7 +613,10 @@ docs/decisions/  # ADRs
   14 testes, ~21 s. O livro chega por `tauri:options.args`, como no "Abrir com" (o WebDriver não alcança o diálogo
   de arquivo), e cada sessão usa `XDG_*` numa pasta temporária. Fixture `texto.pdf`. **Rodam aqui sem incomodar**:
   o Xvfb é invisível (requer `xorg-server-xvfb`; com o `cargo tauri dev` aberto, compilar em outra pasta e passar
-  `FOLIO_APP`; `CARGO_TARGET_DIR` relativo é resolvido a partir de `crates/app`: usar caminho absoluto). Armadilhas
+  `FOLIO_APP`; `CARGO_TARGET_DIR` relativo é resolvido a partir de `crates/app`: usar caminho absoluto). Isso depende
+  de o `wdio.conf.js` forçar `GDK_BACKEND=x11` e tirar `WAYLAND_DISPLAY`: sem isso, numa sessão Wayland, o GTK abre as
+  janelas no compositor de verdade (e o tamanho e a escala não são os da CI). Ao falhar, um teste salva a captura em
+  `e2e/falhas/` (artefato na CI) e registra o estado da página no log (`[falha]`). Armadilhas
   do WebKitWebDriver: `getText` não enxerga títulos com `text-overflow` (ler `textContent`, `texto()` em
   `specs/ajuda.js`); o seletor `aria/` acha também os itens da paleta fechada (procurar dentro do cabeçalho).
 - **M26d** (branch `docs/m26d-orca`): roteiro do Orca reescrito (`docs/testes/orca.md`, 12 partes, com tudo o que
@@ -623,6 +626,9 @@ docs/decisions/  # ADRs
   (`lib/frases.ts`) e camada de texto comum em `lib/pdf.ts`. A barra aberta no lado não oferece "Ouvir"
   (`barra.doLado`): a voz é só do principal, e no PDF leria o início da página dele. Os testes E2E cobrem o modo
   frase no lado. O foliate ignora navegação nos 100 ms seguintes a uma virada (`#locked`): nos testes, esperar.
-  **Falta executar o roteiro com o Orca** (só o Lucas).
+  Rodapé com o lado aberto numa janela apertada (a captura da CI mostrou: 1000 px com o índice aberto): a `BarraPdf`
+  sem `flex-wrap` transbordava para a outra metade e saía da janela. Agora os grupos dela entram direto na linha
+  da metade (`display: contents`), que quebra sem invadir; "Página" é um `.rotulo`, e "[3] de 3" não quebra. O E2E
+  confere que nada sai da metade nem da janela. **Falta executar o roteiro com o Orca** (só o Lucas).
 - Próximo passo: executar o roteiro do Orca e corrigir o que aparecer; M26e (README, guia e licença) e M6b. Séries
   continua adiado.
