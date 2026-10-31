@@ -72,7 +72,7 @@ jobs:
   # O AppImage em sistemas sem nada do Tauri instalado, antes de ir para a Release (M6b). Além das
   # ferramentas do teste, só o que o linuxdeploy deixa de fora por ser de qualquer desktop gráfico
   # (fontes, OpenGL, X11, Wayland): os contêineres são mínimos demais, e sem isso nem inicia. O WebKitGTK
-  carrega a libGLESv2 durante a execução, e sem ela fecha (ver "Requisitos" no README).
+  # carrega a libGLESv2 durante a execução, e sem ela fecha (ver "Instalar" no README).
   testar:
     name: Testar em ${{ matrix.imagem }}
     needs: appimage
