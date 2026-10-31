@@ -21,6 +21,12 @@ use tauri::ipc::{InvokeBody, Request, Response};
 /// numa thread do runtime e a interface não congela enquanto isso.
 pub type EstadoBiblioteca = Mutex<Biblioteca>;
 
+/// A página acabou de recarregar porque o processo dela caiu?
+#[tauri::command]
+pub fn processo_recuperado(estado: State<'_, crate::processo::ProcessoRecuperado>) -> bool {
+    estado.consumir()
+}
+
 #[tauri::command]
 pub fn listar_livros(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<LivroNaBiblioteca>, String> {
     bib.lock().unwrap().listar().map_err(|e| registrar(&e))

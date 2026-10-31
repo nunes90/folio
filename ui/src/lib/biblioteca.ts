@@ -89,6 +89,11 @@ export interface Importacao {
   falhas: { caminho: string; erro: string }[];
 }
 
+/** A página acabou de recarregar porque o processo dela caiu? */
+export function processoRecuperado(): Promise<boolean> {
+  return invoke("processo_recuperado");
+}
+
 export function listarLivros(): Promise<Livro[]> {
   return invoke("listar_livros");
 }

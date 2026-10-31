@@ -652,7 +652,13 @@ docs/decisions/  # ADRs
   WebKit. Teste: `./virtual.sh npm run test:leitor-de-tela` em `e2e/` (`atspi/rodar.sh`: barramento próprio, sem Orca;
   `atspi/percorrer.py` percorre cada tela e todas as seções do Dom Casmurro; passo na CI). `./virtual.sh` em vez de
   `xvfb-run … dbus-run-session`: sem portais (`XDG_DESKTOP_PORTAL_DIR` vazio), senão o `xdg-desktop-portal-hyprland` é
-  ativado na sessão isolada e cai a cada execução. O app ainda não percebe se o processo da página morrer (a janela fica
-  parada, sem aviso).
-- Próximo passo: executar o roteiro do Orca e corrigir o que aparecer; depois, o M6b (AppImage final e Release
-  estável). Séries continua adiado.
+  ativado na sessão isolada e cai a cada execução.
+- **Queda do processo da página** (branch `fix/recuperar-processo`): `crates/app/src/processo.rs` ouve o
+  `web-process-terminated` do WebKitGTK e recarrega a página; o frontend pergunta ao iniciar (`processo_recuperado`,
+  consome o valor), avisa como erro (`role="alert"`) e fica na biblioteca, sem reabrir o livro (poderia cair de novo;
+  vale também para o livro do "Abrir com"). `core::recuperacao`: mais de 3 quedas em 60 s fecha o app (código 1; erro no
+  log). Conferido à mão (`kill -9` no `WebKitWebProcess`, numa tela virtual): sem teste E2E, porque o WebDriver encerra a
+  sessão quando a página cai.
+- **Pendente, por decisão do Lucas (out/2026): executar o roteiro do Orca** (`docs/testes/orca.md`), com leitor de tela
+  e voz reais. Só ele pode fazer. Não bloqueia os próximos passos.
+- Próximo passo: o M6b (AppImage final e Release estável). Séries continua adiado.

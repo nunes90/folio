@@ -23,3 +23,5 @@ directories = "6"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
+# O mesmo do Tauri (wry): nada novo é compilado. A assinatura do sinal do processo que cai.
+webkit2gtk = { version = "2", features = ["v2_40"] }
