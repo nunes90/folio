@@ -19,6 +19,7 @@
     escolherArquivos,
     importarLivros,
     listarLivros,
+    processoRecuperado,
     progressoDoLivro,
     listarSessoes,
     adicionarAColecao,
@@ -256,6 +257,11 @@
     if (!isTauri()) return;
     await recarregar();
     gerarCapasDePdfs();
+    // Depois de uma queda, volta à biblioteca: reabrir sozinho o livro poderia derrubar de novo.
+    if (await processoRecuperado()) {
+      avisar("O Folio parou de responder e recarregou. Sua leitura está salva: abra o livro para continuar.", "erro");
+      return;
+    }
     const caminho = await caminhoInicial();
     if (caminho) {
       // Aberto pelo sistema ("Abrir com"): abre o livro mesmo que já estivesse na biblioteca.

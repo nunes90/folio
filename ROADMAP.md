@@ -173,9 +173,9 @@ M25 (destaques fixados ao lado, dois pontos do livro lado a lado no EPUB e no PD
 pre-release, com o AppImage.
 
 ### v1.0 — pronto para distribuir
-- [ ] **M26 — Acabamento** (M26a densidade do leitor ✓, M26b arquivos problemáticos e roteiro de desempenho ✓, M26c E2E na CI ✓, M26d modo frase no lado e roteiro do Orca reescrito ✓, M26e licença, README e guia ✓; falta executar o roteiro): ~~nome definitivo e ícone~~ (feito antes: **Folio**, com a migração das pastas);
-  roteiro do Orca refeito com todos os recursos; revisão "tudo sem mouse"; testes E2E
-  dos fluxos principais com `tauri-driver`; livros grandes e arquivos quebrados; README e guia de uso.
+- [ ] **M26 — Acabamento** (M26a densidade do leitor ✓, M26b arquivos problemáticos e roteiro de desempenho ✓, M26c E2E na CI ✓,
+  M26d modo frase no lado e roteiro do Orca reescrito ✓, M26e licença, README e guia ✓, queda com o Orca corrigida e
+  recuperação da página ✓). **Pendente: executar o roteiro do Orca** com leitor de tela e voz reais.
 - [ ] **M6b — Empacotamento final**: AppImage com o nome e o ícone definitivos, arquivo `.desktop` e associação a
   EPUB e PDF ("Abrir com") conferidos; Release estável (não mais pre-release). Flatpak (Flathub) depois da 1.0.
 

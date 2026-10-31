@@ -1088,6 +1088,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "webkit2gtk",
 ]
 
 [[package]]

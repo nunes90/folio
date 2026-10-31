@@ -4,6 +4,7 @@
 mod comandos;
 mod escala;
 mod logging;
+mod processo;
 
 use std::path::{Path, PathBuf};
 
@@ -52,6 +53,9 @@ fn main() -> anyhow::Result<()> {
         // `move`: o setup leva as pastas consigo (roda uma vez, depois que o main já seguiu).
         .setup(move |app| {
             escala::configurar(app.handle())?;
+            app.manage(processo::ProcessoRecuperado::default());
+            #[cfg(target_os = "linux")]
+            processo::vigiar(app.handle())?;
             // Dados (banco e livros) e cache de capas nos diretórios do app no sistema.
             // O escopo do protocolo de assets (tauri.conf.json) libera só $APPCACHE/capas.
             let caminhos = app.path();
@@ -78,6 +82,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            comandos::processo_recuperado,
             comandos::listar_livros,
             comandos::importar_livros,
             comandos::listar_lixeira,
