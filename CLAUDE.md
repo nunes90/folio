@@ -661,4 +661,11 @@ docs/decisions/  # ADRs
   sessão quando a página cai.
 - **Pendente, por decisão do Lucas (out/2026): executar o roteiro do Orca** (`docs/testes/orca.md`), com leitor de tela
   e voz reais. Só ele pode fazer. Não bloqueia os próximos passos.
-- Próximo passo: o M6b (AppImage final e Release estável). Séries continua adiado.
+- **M6b** (branch `ci/m6b-appimage-final`): `scripts/testar_appimage.sh` (`.desktop`, licenças, um livro aberto numa
+  tela virtual: a sessão de leitura no banco prova que o leitor desenhou). O workflow do AppImage o roda em Ubuntu
+  24.04, Debian, Fedora e Arch, em contêineres, e só depois anexa à Release. O AppImage não leva as bibliotecas gráficas
+  do sistema (o linuxdeploy as deixa de fora); a `libGLESv2` é carregada durante a execução, e o README diz o que
+  instalar se faltar. No Hyprland, a `class` da janela é `folio`, igual ao `StartupWMClass`.
+- **v1.0.0-rc.1** (out/2026): tag assinada e Release como pre-release, com o AppImage da CI. A `v1.0.0` estável só depois
+  do roteiro do Orca (decisão do Lucas).
+- Próximo passo: executar o roteiro do Orca, corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.
