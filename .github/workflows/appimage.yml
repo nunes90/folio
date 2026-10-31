@@ -69,7 +69,9 @@ jobs:
           path: target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
-  # O AppImage em sistemas sem nada do Tauri instalado, antes de ir para a Release (M6b).
+  # O AppImage em sistemas sem nada do Tauri instalado, antes de ir para a Release (M6b). Além das
+  # ferramentas do teste, só o que o linuxdeploy deixa de fora por ser de qualquer desktop gráfico
+  # (fontes, OpenGL, X11, Wayland): os contêineres são mínimos demais, e sem isso nem inicia.
   testar:
     name: Testar em ${{ matrix.imagem }}
     needs: appimage
@@ -80,13 +82,13 @@ jobs:
       matrix:
         include:
           - imagem: ubuntu:24.04
-            instalar: apt-get update && apt-get install -y xvfb xauth dbus sqlite3 desktop-file-utils
+            instalar: apt-get update && apt-get install -y xvfb xauth dbus sqlite3 desktop-file-utils libfontconfig1 libfreetype6 libharfbuzz0b libfribidi0 libgl1 libegl1 libgl1-mesa-dri libgbm1 libdrm2 libx11-6 libx11-xcb1 libxcb1 libwayland-client0 libexpat1 zlib1g libgmp10 libgpg-error0 libcom-err2 fonts-dejavu-core
           - imagem: debian:stable
-            instalar: apt-get update && apt-get install -y xvfb xauth dbus sqlite3 desktop-file-utils
+            instalar: apt-get update && apt-get install -y xvfb xauth dbus sqlite3 desktop-file-utils libfontconfig1 libfreetype6 libharfbuzz0b libfribidi0 libgl1 libegl1 libgl1-mesa-dri libgbm1 libdrm2 libx11-6 libx11-xcb1 libxcb1 libwayland-client0 libexpat1 zlib1g libgmp10 libgpg-error0 libcom-err2 fonts-dejavu-core
           - imagem: fedora:latest
-            instalar: dnf install -y xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon sqlite desktop-file-utils which findutils util-linux
+            instalar: dnf install -y xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon sqlite desktop-file-utils which findutils util-linux fontconfig freetype harfbuzz fribidi libglvnd-glx libglvnd-egl mesa-dri-drivers mesa-libgbm libdrm libX11 libX11-xcb libxcb libwayland-client expat zlib gmp libgpg-error libcom_err dejavu-sans-fonts
           - imagem: archlinux:latest
-            instalar: pacman -Syu --noconfirm xorg-server-xvfb xorg-xauth dbus sqlite desktop-file-utils
+            instalar: pacman -Syu --noconfirm xorg-server-xvfb xorg-xauth dbus sqlite desktop-file-utils fontconfig freetype2 harfbuzz fribidi libglvnd mesa libdrm libx11 libxcb wayland expat zlib gmp libgpg-error e2fsprogs ttf-dejavu
     steps:
       - name: Ferramentas do teste
         run: ${{ matrix.instalar }}
