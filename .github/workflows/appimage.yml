@@ -13,6 +13,7 @@ on:
       - crates/app/tauri.conf.json
       - crates/app/folio.desktop
       - crates/app/icons/**
+      - scripts/testar_appimage.sh
 
 permissions:
   contents: write
@@ -68,8 +69,57 @@ jobs:
           path: target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
+  # O AppImage em sistemas sem nada do Tauri instalado, antes de ir para a Release (M6b).
+  testar:
+    name: Testar em ${{ matrix.imagem }}
+    needs: appimage
+    runs-on: ubuntu-latest
+    container: ${{ matrix.imagem }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - imagem: ubuntu:24.04
+            instalar: apt-get update && apt-get install -y xvfb xauth dbus sqlite3 desktop-file-utils
+          - imagem: debian:stable
+            instalar: apt-get update && apt-get install -y xvfb xauth dbus sqlite3 desktop-file-utils
+          - imagem: fedora:latest
+            instalar: dnf install -y xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon sqlite desktop-file-utils which findutils util-linux
+          - imagem: archlinux:latest
+            instalar: pacman -Syu --noconfirm xorg-server-xvfb xorg-xauth dbus sqlite desktop-file-utils
+    steps:
+      - name: Ferramentas do teste
+        run: ${{ matrix.instalar }}
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: appimage
+          path: appimage
+
+      - name: EPUB
+        run: |
+          chmod +x appimage/*.AppImage
+          xvfb-run --auto-servernum dbus-run-session -- scripts/testar_appimage.sh appimage/*.AppImage tests/fixtures/dom-casmurro.epub
+
+      - name: PDF
+        run: xvfb-run --auto-servernum dbus-run-session -- scripts/testar_appimage.sh appimage/*.AppImage tests/fixtures/texto.pdf
+
+  anexar:
+    name: Anexar à Release
+    if: github.event_name == 'release'
+    needs: testar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: appimage
+          path: appimage
+
       - name: Anexar à Release
-        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" target/release/bundle/appimage/*.AppImage --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" appimage/*.AppImage --clobber --repo "${{ github.repository }}"
