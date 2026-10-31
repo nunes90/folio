@@ -30,6 +30,9 @@ chmod +x Folio_*_amd64.AppImage
 ./Folio_*_amd64.AppImage
 ```
 
+O AppImage traz o WebKitGTK e o GStreamer, mas usa as bibliotecas gráficas do sistema. Se o app fechar com
+`Couldn't open libGLESv2.so.2`, instale o OpenGL ES: `libgles2` (Debian, Ubuntu) ou `libglvnd-gles` (Fedora).
+
 Para a leitura em voz alta, instale o `speech-dispatcher` pelo gerenciador de pacotes. Sem ele, o resto
 funciona normalmente.
 
