@@ -2,6 +2,7 @@
 import * as pdfjs from "pdfjs-dist";
 import urlDoWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { permitirForAwaitEmStreams } from "./contornosWebkit";
+import { log } from "./log";
 
 permitirForAwaitEmStreams(ReadableStream.prototype);
 
@@ -79,14 +80,40 @@ export async function camadaDeTexto(
 /** Recursos copiados para public/pdfjs por scripts/copiar-pdfjs.mjs. */
 const RECURSOS = `${import.meta.env.BASE_URL}pdfjs/`;
 
-export function carregarPdf(dados: ArrayBuffer): pdfjs.PDFDocumentLoadingTask {
+const RECURSOS_DO_PDF = {
+  wasmUrl: `${RECURSOS}wasm/`,
+  cMapUrl: `${RECURSOS}cmaps/`,
+  cMapPacked: true,
+  standardFontDataUrl: `${RECURSOS}standard_fonts/`,
+  iccUrl: `${RECURSOS}iccs/`,
+};
+
+/** Tamanho dos trechos pedidos: cada pedido é uma ida e volta ao Rust. */
+const TRECHO = 256 * 1024;
+
+/**
+ * Abre um PDF da biblioteca sem passar o arquivo inteiro para a página: o pdf.js pede os trechos
+ * que precisar (`disableAutoFetch`: nada além disso em segundo plano).
+ */
+export function carregarPdfPorTrechos(
+  id: string,
+  tamanho: number,
+  ler: (id: string, inicio: number, tamanho: number) => Promise<ArrayBuffer>,
+): pdfjs.PDFDocumentLoadingTask {
+  class Trechos extends pdfjs.PDFDataRangeTransport {
+    override requestDataRange(inicio: number, fim: number) {
+      ler(id, inicio, fim - inicio).then(
+        (bytes) => this.onDataRange(inicio, new Uint8Array(bytes)),
+        (e) => log.error(`não foi possível ler o trecho ${inicio}–${fim} do PDF: ${e}`),
+      );
+    }
+  }
   return pdfjs.getDocument({
-    data: new Uint8Array(dados),
-    wasmUrl: `${RECURSOS}wasm/`,
-    cMapUrl: `${RECURSOS}cmaps/`,
-    cMapPacked: true,
-    standardFontDataUrl: `${RECURSOS}standard_fonts/`,
-    iccUrl: `${RECURSOS}iccs/`,
+    ...RECURSOS_DO_PDF,
+    range: new Trechos(tamanho, null as unknown as Uint8Array),
+    disableAutoFetch: true,
+    disableStream: true,
+    rangeChunkSize: TRECHO,
   });
 }
 
@@ -94,8 +121,7 @@ export function carregarPdf(dados: ArrayBuffer): pdfjs.PDFDocumentLoadingTask {
 const LARGURA_CAPA = 400;
 
 /** Renderiza a primeira página como JPEG, para usar de capa. */
-export async function gerarCapa(dados: ArrayBuffer): Promise<Blob> {
-  const tarefa = carregarPdf(dados);
+export async function gerarCapa(tarefa: pdfjs.PDFDocumentLoadingTask): Promise<Blob> {
   try {
     // Dentro do try: um PDF que não abre (com senha, danificado) também libera a tarefa.
     const documento = await tarefa.promise;

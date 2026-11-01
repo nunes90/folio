@@ -62,7 +62,7 @@
   import { Revisitas, comandosDasRevisitas, trechoDePaginas } from "../lib/revisitas.svelte";
   import { avisar } from "../lib/avisos.svelte";
   import type { Trecho } from "../lib/biblioteca";
-  import { ritmoDeLeitura } from "../lib/biblioteca";
+  import { ritmoDeLeitura, trechoDoLivro } from "../lib/biblioteca";
   import { estiloDoMarcaTexto, posicaoDaBarra, resumo } from "../lib/destaques";
   import {
     acertou,
@@ -81,7 +81,7 @@
   import type { ItemIndice } from "../lib/foliate";
   import { log } from "../lib/log";
   import { inverterCanvas, PAGINAS, resolverPagina } from "../lib/pagina";
-  import { camadaDeTexto as camadaDe, carregarPdf, carregarVisor, paginaRenderizada } from "../lib/pdf";
+  import { camadaDeTexto as camadaDe, carregarPdfPorTrechos, carregarVisor, paginaRenderizada } from "../lib/pdf";
   import { atualizarPreferencias, preferencias } from "../lib/preferencias.svelte";
   import { achatar, converterSumario, itemAtual, type ItemSumarioPdf } from "../lib/sumario";
   import { resolverTema } from "../lib/temas";
@@ -99,7 +99,7 @@
   import type { ModoPdf } from "../lib/preferencias.svelte";
 
   let {
-    dados,
+    tamanho,
     livroId,
     titulo,
     inicio,
@@ -108,8 +108,9 @@
     onProgresso,
     onComandos,
   }: {
-    dados: ArrayBuffer;
-    /** Id do livro na biblioteca (para os destaques). */
+    /** Tamanho do arquivo: o pdf.js o lê por trechos. */
+    tamanho: number;
+    /** Id do livro na biblioteca (para os destaques e os trechos). */
     livroId: string;
     titulo: string;
     /** Onde retomar, no formato `pagina:N` (salvo na biblioteca). */
@@ -455,7 +456,7 @@
     );
 
     await destaques.carregar();
-    tarefa = carregarPdf(dados);
+    tarefa = carregarPdfPorTrechos(livroId, tamanho, trechoDoLivro);
     // Senha de usuário (M26b): o pdf.js pede uma vez sem senha e de novo a cada senha errada
     // (motivo 2 = PasswordResponses.INCORRECT_PASSWORD).
     tarefa.onPassword = (atualizar: (senha: string) => void, motivo: number) => {
