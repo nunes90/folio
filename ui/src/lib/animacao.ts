@@ -9,7 +9,7 @@
 // no começo, a animação parece ágil mesmo durando um pouco mais que uma curva comum.
 import { movimentoReduzido } from "./ambiente.svelte";
 
-export const DURACOES = { curta: 120, media: 180, longa: 260 } as const;
+export const DURACOES = { curta: 100, media: 140, longa: 200 } as const;
 export type Duracao = keyof typeof DURACOES;
 
 /** "Resposta" da mola em segundos: quanto menor, mais rápida (SwiftUI usa 0,5 na smooth). */

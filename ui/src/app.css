@@ -1,9 +1,9 @@
 :root {
   /* Animação: valores reais vêm de lib/animacao.ts (aplicarAnimacao), zerados com movimento
      reduzido. Estes valem só até o JS rodar. Use sempre estas variáveis, nos dois leitores. */
-  --duracao-curta: 120ms;
-  --duracao-media: 180ms;
-  --duracao-longa: 260ms;
+  --duracao-curta: 100ms;
+  --duracao-media: 140ms;
+  --duracao-longa: 200ms;
   --curva: cubic-bezier(0.2, 0, 0, 1);
   /* Raios dos cantos (não mudam com o tema). Em rem: acompanham a escala de texto. */
   --raio-pequeno: 0.25rem;

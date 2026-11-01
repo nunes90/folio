@@ -672,7 +672,7 @@ docs/decisions/  # ADRs
   A rolagem horizontal da Aparência vinha de `.area-aparencia :global(.painel)`, que também pegava as seções internas
   (mesma classe): agora com `>`, e o E2E confere `scrollWidth`. O **AppImage leva o WebKitGTK do Ubuntu 22.04 (2.50.4)**;
   o sistema aqui tem o 2.54.1. O `for await` do `getTextContent` do pdf.js falhava no 2.50 (`permitirForAwaitEmStreams`).
-- **Animações mais curtas** (na mesma branch): `DURACOES` = 120/180/260 ms (eram 160/280/450; o Lucas as achou lentas). A
+- **Animações mais curtas** (na mesma branch): `DURACOES` = 100/140/200 ms (eram 160/280/450; o Lucas as achou lentas). A
   abertura do livro espera a transição: o tempo dela soma no de abrir. Com NVIDIA, o DMABUF continua necessário (com o
   driver 615 e o WebKitGTK 2.54, ligado, a janela fecha), e o AppImage não teve diferença perceptível do binário do sistema.
 - Próximo passo: executar o roteiro do Orca, corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.
