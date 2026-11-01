@@ -48,7 +48,7 @@ describe("PainelPagina (seção Página)", () => {
 
   it("virada de página fica aqui, nos dois formatos", async () => {
     const { onMudar } = renderizar("epub");
-    expect((screen.getByRole("radio", { name: "Esmaecer (sugerido)" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("radio", { name: "Nenhuma (sugerido)" }) as HTMLInputElement).checked).toBe(true);
     await fireEvent.click(screen.getByRole("radio", { name: "Virar a folha" }));
     expect(onMudar).toHaveBeenCalledWith({ virada: "virar" });
   });

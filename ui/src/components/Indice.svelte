@@ -58,6 +58,7 @@
     background: none;
     color: inherit;
     font: inherit;
+    overflow-wrap: anywhere;
     text-align: start;
     cursor: pointer;
   }

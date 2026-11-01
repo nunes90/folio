@@ -82,7 +82,7 @@
   .conteudo {
     flex: 1;
     min-width: 0;
-    overflow-y: auto;
+    overflow: hidden auto;
     padding: 0 0.75rem 0.75rem;
     border: 1px solid var(--divisoria);
     border-radius: var(--raio-grande);

@@ -52,7 +52,7 @@ export const PADRAO: Preferencias = {
   tema: "sistema",
   movimento: "sistema",
   velocidadeVoz: 0,
-  virada: "esmaecer",
+  virada: "nenhuma",
   modoPdf: "paginas",
   pagina: "automatica",
   barrasSoPeloTeclado: false,

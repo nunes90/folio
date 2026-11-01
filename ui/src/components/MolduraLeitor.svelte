@@ -851,11 +851,12 @@
     max-width: 40rem;
   }
 
-  .area-indice :global(.painel) {
+  /* Só o painel lateral: as seções da Aparência têm a mesma classe. */
+  .area-indice > :global(.painel) {
     width: 18rem;
   }
 
-  .area-aparencia :global(.painel) {
+  .area-aparencia > :global(.painel) {
     width: 20rem;
   }
 
