@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const aqui = fileURLToPath(new URL(".", import.meta.url));
 const raiz = path.resolve(aqui, "..");
-const fixture = (nome) => path.join(raiz, "tests/fixtures", nome);
+const fixture = (nome) => path.resolve(raiz, "tests/fixtures", nome);
 
 let driver;
 let saindo = false;
@@ -40,7 +40,9 @@ export const config = {
   // Uma sessão do app por arquivo de teste: o livro chega como no "Abrir com" do sistema (o app
   // o importa e abre). Pastas de dados novas a cada sessão.
   // Com o barramento de acessibilidade (atspi/rodar.sh), só as verificações de leitor de tela.
-  capabilities: process.env.AT_SPI_BUS_ADDRESS
+  capabilities: process.env.FOLIO_MEDIR
+    ? [sessao("specs/medir-pdf.e2e.js", path.resolve(process.env.FOLIO_MEDIR))]
+    : process.env.AT_SPI_BUS_ADDRESS
     ? [
         process.env.FOLIO_SPEC === "pdf"
           ? sessao("specs/leitor-de-tela-pdf.e2e.js", "texto.pdf")
@@ -53,7 +55,7 @@ export const config = {
       ],
   reporters: ["spec"],
   framework: "mocha",
-  mochaOpts: { ui: "bdd", timeout: 60000 },
+  mochaOpts: { ui: "bdd", timeout: process.env.FOLIO_MEDIR ? 180000 : 60000 },
   waitforTimeout: 10000,
 
   // Pastas novas a cada sessão (o app herda o ambiente do tauri-driver).

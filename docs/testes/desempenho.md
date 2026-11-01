@@ -13,6 +13,11 @@ tabela do fim, com a data e a versão.
 - Quadros por segundo da virada: com `RUST_LOG=folio=debug`, ou pondo temporariamente o registro
   `[diag]` da virada (ver o M25b no histórico) e lendo o log em `~/.local/state/folio/logs`.
 
+## Medição automática do PDF
+Para comparar antes e depois sem abrir janelas: `FOLIO_MEDIR=<pdf> ./virtual.sh npm test`, em `e2e/` (o app compilado,
+como nos testes E2E). Abrir, virar 20 páginas no original e na noite, lado a lado e memória: linhas `[medida]` na saída.
+É uma tela virtual, sem placa de vídeo: vale para comparar duas versões, não como número absoluto.
+
 ## Cenários
 | # | Cenário | O que medir | Aceitável |
 |---|---|---|---|
