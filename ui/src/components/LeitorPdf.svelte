@@ -456,7 +456,9 @@
     );
 
     await destaques.carregar();
-    tarefa = carregarPdfPorTrechos(livroId, tamanho, trechoDoLivro);
+    tarefa = carregarPdfPorTrechos(livroId, tamanho, trechoDoLivro, () => {
+      erro = "Não foi possível ler o arquivo deste livro. Volte à biblioteca e importe-o de novo.";
+    });
     // Senha de usuário (M26b): o pdf.js pede uma vez sem senha e de novo a cada senha errada
     // (motivo 2 = PasswordResponses.INCORRECT_PASSWORD).
     tarefa.onPassword = (atualizar: (senha: string) => void, motivo: number) => {

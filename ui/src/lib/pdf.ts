@@ -99,22 +99,30 @@ export function carregarPdfPorTrechos(
   id: string,
   tamanho: number,
   ler: (id: string, inicio: number, tamanho: number) => Promise<ArrayBuffer>,
+  /** O arquivo não pôde ser lido (ex.: foi apagado). Sem isto, a tarefa é encerrada. */
+  aoFalhar?: () => void,
 ): pdfjs.PDFDocumentLoadingTask {
   class Trechos extends pdfjs.PDFDataRangeTransport {
     override requestDataRange(inicio: number, fim: number) {
       ler(id, inicio, fim - inicio).then(
         (bytes) => this.onDataRange(inicio, new Uint8Array(bytes)),
-        (e) => log.error(`não foi possível ler o trecho ${inicio}–${fim} do PDF: ${e}`),
+        (e) => {
+          log.error(`não foi possível ler o trecho ${inicio}–${fim} do PDF: ${e}`);
+          // O pdf.js esperaria esse trecho para sempre.
+          if (aoFalhar) aoFalhar();
+          else void tarefa.destroy();
+        },
       );
     }
   }
-  return pdfjs.getDocument({
+  const tarefa = pdfjs.getDocument({
     ...RECURSOS_DO_PDF,
     range: new Trechos(tamanho, null as unknown as Uint8Array),
     disableAutoFetch: true,
     disableStream: true,
     rangeChunkSize: TRECHO,
   });
+  return tarefa;
 }
 
 /** Largura da capa em pixels; a biblioteca mostra capas com cerca de 10rem. */

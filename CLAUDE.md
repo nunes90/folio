@@ -681,4 +681,12 @@ docs/decisions/  # ADRs
   ao comando `trecho_livro` (`biblioteca::ler_trecho`; a biblioteca só é travada para achar o arquivo). Vale para abrir e
   para a capa. Medido num PDF de 86 MB, em tela virtual: abrir 1236 → ~740 ms. Virar uma página cujos dados ainda não
   vieram pode pedir trechos (máx. 31 → ~90 ms). Medições: `FOLIO_MEDIR=<pdf> ./virtual.sh npm test`, em `e2e/`.
+- **Memória medida** (nov/2026, tela virtual): somar RSS engana (as bibliotecas contam em cada processo): usar PSS/anon de
+  `/proc/<pid>/smaps_rollup`. Biblioteca vazia: ~221 MB de PSS nos três processos. O PDF grande custa na memória anônima
+  do processo da página (52 → ~350 MB), que **não acompanha o tamanho do arquivo** (24 MB, 995 páginas: 357; 83 MB, 742
+  páginas: 351). O sumário responde por 30–70 MB (resolve a página de cada entrada, para marcar a seção atual: mantido).
+  12 ciclos de abrir e fechar: PDF oscila 458–664 MB sem subir em linha reta; EPUB +31 MB. Falta uma ferramenta de heap
+  para os ~180 MB restantes. Liberar os canvas ao fechar não teve ganho acima do ruído (descartado). Filtrar 5.000 livros:
+  ~7,7 ms por passada (sem debounce).
+- Se o arquivo de um PDF aberto não puder ser lido, o leitor mostra o erro (`aoFalhar` em `carregarPdfPorTrechos`).
 - Próximo passo: executar o roteiro do Orca, corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.
