@@ -285,6 +285,21 @@ describe("Biblioteca", () => {
       expect(botoes().map((x) => x.tabIndex)).toEqual([0, -1, -1]);
     });
 
+    it("depois de voltar de um livro, o foco pode ir para outro (o clique e as setas não são desfeitos)", async () => {
+      render(Biblioteca, { livros: tres, ...semAcao, focarLivro: "b" });
+      const outro = botoes()[2]!;
+      outro.focus();
+      await tick();
+      expect(document.activeElement).toBe(outro);
+    });
+
+    it("se o livro indicado mudar, o foco vai para ele mesmo estando em outro livro da lista", async () => {
+      const { rerender } = render(Biblioteca, { livros: tres, ...semAcao, focarLivro: "b" });
+      await rerender({ livros: tres, ...semAcao, focarLivro: "c" });
+      await tick();
+      expect(document.activeElement?.textContent).toContain(tres.find((l) => l.id === "c")!.titulo);
+    });
+
     it("devolve o foco ao livro que estava aberto", () => {
       render(Biblioteca, { livros: tres, ...semAcao, focarLivro: "b" });
       expect(document.activeElement).toBe(botoes()[1]);

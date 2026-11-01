@@ -15,7 +15,7 @@
   import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
   import { fade } from "svelte/transition";
   import { curva, duracao } from "../lib/animacao";
-  import { tick } from "svelte";
+  import { tick, untrack } from "svelte";
   import { sistema } from "../lib/ambiente.svelte";
   import Estantes from "./Estantes.svelte";
   import Icone from "./Icone.svelte";
@@ -267,14 +267,21 @@
   }
 
   // Ao voltar de um livro (ou remover um), o foco vai para o livro indicado. Só se o foco
-  // estiver perdido (no body, ex.: o elemento focado sumiu) ou já na lista: a lista muda
-  // sozinha (ex.: capas de PDF geradas) e não deve puxar o foco de outro controle.
+  // estiver perdido (no body, ex.: o elemento focado sumiu) ou, quando o livro indicado muda, na
+  // lista: a lista muda sozinha (ex.: capas de PDF geradas) e não deve puxar o foco de outro
+  // controle, nem de outro livro. `untrack`: `focar` lê `ativo`, que muda a cada foco num livro;
+  // como dependência, o foco voltava na hora ao livro indicado, e o clique com o mouse se perdia.
+  let livroJaFocado: string | undefined;
   $effect(() => {
     if (!focarLivro || !lista) return;
     const indice = visiveis.findIndex((l) => l.id === focarLivro);
     const atual = document.activeElement;
-    const focoPerdido = !atual || atual === document.body || lista.contains(atual);
-    if (indice >= 0 && focoPerdido) focar(indice);
+    const focoPerdido =
+      !atual || atual === document.body || (focarLivro !== livroJaFocado && lista.contains(atual));
+    if (indice >= 0 && focoPerdido) {
+      livroJaFocado = focarLivro;
+      untrack(() => focar(indice));
+    }
   });
 
   // Se a lista encolher, o índice ativo continua válido.
