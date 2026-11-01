@@ -84,6 +84,8 @@ fn main() -> anyhow::Result<()> {
         .invoke_handler(tauri::generate_handler![
             comandos::processo_recuperado,
             comandos::listar_livros,
+            comandos::abrir_por_trechos,
+            comandos::trecho_livro,
             comandos::importar_livros,
             comandos::listar_lixeira,
             comandos::listar_colecoes,
@@ -108,7 +110,7 @@ fn main() -> anyhow::Result<()> {
             comandos::apagar_livro,
             comandos::esvaziar_lixeira,
             comandos::abrir_livro,
-            comandos::arquivo_livro,
+            comandos::tamanho_livro,
             comandos::definir_capa,
             comandos::progresso_livro,
             comandos::salvar_progresso,

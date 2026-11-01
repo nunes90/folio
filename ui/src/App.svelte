@@ -12,7 +12,9 @@
   import type { AcaoLivro } from "./components/MenuLivro.svelte";
   import Leitor from "./components/Leitor.svelte";
   import {
-    arquivoDoLivro,
+    abrirPorTrechos,
+    tamanhoDoLivro,
+    trechoDoLivro,
     caminhoInicial,
     carregarLivro,
     definirCapa,
@@ -58,7 +60,8 @@
   let livros = $state<Livro[]>([]);
   let aberto = $state<{
     livro: Livro;
-    dados: ArrayBuffer;
+    /** EPUB: o arquivo inteiro. PDF: só o tamanho (o pdf.js pede trechos). */
+    dados: ArrayBuffer | number;
     inicio?: string;
     /** Fim da sessão anterior (segundos desde 1970): "Da última vez (há 2 dias)…" (M22). */
     ultimaLeitura?: number;
@@ -309,7 +312,7 @@
     try {
       // Tudo o que é lento acontece antes da transição: durante ela a tela fica congelada.
       const [dados, progresso, sessoes] = await Promise.all([
-        carregarLivro(livro),
+        livro.formato === "pdf" ? abrirPorTrechos(livro) : carregarLivro(livro),
         progressoDoLivro(livro.id),
         // Antes de a sessão nova começar: a mais recente é a da última leitura.
         listarSessoes(livro.id).catch(() => []),
@@ -367,7 +370,9 @@
       for (const livro of livros.filter((l) => l.formato === "pdf" && !l.capa && !semCapa.has(l.id))) {
         try {
           pdf ??= await import("./lib/pdf");
-          const capa = await pdf.gerarCapa(await arquivoDoLivro(livro.id));
+          const capa = await pdf.gerarCapa(
+            pdf.carregarPdfPorTrechos(livro.id, await tamanhoDoLivro(livro.id), trechoDoLivro),
+          );
           const atualizado = await definirCapa(livro.id, capa);
           livros = livros.map((l) => (l.id === atualizado.id ? atualizado : l));
         } catch (e) {
@@ -663,7 +668,7 @@
   <!-- Importado em abrir(), antes da transição: o pdf.js só é carregado quando um PDF é aberto. -->
   {#if LeitorPdf}
     <LeitorPdf
-      dados={aberto.dados}
+      tamanho={aberto.dados as number}
       livroId={aberto.livro.id}
       titulo={aberto.livro.titulo}
       inicio={aberto.inicio}
@@ -675,7 +680,7 @@
   {/if}
 {:else if aberto}
   <Leitor
-    arquivo={new File([aberto.dados], `${aberto.livro.id}.epub`, { type: "application/epub+zip" })}
+    arquivo={new File([aberto.dados as ArrayBuffer], `${aberto.livro.id}.epub`, { type: "application/epub+zip" })}
     livroId={aberto.livro.id}
     inicio={aberto.inicio}
     ultimaLeitura={aberto.ultimaLeitura}

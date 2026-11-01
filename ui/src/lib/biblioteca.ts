@@ -118,6 +118,16 @@ export async function importarLivros(caminhos: string[]): Promise<Importacao> {
 }
 
 /** Bytes do livro para leitura; registra a abertura (ordem de leitura recente). */
+/** Registra a abertura de um PDF e devolve o tamanho do arquivo (lido depois, por trechos). */
+export function abrirPorTrechos(livro: Livro): Promise<number> {
+  return invoke<number>("abrir_por_trechos", { id: livro.id });
+}
+
+/** Um trecho do arquivo do livro. */
+export function trechoDoLivro(id: string, inicio: number, tamanho: number): Promise<ArrayBuffer> {
+  return invoke<ArrayBuffer>("trecho_livro", { id, inicio, tamanho });
+}
+
 export function carregarLivro(livro: Livro): Promise<ArrayBuffer> {
   return invoke<ArrayBuffer>("abrir_livro", { id: livro.id });
 }
@@ -234,9 +244,9 @@ export function esvaziarLixeira(): Promise<number> {
   return invoke<number>("esvaziar_lixeira");
 }
 
-/** Bytes do livro sem registrar abertura (para gerar a capa de PDFs). */
-export function arquivoDoLivro(id: string): Promise<ArrayBuffer> {
-  return invoke<ArrayBuffer>("arquivo_livro", { id });
+/** Tamanho do arquivo do livro, sem marcá-lo como aberto (para gerar a capa). */
+export function tamanhoDoLivro(id: string): Promise<number> {
+  return invoke<number>("tamanho_livro", { id });
 }
 
 /** Envia a capa como bytes crus (sem JSON); id e tipo vão nos cabeçalhos. */

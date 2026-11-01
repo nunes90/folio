@@ -81,6 +81,33 @@ pub fn abrir_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Respo
     Ok(Response::new(bytes))
 }
 
+/// Registra a abertura de um PDF e devolve o tamanho dele: o pdf.js pede os trechos que precisar.
+#[tauri::command(async)]
+pub fn abrir_por_trechos(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<u64, String> {
+    bib.lock()
+        .unwrap()
+        .abrir_por_trechos(&id)
+        .map_err(|e| registrar(&e))
+}
+
+/// Um trecho do livro. A biblioteca só é travada para achar o arquivo, não durante a leitura.
+#[tauri::command(async)]
+pub fn trecho_livro(
+    bib: State<'_, EstadoBiblioteca>,
+    id: String,
+    inicio: u64,
+    tamanho: u64,
+) -> Result<Response, String> {
+    let caminho = bib
+        .lock()
+        .unwrap()
+        .caminho_do_arquivo(&id)
+        .map_err(|e| registrar(&e))?;
+    let bytes =
+        folio_core::biblioteca::ler_trecho(&caminho, inicio, tamanho).map_err(|e| registrar(&e))?;
+    Ok(Response::new(bytes))
+}
+
 #[tauri::command]
 pub fn listar_colecoes(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<Colecao>, String> {
     bib.lock()
@@ -320,15 +347,13 @@ pub fn esvaziar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<usize, Strin
         .map_err(|e| registrar(&e))
 }
 
-/// Bytes do livro sem marcá-lo como aberto (usado para gerar a capa de PDFs).
+/// Tamanho do livro, sem marcá-lo como aberto (para gerar a capa de PDFs, por trechos).
 #[tauri::command(async)]
-pub fn arquivo_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Response, String> {
-    let bytes = bib
-        .lock()
+pub fn tamanho_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<u64, String> {
+    bib.lock()
         .unwrap()
-        .arquivo(&id)
-        .map_err(|e| registrar(&e))?;
-    Ok(Response::new(bytes))
+        .tamanho_do_arquivo(&id)
+        .map_err(|e| registrar(&e))
 }
 
 /// Capa gerada no frontend. A imagem vem como corpo binário cru (sem JSON); o id do livro

@@ -676,4 +676,9 @@ docs/decisions/  # ADRs
   abertura do livro espera a transição: o tempo dela soma no de abrir. Com NVIDIA, o DMABUF continua necessário (com o
   driver 615 e o WebKitGTK 2.54, ligado, a janela fecha), e o AppImage não teve diferença perceptível do binário do sistema.
 - **M6b concluído**: "Abrir com" pelo menu do sistema e AppImage no Hyprland com NVIDIA conferidos pelo Lucas (nov/2026).
+- **PDF por trechos** (branch `perf/pdf-por-trechos`): o arquivo não passa mais inteiro para a página.
+  `carregarPdfPorTrechos` (`lib/pdf.ts`: `PDFDataRangeTransport`, `disableAutoFetch`, `disableStream`, trechos de 256 KB) pede
+  ao comando `trecho_livro` (`biblioteca::ler_trecho`; a biblioteca só é travada para achar o arquivo). Vale para abrir e
+  para a capa. Medido num PDF de 86 MB, em tela virtual: abrir 1236 → ~740 ms. Virar uma página cujos dados ainda não
+  vieram pode pedir trechos (máx. 31 → ~90 ms). Medições: `FOLIO_MEDIR=<pdf> ./virtual.sh npm test`, em `e2e/`.
 - Próximo passo: executar o roteiro do Orca, corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.

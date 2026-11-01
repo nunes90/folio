@@ -4,7 +4,8 @@
 //! biblioteca continua funcionando se o original for movido ou apagado. O id é o SHA-256
 //! do conteúdo: importar o mesmo livro duas vezes não duplica nada.
 
-use std::io;
+use std::fs;
+use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -286,6 +287,12 @@ pub enum ErroBiblioteca {
         #[source]
         fonte: io::Error,
     },
+    #[error("não foi possível ler {}", caminho.display())]
+    Leitura {
+        caminho: PathBuf,
+        #[source]
+        fonte: io::Error,
+    },
 }
 
 pub(crate) type Resultado<T> = Result<T, ErroBiblioteca>;
@@ -470,6 +477,31 @@ impl Biblioteca {
             .obter(id)?
             .ok_or_else(|| ErroBiblioteca::NaoEncontrado(id.to_owned()))?;
         Ok(livro::abrir(&livro.arquivo)?.bytes)
+    }
+
+    /// Registra a abertura de um livro lido por trechos (ver [`ler_trecho`]) e devolve o tamanho
+    /// do arquivo: nada é lido agora.
+    #[instrument(skip(self))]
+    pub fn abrir_por_trechos(&self, id: &str) -> Resultado<u64> {
+        let tamanho = self.tamanho_do_arquivo(id)?;
+        self.marcar_aberto(id)?;
+        Ok(tamanho)
+    }
+
+    /// Tamanho da cópia do livro, em bytes.
+    pub fn tamanho_do_arquivo(&self, id: &str) -> Resultado<u64> {
+        let caminho = self.caminho_do_arquivo(id)?;
+        let dados =
+            fs::metadata(&caminho).map_err(|fonte| ErroBiblioteca::Leitura { caminho, fonte })?;
+        Ok(dados.len())
+    }
+
+    /// Onde está a cópia do livro: para ler trechos dela sem segurar a biblioteca.
+    pub fn caminho_do_arquivo(&self, id: &str) -> Resultado<PathBuf> {
+        let livro = self
+            .obter(id)?
+            .ok_or_else(|| ErroBiblioteca::NaoEncontrado(id.to_owned()))?;
+        Ok(livro.arquivo)
     }
 
     /// Bytes do livro para leitura; registra a abertura.
@@ -892,6 +924,23 @@ pub(crate) fn gravar(destino: &Path, bytes: &[u8]) -> Resultado<()> {
         })
 }
 
+/// Até `tamanho` bytes do arquivo a partir de `inicio` (menos, ou nenhum, perto do fim). O pdf.js
+/// pede assim só o que precisa, sem o arquivo inteiro passar para a página.
+pub fn ler_trecho(caminho: &Path, inicio: u64, tamanho: u64) -> Resultado<Vec<u8>> {
+    let erro_io = |fonte| ErroBiblioteca::Leitura {
+        caminho: caminho.to_path_buf(),
+        fonte,
+    };
+    let mut arquivo = fs::File::open(caminho).map_err(erro_io)?;
+    arquivo.seek(SeekFrom::Start(inicio)).map_err(erro_io)?;
+    let mut bytes = Vec::new();
+    arquivo
+        .take(tamanho)
+        .read_to_end(&mut bytes)
+        .map_err(erro_io)?;
+    Ok(bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -907,6 +956,37 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let bib = Biblioteca::abrir(&dir.path().join("dados"), &dir.path().join("capas")).unwrap();
         (dir, bib)
+    }
+
+    #[test]
+    fn le_o_livro_por_trechos() {
+        let (_dir, bib) = nova();
+        let origem = fixture("texto.pdf");
+        let livro = bib.importar(&origem).unwrap().into_livro();
+        let inteiro = fs::read(&origem).unwrap();
+
+        let tamanho = bib.abrir_por_trechos(&livro.id).unwrap();
+        assert_eq!(tamanho, inteiro.len() as u64);
+        assert!(bib.obter(&livro.id).unwrap().unwrap().aberto_em.is_some());
+
+        let caminho = bib.caminho_do_arquivo(&livro.id).unwrap();
+        assert_eq!(ler_trecho(&caminho, 0, 5).unwrap(), &inteiro[..5]);
+        assert_eq!(ler_trecho(&caminho, 10, 20).unwrap(), &inteiro[10..30]);
+        // Perto do fim, vem o que há; depois do fim, nada.
+        assert_eq!(
+            ler_trecho(&caminho, tamanho - 3, 100).unwrap(),
+            &inteiro[inteiro.len() - 3..]
+        );
+        assert!(ler_trecho(&caminho, tamanho + 10, 100).unwrap().is_empty());
+    }
+
+    #[test]
+    fn livro_desconhecido_nao_tem_trechos() {
+        let (_dir, bib) = nova();
+        assert!(matches!(
+            bib.abrir_por_trechos("nao-existe"),
+            Err(ErroBiblioteca::NaoEncontrado(_))
+        ));
     }
 
     #[test]
