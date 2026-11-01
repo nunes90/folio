@@ -4,7 +4,7 @@ import { createRawSnippet, tick } from "svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sistema } from "../lib/ambiente.svelte";
 import { MetaDaSessao } from "../lib/meta.svelte";
-import { atualizarPreferencias } from "../lib/preferencias.svelte";
+import { atualizarPreferencias, preferencias } from "../lib/preferencias.svelte";
 import MolduraLeitor from "./MolduraLeitor.svelte";
 
 const trecho = (html: string) => createRawSnippet(() => ({ render: () => html }));
@@ -115,7 +115,18 @@ describe("MolduraLeitor", () => {
     expect(regiao.getAttribute("aria-live")).toBe("polite");
   });
 
+  it("por padrão, virarPagina só navega, sem animar", async () => {
+    const { component } = renderizar();
+    const area = document.querySelector<HTMLElement>("[data-area-livro]")!;
+    const animar = vi.spyOn(area, "animate");
+    const navegar = vi.fn();
+    await component.virarPagina("direita", navegar);
+    expect(navegar).toHaveBeenCalledOnce();
+    expect(animar).not.toHaveBeenCalled();
+  });
+
   it("virarPagina navega e depois anima a área do livro com o estilo das preferências", async () => {
+    preferencias.virada = "esmaecer";
     const { component } = renderizar();
     const area = document.querySelector<HTMLElement>("[data-area-livro]")!;
     const animar = vi.spyOn(area, "animate");
@@ -126,8 +137,8 @@ describe("MolduraLeitor", () => {
     });
     await component.virarPagina("direita", () => ordem.push("navegou"));
     expect(ordem).toEqual(["navegou", "animou"]);
-    // Padrão: esmaecer.
     expect(animar.mock.calls[0]![0]).toEqual([{ opacity: 0 }, { opacity: 1 }]);
+    preferencias.virada = "nenhuma";
   });
 
   it("mostra o progresso numa barra decorativa (o leitor de tela usa a porcentagem do rodapé)", () => {

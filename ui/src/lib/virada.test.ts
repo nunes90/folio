@@ -1,3 +1,4 @@
+import { DURACOES } from "./animacao";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { preferencias } from "./preferencias.svelte";
 import { animarVirada, cancelarVirada, quadrosDaVirada } from "./virada";
@@ -45,7 +46,7 @@ describe("animarVirada", () => {
     const el = document.createElement("div");
     const animar = vi.spyOn(el, "animate");
     animarVirada(el, "deslizar", "direita");
-    expect(animar).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ duration: 160 }));
+    expect(animar).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ duration: DURACOES.curta }));
   });
 
   it("com movimento reduzido, não anima", () => {

@@ -1,6 +1,9 @@
 // Configuração do pdf.js e geração de capa (primeira página) para a biblioteca.
 import * as pdfjs from "pdfjs-dist";
 import urlDoWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { permitirForAwaitEmStreams } from "./contornosWebkit";
+
+permitirForAwaitEmStreams(ReadableStream.prototype);
 
 // O parsing roda num Web Worker, fora da thread da interface.
 pdfjs.GlobalWorkerOptions.workerSrc = urlDoWorker;

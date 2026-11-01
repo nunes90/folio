@@ -14,3 +14,32 @@ export function tirarEspacoAposUltimaQuebra(doc: Document): void {
     }
   }
 }
+
+/** O que o `for await` do pdf.js precisa de um `ReadableStream`. */
+interface FluxoComLeitor {
+  getReader(): { read(): Promise<{ done: boolean; value?: unknown }>; releaseLock(): void };
+}
+
+/**
+ * Faz o `for await` funcionar num `ReadableStream`. O WebKitGTK do AppImage (2.50, do Ubuntu 22.04)
+ * ainda não o permite, e sem isso o `getTextContent` do pdf.js falha ("undefined is not a function").
+ */
+export function permitirForAwaitEmStreams(prototipo: object): void {
+  if (Symbol.asyncIterator in prototipo) return;
+  Object.defineProperty(prototipo, Symbol.asyncIterator, {
+    configurable: true,
+    writable: true,
+    value: async function* (this: FluxoComLeitor) {
+      const leitor = this.getReader();
+      try {
+        for (;;) {
+          const { done, value } = await leitor.read();
+          if (done) return;
+          yield value;
+        }
+      } finally {
+        leitor.releaseLock();
+      }
+    },
+  });
+}

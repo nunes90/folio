@@ -66,10 +66,10 @@ pub enum Virada {
     Deslizar,
     /// A página nova gira em 3D a partir da lombada, como uma folha.
     Virar,
-    /// Só a opacidade muda: o padrão, porque a virada se repete centenas de vezes e deve
-    /// ser quase imperceptível (e é o mais leve para quem é sensível a movimento).
-    #[default]
+    /// Só a opacidade muda.
     Esmaecer,
+    /// A página troca na hora: o padrão, porque a virada se repete centenas de vezes.
+    #[default]
     Nenhuma,
 }
 
@@ -159,7 +159,7 @@ impl Default for PreferenciasLeitura {
             tema: Tema::Sistema,
             movimento: Movimento::Sistema,
             velocidade_voz: 0,
-            virada: Virada::Esmaecer,
+            virada: Virada::Nenhuma,
             modo_pdf: ModoPdf::Paginas,
             pagina: Pagina::Automatica,
             barras_so_pelo_teclado: false,
@@ -365,7 +365,7 @@ mod tests {
     fn virada_e_modo_do_pdf_tem_padrao_e_vao_no_json() {
         // JSON de versões anteriores (sem os campos) usa os padrões sugeridos.
         let p = PreferenciasLeitura::de_json(r#"{"tamanho": 1.2}"#);
-        assert_eq!(p.virada, Virada::Esmaecer);
+        assert_eq!(p.virada, Virada::Nenhuma);
         assert_eq!(p.modo_pdf, ModoPdf::Paginas);
 
         let json = PreferenciasLeitura {

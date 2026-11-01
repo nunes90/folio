@@ -34,6 +34,18 @@ describe("EPUB", () => {
     await dialogo.waitForDisplayed({ reverse: true });
   });
 
+  it("os painéis não têm rolagem horizontal", async () => {
+    const sobra = (painel) =>
+      browser.execute((p) => {
+        const c = document.querySelector(`#${p} .conteudo`);
+        return c ? c.scrollWidth - c.clientWidth : -1;
+      }, painel);
+    await ate(async () => (await sobra("indice")) === 0, "o índice transborda");
+    await botao("Aparência", "//header").click();
+    await ate(async () => (await sobra("aparencia")) === 0, "a Aparência transborda");
+    await browser.keys(Key.Escape);
+  });
+
   it("Ctrl+Shift+F entra no modo foco; Esc sai", async () => {
     await browser.keys([Key.Ctrl, Key.Shift, "f"]);
     await ate(() => moldura("foco"), "não entrou no modo foco");

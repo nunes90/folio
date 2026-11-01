@@ -25,10 +25,10 @@
   const PAGINAS_FIXAS = Object.entries(PAGINAS) as [PaginaEfetiva, (typeof PAGINAS)[PaginaEfetiva]][];
 
   const VIRADAS: { valor: EstiloVirada; nome: string }[] = [
-    { valor: "esmaecer", nome: "Esmaecer (sugerido)" },
+    { valor: "nenhuma", nome: "Nenhuma (sugerido)" },
+    { valor: "esmaecer", nome: "Esmaecer" },
     { valor: "deslizar", nome: "Deslizar" },
     { valor: "virar", nome: "Virar a folha" },
-    { valor: "nenhuma", nome: "Nenhuma" },
   ];
 
   const MODOS: { valor: ModoPdf; nome: string; descricao: string }[] = [
