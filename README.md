@@ -30,6 +30,9 @@ chmod +x Folio_*_amd64.AppImage
 ./Folio_*_amd64.AppImage
 ```
 
+Se ele não abrir por falta do FUSE, instale o `fuse2` (Arch), `libfuse2` (Debian, Ubuntu 22.04),
+`libfuse2t64` (Ubuntu 24.04) ou `fuse-libs` (Fedora), ou rode com `--appimage-extract-and-run`.
+
 O AppImage traz o WebKitGTK e o GStreamer, mas usa as bibliotecas gráficas do sistema. Se o app fechar com
 `Couldn't open libGLESv2.so.2`, instale o OpenGL ES: `libgles2` (Debian, Ubuntu) ou `libglvnd-gles` (Fedora).
 

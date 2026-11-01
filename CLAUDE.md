@@ -675,4 +675,5 @@ docs/decisions/  # ADRs
 - **Animações mais curtas** (na mesma branch): `DURACOES` = 100/140/200 ms (eram 160/280/450; o Lucas as achou lentas). A
   abertura do livro espera a transição: o tempo dela soma no de abrir. Com NVIDIA, o DMABUF continua necessário (com o
   driver 615 e o WebKitGTK 2.54, ligado, a janela fecha), e o AppImage não teve diferença perceptível do binário do sistema.
+- **M6b concluído**: "Abrir com" pelo menu do sistema e AppImage no Hyprland com NVIDIA conferidos pelo Lucas (nov/2026).
 - Próximo passo: executar o roteiro do Orca, corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.
