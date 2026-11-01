@@ -95,3 +95,44 @@ describe("inversão dos pixels (noite no PDF)", () => {
     expect(canvas.hasAttribute("data-invertida")).toBe(true);
   });
 });
+
+describe("inverterPixels com pixels repetidos", () => {
+  /** A conta pixel a pixel, sem reaproveitar nada: o resultado de referência. */
+  function porPixel(entrada: number[]): number[] {
+    const saida: number[] = [];
+    for (let i = 0; i < entrada.length; i += 4) {
+      const um = new Uint8ClampedArray(entrada.slice(i, i + 4));
+      inverterPixels(um);
+      saida.push(...um);
+    }
+    return saida;
+  }
+
+  it("dá o mesmo resultado da conta pixel a pixel, e o alfa não muda", () => {
+    const entrada = [
+      255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, // papel repetido
+      0, 0, 0, 255, 0, 0, 0, 255, // tinta repetida
+      200, 30, 90, 128, 200, 30, 90, 128, // cor com alfa, repetida
+      200, 30, 90, 255, // a mesma cor com outro alfa
+      255, 255, 255, 255, // volta ao papel
+    ];
+    const px = new Uint8ClampedArray(entrada);
+    inverterPixels(px);
+    expect([...px]).toEqual(porPixel(entrada));
+    expect(px[6 * 4 + 3]).toBe(128);
+  });
+
+  it("funciona em parte de um buffer maior", () => {
+    const buffer = new Uint8ClampedArray(16).fill(9);
+    const parte = new Uint8ClampedArray(buffer.buffer, 4, 8);
+    parte.set([255, 255, 255, 255, 255, 255, 255, 255]);
+    inverterPixels(parte);
+    expect([...buffer.slice(0, 4)]).toEqual([9, 9, 9, 9]);
+    expect([...buffer.slice(12)]).toEqual([9, 9, 9, 9]);
+    expect([...parte.slice(0, 4)]).toEqual([...parte.slice(4)]);
+  });
+
+  it("aceita uma página vazia", () => {
+    expect(() => inverterPixels(new Uint8ClampedArray(0))).not.toThrow();
+  });
+});
