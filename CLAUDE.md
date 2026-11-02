@@ -703,4 +703,6 @@ docs/decisions/  # ADRs
   (`lib/foco.ts`) depois de fechar diálogo ou de ação em livro: `setTimeout`, porque a restauração do `<dialog>` vem depois do `close`.
   No F1, as setas andam pelas linhas e o texto vai ao anúncio (o Orca não lê `tr` com foco; o modo foco ou de navegação ao abrir varia
   na sessão real, sem causa achada). Na `BarraPdf`, só o zoom pedido nos botões é anunciado.
-- Próximo passo: executar o roteiro do Orca, corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.
+- **v1.0.0-rc.2** (nov/2026): tag assinada e Release como pre-release, com o AppImage da CI.
+- Próximo passo: repetir com o Orca e voz reais o F1, a leitura do PDF com as setas e o modo de navegação depois da paleta;
+  corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.
