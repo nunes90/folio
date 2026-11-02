@@ -694,7 +694,13 @@ docs/decisions/  # ADRs
   `<div><button>x</button><span>Texto</span><!----></div><p>Depois</p>`: contêiner com objeto dentro, texto, último nó sem
   caixa (âncora do Svelte, `display: none`) e conteúdo depois. Ela segue possível com Orca+A na interface. O texto do
   livro é iframe ou `role="document"`: lá o Orca lê com as setas. **Ao foco no próprio `role="document"`, o Orca não diz
-  nada**: focar algo dentro dele (F1: o título). O Índice ganhou ↑↓/Home/End. Aviso com `aria-live` e o campo da paleta
-  ("claims to have no parent") continuam mudos. `./virtual.sh npm run orca` em `e2e/`: Orca real sem áudio
+  nada**: focar algo dentro dele (F1: o título). O Índice ganhou ↑↓/Home/End. `./virtual.sh npm run orca` em `e2e/`: Orca real sem áudio
   (`orca/falas.tsv`); as teclas chegam ao app, não a ele, então atalhos parecem mudos ali (Ctrl+F no PDF fala na sessão real).
+- **Avisos ao Orca** (branch `feat/falar-avisos`): `lib/regioesVivas.ts` observa `aria-live`/`status`/`alert` (`main.ts`; espera de
+  150 ms, só o que entrou) e o comando `anunciar_ao_leitor_de_tela` (`crates/app/src/orca.rs`) chama `PresentMessage` no
+  serviço D-Bus do Orca, sem abri-lo (`NO_AUTO_START`): voz e braille de quem usa; sem o Orca, nada. Conferido no 51
+  (`org.gnome.Orca1.Service`); versões sem o serviço seguem mudas. Paleta: o status traz a opção ativa. `recuperarFoco`
+  (`lib/foco.ts`) depois de fechar diálogo ou de ação em livro: `setTimeout`, porque a restauração do `<dialog>` vem depois do `close`.
+  No F1, as setas andam pelas linhas e o texto vai ao anúncio (o Orca não lê `tr` com foco; o modo foco ou de navegação ao abrir varia
+  na sessão real, sem causa achada). Na `BarraPdf`, só o zoom pedido nos botões é anunciado.
 - Próximo passo: executar o roteiro do Orca, corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.

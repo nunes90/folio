@@ -546,6 +546,12 @@ fn motor<'a>(voz: &'a State<'_, EstadoVoz>) -> Result<&'a dyn MotorDeVoz, String
         .ok_or_else(|| "a leitura em voz alta precisa do speech-dispatcher".to_string())
 }
 
+/// Fica na thread principal (sem `async`): a chamada ao D-Bus responde no laço do GTK, sem esperar.
+#[tauri::command]
+pub fn anunciar_ao_leitor_de_tela(texto: String) {
+    crate::orca::anunciar(&texto);
+}
+
 #[tauri::command]
 pub fn voz_disponivel(voz: State<'_, EstadoVoz>) -> bool {
     voz.0.is_some()

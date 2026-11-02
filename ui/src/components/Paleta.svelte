@@ -32,12 +32,21 @@
 
   const achados = $derived([...(porTermo?.(termo) ?? []), ...filtrarComandos(comandos, termo)]);
   const idOpcao = (c: Comando) => `comando-${c.id}`;
-  const anuncio = $derived(
+  const contagem = $derived(
     achados.length === 0
       ? "Nenhum comando encontrado"
       : achados.length === 1
         ? "1 comando"
         : `${achados.length} comandos`,
+  );
+  // O foco fica no campo e a opção ativa não é anunciada pelo leitor de tela neste WebKit: ela vai aqui.
+  // Ao abrir ou ao digitar (primeira opção), com a contagem; ao andar com as setas, só a opção.
+  const anuncio = $derived(
+    !achados[ativo]
+      ? contagem
+      : ativo === 0
+        ? `${contagem}. ${achados[0].titulo}`
+        : achados[ativo].titulo,
   );
 
   $effect(() => {

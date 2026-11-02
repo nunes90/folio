@@ -28,6 +28,24 @@
     if (Number.isInteger(n) && n >= 1 && n <= total) onIrPara(n);
     else campo.value = String(pagina);
   }
+
+  // Só o zoom pedido nestes botões é anunciado: o ajuste automático ("página inteira", ao abrir ou ao
+  // mudar o tamanho da área) repetiria a porcentagem a toda hora.
+  let pedido = false;
+  let anuncioZoom = $state("");
+
+  function pedirZoom(pedir: () => void) {
+    pedido = true;
+    pedir();
+  }
+
+  $effect(() => {
+    const texto = porcento.format(zoom);
+    if (pedido) {
+      pedido = false;
+      anuncioZoom = texto;
+    }
+  });
 </script>
 
 <div class="barra">
@@ -58,9 +76,10 @@
 
   <div class="grupo grupo-barra">
     <div class="grupo-sem-caixa" role="group" aria-label="Zoom">
-      <button type="button" onclick={onZoomMenos} aria-label="Diminuir zoom">−</button>
-      <output aria-live="polite">{porcento.format(zoom)}</output>
-      <button type="button" onclick={onZoomMais} aria-label="Aumentar zoom">+</button>
+      <button type="button" onclick={() => pedirZoom(onZoomMenos)} aria-label="Diminuir zoom">−</button>
+      <output>{porcento.format(zoom)}</output>
+      <button type="button" onclick={() => pedirZoom(onZoomMais)} aria-label="Aumentar zoom">+</button>
+      <span class="so-leitor-de-tela" role="status">{anuncioZoom}</span>
       <button type="button" onclick={onAjustarLargura}>
         <Icone nome="largura" /><span class="rotulo">Ajustar à largura</span>
       </button>

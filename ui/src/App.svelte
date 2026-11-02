@@ -5,6 +5,7 @@
   import Sobre from "./components/Sobre.svelte";
   import Paleta from "./components/Paleta.svelte";
   import Avisos from "./components/Avisos.svelte";
+  import { recuperarFoco } from "./lib/foco";
   import Biblioteca from "./components/Biblioteca.svelte";
   import Confirmacao from "./components/Confirmacao.svelte";
   import EscolherColecoes from "./components/EscolherColecoes.svelte";
@@ -405,6 +406,8 @@
     }
     await recarregar();
     avisar(sucesso, "sucesso", acao);
+    // Sem vizinho (ex.: o último livro da estante foi para a lixeira), o foco ficaria no body.
+    setTimeout(recuperarFoco);
     return true;
   }
 
@@ -599,8 +602,21 @@
 
 <svelte:window onkeydown={aoTeclar} onkeydowncapture={aoAgir} onpointerdown={aoAgir} onwheel={aoAgir} />
 
-<Atalhos {contexto} aberto={ajudaAberta} onFechar={() => (ajudaAberta = false)} />
-<Sobre aberto={sobreAberto} onFechar={() => (sobreAberto = false)} />
+<Atalhos
+  {contexto}
+  aberto={ajudaAberta}
+  onFechar={() => {
+    ajudaAberta = false;
+    setTimeout(recuperarFoco);
+  }}
+/>
+<Sobre
+  aberto={sobreAberto}
+  onFechar={() => {
+    sobreAberto = false;
+    setTimeout(recuperarFoco);
+  }}
+/>
 <Paleta
   aberto={paletaAberta}
   {comandos}
@@ -610,7 +626,10 @@
     : aberto.livro.formato === "pdf"
       ? "Buscar comando ou número da página…"
       : "Buscar comando ou capítulo…"}
-  onFechar={() => (paletaAberta = false)}
+  onFechar={() => {
+    paletaAberta = false;
+    setTimeout(recuperarFoco);
+  }}
 />
 <Avisos />
 
