@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { NOMES_CONTEXTO, porGrupo, type Contexto } from "../lib/atalhos";
+  import { NOMES_CONTEXTO, porGrupo, type Atalho, type Contexto } from "../lib/atalhos";
 
   let {
     contexto,
@@ -25,6 +25,10 @@
     }
   });
 
+  /** "Ctrl+K ou F1: Ação": o texto da linha junta as teclas sem espaço ("←ou →"). */
+  const anunciar = (atalho: Atalho) =>
+    `${atalho.teclas.map((combinacao) => combinacao.join("+")).join(" ou ")}: ${atalho.acao}`;
+
   // Setas de atalho em atalho. O Orca não lê a linha de tabela que recebe o foco: o texto vai ao anúncio.
   let anuncio = $state("");
 
@@ -44,9 +48,7 @@
     if (!destino) return;
     e.preventDefault();
     destino.focus();
-    anuncio = [...destino.cells]
-      .map((c) => c.textContent?.replace(/\s+/g, " ").trim())
-      .join(": ");
+    anuncio = destino.dataset.anuncio ?? "";
   }
 </script>
 
@@ -70,7 +72,7 @@
       </thead>
       <tbody>
         {#each atalhos as atalho (atalho.acao)}
-          <tr tabindex="-1">
+          <tr tabindex="-1" data-anuncio={anunciar(atalho)}>
             <td>
               {#each atalho.teclas as combinacao, i (i)}
                 {#if i > 0}<span class="ou">ou</span>{/if}
