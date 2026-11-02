@@ -659,8 +659,6 @@ docs/decisions/  # ADRs
   vale também para o livro do "Abrir com"). `core::recuperacao`: mais de 3 quedas em 60 s fecha o app (código 1; erro no
   log). Conferido à mão (`kill -9` no `WebKitWebProcess`, numa tela virtual): sem teste E2E, porque o WebDriver encerra a
   sessão quando a página cai.
-- **Pendente, por decisão do Lucas (out/2026): executar o roteiro do Orca** (`docs/testes/orca.md`), com leitor de tela
-  e voz reais. Só ele pode fazer. Não bloqueia os próximos passos.
 - **M6b** (branch `ci/m6b-appimage-final`): `scripts/testar_appimage.sh` (`.desktop`, licenças, um livro aberto numa
   tela virtual: a sessão de leitura no banco prova que o leitor desenhou). O workflow do AppImage o roda em Ubuntu
   24.04, Debian, Fedora e Arch, em contêineres, e só depois anexa à Release. O AppImage não leva as bibliotecas gráficas
@@ -712,5 +710,7 @@ docs/decisions/  # ADRs
   do `aria-hidden` (sem efeito para o leitor de tela; o axe aceita), e a queda some. O `percorrer.py` pede posição por posição
   também nos itens de lista: ao focar um livro, mesmo no modo foco, o Orca pede os atributos da linha do item.
 - **v1.0.0-rc.2** (nov/2026): tag assinada e Release como pre-release, com o AppImage da CI.
-- Próximo passo: repetir com o Orca e voz reais o F1, a leitura do PDF com as setas e o modo de navegação depois da paleta;
-  corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.
+- **Orca com voz real** (nov/2026): as partes principais do roteiro (biblioteca, paleta, índice, F1, avisos, leitura do EPUB e do
+  PDF); o roteiro inteiro de `docs/testes/orca.md` (12 partes) não foi repetido.
+- **v1.0.0** (nov/2026): tag assinada e Release estável, com o AppImage da CI.
+- Próximo passo: depois da 1.0 (ROADMAP "Futuro"): Flatpak, voz neural local, Séries.
