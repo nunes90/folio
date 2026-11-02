@@ -26,7 +26,11 @@
 </script>
 
 <dialog class="modal" bind:this={dialogo} aria-labelledby="titulo-atalhos" onclose={onFechar}>
-  <h2 id="titulo-atalhos">Atalhos de teclado</h2>
+  <!-- role="document" dentro da interface role="application": o Orca lê com as setas. O foco vai ao título, e não
+       ao documento: ao foco no próprio documento, o Orca não diz nada. -->
+  <div role="document">
+  <!-- svelte-ignore a11y_autofocus -->
+  <h2 id="titulo-atalhos" tabindex="-1" autofocus>Atalhos de teclado</h2>
   <p class="contexto">{NOMES_CONTEXTO[contexto]}</p>
   <!-- Um grupo por tabela (M26a): Navegação, Leitura, Marcar, Comparar, Livros, Geral. -->
   {#each porGrupo(contexto) as { grupo, atalhos } (grupo)}
@@ -55,6 +59,7 @@
       </tbody>
     </table>
   {/each}
+  </div>
   <form method="dialog">
     <button type="submit">Fechar</button>
   </form>

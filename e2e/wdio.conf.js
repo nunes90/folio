@@ -40,7 +40,15 @@ export const config = {
   // Uma sessão do app por arquivo de teste: o livro chega como no "Abrir com" do sistema (o app
   // o importa e abre). Pastas de dados novas a cada sessão.
   // Com o barramento de acessibilidade (atspi/rodar.sh), só as verificações de leitor de tela.
-  capabilities: process.env.FOLIO_MEDIR
+  capabilities: process.env.ORCA_LOG
+    ? [
+        sessao(`orca/${process.env.FOLIO_SPEC}.e2e.js`, {
+          epub: "dom-casmurro.epub",
+          pdf: "texto.pdf",
+          senha: "quebrados/pdf-com-senha.pdf",
+        }[process.env.FOLIO_SPEC]),
+      ]
+    : process.env.FOLIO_MEDIR
     ? [sessao("specs/medir-pdf.e2e.js", path.resolve(process.env.FOLIO_MEDIR))]
     : process.env.AT_SPI_BUS_ADDRESS
     ? [
@@ -55,7 +63,7 @@ export const config = {
       ],
   reporters: ["spec"],
   framework: "mocha",
-  mochaOpts: { ui: "bdd", timeout: process.env.FOLIO_MEDIR ? 180000 : 60000 },
+  mochaOpts: { ui: "bdd", timeout: process.env.FOLIO_MEDIR || process.env.ORCA_LOG || process.env.AT_SPI_BUS_ADDRESS ? 240000 : 60000 },
   waitforTimeout: 10000,
 
   // Pastas novas a cada sessão (o app herda o ambiente do tauri-driver).

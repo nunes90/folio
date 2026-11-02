@@ -1,0 +1,22 @@
+import { Key, botao } from "../specs/ajuda.js";
+import { estado, falasNovas, nota, passo } from "./roteiro.js";
+const k = (...t) => browser.keys(t.length > 1 ? t : t[0]);
+describe("orca pdf", () => { it("roteiro", async () => {
+  await $(".textLayer span").waitForExist({ timeout: 20000 }); await browser.pause(4000);
+  nota("4. PDF: ao abrir"); await passo("4.1", "abrir (falas até aqui)", async () => {}, 200);
+  await passo("4.4", "Ctrl+F, 'pagina', Enter", async () => { await k(Key.Ctrl, "f"); await browser.pause(500); await browser.keys("pagina"); await browser.pause(300); await k(Key.Enter); }, 1800);
+  nota("foco: " + await estado());
+  await passo("4.3", "Esc", () => k(Key.Escape));
+  await passo("4.5", "Página: 2 e Enter", async () => { const i = await $('footer input[type="number"]'); await i.click(); await browser.keys([Key.Ctrl, "a"]); await browser.keys("2"); await k(Key.Enter); }, 1500);
+  await passo("4.6", "Zoom +", () => botao("Aumentar zoom", "//footer").click(), 1200);
+  await passo("4.7", "paleta: 3 e Enter", async () => { await k(Key.Ctrl, "k"); await browser.pause(500); await browser.keys("3"); await browser.pause(300); await k(Key.Enter); }, 1500);
+  nota("8. Destaques no PDF"); await browser.pause(800);
+  await passo("8.1p", "Ctrl+D", () => k(Key.Ctrl, "d"), 1800);
+  await passo("8.4p", "Enter na cor", () => k(Key.Enter), 1500);
+  nota("11. Lado no PDF");
+  await passo("11.1p", "Ctrl+Shift+L", () => k(Key.Ctrl, Key.Shift, "l"), 2500);
+  await passo("11.2p", "F6", () => k(Key.F6), 1500);
+  await passo("11.5", "paleta: ao lado 1", async () => { await k(Key.Ctrl, "k"); await browser.pause(500); await browser.keys("ao lado 1"); await browser.pause(300); await k(Key.Enter); }, 1500);
+  await passo("11.4", "Tab até o rodapé (5×)", async () => { for (let i = 0; i < 5; i++) { await k(Key.Tab); await browser.pause(450); } }, 800);
+  falasNovas();
+}); });

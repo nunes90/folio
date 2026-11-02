@@ -689,4 +689,12 @@ docs/decisions/  # ADRs
   para os ~180 MB restantes. Liberar os canvas ao fechar não teve ganho acima do ruído (descartado). Filtrar 5.000 livros:
   ~7,7 ms por passada (sem debounce).
 - Se o arquivo de um PDF aberto não puder ser lido, o leitor mostra o erro (`aoFalhar` em `carregarPdfPorTrechos`).
+- **Interface como aplicativo** (branch `test/orca-sem-audio`): `<body role="application">`, porque no modo de navegação o
+  Orca ficava com as setas e, ao percorrer os cards, derrubava o WebKitGTK. Caso mínimo da queda (posição por posição):
+  `<div><button>x</button><span>Texto</span><!----></div><p>Depois</p>`: contêiner com objeto dentro, texto, último nó sem
+  caixa (âncora do Svelte, `display: none`) e conteúdo depois. Ela segue possível com Orca+A na interface. O texto do
+  livro é iframe ou `role="document"`: lá o Orca lê com as setas. **Ao foco no próprio `role="document"`, o Orca não diz
+  nada**: focar algo dentro dele (F1: o título). O Índice ganhou ↑↓/Home/End. Aviso com `aria-live` e o campo da paleta
+  ("claims to have no parent") continuam mudos. `./virtual.sh npm run orca` em `e2e/`: Orca real sem áudio
+  (`orca/falas.tsv`); as teclas chegam ao app, não a ele, então atalhos parecem mudos ali (Ctrl+F no PDF fala na sessão real).
 - Próximo passo: executar o roteiro do Orca, corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.

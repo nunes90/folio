@@ -2,6 +2,11 @@
 # O WebKitGTK aborta o processo da página quando um leitor de tela pede os atributos de texto de certos
 # objetos (provavelmente o bug 284246 do WebKit, aberto, duplicata do 270354). Não dá para prever pela
 # marcação: a sequência de atributos iguais passa do objeto e estoura um vetor, conforme o texto vizinho.
+# O caso geral, reduzido da página real: um contêiner com um objeto dentro (botão, campo), texto e, no fim, um nó
+# sem caixa (o `<!---->` que o Svelte usa como âncora, um `display: none`), seguido de mais conteúdo. Toda
+# interface em Svelte tem isso e uma caixa a mais mudaria o layout: por isso a interface é `role="application"`
+# (ui/index.html). No modo foco, o Orca não pergunta posição por posição; `percorrer.py` só exige isso nos
+# documentos e diálogos. Com Orca+A na interface, ainda pode cair (e o app se recupera, processo.rs).
 # Na interface, os contêineres só de botões ficam sem caixa própria (`li` com `display: contents`,
 # `.grupo-sem-caixa`); nos livros, ver lib/contornosWebkit.ts.
 #

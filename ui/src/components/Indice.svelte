@@ -12,9 +12,34 @@
     atual?: string;
     onNavegar: (href: string) => void;
   } = $props();
+
+  // Setas entre os capítulos, inclusive os subitens. Com o Orca em modo foco (a interface é
+  // role="application"), são elas que percorrem a lista. Cada nível aninhado deixa o evento subir até a raiz.
+  function aoTeclar(e: KeyboardEvent) {
+    const raiz = e.currentTarget as HTMLElement;
+    if (raiz.parentElement?.closest("ol")) return;
+    const botoes = [...raiz.querySelectorAll("button")];
+    const i = botoes.indexOf(e.target as HTMLButtonElement);
+    const destino =
+      e.key === "ArrowDown"
+        ? botoes[i + 1]
+        : e.key === "ArrowUp"
+          ? botoes[i - 1]
+          : e.key === "Home"
+            ? botoes[0]
+            : e.key === "End"
+              ? botoes.at(-1)
+              : undefined;
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End") return;
+    // Nas pontas, a seta não sai da lista nem vira a página do livro.
+    e.preventDefault();
+    e.stopPropagation();
+    destino?.focus();
+  }
 </script>
 
-<ol>
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<ol onkeydown={aoTeclar}>
   {#each itens as item (item.href)}
     <li>
       <button

@@ -340,7 +340,7 @@
     onpointerup={aoSoltar}
     onkeydown={aoTeclar}
     tabindex="0"
-    role="region"
+    role="document"
     aria-label="Documento ao lado"
   >
     <div class="pdfViewer"></div>

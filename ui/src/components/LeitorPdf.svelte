@@ -772,7 +772,8 @@
 
   /** O elemento da página `n` (o .page do pdf.js), se estiver no DOM. */
   function paginaEl(n: number): HTMLElement | null {
-    return conteiner.querySelector<HTMLElement>(`.page[data-page-number="${n}"]`);
+    // Sem contêiner: o leitor já fechou enquanto uma tarefa assíncrona terminava.
+    return conteiner?.querySelector<HTMLElement>(`.page[data-page-number="${n}"]`) ?? null;
   }
 
   /** (Re)desenha a camada de destaques da página `n` (e a do lado, se aberto: M25c). */
@@ -1582,7 +1583,7 @@
     bind:this={conteiner}
     onpointerup={aoSoltar}
     tabindex="0"
-    role="region"
+    role="document"
     aria-label={titulo}
   >
     <div class="pdfViewer"></div>

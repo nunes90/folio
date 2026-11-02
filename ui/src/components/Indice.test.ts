@@ -42,4 +42,28 @@ describe("Indice", () => {
     const { violations } = await axe.run(container);
     expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
   });
+
+  it("setas percorrem os capítulos, inclusive os subitens, sem virar a página", async () => {
+    const janela = vi.fn();
+    window.addEventListener("keydown", janela);
+    render(Indice, {
+      itens: [
+        { label: "Um", href: "1", subitems: [{ label: "Um ponto um", href: "1.1" }] },
+        { label: "Dois", href: "2" },
+      ],
+      onNavegar: () => {},
+    });
+    const [um, sub, dois] = screen.getAllByRole("button");
+    um.focus();
+    await fireEvent.keyDown(um, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(sub);
+    await fireEvent.keyDown(sub, { key: "End" });
+    expect(document.activeElement).toBe(dois);
+    await fireEvent.keyDown(dois, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(dois);
+    await fireEvent.keyDown(dois, { key: "Home" });
+    expect(document.activeElement).toBe(um);
+    expect(janela).not.toHaveBeenCalled();
+    window.removeEventListener("keydown", janela);
+  });
 });
