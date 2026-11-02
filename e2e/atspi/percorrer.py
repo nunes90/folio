@@ -57,9 +57,10 @@ def percorrer_texto(texto, inteiro):
 
 def onde_o_orca_navega(objeto, documentos):
     """A interface é role="application" (o Orca fica no modo foco); lê com as setas só nos documentos
-    dentro dela (texto do livro) e nos diálogos."""
+    dentro dela (texto do livro) e nos diálogos. Os itens de lista (cards da biblioteca) entram também:
+    ao focar um livro, mesmo no modo foco, o Orca pede os atributos da linha do item."""
     papel = objeto.get_role_name()
-    return papel == "dialog" or (papel in ("document web", "document frame") and documentos > 0)
+    return papel in ("dialog", "list item") or (papel in ("document web", "document frame") and documentos > 0)
 
 
 def main():

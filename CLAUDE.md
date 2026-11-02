@@ -703,6 +703,14 @@ docs/decisions/  # ADRs
   (`lib/foco.ts`) depois de fechar diálogo ou de ação em livro: `setTimeout`, porque a restauração do `<dialog>` vem depois do `close`.
   No F1, as setas andam pelas linhas e o texto vai ao anúncio (o Orca não lê `tr` com foco; o modo foco ou de navegação ao abrir varia
   na sessão real, sem causa achada). Na `BarraPdf`, só o zoom pedido nos botões é anunciado.
+- **Texto acessível do PDF** (branch `feat/pdf-texto-acessivel`): o Orca não percorre a camada de texto do pdf.js no WebKitGTK
+  (o `↓` saía do documento ou repetia o número da página). A `.pdfViewer` é `aria-hidden` e, ao lado, `.texto-acessivel` (fora da
+  tela, 40rem de largura, para haver linhas de verdade) tem a página atual em parágrafos (`paragrafosDaCamada`, na ordem de
+  `blocosDaCamada`), com "Página N de T" e um fim que diz o que fazer. Só no principal, não no lado.
+- **Queda do card ao voltar do leitor**: reproduzida (biblioteca com vários livros, depois de ler um PDF até o fim) e reduzida a
+  `<ul><li><div><div><button><svg aria-hidden></svg></button></div></div></li><li></li></ul>`. O `Icone` tem `role="img"` além
+  do `aria-hidden` (sem efeito para o leitor de tela; o axe aceita), e a queda some. O `percorrer.py` pede posição por posição
+  também nos itens de lista: ao focar um livro, mesmo no modo foco, o Orca pede os atributos da linha do item.
 - **v1.0.0-rc.2** (nov/2026): tag assinada e Release como pre-release, com o AppImage da CI.
 - Próximo passo: repetir com o Orca e voz reais o F1, a leitura do PDF com as setas e o modo de navegação depois da paleta;
   corrigir o que aparecer e publicar a `v1.0.0`. Séries continua adiado.

@@ -21,9 +21,23 @@ describe("PDF", () => {
     );
   });
 
+  it("o texto da página, em parágrafos, para o leitor de tela", async () => {
+    await ate(
+      () =>
+        browser.execute(() =>
+          document.querySelector(".texto-acessivel")?.textContent?.includes("Primeira pagina do documento"),
+        ),
+      "o texto acessível da página 1 não apareceu",
+    );
+  });
+
   it("vira a página com a seta", async () => {
     await browser.keys(Key.ArrowRight);
     await ate(async () => (await paginaEm("footer")) === "2", "a seta não virou a página");
+    await ate(
+      () => browser.execute(() => document.querySelector(".texto-acessivel h2")?.textContent === "Página 2 de 3"),
+      "o texto acessível não passou à página 2",
+    );
   });
 
   it("Ctrl+D destaca a frase atual, desenhada na página", async () => {

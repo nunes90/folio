@@ -34,6 +34,7 @@
   import { trechoSeguinte, unir } from "../lib/frases";
   import {
     frasesDaCamada,
+    paragrafosDaCamada,
     frasesParaFalar,
     ideiasDaCamada,
     tipoDaFrasePdf,
@@ -412,15 +413,18 @@
       desenharIdeia(pageNumber);
     });
     // A camada de texto (de onde saem os blocos) pode ficar pronta depois do desenho.
-    eventos.on("textlayerrendered", ({ pageNumber }: { pageNumber: number }) =>
-      desenharIdeia(pageNumber),
-    );
+    eventos.on("textlayerrendered", ({ pageNumber }: { pageNumber: number }) => {
+      desenharIdeia(pageNumber);
+      // A camada pode chegar depois da espera de `atualizarTextoAcessivel` (página pesada ao abrir).
+      if (pageNumber === pagina) void atualizarTextoAcessivel(pageNumber);
+    });
 
     eventos.on("pagesinit", () => {
       pronto = true; // o efeito acima aplica o modo e o zoom
       const n = Number(inicio?.match(/^pagina:(\d+)$/)?.[1]);
       if (n >= 1 && n <= v.pagesCount) v.currentPageNumber = n;
       pagina = v.currentPageNumber;
+      void atualizarTextoAcessivel(pagina);
       moverContagens({ rotulo: `página ${pagina}`, pagina });
       // Registra a abertura mesmo sem troca de página (senão o livro aparece como "Não iniciado").
       onProgresso?.(`pagina:${v.currentPageNumber}`, v.currentPageNumber / v.pagesCount);
@@ -429,6 +433,7 @@
       // No modo frase, a página muda para acompanhar a frase: a barra vai junto.
       if (!modoFrase) destaques.esconderDe(false);
       pagina = pageNumber;
+      void atualizarTextoAcessivel(pageNumber);
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
       moverContagens({ rotulo: `página ${pageNumber}`, pagina: pageNumber });
       visitarPagina(pageNumber);
@@ -1192,6 +1197,16 @@
     return camadaDe(visor, () => paginaEl(n), n);
   }
 
+  /** O texto da página atual em parágrafos, para o leitor de tela (`.texto-acessivel`). */
+  let textoAcessivel = $state<{ pagina: number; paragrafos: string[] } | null>(null);
+
+  async function atualizarTextoAcessivel(n: number) {
+    const camada = await camadaDeTexto(n);
+    // Uma página mais nova pode ter chegado durante a espera.
+    if (n !== pagina) return;
+    textoAcessivel = { pagina: n, paragrafos: camada ? paragrafosDaCamada(camada) : [] };
+  }
+
   /** As frases da página `n` (vazio se ela não tiver texto, ex.: um PDF escaneado). */
   async function frasesDaPagina(n: number): Promise<Range[]> {
     const camada = await camadaDeTexto(n);
@@ -1586,7 +1601,22 @@
     role="document"
     aria-label={titulo}
   >
-    <div class="pdfViewer"></div>
+    <!-- O leitor de tela não consegue percorrer a camada de texto do pdf.js (pedaços posicionados um a um):
+         lê o texto da página em parágrafos, na ordem de leitura, logo abaixo, fora da tela. -->
+    <div class="pdfViewer" aria-hidden="true"></div>
+    <div class="texto-acessivel">
+      {#if textoAcessivel}
+        <h2>Página {textoAcessivel.pagina} de {total}</h2>
+        {#each textoAcessivel.paragrafos as paragrafo, i (i)}
+          <p>{paragrafo}</p>
+        {/each}
+        <!-- Também evita que o bloco termine na âncora do {#each} (ver e2e/atspi/rodar.sh). -->
+        <p>
+          {textoAcessivel.paragrafos.length ? "Fim da página." : "Esta página não tem texto."}
+          {textoAcessivel.pagina < total ? "Page Down vai para a seguinte." : "Fim do documento."}
+        </p>
+      {/if}
+    </div>
   </div>
   <DestaquesDoLeitor
     controle={destaques}
@@ -1641,5 +1671,13 @@
   .nota {
     color: var(--suave);
     font-size: 0.875rem;
+  }
+
+  /* Fora da tela, mas com largura de texto: o leitor de tela anda por linhas de verdade. */
+  .texto-acessivel {
+    position: absolute;
+    top: 0;
+    left: -200vw;
+    width: 40rem;
   }
 </style>
