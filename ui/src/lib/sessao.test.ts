@@ -52,6 +52,15 @@ describe("SessaoDeLeitura", () => {
     );
   });
 
+  it("ignora um lugar sem fração (NaN): o JSON o mandaria como null e o core recusaria", async () => {
+    const s = new SessaoDeLeitura("livro", relogio);
+    s.mover(em("a", Number.NaN));
+    s.mover(em("b", 0.2));
+    await s.encerrar();
+    expect(api.iniciarSessao).toHaveBeenCalledExactlyOnceWith("livro", em("b", 0.2));
+    expect(api.registrarSessao).not.toHaveBeenCalled();
+  });
+
   it("atividade avisa no máximo uma vez por minuto, e só depois de começar", async () => {
     const s = new SessaoDeLeitura("livro", relogio);
     s.atividade();

@@ -338,7 +338,9 @@
   }
 
   function aoProgredir(localizacao: string, fracao: number) {
-    if (!aberto) return;
+    // O foliate-js publica a fração como NaN se o livro ainda não tem tamanho (a janela acabou de abrir); o
+    // próximo lugar corrige. Mandada, ela vira null no JSON e o core recusa.
+    if (!aberto || !Number.isFinite(fracao)) return;
     // Grava a cada mudança de página, sem esperar: é um único upsert no SQLite (menos de 1 ms),
     // e fechar a janela logo depois de virar a página não perde mais a última posição. (Uma
     // espera de 1 s perdia; interceptar o fechamento da janela arriscava deixá-la impossível

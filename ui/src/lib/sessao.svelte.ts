@@ -35,7 +35,7 @@ export class SessaoDeLeitura {
 
   /** O leitor mudou de lugar (ou abriu o livro: aí a sessão começa). */
   mover(onde: Progresso): void {
-    if (this.#encerrada) return;
+    if (this.#encerrada || !Number.isFinite(onde.fracao)) return;
     const primeira = this.#onde === null;
     this.#onde = onde;
     if (primeira) this.#enfileirar(() => iniciarSessao(this.#livroId, onde), true);
