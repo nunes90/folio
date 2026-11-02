@@ -16,6 +16,7 @@
   // <dialog> modal: prende o foco dentro, fecha com Esc e devolve o foco a quem o abriu.
   $effect(() => {
     if (aberto && !dialogo.open) {
+      anuncio = "";
       // showModal não existe no jsdom (testes); lá basta marcar como aberto.
       if (dialogo.showModal) dialogo.showModal();
       else dialogo.open = true;
@@ -23,9 +24,34 @@
       dialogo.close();
     }
   });
+
+  // Setas de atalho em atalho. O Orca não lê a linha de tabela que recebe o foco: o texto vai ao anúncio.
+  let anuncio = $state("");
+
+  function aoTeclar(e: KeyboardEvent) {
+    const linhas = [...dialogo.querySelectorAll<HTMLTableRowElement>("tbody tr")];
+    const i = linhas.indexOf(document.activeElement as HTMLTableRowElement);
+    const destino =
+      e.key === "ArrowDown"
+        ? linhas[i + 1]
+        : e.key === "ArrowUp"
+          ? linhas[i - 1]
+          : e.key === "Home"
+            ? linhas[0]
+            : e.key === "End"
+              ? linhas.at(-1)
+              : undefined;
+    if (!destino) return;
+    e.preventDefault();
+    destino.focus();
+    anuncio = [...destino.cells]
+      .map((c) => c.textContent?.replace(/\s+/g, " ").trim())
+      .join(": ");
+  }
 </script>
 
-<dialog class="modal" bind:this={dialogo} aria-labelledby="titulo-atalhos" onclose={onFechar}>
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<dialog class="modal" bind:this={dialogo} aria-labelledby="titulo-atalhos" onclose={onFechar} onkeydown={aoTeclar}>
   <!-- role="document" dentro da interface role="application": o Orca lê com as setas. O foco vai ao título, e não
        ao documento: ao foco no próprio documento, o Orca não diz nada. -->
   <div role="document">
@@ -44,7 +70,7 @@
       </thead>
       <tbody>
         {#each atalhos as atalho (atalho.acao)}
-          <tr>
+          <tr tabindex="-1">
             <td>
               {#each atalho.teclas as combinacao, i (i)}
                 {#if i > 0}<span class="ou">ou</span>{/if}
@@ -60,6 +86,7 @@
     </table>
   {/each}
   </div>
+  <p class="so-leitor-de-tela" role="status">{anuncio}</p>
   <form method="dialog">
     <button type="submit">Fechar</button>
   </form>

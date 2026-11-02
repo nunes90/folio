@@ -15,7 +15,7 @@ export async function passo(id, acao, f, espera = 1100) {
   let erro = "";
   try { await f(); } catch (e) { erro = ` [ERRO NA AÇÃO: ${String(e.message ?? e).slice(0, 90)}]`; }
   await browser.pause(espera);
-  const falas = falasNovas().filter((x) => !/^(Browse mode|Focus mode)$/.test(x));
+  const falas = falasNovas();
   fs.appendFileSync(SAIDA, `${id}\t${acao}\t${falas.join(" | ") || "(nada)"}${erro}\n`);
 }
 export const estado = () => browser.execute(() => { const a = document.activeElement; return `${a?.tagName}:${(a?.getAttribute("aria-label") || a?.textContent || "").trim().slice(0, 30)}`; });

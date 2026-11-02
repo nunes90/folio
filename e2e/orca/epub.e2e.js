@@ -11,6 +11,8 @@ describe("orca epub", () => { it("roteiro", async () => {
   await passo("3.3a", "→", () => k(Key.ArrowRight), 1200);
   await passo("3.3b", "→", () => k(Key.ArrowRight), 1200);
   await passo("3.5", "F1", () => k(Key.F1), 1800);
+  await passo("3.5c", "↓ no F1", () => k(Key.ArrowDown));
+  await passo("3.5d", "↓ no F1", () => k(Key.ArrowDown));
   await passo("3.5b", "Esc", () => k(Key.Escape));
   nota("foco: " + await estado());
   await passo("3.6a", "Abrir Aparência", () => clicar("Aparência"), 1500);
@@ -66,6 +68,8 @@ describe("orca epub", () => { it("roteiro", async () => {
   await passo("3.9", "Voltar à biblioteca", () => clicar("Voltar à biblioteca"), 2000);
   nota("foco: " + await estado());
   nota("1. Biblioteca");
+  await passo("1.2a", "Ctrl+K na biblioteca", () => k(Key.Ctrl, "k"), 1500);
+  await passo("1.2b", "Esc: o modo deve seguir de foco", () => k(Key.Escape), 1500);
   await passo("1.3", "End", () => k(Key.End));
   await passo("1.4", "F1", () => k(Key.F1), 1800);
   await passo("1.5", "Esc", () => k(Key.Escape));

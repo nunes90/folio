@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/svelte";
+import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import axe from "axe-core";
 import { describe, expect, it, vi } from "vitest";
 import { ATALHOS, porGrupo } from "../lib/atalhos";
@@ -47,5 +47,18 @@ describe("Atalhos", () => {
     const titulo = documento.querySelector("h2")!;
     expect(titulo.getAttribute("tabindex")).toBe("-1");
     expect(documento.querySelector("table")).toBeTruthy();
+  });
+
+  it("setas andam de atalho em atalho", async () => {
+    render(Atalhos, { contexto: "pdf", aberto: true, onFechar: () => {} });
+    const dialogo = document.querySelector("dialog")!;
+    const linhas = [...dialogo.querySelectorAll<HTMLElement>("tbody tr")];
+    await fireEvent.keyDown(dialogo, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(linhas[0]);
+    expect(screen.getByRole("status", { hidden: true }).textContent).toContain(": ");
+    await fireEvent.keyDown(linhas[0], { key: "ArrowDown" });
+    expect(document.activeElement).toBe(linhas[1]);
+    await fireEvent.keyDown(linhas[1], { key: "End" });
+    expect(document.activeElement).toBe(linhas.at(-1));
   });
 });

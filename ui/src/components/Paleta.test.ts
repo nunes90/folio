@@ -27,14 +27,14 @@ describe("Paleta", () => {
     expect(document.activeElement).toBe(campo);
     expect(screen.getAllByRole("option")).toHaveLength(3);
     expect(ativa(campo)?.textContent).toContain("Importar livros…");
-    expect(screen.getByRole("status").textContent).toBe("3 comandos");
+    expect(screen.getByRole("status").textContent).toBe("3 comandos. Importar livros…");
   });
 
   it("filtra ao digitar e anuncia quantos sobraram", async () => {
     const { campo } = abrir();
     await fireEvent.input(campo, { target: { value: "escuro" } });
     expect(screen.getAllByRole("option")).toHaveLength(1);
-    expect(screen.getByRole("status").textContent).toBe("1 comando");
+    expect(screen.getByRole("status").textContent).toContain("1 comando. ");
     await fireEvent.input(campo, { target: { value: "nada disso" } });
     expect(screen.queryAllByRole("option")).toHaveLength(0);
     expect(screen.getByRole("status").textContent).toBe("Nenhum comando encontrado");
