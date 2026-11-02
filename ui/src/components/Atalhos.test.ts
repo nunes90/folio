@@ -55,7 +55,11 @@ describe("Atalhos", () => {
     const linhas = [...dialogo.querySelectorAll<HTMLElement>("tbody tr")];
     await fireEvent.keyDown(dialogo, { key: "ArrowDown" });
     expect(document.activeElement).toBe(linhas[0]);
-    expect(screen.getByRole("status", { hidden: true }).textContent).toContain(": ");
+    const primeiro = porGrupo("pdf")[0].atalhos[0];
+    expect(screen.getByRole("status", { hidden: true }).textContent).toBe(
+      `${primeiro.teclas.map((c) => c.join("+")).join(" ou ")}: ${primeiro.acao}`,
+    );
+    expect(screen.getByRole("status", { hidden: true }).textContent).toMatch(/ ou /);
     await fireEvent.keyDown(linhas[0], { key: "ArrowDown" });
     expect(document.activeElement).toBe(linhas[1]);
     await fireEvent.keyDown(linhas[1], { key: "End" });
