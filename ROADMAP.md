@@ -175,13 +175,17 @@ pre-release, com o AppImage.
 ### v1.0 — pronto para distribuir
 - [ ] **M26 — Acabamento** (M26a densidade do leitor ✓, M26b arquivos problemáticos e roteiro de desempenho ✓, M26c E2E na CI ✓,
   M26d modo frase no lado e roteiro do Orca reescrito ✓, M26e licença, README e guia ✓, queda com o Orca corrigida e
-  recuperação da página ✓). **Pendente: executar o roteiro do Orca** com leitor de tela e voz reais.
+  recuperação da página ✓). **Pendente: terminar o roteiro do Orca** com leitor de tela e voz reais (ver v1.0.0-rc.2).
 - [x] **M6b — Empacotamento final**: AppImage com o nome e o ícone definitivos, `.desktop` e associação a EPUB e PDF
   conferidos, teste em Ubuntu, Debian, Fedora e Arch na CI; "Abrir com" pelo menu do sistema e AppImage em NVIDIA/Wayland
   conferidos à mão. Flatpak (Flathub) depois da 1.0.
 
 **v1.0.0-rc.1** (out/2026): M26 e M6b, sem o roteiro do Orca. Tag `v1.0.0-rc.1`, Release como pre-release, com o
 AppImage. A `v1.0.0` estável vem depois de executar o roteiro.
+
+**v1.0.0-rc.2** (nov/2026): correções do Orca (interface como aplicativo, avisos pelo serviço D-Bus dele), PDF por trechos,
+animações mais curtas e virada padrão "nenhuma". Roteiro do Orca em parte: falta repetir, com voz real, o F1, a leitura do PDF
+com as setas e o modo de navegação depois da paleta.
 
 ## Futuro
 - **Slider de páginas** (arrastar para qualquer ponto do livro).
