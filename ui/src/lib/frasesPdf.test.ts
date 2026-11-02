@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   blocosEmOrdem,
   frasesDaCamada,
+  paragrafosDaCamada,
   frasesParaFalar,
   tipoDaFrasePdf,
   ideiasEmOrdem,
@@ -161,6 +162,18 @@ describe("frasesDaCamada", () => {
     document.body.append(camada);
     const frases = frasesDaCamada(camada, "pt").map((r) => r.toString());
     expect(frases).toEqual(["Uma noite destas, vindo da cidade.", "Encontrei no tremum rapaz."]);
+    camada.remove();
+  });
+});
+
+describe("paragrafosDaCamada", () => {
+  it("um parágrafo por bloco, na ordem de leitura, sem os vazios", () => {
+    const camada = document.createElement("div");
+    camada.innerHTML = "<span>Encontrei no trem</span><br><span>um rapaz.</span><span> </span>";
+    document.body.append(camada);
+    expect(paragrafosDaCamada(camada)).toEqual(["Encontrei no trem um rapaz."]);
+    camada.innerHTML = "";
+    expect(paragrafosDaCamada(camada)).toEqual([]);
     camada.remove();
   });
 });

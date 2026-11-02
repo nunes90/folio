@@ -311,6 +311,16 @@ export function blocosDaCamada(camada: Element): Range[] {
 }
 
 /**
+ * O texto de uma página do PDF em parágrafos, na ordem de leitura: a versão que o leitor de tela lê
+ * com as setas (a camada do pdf.js, de pedaços posicionados um a um, o Orca não consegue percorrer).
+ */
+export function paragrafosDaCamada(camada: Element): string[] {
+  return blocosDaCamada(camada)
+    .map(textoDoTrecho)
+    .filter((p) => p);
+}
+
+/**
  * As frases de uma página do PDF, bloco a bloco, como intervalos na camada de texto (podem
  * ser selecionados como uma seleção feita com o mouse).
  */
