@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Folio</title>
   </head>
-  <body>
+  <!-- Sem isto, o Orca fica com as setas (modo de navegação) e percorre a interface pedindo os atributos de texto
+       que derrubam o WebKitGTK (ver e2e/atspi/rodar.sh). O texto do livro é role="document" ou iframe: lá, o Orca lê. -->
+  <body role="application" aria-label="Folio">
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

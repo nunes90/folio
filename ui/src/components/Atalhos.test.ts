@@ -40,4 +40,12 @@ describe("Atalhos", () => {
     const { violations } = await axe.run(container);
     expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
   });
+
+  it("abre com o foco no título, dentro de um documento, para o leitor de tela ler com as setas", () => {
+    render(Atalhos, { contexto: "pdf", aberto: true, onFechar: () => {} });
+    const documento = document.querySelector("dialog [role=document]")!;
+    const titulo = documento.querySelector("h2")!;
+    expect(titulo.getAttribute("tabindex")).toBe("-1");
+    expect(documento.querySelector("table")).toBeTruthy();
+  });
 });

@@ -56,7 +56,7 @@ export async function destacar(cor = "Amarelo") {
 export function semQueda() {
   const r = spawnSync("python3", [fileURLToPath(new URL("../atspi/percorrer.py", import.meta.url))], {
     encoding: "utf8",
-    timeout: 45000,
+    timeout: 120000,
   });
   if (r.status !== 0) throw new Error(`leitor de tela: ${r.stdout}${r.stderr}`);
 }

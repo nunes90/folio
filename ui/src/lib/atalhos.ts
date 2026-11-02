@@ -91,6 +91,7 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
   ],
   epub: [
     { teclas: [["←"], ["→"]], acao: "Página à esquerda ou à direita", grupo: "Navegação" },
+    { teclas: [["↑"], ["↓"]], acao: "No Índice: capítulo anterior ou seguinte", grupo: "Navegação" },
     { teclas: [["Page Up"], ["Page Down"]], acao: "Página anterior ou seguinte", grupo: "Navegação" },
     ...LEITURA,
     ...MARCAR,
@@ -103,6 +104,7 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
       acao: "Página anterior ou seguinte (com a página inteira na tela, ↑ e ↓ também)",
       grupo: "Navegação",
     },
+    { teclas: [["↑"], ["↓"]], acao: "No Índice: capítulo anterior ou seguinte", grupo: "Navegação" },
     { teclas: [["Page Up"], ["Page Down"]], acao: "Página anterior ou seguinte", grupo: "Navegação" },
     { teclas: [["Ctrl", "F"]], acao: "Buscar no documento", grupo: "Navegação" },
     {
