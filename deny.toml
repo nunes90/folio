@@ -16,10 +16,14 @@ allow = [
     "Apache-2.0 WITH LLVM-exception",
     "BSD-3-Clause",
     "Zlib",
+    "ISC",
     "Unicode-3.0",
     "MPL-2.0",
 ]
 confidence-threshold = 0.9
+# Certificados raiz da Mozilla (dados, licença permissiva). Só na compilação: o `ort-sys` os usa
+# para baixar o ONNX Runtime por HTTPS; não vão para o binário.
+exceptions = [{ crate = "webpki-root-certs", allow = ["CDLA-Permissive-2.0"] }]
 
 [licenses.private]
 # Crates do workspace (publish = false) não precisam de licença declarada.

@@ -713,4 +713,15 @@ docs/decisions/  # ADRs
 - **Orca com voz real** (nov/2026): as partes principais do roteiro (biblioteca, paleta, índice, F1, avisos, leitura do EPUB e do
   PDF); o roteiro inteiro de `docs/testes/orca.md` (12 partes) não foi repetido.
 - **v1.0.0** (nov/2026): tag assinada e Release estável, com o AppImage da CI.
-- Próximo passo: depois da 1.0 (ROADMAP "Futuro"): Flatpak, voz neural local, Séries.
+- **M27a** (branch `feat/m27a-kokoro-core`): voz neural, síntese no core (`core::kokoro`). Kokoro v1.0 int8
+  (`model.int8.onnx`, `voices.bin` cru com 54 vozes × 510 estilos × 256 `f32`, `tokens.txt`) no ONNX Runtime pela
+  `ort` (=2.0.0-rc.15; baixa o ONNX Runtime ao compilar e o liga estaticamente). Fonemas: `EspeakNg` carrega a
+  `libespeak-ng.so.1` durante a execução com `libloading` (sem ela, o app abre e só a voz neural falta; um `Mutex`,
+  porque o espeak-ng tem estado global); `fonemas_com_pontuacao` devolve a pontuação que o espeak-ng engole (não
+  corta "3.5" nem "1,000"); trocas do inglês (r → ɹ…). `Vocabulario` (`tokens.txt`, a linha do espaço é "  16"),
+  `dividir` (até 510 tokens, corta na pontuação ou no espaço), `Vozes::estilo(voz, tokens)`, `VOZES`,
+  `idioma_da_voz` (a primeira letra). `Kokoro::carregar(pasta, fonemizador)` e `sintetizar(frase, voz, velocidade)`
+  → `Vec<f32>` a 24 kHz. Testes reais: `FOLIO_KOKORO=<pasta> cargo test -p folio-core --release -- --ignored
+  kokoro_de_verdade espeak_de_verdade`. `deny.toml`: ISC (libloading) e exceção para `webpki-root-certs` (só na
+  compilação). A sherpa-onnx 2.0 foi descartada (sem espeak-ng, pula palavras fora do dicionário).
+- Próximo passo: M27b (motor neural), ver ROADMAP "Depois da 1.0".

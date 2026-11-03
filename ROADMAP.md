@@ -191,14 +191,28 @@ com as setas e o modo de navegação depois da paleta.
 biblioteca corrigida, anúncio do F1 e fração NaN. Limitação conhecida: no modo de navegação do Orca dentro da interface,
 o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
 
+## Depois da 1.0
+
+- [ ] **M27 — Voz neural local** (inglês primeiro, pt-BR depois): Kokoro v1.0 (Apache-2.0) no ONNX Runtime
+  (`ort`), modelo int8 baixado sob demanda (~142 MB), pronúncia pelo espeak-ng. Escolhido depois de ouvir
+  Piper e Kokoro lado a lado (out/2026): o Kokoro soou melhor; o int8 soa igual ao completo e gera ~4× mais
+  rápido que o tempo real (Ryzen 7 3800X). A sherpa-onnx 2.0 foi descartada: tirou o espeak-ng e pula as
+  palavras fora do dicionário.
+  - [x] M27a — síntese no core (`core::kokoro`): fonemas (espeak-ng carregado durante a execução),
+    tokens, vozes, modelo
+  - [ ] M27b — `MotorNeural` (implementa `MotorDeVoz`): gera a frase seguinte enquanto a atual toca,
+    marcas no início de cada frase, saída de áudio; escolha do motor pelo idioma do livro
+  - [ ] M27c — catálogo de vozes (cada uma diz o modelo, de onde baixar, SHA-256 e tamanho; pronto para
+    outros modelos), baixar (progresso, cancelar, remover), seção "Voz" no painel Aparência dos dois formatos
+    (modelo, voz com amostra, usar em livros em inglês, velocidade, que sai de Texto e Página), paleta
+  - [ ] M27d — normalização do texto em inglês, frases longas cortadas nas vírgulas, ADR 0008, AppImage
+    (libespeak-ng e dados), guia e roteiro do Orca
+  - [ ] M27e — Piper como segundo modelo (quando fizer falta): mais leve (~63 MB por voz) e rápido, mais
+    idiomas; reaproveita os fonemas e o ONNX Runtime, entra como linhas no catálogo e um motor
+  - [ ] pt-BR com o Kokoro (pf_dora, pm_alex)
+
 ## Futuro
 - **Slider de páginas** (arrastar para qualquer ponto do livro).
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
   O código já trata o macOS em alguns pontos (diretório de logs, escala de texto) e deve continuar compilando.
 - **Windows**.
-- **Voz neural local** (ideia): ler EPUB e PDF com modelos de voz que rodam no próprio computador, sem
-  internet (ex.: Piper ou Kokoro, ambos com vozes pt-BR), via ONNX Runtime no Rust (crate `ort`). O texto
-  vem do `tts.js` do foliate-js (EPUB) ou da camada de texto do pdf.js (PDF), com destaque do trecho lido.
-  Antes: analisar licenças (o código do Piper e o espeak-ng, usado para fonemas, são GPL-3; cada voz tem a
-  sua), baixar vozes sob demanda em vez de embuti-las, e comparar a qualidade em pt-BR. Para facilitar, o
-  M4d deve ter um "motor de voz" trocável (speech-dispatcher primeiro).
