@@ -4,6 +4,7 @@ pub mod biblioteca;
 pub mod destaques;
 pub mod epub;
 pub mod formato;
+pub mod kokoro;
 pub mod livro;
 pub mod metadados;
 pub mod pastas;
