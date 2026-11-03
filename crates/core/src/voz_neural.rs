@@ -10,12 +10,16 @@
 //! Cada `falar` e cada `parar` aumenta a `geracao`: os avisos e frases de uma geração antiga são
 //! descartados (o equivalente ao `ignorar` do motor do speech-dispatcher).
 //!
-//! O modelo (~1 s) e a saída de som só são abertos na primeira fala.
+//! O modelo (~1 s) e a saída de som só são abertos na primeira fala, e fechados depois de
+//! `OCIOSO` sem falar (o modelo ocupa ~300 MB; a saída aberta segura o dispositivo de som).
+//! A pasta do modelo e a voz são trocadas com `configurar` (no app, quando o modelo é baixado ou
+//! removido, ou a voz escolhida muda); a pasta nova é carregada na fala seguinte.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
+use std::time::Duration;
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
@@ -79,9 +83,14 @@ pub(crate) fn fator_de_velocidade(velocidade: i8) -> f32 {
 
 // --- motor ---------------------------------------------------------------------------------
 
-/// Gera o áudio de uma frase (amostras de -1 a 1, a `TAXA`). A voz é escolhida ao criar.
+/// Gera o áudio de uma frase (amostras de -1 a 1, a `TAXA`).
 pub(crate) trait Sintetizador: Send {
-    fn sintetizar(&mut self, frase: &str, velocidade: f32) -> Result<Vec<f32>, ErroKokoro>;
+    fn sintetizar(
+        &mut self,
+        frase: &str,
+        voz: &str,
+        velocidade: f32,
+    ) -> Result<Vec<f32>, ErroKokoro>;
 }
 
 /// O que vai para a fila de reprodução.
@@ -99,18 +108,27 @@ pub(crate) trait Saida: Send + Sync {
     fn retomar(&self);
 }
 
-type Fabrica<T> = Box<dyn FnMut() -> Result<T, String> + Send>;
+/// Quanto tempo sem falar até fechar o modelo e a saída de som.
+const OCIOSO: Duration = Duration::from_secs(120);
+
+/// Cria o sintetizador com o modelo de uma pasta.
+type FabricaSintetizador = Box<dyn FnMut(&Path) -> Result<Box<dyn Sintetizador>, String> + Send>;
+type FabricaSaida = Box<dyn FnMut() -> Result<Arc<dyn Saida>, String> + Send>;
 
 struct Trabalho {
     geracao: u64,
     frases: Vec<Frase>,
     velocidade: f32,
+    config: ConfigNeural,
+    /// Emitir as marcas e o fim (a amostra de uma voz não emite nada).
+    avisar: bool,
 }
 
 struct Compartilhado {
     geracao: AtomicU64,
     falando: AtomicBool,
     saida: Mutex<Option<Arc<dyn Saida>>>,
+    config: Mutex<Option<ConfigNeural>>,
     eventos: mpsc::Sender<EventoVoz>,
 }
 
@@ -126,6 +144,34 @@ impl Compartilhado {
     fn emitir(&self, evento: EventoVoz) {
         let _ = self.eventos.send(evento);
     }
+
+    fn config(&self) -> Option<ConfigNeural> {
+        self.config
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    /// Descarta o que estava sendo gerado ou tocado. Avisa `Interrompido` se estava falando.
+    fn interromper(&self) {
+        self.geracao.fetch_add(1, Ordering::SeqCst);
+        if let Some(saida) = self.saida() {
+            saida.limpar();
+            saida.retomar();
+        }
+        if self.falando.swap(false, Ordering::SeqCst) {
+            self.emitir(EventoVoz::Interrompido);
+        }
+    }
+
+    fn enviar(&self, trabalhos: &mpsc::Sender<Trabalho>, mut t: Trabalho) -> Result<(), ErroVoz> {
+        t.geracao = self.geracao.fetch_add(1, Ordering::SeqCst) + 1;
+        if let Some(saida) = self.saida() {
+            saida.limpar();
+            saida.retomar();
+        }
+        trabalhos.send(t).map_err(|_| ErroVoz::Encerrado)
+    }
 }
 
 /// O motor de voz neural. Os comandos são rápidos: o trabalho pesado fica na thread dele.
@@ -135,7 +181,7 @@ pub struct MotorNeural {
 }
 
 /// Onde estão os arquivos da voz e qual voz usar.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfigNeural {
     /// A pasta com o modelo, as vozes, os tokens e a `libonnxruntime.so`.
     pub pasta: PathBuf,
@@ -144,25 +190,54 @@ pub struct ConfigNeural {
 }
 
 impl MotorNeural {
-    /// Cria o motor com o Kokoro e a saída de som do sistema. Nada é carregado ainda.
-    pub fn novo(config: ConfigNeural, ao_evento: impl Fn(EventoVoz) + Send + 'static) -> Self {
-        let ConfigNeural { pasta, voz } = config;
-        let sintetizador: Fabrica<Box<dyn Sintetizador>> = Box::new(move || {
+    /// Cria o motor com o Kokoro e a saída de som do sistema, ainda sem modelo (ver
+    /// `configurar`). Nada é carregado ainda.
+    pub fn novo(ao_evento: impl Fn(EventoVoz) + Send + 'static) -> Self {
+        let sintetizador: FabricaSintetizador = Box::new(|pasta| {
             let espeak = EspeakNg::carregar(None).map_err(|e| cadeia(&e))?;
-            let kokoro = Kokoro::carregar(&pasta, Box::new(espeak)).map_err(|e| cadeia(&e))?;
-            Ok(Box::new(KokoroComVoz {
-                kokoro,
-                voz: voz.clone(),
-            }) as Box<dyn Sintetizador>)
+            let kokoro = Kokoro::carregar(pasta, Box::new(espeak)).map_err(|e| cadeia(&e))?;
+            Ok(Box::new(kokoro) as Box<dyn Sintetizador>)
         });
-        let saida: Fabrica<Arc<dyn Saida>> =
+        let saida: FabricaSaida =
             Box::new(|| SaidaRodio::abrir().map(|s| Arc::new(s) as Arc<dyn Saida>));
-        Self::com(sintetizador, saida, ao_evento)
+        Self::com(sintetizador, saida, OCIOSO, ao_evento)
+    }
+
+    /// O modelo e a voz a usar; `None` = sem voz neural (o modelo foi removido). Vale a partir
+    /// da fala seguinte.
+    pub fn configurar(&self, config: Option<ConfigNeural>) {
+        *self.comum.config.lock().unwrap_or_else(|e| e.into_inner()) = config;
+    }
+
+    pub fn configurado(&self) -> bool {
+        self.comum.config().is_some()
+    }
+
+    /// Fala `texto` com `voz` (a amostra de uma voz no painel), sem eventos. Interrompe o que
+    /// estava sendo falado.
+    pub fn amostra(&self, texto: &str, voz: &str) -> Result<(), ErroVoz> {
+        let mut config = self.comum.config().ok_or(ErroVoz::SemVozNeural)?;
+        config.voz = voz.to_string();
+        self.comum.interromper();
+        self.comum.enviar(
+            &self.trabalhos,
+            Trabalho {
+                geracao: 0,
+                frases: vec![Frase {
+                    marca: None,
+                    texto: texto.to_string(),
+                }],
+                velocidade: 1.0,
+                config,
+                avisar: false,
+            },
+        )
     }
 
     pub(crate) fn com(
-        sintetizador: Fabrica<Box<dyn Sintetizador>>,
-        saida: Fabrica<Arc<dyn Saida>>,
+        sintetizador: FabricaSintetizador,
+        saida: FabricaSaida,
+        ocioso: Duration,
         ao_evento: impl Fn(EventoVoz) + Send + 'static,
     ) -> Self {
         let (eventos, recebidos) = mpsc::channel();
@@ -180,13 +255,14 @@ impl MotorNeural {
             geracao: AtomicU64::new(0),
             falando: AtomicBool::new(false),
             saida: Mutex::new(None),
+            config: Mutex::new(None),
             eventos,
         });
         let (trabalhos, fila) = mpsc::channel();
         let c = Arc::clone(&comum);
         thread::Builder::new()
             .name("voz-neural".into())
-            .spawn(move || laco(c, fila, sintetizador, saida))
+            .spawn(move || laco(c, fila, sintetizador, saida, ocioso))
             .expect("criar a thread da voz neural");
         Self { comum, trabalhos }
     }
@@ -194,19 +270,22 @@ impl MotorNeural {
 
 impl MotorDeVoz for MotorNeural {
     fn falar(&self, ssml: String, config: ConfigVoz) -> Result<(), ErroVoz> {
-        let geracao = self.comum.geracao.fetch_add(1, Ordering::SeqCst) + 1;
-        if let Some(saida) = self.comum.saida() {
-            saida.limpar();
-            saida.retomar();
-        }
+        let neural = self.comum.config().ok_or(ErroVoz::SemVozNeural)?;
         self.comum.falando.store(true, Ordering::SeqCst);
-        self.trabalhos
-            .send(Trabalho {
-                geracao,
+        self.comum.enviar(
+            &self.trabalhos,
+            Trabalho {
+                geracao: 0,
                 frases: frases_do_ssml(&ssml),
                 velocidade: fator_de_velocidade(config.velocidade),
-            })
-            .map_err(|_| ErroVoz::Encerrado)
+                config: neural,
+                avisar: true,
+            },
+        )
+    }
+
+    fn disponivel(&self) -> bool {
+        self.configurado()
     }
 
     fn pausar(&self) -> Result<(), ErroVoz> {
@@ -226,13 +305,8 @@ impl MotorDeVoz for MotorNeural {
     }
 
     fn parar(&self) -> Result<(), ErroVoz> {
-        if self.comum.falando.swap(false, Ordering::SeqCst) {
-            self.comum.geracao.fetch_add(1, Ordering::SeqCst);
-            if let Some(saida) = self.comum.saida() {
-                saida.limpar();
-                saida.retomar();
-            }
-            self.comum.emitir(EventoVoz::Interrompido);
+        if self.comum.falando.load(Ordering::SeqCst) {
+            self.comum.interromper();
         }
         Ok(())
     }
@@ -241,19 +315,37 @@ impl MotorDeVoz for MotorNeural {
 fn laco(
     comum: Arc<Compartilhado>,
     fila: mpsc::Receiver<Trabalho>,
-    mut criar_sintetizador: Fabrica<Box<dyn Sintetizador>>,
-    mut criar_saida: Fabrica<Arc<dyn Saida>>,
+    mut criar_sintetizador: FabricaSintetizador,
+    mut criar_saida: FabricaSaida,
+    ocioso: Duration,
 ) {
-    let mut sintetizador: Option<Box<dyn Sintetizador>> = None;
-    for trabalho in fila {
+    // O sintetizador e a pasta de onde ele veio.
+    let mut carregado: Option<(PathBuf, Box<dyn Sintetizador>)> = None;
+    loop {
+        let trabalho = match fila.recv_timeout(ocioso) {
+            Ok(t) => t,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                // Pausado conta como falando: o modelo e a saída ficam.
+                if !comum.falando.load(Ordering::SeqCst) {
+                    let saida = comum.saida.lock().unwrap_or_else(|e| e.into_inner()).take();
+                    if carregado.take().is_some() || saida.is_some() {
+                        tracing::info!("voz neural ociosa: modelo e saída de som fechados");
+                    }
+                }
+                continue;
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        };
         let g = trabalho.geracao;
         if !comum.atual(g) {
             continue;
         }
-        // Abre o modelo e a saída na primeira fala; se falhar, tenta de novo na próxima.
+        // Abre o modelo (de novo, se a pasta mudou) e a saída; se falhar, tenta na próxima.
+        let pasta = &trabalho.config.pasta;
         let prontos = (|| {
-            if sintetizador.is_none() {
-                sintetizador = Some(criar_sintetizador()?);
+            if carregado.as_ref().is_none_or(|(p, _)| p != pasta) {
+                carregado = None;
+                carregado = Some((pasta.clone(), criar_sintetizador(pasta)?));
             }
             if comum.saida().is_none() {
                 let saida = criar_saida()?;
@@ -261,7 +353,7 @@ fn laco(
             }
             Ok::<_, String>(())
         })();
-        let (Ok(()), Some(sint), Some(saida)) = (prontos, sintetizador.as_mut(), comum.saida())
+        let (Ok(()), Some((_, sint)), Some(saida)) = (prontos, carregado.as_mut(), comum.saida())
         else {
             tracing::warn!("voz neural indisponível");
             if comum.atual(g) && comum.falando.swap(false, Ordering::SeqCst) {
@@ -269,6 +361,7 @@ fn laco(
             }
             continue;
         };
+        let voz = &trabalho.config.voz;
         for frase in trabalho.frases {
             if !comum.atual(g) {
                 break;
@@ -276,7 +369,7 @@ fn laco(
             let audio = if frase.texto.is_empty() {
                 None
             } else {
-                match sint.sintetizar(&frase.texto, trabalho.velocidade) {
+                match sint.sintetizar(&frase.texto, voz, trabalho.velocidade) {
                     Ok(audio) => Some(audio),
                     Err(erro) => {
                         tracing::warn!(
@@ -291,7 +384,7 @@ fn laco(
             if !comum.atual(g) {
                 break;
             }
-            if let Some(marca) = frase.marca {
+            if let Some(marca) = frase.marca.filter(|_| trabalho.avisar) {
                 let c = Arc::clone(&comum);
                 saida.tocar(Item::Aviso(Box::new(move || {
                     if c.atual(g) {
@@ -303,7 +396,7 @@ fn laco(
                 saida.tocar(Item::Audio(audio));
             }
         }
-        if comum.atual(g) {
+        if comum.atual(g) && trabalho.avisar {
             let c = Arc::clone(&comum);
             saida.tocar(Item::Aviso(Box::new(move || {
                 if c.atual(g) && c.falando.swap(false, Ordering::SeqCst) {
@@ -326,14 +419,14 @@ fn cadeia(erro: &dyn std::error::Error) -> String {
     texto
 }
 
-struct KokoroComVoz {
-    kokoro: Kokoro,
-    voz: String,
-}
-
-impl Sintetizador for KokoroComVoz {
-    fn sintetizar(&mut self, frase: &str, velocidade: f32) -> Result<Vec<f32>, ErroKokoro> {
-        self.kokoro.sintetizar(frase, &self.voz, velocidade)
+impl Sintetizador for Kokoro {
+    fn sintetizar(
+        &mut self,
+        frase: &str,
+        voz: &str,
+        velocidade: f32,
+    ) -> Result<Vec<f32>, ErroKokoro> {
+        Kokoro::sintetizar(self, frase, voz, velocidade)
     }
 }
 
@@ -450,15 +543,17 @@ mod tests {
 
     // --- o motor com peças falsas ---
 
-    /// Gera "áudio" de uma amostra; antes, espera a liberação, se houver uma trava.
+    /// Gera "áudio" de uma amostra e anota a voz; antes, espera a liberação, se houver trava.
     struct Falso {
         trava: Option<Arc<Mutex<mpsc::Receiver<()>>>>,
+        vozes: Arc<Mutex<Vec<String>>>,
     }
     impl Sintetizador for Falso {
-        fn sintetizar(&mut self, frase: &str, _: f32) -> Result<Vec<f32>, ErroKokoro> {
+        fn sintetizar(&mut self, frase: &str, voz: &str, _: f32) -> Result<Vec<f32>, ErroKokoro> {
             if let Some(t) = &self.trava {
                 let _ = t.lock().unwrap().recv_timeout(Duration::from_secs(5));
             }
+            self.vozes.lock().unwrap().push(voz.to_string());
             Ok(vec![frase.len() as f32])
         }
     }
@@ -482,22 +577,59 @@ mod tests {
         fn retomar(&self) {}
     }
 
-    fn motor(
+    /// O que o motor falso registra: as pastas carregadas, as vozes usadas, as saídas abertas.
+    #[derive(Default, Clone)]
+    struct Registro {
+        pastas: Arc<Mutex<Vec<PathBuf>>>,
+        vozes: Arc<Mutex<Vec<String>>>,
+        saidas: Arc<Mutex<usize>>,
+    }
+
+    fn config(pasta: &str, voz: &str) -> Option<ConfigNeural> {
+        Some(ConfigNeural {
+            pasta: pasta.into(),
+            voz: voz.into(),
+        })
+    }
+
+    fn motor_com(
         trava: Option<mpsc::Receiver<()>>,
-    ) -> (MotorNeural, mpsc::Receiver<EventoVoz>, Arc<SaidaFalsa>) {
+        ocioso: Duration,
+    ) -> (
+        MotorNeural,
+        mpsc::Receiver<EventoVoz>,
+        Arc<SaidaFalsa>,
+        Registro,
+    ) {
         let saida = Arc::new(SaidaFalsa::default());
         let s = Arc::clone(&saida);
         let trava = trava.map(|t| Arc::new(Mutex::new(t)));
+        let registro = Registro::default();
+        let (r1, r2) = (registro.clone(), registro.clone());
         let (tx, rx) = mpsc::channel();
         let m = MotorNeural::com(
-            Box::new(move || {
+            Box::new(move |pasta| {
+                r1.pastas.lock().unwrap().push(pasta.to_path_buf());
                 Ok(Box::new(Falso {
                     trava: trava.clone(),
+                    vozes: Arc::clone(&r1.vozes),
                 }) as Box<dyn Sintetizador>)
             }),
-            Box::new(move || Ok(Arc::clone(&s) as Arc<dyn Saida>)),
+            Box::new(move || {
+                *r2.saidas.lock().unwrap() += 1;
+                Ok(Arc::clone(&s) as Arc<dyn Saida>)
+            }),
+            ocioso,
             move |e| tx.send(e).unwrap(),
         );
+        m.configurar(config("/m", "af_heart"));
+        (m, rx, saida, registro)
+    }
+
+    fn motor(
+        trava: Option<mpsc::Receiver<()>>,
+    ) -> (MotorNeural, mpsc::Receiver<EventoVoz>, Arc<SaidaFalsa>) {
+        let (m, rx, saida, _) = motor_com(trava, OCIOSO);
         (m, rx, saida)
     }
 
@@ -556,11 +688,83 @@ mod tests {
     fn sem_modelo_a_fala_e_interrompida() {
         let (tx, rx) = mpsc::channel();
         let m = MotorNeural::com(
-            Box::new(|| Err("sem modelo".into())),
+            Box::new(|_| Err("sem modelo".into())),
             Box::new(|| Ok(Arc::new(SaidaFalsa::default()) as Arc<dyn Saida>)),
+            OCIOSO,
             move |e| tx.send(e).unwrap(),
         );
+        m.configurar(config("/m", "af_heart"));
         m.falar(ssml(&["0"]), ConfigVoz::default()).unwrap();
         assert_eq!(proximo(&rx), EventoVoz::Interrompido);
+    }
+
+    #[test]
+    fn sem_configuracao_nao_ha_voz_neural() {
+        let (m, _, _) = motor(None);
+        assert!(m.disponivel());
+        m.configurar(None);
+        assert!(!m.disponivel());
+        assert!(matches!(
+            m.falar(ssml(&["0"]), ConfigVoz::default()),
+            Err(ErroVoz::SemVozNeural)
+        ));
+        assert!(matches!(
+            m.amostra("Hi.", "am_michael"),
+            Err(ErroVoz::SemVozNeural)
+        ));
+    }
+
+    #[test]
+    fn trocar_a_voz_nao_recarrega_e_trocar_a_pasta_recarrega() {
+        let (m, rx, _, registro) = motor_com(None, OCIOSO);
+        m.falar(ssml(&["0"]), ConfigVoz::default()).unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        m.configurar(config("/m", "bf_emma"));
+        m.falar(ssml(&["1"]), ConfigVoz::default()).unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("1".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        m.configurar(config("/outra", "bf_emma"));
+        m.falar(ssml(&["2"]), ConfigVoz::default()).unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("2".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        assert_eq!(
+            *registro.vozes.lock().unwrap(),
+            ["af_heart", "bf_emma", "bf_emma"]
+        );
+        assert_eq!(
+            *registro.pastas.lock().unwrap(),
+            [PathBuf::from("/m"), PathBuf::from("/outra")]
+        );
+    }
+
+    #[test]
+    fn amostra_usa_a_voz_pedida_sem_eventos_e_interrompe_a_leitura() {
+        let (libera, trava) = mpsc::channel();
+        let (m, rx, saida, registro) = motor_com(Some(trava), OCIOSO);
+        m.falar(ssml(&["0", "1"]), ConfigVoz::default()).unwrap();
+        m.amostra("Hello there.", "bm_george").unwrap();
+        for _ in 0..3 {
+            let _ = libera.send(());
+        }
+        assert_eq!(proximo(&rx), EventoVoz::Interrompido);
+        assert!(rx.recv_timeout(Duration::from_millis(200)).is_err());
+        assert_eq!(registro.vozes.lock().unwrap().last().unwrap(), "bm_george");
+        assert_eq!(*saida.tocado.lock().unwrap().last().unwrap(), 12.0);
+    }
+
+    #[test]
+    fn ocioso_fecha_o_modelo_e_a_saida_e_a_fala_seguinte_reabre() {
+        let (m, rx, _, registro) = motor_com(None, Duration::from_millis(50));
+        m.falar(ssml(&["0"]), ConfigVoz::default()).unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        thread::sleep(Duration::from_millis(200));
+        assert!(m.comum.saida().is_none());
+        m.falar(ssml(&["1"]), ConfigVoz::default()).unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("1".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        assert_eq!(registro.pastas.lock().unwrap().len(), 2);
+        assert_eq!(*registro.saidas.lock().unwrap(), 2);
     }
 }

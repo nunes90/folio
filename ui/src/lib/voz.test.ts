@@ -3,6 +3,7 @@ import {
   blocoDasFrases,
   blocoParaFala,
   comandosDaVoz,
+  idiomaValido,
   tipoDoElemento,
   tipoDoTexto,
   trechoDeFala,
@@ -106,5 +107,17 @@ describe("velocidade por trecho", () => {
     expect(trechoDeFala(["codigo", "texto", "codigo"], ["x", "", "y"])).toEqual({ ate: 3, tipo: "codigo" });
     expect(trechoDeFala(["texto", "lista", "lista"], ["", "i", "j"])).toEqual({ ate: 3, tipo: "lista" });
     expect(trechoDeFala([], [])).toEqual({ ate: 0, tipo: "texto" });
+  });
+});
+
+describe("idiomaValido", () => {
+  it("aceita etiquetas BCP 47 e recusa lixo", () => {
+    expect(idiomaValido("en-US")).toBe("en-US");
+    expect(idiomaValido(" pt ")).toBe("pt");
+    expect(idiomaValido("zh_Hant_TW")).toBe("zh_Hant_TW");
+    expect(idiomaValido("´kiÞŽ")).toBeNull();
+    expect(idiomaValido("")).toBeNull();
+    expect(idiomaValido(undefined)).toBeNull();
+    expect(idiomaValido(42)).toBeNull();
   });
 });

@@ -47,6 +47,8 @@ pub enum ErroVoz {
     Encerrado,
     #[error("não há voz para o idioma {0}")]
     SemVozParaIdioma(String),
+    #[error("a voz natural não está instalada")]
+    SemVozNeural,
 }
 
 /// Um motor de voz. `&self` em todos os métodos: os comandos vão por um canal para a thread
@@ -57,6 +59,28 @@ pub trait MotorDeVoz: Send + Sync {
     fn pausar(&self) -> Result<(), ErroVoz>;
     fn retomar(&self) -> Result<(), ErroVoz>;
     fn parar(&self) -> Result<(), ErroVoz>;
+    /// Se o motor pode falar agora (a voz neural depende de o modelo estar baixado).
+    fn disponivel(&self) -> bool {
+        true
+    }
+}
+
+impl<M: MotorDeVoz + ?Sized> MotorDeVoz for std::sync::Arc<M> {
+    fn falar(&self, ssml: String, config: ConfigVoz) -> Result<(), ErroVoz> {
+        (**self).falar(ssml, config)
+    }
+    fn pausar(&self) -> Result<(), ErroVoz> {
+        (**self).pausar()
+    }
+    fn retomar(&self) -> Result<(), ErroVoz> {
+        (**self).retomar()
+    }
+    fn parar(&self) -> Result<(), ErroVoz> {
+        (**self).parar()
+    }
+    fn disponivel(&self) -> bool {
+        (**self).disponivel()
+    }
 }
 
 // --- máquina de estados pura ---------------------------------------------------------------

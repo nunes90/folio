@@ -737,4 +737,22 @@ docs/decisions/  # ADRs
   eventos do motor em uso (um `Interrompido` atrasado pararia a leitura). Temporário até o M27c:
   `FOLIO_VOZ_NEURAL=<pasta do modelo>` (e `FOLIO_VOZ_NEURAL_VOZ`, padrão `af_heart`) liga a voz. O app passa a precisar
   da `libasound.so.2` (ALSA); `libasound2-dev` nos workflows. Testado pelo Lucas com áudio real num EPUB em inglês.
-- Próximo passo: M27c (catálogo, download e seção "Voz"), ver ROADMAP "Depois da 1.0".
+- **M27c-1** (branch `feat/m27c-catalogo-vozes`): `core::catalogo_vozes` (`Modelo`, `Arquivo`, `VozDoCatalogo`;
+  `KOKORO` com URLs do Hugging Face presas a um commit e o `.tgz` oficial do ONNX Runtime 1.31.1 da arquitetura, de que
+  só saem a `.so`, a licença e os avisos; 5 vozes em inglês: Heart, Bella, Michael, Emma, George). `core::baixar`:
+  `baixar_modelo(rede, modelo, vozes, progresso, cancelar)` grava em `<id>.parcial/`, confere tamanho e SHA-256 enquanto
+  chega e renomeia no fim (instalado = a pasta existe); `RedeHttp` = `ureq` com os certificados do sistema
+  (`platform-verifier`, provedor ring). `cargo deny` agora só olha os alvos Linux (`[graph] targets`): a
+  `webpki-root-certs` (CDLA) só entra no wasm32. `MotorNeural::configurar(Option<ConfigNeural>)` (pasta recarregada
+  só se mudar; a voz vai em cada fala), `amostra(texto, voz)` sem eventos, e modelo e saída de som fechados depois de
+  `OCIOSO` = 2 min sem falar. `MotorDeVoz::disponivel` (a neural só com o modelo baixado); `MotorPorIdioma::usar_neural`.
+  Preferências `vozNatural` (vazio = padrão; fora do catálogo volta ao padrão) e `vozNaturalEmIngles` (padrão sim).
+  App: `voz_natural.rs` (`EstadoVoz`: o motor por idioma, o neural e `<dados>/vozes`; `aplicar(preferencias)` no
+  início, ao salvar as preferências, ao baixar e ao remover); comandos `vozes_naturais` (catálogo, instalado, baixando,
+  espeak-ng presente), `baixar_voz_natural` (thread; evento `voz-natural`: progresso a cada 150 ms, concluído,
+  cancelado, falhou), `cancelar_download_voz`, `remover_voz_natural`, `ouvir_amostra_voz`. O `FOLIO_VOZ_NEURAL` saiu.
+  O PDF manda o idioma do arquivo (`/Lang`, `info.Language` do pdf.js, conferido por `idiomaValido`: há PDFs com lixo
+  ali); sem ele, vai ao sistema.
+  Teste real do download: `FOLIO_BAIXAR=<pasta> cargo test -p folio-core --release -- --ignored kokoro_baixado`
+  (152 MB em ~5 s aqui).
+- Próximo passo: M27c-2 (seção "Voz" no painel Aparência), ver ROADMAP "Depois da 1.0".

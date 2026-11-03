@@ -1,6 +1,8 @@
 //! Núcleo do Folio: lógica pura, sem dependência de Tauri.
 
+pub mod baixar;
 pub mod biblioteca;
+pub mod catalogo_vozes;
 pub mod destaques;
 pub mod epub;
 pub mod formato;

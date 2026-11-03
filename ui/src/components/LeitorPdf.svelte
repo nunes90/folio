@@ -10,6 +10,7 @@
     blocoDasFrases,
     comandosDaVoz,
     falar,
+    idiomaValido,
     ouvirVoz,
     pararVoz,
     trechoDeFala,
@@ -473,6 +474,11 @@
     pedidoSenha = null;
     documentoPdf = documento;
     total = documento.numPages;
+    // O idioma do PDF escolhe a voz (a natural para inglês, M27).
+    documento
+      .getMetadata()
+      .then(({ info }) => (idiomaDoPdf = idiomaValido((info as { Language?: unknown }).Language)))
+      .catch(() => {});
     v.setDocument(documento);
     l.setDocument(documento);
     carregarSumario(documento)
@@ -1032,7 +1038,7 @@
       leitura = { pagina: p, frases, marca: de, fim: de + ate };
       voz = "falando";
       await falar(bloco.ssml, {
-        idioma: null,
+        idioma: idiomaDoPdf,
         velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
       });
       return;
@@ -1326,6 +1332,7 @@
   // sessão, progresso, busca, uma ideia por vez) é só deste lado. Páginas de PDF são fixas:
   // abrir na mesma página dá a mesma página.
   let documentoPdf = $state.raw<PDFDocumentProxy>();
+  let idiomaDoPdf: string | null = null;
   let ladoInicio = $state<number | null>(null);
   let lado = $state<LadoPdf>();
   let paginaLado = $state(0);

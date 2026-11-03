@@ -137,6 +137,10 @@ pub struct PreferenciasLeitura {
     pub movimento: Movimento,
     /// Velocidade da leitura em voz alta, de -100 (mais lenta) a 100; 0 é a normal do sistema.
     pub velocidade_voz: i8,
+    /// A voz natural escolhida (o id no catálogo, ex.: "af_heart"); vazio = a padrão do modelo.
+    pub voz_natural: String,
+    /// Ler os livros em inglês com a voz natural, quando ela está baixada.
+    pub voz_natural_em_ingles: bool,
     pub virada: Virada,
     pub modo_pdf: ModoPdf,
     pub pagina: Pagina,
@@ -159,6 +163,8 @@ impl Default for PreferenciasLeitura {
             tema: Tema::Sistema,
             movimento: Movimento::Sistema,
             velocidade_voz: 0,
+            voz_natural: String::new(),
+            voz_natural_em_ingles: true,
             virada: Virada::Nenhuma,
             modo_pdf: ModoPdf::Paginas,
             pagina: Pagina::Automatica,
@@ -198,6 +204,12 @@ impl PreferenciasLeitura {
             velocidade_voz: self
                 .velocidade_voz
                 .clamp(limites::VELOCIDADE_VOZ.0, limites::VELOCIDADE_VOZ.1),
+            // Uma voz que saiu do catálogo volta à padrão.
+            voz_natural: if crate::catalogo_vozes::voz(&self.voz_natural).is_some() {
+                self.voz_natural
+            } else {
+                String::new()
+            },
             ..self
         }
     }
@@ -347,6 +359,18 @@ mod tests {
         .para_json();
         assert!(json.contains(r#""tema":"alto-contraste""#), "{json}");
         assert!(json.contains(r#""movimento":"reduzido""#), "{json}");
+    }
+
+    #[test]
+    fn voz_natural_desconhecida_volta_a_padrao() {
+        let p = PreferenciasLeitura::de_json(r#"{"vozNatural": "bm_george"}"#);
+        assert_eq!(p.voz_natural, "bm_george");
+        assert!(p.voz_natural_em_ingles);
+        let p = PreferenciasLeitura::de_json(
+            r#"{"vozNatural": "zz_nenhuma", "vozNaturalEmIngles": false}"#,
+        );
+        assert_eq!(p.voz_natural, "");
+        assert!(!p.voz_natural_em_ingles);
     }
 
     #[test]

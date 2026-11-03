@@ -5,6 +5,7 @@
 //! anterior é parado, e os eventos dele são descartados: só passam os do motor em uso (senão um
 //! `Interrompido` atrasado do antigo pararia a leitura no frontend).
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::voz::{ConfigVoz, ErroVoz, EventoVoz, MotorDeVoz};
@@ -37,6 +38,8 @@ pub type AoEvento = Box<dyn Fn(EventoVoz) + Send + Sync>;
 pub struct MotorPorIdioma {
     sistema: Option<Box<dyn MotorDeVoz>>,
     neural: Option<Box<dyn MotorDeVoz>>,
+    /// A preferência "usar a voz natural em livros em inglês".
+    usar_neural: AtomicBool,
     ativo: Arc<Mutex<Option<Qual>>>,
 }
 
@@ -64,8 +67,19 @@ impl MotorPorIdioma {
         (sistema.is_some() || neural.is_some()).then_some(Self {
             sistema,
             neural,
+            usar_neural: AtomicBool::new(true),
             ativo,
         })
+    }
+
+    /// Liga ou desliga a voz neural (a preferência). Vale a partir do bloco seguinte.
+    pub fn usar_neural(&self, usar: bool) {
+        self.usar_neural.store(usar, Ordering::SeqCst);
+    }
+
+    fn tem_neural(&self) -> bool {
+        self.usar_neural.load(Ordering::SeqCst)
+            && self.neural.as_ref().is_some_and(|n| n.disponivel())
     }
 
     fn motor(&self, qual: Qual) -> Option<&dyn MotorDeVoz> {
@@ -84,7 +98,7 @@ impl MotorPorIdioma {
 impl MotorDeVoz for MotorPorIdioma {
     fn falar(&self, ssml: String, config: ConfigVoz) -> Result<(), ErroVoz> {
         let idioma = config.idioma.as_deref();
-        let qual = escolher(idioma, self.sistema.is_some(), self.neural.is_some())
+        let qual = escolher(idioma, self.sistema.is_some(), self.tem_neural())
             .ok_or_else(|| ErroVoz::SemVozParaIdioma(idioma.unwrap_or("?").to_string()))?;
         let anterior = self
             .ativo
@@ -113,6 +127,10 @@ impl MotorDeVoz for MotorPorIdioma {
 
     fn parar(&self) -> Result<(), ErroVoz> {
         self.ativo().map_or(Ok(()), |m| m.parar())
+    }
+
+    fn disponivel(&self) -> bool {
+        self.sistema.is_some() || self.tem_neural()
     }
 }
 
@@ -247,6 +265,19 @@ mod tests {
         assert_eq!(
             eventos.lock().unwrap().last(),
             Some(&EventoVoz::Interrompido)
+        );
+    }
+
+    #[test]
+    fn neural_desligada_ou_sem_modelo_vai_ao_sistema() {
+        let (m, registro, _) = montar();
+        m.usar_neural(false);
+        m.falar("a".into(), config("en")).unwrap();
+        m.usar_neural(true);
+        m.falar("b".into(), config("en")).unwrap();
+        assert_eq!(
+            *registro.lock().unwrap(),
+            ["sistema falar a", "sistema parar", "neural falar b"]
         );
     }
 
