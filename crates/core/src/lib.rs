@@ -15,6 +15,8 @@ pub mod sessoes;
 mod ssip;
 pub mod visitas;
 pub mod voz;
+pub mod voz_neural;
+pub mod voz_por_idioma;
 
 /// Versão do núcleo, exposta para o app registrar no log de inicialização.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

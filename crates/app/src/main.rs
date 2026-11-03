@@ -10,6 +10,9 @@ mod processo;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
+use folio_core::voz::{MotorDeVoz, SpeechDispatcher};
+use folio_core::voz_neural::{ConfigNeural, MotorNeural};
+use folio_core::voz_por_idioma::MotorPorIdioma;
 use tauri::{Emitter, Manager};
 
 /// Identificador do app (o mesmo do tauri.conf.json): nomeia as pastas de dados e de cache.
@@ -68,17 +71,32 @@ fn main() -> anyhow::Result<()> {
                 folio_core::biblioteca::Biblioteca::abrir(&dados, &cache.join("capas"))?;
             app.manage(comandos::EstadoBiblioteca::new(biblioteca));
 
-            // Voz é opcional: sem o speech-dispatcher, o app abre e só a leitura em voz alta
-            // fica indisponível. Os eventos do motor vão ao frontend como o evento `voz`.
+            // Voz é opcional: sem o speech-dispatcher e sem a voz neural, o app abre e só a
+            // leitura em voz alta fica indisponível. Os eventos do motor em uso vão ao frontend
+            // como o evento `voz`.
             let app_voz = app.handle().clone();
-            let motor = folio_core::voz::SpeechDispatcher::conectar(move |evento| {
-                if let Err(erro) = app_voz.emit("voz", evento) {
-                    tracing::warn!(%erro, "falha ao enviar evento de voz");
-                }
-            })
-            .map(|m| Box::new(m) as Box<dyn folio_core::voz::MotorDeVoz>)
-            .inspect_err(|erro| tracing::warn!(%erro, "leitura em voz alta indisponível"))
-            .ok();
+            let motor = MotorPorIdioma::novo(
+                move |evento| {
+                    if let Err(erro) = app_voz.emit("voz", evento) {
+                        tracing::warn!(%erro, "falha ao enviar evento de voz");
+                    }
+                },
+                |ao_evento| {
+                    SpeechDispatcher::conectar(ao_evento)
+                        .map(|m| Box::new(m) as Box<dyn MotorDeVoz>)
+                        .inspect_err(|erro| tracing::warn!(%erro, "speech-dispatcher indisponível"))
+                        .ok()
+                },
+                |ao_evento| {
+                    let config = config_da_voz_neural()?;
+                    tracing::info!(pasta = %config.pasta.display(), voz = config.voz, "voz neural");
+                    Some(Box::new(MotorNeural::novo(config, ao_evento)) as Box<dyn MotorDeVoz>)
+                },
+            )
+            .map(|m| Box::new(m) as Box<dyn MotorDeVoz>);
+            if motor.is_none() {
+                tracing::warn!("leitura em voz alta indisponível");
+            }
             app.manage(comandos::EstadoVoz(motor));
             Ok(())
         })
@@ -154,4 +172,12 @@ fn contornar_dmabuf_nvidia() -> bool {
 #[cfg(not(target_os = "linux"))]
 fn contornar_dmabuf_nvidia() -> bool {
     false
+}
+
+/// A voz neural, enquanto não há download (M27c): `FOLIO_VOZ_NEURAL=<pasta>` com o modelo, as
+/// vozes, os tokens e a `libonnxruntime.so`; `FOLIO_VOZ_NEURAL_VOZ` escolhe a voz (af_heart).
+fn config_da_voz_neural() -> Option<ConfigNeural> {
+    let pasta = PathBuf::from(std::env::var_os("FOLIO_VOZ_NEURAL")?);
+    let voz = std::env::var("FOLIO_VOZ_NEURAL_VOZ").unwrap_or_else(|_| "af_heart".into());
+    Some(ConfigNeural { pasta, voz })
 }

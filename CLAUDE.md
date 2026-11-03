@@ -727,4 +727,14 @@ docs/decisions/  # ADRs
   → `Vec<f32>` a 24 kHz. Testes reais: `FOLIO_KOKORO=<pasta> cargo test -p folio-core --release -- --ignored
   kokoro_de_verdade espeak_de_verdade` (a pasta precisa ter também a `libonnxruntime.so`). `deny.toml`: ISC
   (libloading). A sherpa-onnx 2.0 foi descartada (sem espeak-ng, pula palavras fora do dicionário).
-- Próximo passo: M27b (motor neural), ver ROADMAP "Depois da 1.0".
+- **M27b** (branch `feat/m27b-motor-neural`): `core::voz_neural` — `MotorNeural` (implementa `MotorDeVoz`): uma thread
+  sintetiza frase a frase (`frases_do_ssml`: o `<s><mark/>…</s>` do frontend) e põe na fila da saída um aviso (a marca)
+  e o áudio; o aviso dispara quando a saída chega nele, então o destaque acompanha a voz. Cada `falar`/`parar` aumenta a
+  `geracao` e limpa a saída: o que a thread ainda gerava de um bloco antigo é descartado. O modelo e a saída (rodio,
+  `SaidaRodio`) só são criados na primeira fala (~0,7 s); se falhar, `Interrompido`. Velocidade: `2^(v/100)`.
+  Sintetizador e saída são traits (testes com falsos). `core::voz_por_idioma` — `MotorPorIdioma` (`escolher`: "en",
+  "en-*" à neural se houver; o resto e sem idioma ao sistema): troca de motor para o anterior e só deixa passar os
+  eventos do motor em uso (um `Interrompido` atrasado pararia a leitura). Temporário até o M27c:
+  `FOLIO_VOZ_NEURAL=<pasta do modelo>` (e `FOLIO_VOZ_NEURAL_VOZ`, padrão `af_heart`) liga a voz. O app passa a precisar
+  da `libasound.so.2` (ALSA); `libasound2-dev` nos workflows. Testado pelo Lucas com áudio real num EPUB em inglês.
+- Próximo passo: M27c (catálogo, download e seção "Voz"), ver ROADMAP "Depois da 1.0".
