@@ -198,12 +198,12 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
   Piper e Kokoro lado a lado (out/2026): o Kokoro soou melhor; o int8 soa igual ao completo e gera ~4× mais
   rápido que o tempo real (Ryzen 7 3800X). A sherpa-onnx 2.0 foi descartada: tirou o espeak-ng e pula as
   palavras fora do dicionário.
-  - [x] M27a — síntese no core (`core::kokoro`): fonemas (espeak-ng carregado durante a execução),
-    tokens, vozes, modelo
+  - [x] M27a — síntese no core (`core::kokoro`): fonemas (espeak-ng) e ONNX Runtime oficial, as duas
+    bibliotecas carregadas durante a execução (a do ONNX Runtime vem com a voz); tokens, vozes, modelo
   - [ ] M27b — `MotorNeural` (implementa `MotorDeVoz`): gera a frase seguinte enquanto a atual toca,
     marcas no início de cada frase, saída de áudio; escolha do motor pelo idioma do livro
-  - [ ] M27c — catálogo de vozes (cada uma diz o modelo, de onde baixar, SHA-256 e tamanho; pronto para
-    outros modelos), baixar (progresso, cancelar, remover), seção "Voz" no painel Aparência dos dois formatos
+  - [ ] M27c — catálogo de vozes (cada uma diz o modelo, de onde baixar, SHA-256 e tamanho, mais o ONNX Runtime;
+    pronto para outros modelos), baixar (progresso, cancelar, remover), seção "Voz" no painel Aparência dos dois formatos
     (modelo, voz com amostra, usar em livros em inglês, velocidade, que sai de Texto e Página), paleta
   - [ ] M27d — normalização do texto em inglês, frases longas cortadas nas vírgulas, ADR 0008, AppImage
     (libespeak-ng e dados), guia e roteiro do Orca

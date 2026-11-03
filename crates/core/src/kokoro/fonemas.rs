@@ -6,7 +6,7 @@
 
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use super::ErroKokoro;
 
@@ -107,8 +107,9 @@ const FONEMAS_IPA: c_int = 0x02;
 
 /// O espeak-ng da biblioteca do sistema.
 ///
-/// Ele guarda estado global (a voz escolhida, o texto em andamento), então as chamadas passam
-/// por um `Mutex` e deve haver um só `EspeakNg` no processo.
+/// Ele guarda estado global (a voz escolhida, o texto em andamento): há um só `EspeakNg` no
+/// processo (`carregar` devolve sempre o mesmo) e as chamadas passam por um `Mutex`. Iniciar o
+/// espeak-ng duas vezes ao mesmo tempo derruba o processo.
 pub struct EspeakNg {
     funcoes: Mutex<Funcoes>,
     /// Mantém a biblioteca carregada enquanto as funções existirem.
@@ -122,10 +123,23 @@ struct Funcoes {
     idioma: Option<String>,
 }
 
+/// O espeak-ng do processo, depois de carregado.
+static ESPEAK: Mutex<Option<Arc<EspeakNg>>> = Mutex::new(None);
+
 impl EspeakNg {
-    /// Carrega a biblioteca e a inicia. `dados` é a pasta que contém `espeak-ng-data`; sem ela,
-    /// o espeak-ng usa a do sistema.
-    pub fn carregar(dados: Option<&Path>) -> Result<Self, ErroKokoro> {
+    /// O espeak-ng do processo: na primeira vez, carrega a biblioteca e a inicia. `dados` é a
+    /// pasta que contém `espeak-ng-data` (sem ela, a do sistema); só vale na primeira vez.
+    pub fn carregar(dados: Option<&Path>) -> Result<Arc<Self>, ErroKokoro> {
+        let mut atual = ESPEAK.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(espeak) = atual.as_ref() {
+            return Ok(Arc::clone(espeak));
+        }
+        let espeak = Arc::new(Self::iniciar(dados)?);
+        *atual = Some(Arc::clone(&espeak));
+        Ok(espeak)
+    }
+
+    fn iniciar(dados: Option<&Path>) -> Result<Self, ErroKokoro> {
         // SAFETY: carregar a biblioteca roda os construtores dela; a do espeak-ng não tem
         // efeitos além de iniciar variáveis próprias.
         let biblioteca = unsafe { libloading::Library::new("libespeak-ng.so.1") }
@@ -170,6 +184,12 @@ impl EspeakNg {
             }),
             _biblioteca: biblioteca,
         })
+    }
+}
+
+impl<F: Fonemizador + ?Sized> Fonemizador for Arc<F> {
+    fn fonemas(&self, trecho: &str, idioma: &str) -> Result<String, ErroKokoro> {
+        F::fonemas(self, trecho, idioma)
     }
 }
 
@@ -278,8 +298,9 @@ mod tests {
     #[ignore = "precisa da libespeak-ng instalada"]
     fn espeak_de_verdade() {
         let espeak = EspeakNg::carregar(None).unwrap();
+        assert!(Arc::ptr_eq(&espeak, &EspeakNg::carregar(None).unwrap()));
         assert_eq!(espeak.fonemas("test", "en-us").unwrap(), "tˈɛst");
-        let frase = fonemas_com_pontuacao(&espeak, "Hello, world.", "en-us").unwrap();
+        let frase = fonemas_com_pontuacao(espeak.as_ref(), "Hello, world.", "en-us").unwrap();
         assert_eq!(frase, "həlˈoʊ, wˈɜːld.");
         assert!(matches!(
             espeak.fonemas("x", "nao-existe"),

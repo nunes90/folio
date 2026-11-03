@@ -16,6 +16,8 @@ pub const TAXA: u32 = 24_000;
 pub const ARQUIVO_MODELO: &str = "model.int8.onnx";
 pub const ARQUIVO_VOZES: &str = "voices.bin";
 pub const ARQUIVO_TOKENS: &str = "tokens.txt";
+/// O ONNX Runtime oficial (1.31), baixado junto com a voz.
+pub const ARQUIVO_ONNX_RUNTIME: &str = "libonnxruntime.so";
 
 pub struct Kokoro {
     sessao: Session,
@@ -27,7 +29,11 @@ pub struct Kokoro {
 }
 
 impl Kokoro {
-    /// Carrega o modelo da `pasta` (com os três arquivos baixados). Leva perto de 1 s.
+    /// Carrega o modelo da `pasta` (com os arquivos baixados, inclusive o ONNX Runtime). Leva
+    /// perto de 1 s.
+    ///
+    /// O ONNX Runtime é carregado uma vez por processo: depois da primeira, as próximas usam o
+    /// mesmo, venha de onde vier.
     pub fn carregar(pasta: &Path, fonemizador: Box<dyn Fonemizador>) -> Result<Self, ErroKokoro> {
         let ler = |nome: &str| {
             let caminho = pasta.join(nome);
@@ -37,7 +43,10 @@ impl Kokoro {
         let tokens = String::from_utf8(ler(ARQUIVO_TOKENS)?)
             .map_err(|_| ErroKokoro::ArquivoInvalido("tokens.txt não é UTF-8".into()))?;
         let vocabulario = Vocabulario::ler(&tokens)?;
-        let ambiente = ort::init().with_name("folio").build()?;
+        let ambiente = ort::init_from(pasta.join(ARQUIVO_ONNX_RUNTIME))
+            .map_err(ErroKokoro::SemOnnxRuntime)?
+            .with_name("folio")
+            .build()?;
         // Metade dos núcleos, até 4: mais que isso quase não acelera e disputa a CPU com a
         // interface enquanto o livro é lido.
         let nucleos = std::thread::available_parallelism().map_or(2, |n| n.get());

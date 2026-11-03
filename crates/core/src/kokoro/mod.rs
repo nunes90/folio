@@ -9,7 +9,9 @@
 //! 3. `vozes`: cada voz é uma tabela de "estilos", um por tamanho de frase.
 //! 4. `modelo`: o ONNX Runtime recebe os números e o estilo e devolve o áudio (24 kHz, mono).
 //!
-//! Os arquivos do modelo (`model.int8.onnx`, `voices.bin`, `tokens.txt`) são baixados à parte.
+//! Os arquivos do modelo (`model.int8.onnx`, `voices.bin`, `tokens.txt`) e o próprio ONNX Runtime
+//! (`libonnxruntime.so`, o oficial da Microsoft) são baixados à parte. As duas bibliotecas em C (o
+//! ONNX Runtime e o espeak-ng) são carregadas durante a execução: sem elas, o app abre normalmente.
 
 mod fonemas;
 mod modelo;
@@ -17,7 +19,9 @@ mod tokens;
 mod vozes;
 
 pub use fonemas::{EspeakNg, Fonemizador, fonemas_com_pontuacao};
-pub use modelo::{ARQUIVO_MODELO, ARQUIVO_TOKENS, ARQUIVO_VOZES, Kokoro, TAXA};
+pub use modelo::{
+    ARQUIVO_MODELO, ARQUIVO_ONNX_RUNTIME, ARQUIVO_TOKENS, ARQUIVO_VOZES, Kokoro, TAXA,
+};
 pub use tokens::{MAX_TOKENS, Vocabulario, dividir};
 pub use vozes::{VOZES, Vozes, idioma_da_voz, indice_da_voz};
 
@@ -27,6 +31,8 @@ use std::path::PathBuf;
 pub enum ErroKokoro {
     #[error("a voz neural precisa do espeak-ng instalado (libespeak-ng.so.1)")]
     SemEspeak(#[source] libloading::Error),
+    #[error("não foi possível carregar o ONNX Runtime")]
+    SemOnnxRuntime(#[source] ort::LoadDynamicError),
     #[error("o espeak-ng não iniciou")]
     EspeakNaoIniciou,
     #[error("o espeak-ng não conhece o idioma {0}")]
