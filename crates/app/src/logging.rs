@@ -40,7 +40,8 @@ pub fn init() -> anyhow::Result<WorkerGuard> {
         .context("criando o appender de arquivo")?;
     let (escritor, guard) = tracing_appender::non_blocking(arquivo);
 
-    let filtro = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let filtro =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,ort=warn"));
 
     // try_init também instala o LogTracer (feature `tracing-log`), que converte
     // registros do crate `log` (Tauri, plugins, frontend) em eventos tracing.

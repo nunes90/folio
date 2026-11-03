@@ -755,4 +755,35 @@ docs/decisions/  # ADRs
   ali); sem ele, vai ao sistema.
   Teste real do download: `FOLIO_BAIXAR=<pasta> cargo test -p folio-core --release -- --ignored kokoro_baixado`
   (152 MB em ~5 s aqui).
-- Próximo passo: M27c-2 (seção "Voz" no painel Aparência), ver ROADMAP "Depois da 1.0".
+- **M27c-2** (branch `feat/m27c2-secao-voz`): `lib/vozNatural.svelte.ts` (estado único do app, `vozNatural`: catálogo,
+  `espeak`, `baixando` com o andamento do evento `voz-natural`, `mudancas` a cada instalação ou remoção; `baixar`,
+  `cancelar`, `remover`, `amostra`; avisos de instalada, cancelada e falha). O download continua com o painel fechado.
+  `PainelVoz.svelte` = seção "Voz" do painel Aparência, a última nos dois formatos: a velocidade (saiu de Texto e de
+  Página), e a voz natural: baixar (botão primário com o tamanho), barra de progresso com "Cancelar o download", e,
+  instalada, "Usar a voz natural em livros em inglês", as vozes (rádio com idioma e gênero), "Ouvir amostra (<voz>)" e
+  "Remover a voz natural…" com confirmação no próprio lugar. Sem o espeak-ng, diz o que instalar em vez de oferecer o
+  download. Paleta (`comandosDaVozNatural`, grupo Voz): baixar, cancelar (com a %), "Voz: <nome>" (a atual marcada),
+  amostra, usar/não usar em inglês, remover. Os leitores perguntam de novo `voz_disponivel` quando `mudancas` muda.
+  `AvisoDePreparo`: "Preparando a voz…" se a primeira marca demorar mais de 400 ms (ao começar e ao retomar: depois de
+  2 min o modelo fecha). Testes simulam o Tauri com `vi.mock("@tauri-apps/api/core")` (primeira vez no projeto).
+  Achado no teste do Lucas: as vozes britânicas não falavam, porque `espeak_SetVoiceByName` quer o nome do **arquivo**
+  da voz (`gmw/en` → "en"; `roa/fr` → "fr"), não o código do idioma ("en-gb" falha); `idioma_da_voz` corrigido e o
+  teste real confere todas. E toda frase falhando virava um laço: o motor pulava a frase sem som mas emitia a marca e
+  o fim, e o frontend atravessava o livro mudo. Agora voz ou idioma desconhecido interrompem na hora, um bloco em que
+  nada falou para (`Interrompido`), e a marca de uma frase que falhou antes de alguma falar não sai. Logs da `ort`
+  só a partir de `warn` (o `info` dela despejava centenas de linhas ao carregar o modelo).
+  **Qualidade do som**: a saída abre já a 24 kHz mono (`SaidaRodio::abrir`; se o dispositivo recusar, a padrão). Na taxa
+  do dispositivo (48 kHz no PipeWire daqui), o rodio 0.23 convertia por interpolação linear, que deixa réplicas acima de
+  12 kHz: a voz soava áspera. Assim quem converte é o servidor de som, com um reamostrador de qualidade (teste
+  `saida_de_som_na_taxa_do_modelo`, ignorado, só abre a saída). **Amostra com feedback**: `MotorNeural::amostra` espera
+  o áudio entrar na fila e devolve a duração (`Trabalho.pronto`; se nada falar, `ErroVoz::NaoFalou`); o comando é
+  `async` e devolve os ms. `vozNatural.amostraAtual` (preparando → tocando pela duração → nada); o botão mostra
+  "Preparando a voz…" (girando, `aria-busy`) e "Tocando <voz>…" (ondas), com um `role="status"` só para o leitor de
+  tela; da paleta, `avisarSeDemorar`.
+  **int8 × fp32** (medido aqui, mesma frase e voz, pelo nosso código; `kokoro_gerar_wav`, teste ignorado que gera um WAV
+  e mede o tempo): o fp32 do mesmo autor (`csukuangfj/kokoro-multi-lang-v1_0`, 325 MB, mesmas entradas e `voices.bin`)
+  gera ~4,2× o tempo real contra ~3,7× do int8, e o som medido é praticamente igual. Nos "s" os dois põem ~90% da
+  energia entre 8 e 12 kHz (é do vocoder), mas ouvindo os WAVs pelo `pw-play` o Lucas achou bons, com e sem passa-baixa.
+  Fica o int8 (download menor). O chiado que ele sentiu no começo da fala no app segue em aberto (ROADMAP, M27d).
+- **M27c concluído.**
+- Próximo passo: M27d (normalização do inglês, frases longas, ADR 0008, AppImage com o espeak-ng, guia e Orca).

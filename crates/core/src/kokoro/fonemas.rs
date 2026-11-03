@@ -12,7 +12,7 @@ use super::ErroKokoro;
 
 /// Quem transforma um trecho de texto (sem pontuação) em fonemas IPA.
 pub trait Fonemizador: Send + Sync {
-    /// `idioma` é o nome de voz do espeak-ng ("en-us", "en-gb", "pt-br").
+    /// `idioma` é o nome de voz do espeak-ng ("en-us", "en", "pt-br"; ver `idioma_da_voz`).
     fn fonemas(&self, trecho: &str, idioma: &str) -> Result<String, ErroKokoro>;
 }
 
@@ -306,5 +306,12 @@ mod tests {
             espeak.fonemas("x", "nao-existe"),
             Err(ErroKokoro::IdiomaDesconhecido(_))
         ));
+        // Toda voz que o Kokoro lê tem uma voz do espeak-ng que existe (o "en-gb" não existia
+        // com esse nome, e as vozes britânicas não falavam).
+        for voz in super::super::VOZES {
+            if let Some(idioma) = super::super::idioma_da_voz(voz) {
+                assert!(espeak.fonemas("test", idioma).is_ok(), "{voz}: {idioma}");
+            }
+        }
     }
 }

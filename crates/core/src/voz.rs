@@ -49,6 +49,8 @@ pub enum ErroVoz {
     SemVozParaIdioma(String),
     #[error("a voz natural não está instalada")]
     SemVozNeural,
+    #[error("a voz natural não conseguiu falar (veja o log)")]
+    NaoFalou,
 }
 
 /// Um motor de voz. `&self` em todos os métodos: os comandos vão por um canal para a thread

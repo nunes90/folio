@@ -204,16 +204,17 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
     marcas no início de cada frase, saída de áudio (rodio); escolha do motor pelo idioma do livro
     (`MotorPorIdioma`). Por enquanto ligado por `FOLIO_VOZ_NEURAL=<pasta>` (até o M27c). Pendentes para o M27c:
     o PDF não manda idioma (vai ao sistema); a saída de som e o modelo ficam abertos depois da primeira fala
-  - [ ] M27c — catálogo de vozes, download e escolha da voz
+  - [x] M27c — catálogo de vozes, download e escolha da voz
     - [x] M27c-1 — core e comandos: catálogo (`catalogo_vozes`: modelo, arquivos com URL fixa, SHA-256 e tamanho,
       o ONNX Runtime da arquitetura, as vozes; pronto para outros modelos), download conferido e atômico (`baixar`),
       voz e "usar em inglês" nas preferências, motor neural reconfigurável, amostra, modelo e saída de som fechados
       depois de 2 min sem falar, idioma do PDF (`/Lang`) na escolha da voz
-    - [ ] M27c-2 — seção "Voz" no painel Aparência dos dois formatos (modelo, baixar com progresso, cancelar,
+    - [x] M27c-2 — seção "Voz" no painel Aparência dos dois formatos (modelo, baixar com progresso, cancelar,
       remover, voz com amostra, usar em livros em inglês, velocidade, que sai de Texto e Página), aviso sem o
       espeak-ng, paleta, "Preparando a voz…"
   - [ ] M27d — normalização do texto em inglês, frases longas cortadas nas vírgulas, ADR 0008, AppImage
-    (libespeak-ng e dados), guia e roteiro do Orca
+    (libespeak-ng e dados), guia e roteiro do Orca; investigar a sensação de chiado no início da fala no app (os WAVs
+    gerados pelo core soam bem; suspeitas: a saída de som abrindo na primeira fala, ou a fila vazia no começo)
   - [ ] M27e — Piper como segundo modelo (quando fizer falta): mais leve (~63 MB por voz) e rápido, mais
     idiomas; reaproveita os fonemas e o ONNX Runtime, entra como linhas no catálogo e um motor
   - [ ] pt-BR com o Kokoro (pf_dora, pm_alex)

@@ -61,11 +61,6 @@
       rotulo: "Caracteres por linha (no máximo)",
       formatar: (v: number) => `~${v}`,
     },
-    {
-      campo: "velocidadeVoz",
-      rotulo: "Velocidade da leitura em voz alta",
-      formatar: (v: number) => (v === 0 ? "normal" : v > 0 ? `+${v}` : `${v}`),
-    },
   ] as const;
 </script>
 

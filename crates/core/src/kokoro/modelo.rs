@@ -120,6 +120,11 @@ mod tests {
         let segundos = audio.len() as f32 / TAXA as f32;
         assert!((2.0..8.0).contains(&segundos), "{segundos} s");
         assert!(audio.iter().any(|a| a.abs() > 0.05), "áudio mudo");
+        // As vozes do catálogo, inclusive as britânicas (pronúncia pelo espeak-ng "en").
+        for voz in crate::catalogo_vozes::KOKORO.vozes {
+            let audio = kokoro.sintetizar("Hello there.", voz.id, 1.0).unwrap();
+            assert!(audio.iter().any(|a| a.abs() > 0.05), "{} muda", voz.id);
+        }
         assert!(matches!(
             kokoro.sintetizar("x", "nao_existe", 1.0),
             Err(ErroKokoro::VozDesconhecida(_))
@@ -127,6 +132,37 @@ mod tests {
         if let Ok(wav) = std::env::var("FOLIO_KOKORO_WAV") {
             std::fs::write(wav, wav_mono_16(&audio, TAXA)).unwrap();
         }
+    }
+
+    /// Gera um WAV para ouvir e compara velocidades: `FOLIO_KOKORO=<pasta>
+    /// FOLIO_KOKORO_WAV=<saida.wav> [FOLIO_KOKORO_VOZ=af_heart] [FOLIO_KOKORO_TEXTO=…]
+    /// cargo test -p folio-core --release -- --ignored kokoro_gerar_wav --nocapture`.
+    #[test]
+    #[ignore = "ferramenta: precisa do modelo baixado (FOLIO_KOKORO)"]
+    fn kokoro_gerar_wav() {
+        let pasta = std::env::var("FOLIO_KOKORO").expect("FOLIO_KOKORO=<pasta do modelo>");
+        let wav = std::env::var("FOLIO_KOKORO_WAV").expect("FOLIO_KOKORO_WAV=<saida.wav>");
+        let voz = std::env::var("FOLIO_KOKORO_VOZ").unwrap_or_else(|_| "af_heart".into());
+        let texto = std::env::var("FOLIO_KOKORO_TEXTO").unwrap_or_else(|_| {
+            "Rust is for people who crave speed and stability in a language. By speed, we mean \
+             both how quickly Rust code can run and the speed at which Rust lets you write \
+             programs."
+                .into()
+        });
+        let espeak = EspeakNg::carregar(None).unwrap();
+        let inicio = std::time::Instant::now();
+        let mut kokoro = Kokoro::carregar(Path::new(&pasta), Box::new(espeak)).unwrap();
+        let carregar = inicio.elapsed();
+        let inicio = std::time::Instant::now();
+        let audio = kokoro.sintetizar(&texto, &voz, 1.0).unwrap();
+        let gerar = inicio.elapsed();
+        let segundos = audio.len() as f32 / TAXA as f32;
+        eprintln!(
+            "carregar {carregar:.2?}, gerar {gerar:.2?} para {segundos:.1} s de áudio \
+             ({:.1}× o tempo real)",
+            segundos / gerar.as_secs_f32()
+        );
+        std::fs::write(wav, wav_mono_16(&audio, TAXA)).unwrap();
     }
 
     fn wav_mono_16(amostras: &[f32], taxa: u32) -> Vec<u8> {

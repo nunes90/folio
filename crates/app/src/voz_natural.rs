@@ -245,16 +245,21 @@ pub fn remover_voz_natural(
     resultado
 }
 
-/// Uma frase com a voz `voz`, para ouvir antes de escolher.
-#[tauri::command]
-pub fn ouvir_amostra_voz(voz: State<'_, EstadoVoz>, id: String) -> Result<(), String> {
+/// Uma frase com a voz `voz`, para ouvir antes de escolher. Responde quando o áudio começa,
+/// com a duração em milissegundos (`async`: na primeira vez o modelo carrega, ~1 s, e a janela
+/// não pode congelar).
+#[tauri::command(async)]
+pub fn ouvir_amostra_voz(voz: State<'_, EstadoVoz>, id: String) -> Result<u64, String> {
     let (_, escolhida) = catalogo_vozes::voz(&id).ok_or("voz desconhecida")?;
     let texto = match escolhida.idioma {
         "en-GB" => "Hello. This is how I sound when I read your books aloud.",
         _ => "Hi. This is how I sound when I read your books aloud.",
     };
-    voz.neural.amostra(texto, escolhida.id).map_err(|e| {
-        tracing::warn!(erro = %e, "falha ao tocar a amostra");
-        e.to_string()
-    })
+    voz.neural
+        .amostra(texto, escolhida.id)
+        .map(|d| d.as_millis() as u64)
+        .map_err(|e| {
+            tracing::warn!(erro = %e, "falha ao tocar a amostra");
+            e.to_string()
+        })
 }

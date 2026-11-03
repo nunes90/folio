@@ -62,7 +62,6 @@
   import { deveMostrar, haQuanto, ultimasFrases, type Continuacao } from "../lib/continuacao";
   import { piscar } from "../lib/piscar";
   import { Revisitas, comandosDasRevisitas, trechoDePaginas } from "../lib/revisitas.svelte";
-  import { avisar } from "../lib/avisos.svelte";
   import type { Trecho } from "../lib/biblioteca";
   import { ritmoDeLeitura, trechoDoLivro } from "../lib/biblioteca";
   import { estiloDoMarcaTexto, posicaoDaBarra, resumo } from "../lib/destaques";
@@ -78,6 +77,14 @@
   import Carregando from "./Carregando.svelte";
   import MolduraLeitor from "./MolduraLeitor.svelte";
   import PainelPagina from "./PainelPagina.svelte";
+  import PainelVoz from "./PainelVoz.svelte";
+  import { avisar, dispensar } from "../lib/avisos.svelte";
+  import {
+    AvisoDePreparo,
+    SEM_VOZ,
+    comandosDaVozNaturalDoApp,
+    vozNatural,
+  } from "../lib/vozNatural.svelte";
   import PainelTema from "./PainelTema.svelte";
   import { sistema, temaEfetivo } from "../lib/ambiente.svelte";
   import type { ItemIndice } from "../lib/foliate";
@@ -325,14 +332,13 @@
 
   onMount(() => {
     let pararDeOuvir: (() => void) | undefined;
-    vozDisponivel()
-      .then((d) => (vozPossivel = d))
-      .catch(() => {});
+    vozNatural.carregar().catch(() => {});
     ouvirVoz(aoEventoVoz)
       .then((f) => (pararDeOuvir = f))
       .catch(() => {});
     return () => {
       // Fechar o documento encerra a leitura em voz alta.
+      preparo.terminar();
       if (voz !== "parado") pararVoz().catch(() => {});
       pararDeOuvir?.();
     };
@@ -750,6 +756,7 @@
         () => void pararLeitura(),
       ),
       ...comandosDaVelocidade(preferencias, atualizarPreferencias),
+      ...comandosDaVozNaturalDoApp(preferencias, atualizarPreferencias),
       comandoQuantoFalta(estimativa, "pdf", (texto) => (anuncio = texto)),
       ...comandosDasRevisitas(revisitas.lista, (local) => {
         const n = Number(local.match(/^pagina:(\d+)$/)?.[1]);
@@ -992,6 +999,15 @@
   // fala de novo a partir da frase marcada (a pausa do speech-dispatcher pulava o resto).
   let voz = $state<EstadoVoz>("parado");
   let vozPossivel = $state(false);
+  /** "Preparando a voz…" se a primeira frase demorar (a voz natural carrega o modelo). */
+  const preparo = new AvisoDePreparo((t) => avisar(t, "progresso"), dispensar);
+  // Pergunta de novo quando a voz natural é baixada ou removida.
+  $effect(() => {
+    void vozNatural.mudancas;
+    vozDisponivel()
+      .then((d) => (vozPossivel = d))
+      .catch(() => {});
+  });
   /**
    * O que está sendo lido: a página, as frases dela, a última frase marcada e onde acaba o
    * trecho em fala (listas e código vão em mensagens próprias, mais devagar).
@@ -1010,10 +1026,10 @@
   /** Lê a partir da frase `frase` da página `n` (ou do início da página atual). */
   async function lerEmVozAlta(n = pagina, frase = 0) {
     if (!vozPossivel) {
-      anuncio =
-        "Leitura em voz alta indisponível: o speech-dispatcher não está instalado ou ativo.";
+      anuncio = SEM_VOZ;
       return;
     }
+    preparo.comecar();
     if (voz !== "parado") await pararLeitura();
     await lerDesde(n, frase);
   }
@@ -1051,6 +1067,7 @@
   function aoEventoVoz(e: EventoVoz) {
     // Eventos atrasados depois de parar ou pausar são ignorados.
     if (voz !== "falando" || !leitura) return;
+    preparo.terminar();
     if (e.tipo === "marca") {
       const i = Number(e.marca);
       const frase = leitura.frases[i];
@@ -1070,13 +1087,17 @@
     if (voz === "falando") {
       voz = "pausado";
       vez++;
+      preparo.terminar();
       await pararVoz();
     } else if (voz === "pausado" && leitura) {
+      // Depois de uma pausa longa, a voz natural pode ter fechado o modelo (2 min).
+      preparo.comecar();
       await lerDesde(leitura.pagina, leitura.marca);
     }
   }
 
   async function pararLeitura() {
+    preparo.terminar();
     voz = "parado";
     vez++;
     leitura = null;
@@ -1554,6 +1575,7 @@
     />
     <!-- A seção Texto não existe no PDF (layout fixo): só a dica do zoom. -->
     <p class="nota">Para ler maior, use o zoom (Ctrl + ou Ctrl −).</p>
+    <PainelVoz {preferencias} onMudar={atualizarPreferencias} />
   {/snippet}
 
   {#snippet rodape()}
