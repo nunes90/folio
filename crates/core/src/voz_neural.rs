@@ -122,6 +122,9 @@ struct Trabalho {
     config: ConfigNeural,
     /// Emitir as marcas e o fim (a amostra de uma voz não emite nada).
     avisar: bool,
+    /// Recebe quanto tempo de áudio foi para a fila (a amostra espera por ele); se nada falar, o
+    /// canal se fecha sem resposta.
+    pronto: Option<mpsc::Sender<Duration>>,
 }
 
 struct Compartilhado {
@@ -214,11 +217,13 @@ impl MotorNeural {
     }
 
     /// Fala `texto` com `voz` (a amostra de uma voz no painel), sem eventos. Interrompe o que
-    /// estava sendo falado.
-    pub fn amostra(&self, texto: &str, voz: &str) -> Result<(), ErroVoz> {
+    /// estava sendo falado. Espera o áudio ficar pronto (na primeira vez, o modelo carrega) e
+    /// devolve quanto ele dura: o painel mostra "Tocando…" por esse tempo.
+    pub fn amostra(&self, texto: &str, voz: &str) -> Result<Duration, ErroVoz> {
         let mut config = self.comum.config().ok_or(ErroVoz::SemVozNeural)?;
         config.voz = voz.to_string();
         self.comum.interromper();
+        let (pronto, resposta) = mpsc::channel();
         self.comum.enviar(
             &self.trabalhos,
             Trabalho {
@@ -230,8 +235,12 @@ impl MotorNeural {
                 velocidade: 1.0,
                 config,
                 avisar: false,
+                pronto: Some(pronto),
             },
-        )
+        )?;
+        resposta
+            .recv_timeout(Duration::from_secs(30))
+            .map_err(|_| ErroVoz::NaoFalou)
     }
 
     pub(crate) fn com(
@@ -280,6 +289,7 @@ impl MotorDeVoz for MotorNeural {
                 velocidade: fator_de_velocidade(config.velocidade),
                 config: neural,
                 avisar: true,
+                pronto: None,
             },
         )
     }
@@ -362,6 +372,12 @@ fn laco(
             continue;
         };
         let voz = &trabalho.config.voz;
+        // Uma frase que falha é pulada (sem som), mas um bloco em que nenhuma falou para a
+        // leitura: senão o frontend recebia as marcas e o fim na hora e passava de bloco em bloco
+        // pelo livro todo, mudo (aconteceu com a voz do espeak-ng errada para o inglês britânico).
+        let (mut falou, mut falhou) = (false, false);
+        let mut duracao = Duration::ZERO;
+        let mut desistir = false;
         for frase in trabalho.frases {
             if !comum.atual(g) {
                 break;
@@ -370,13 +386,25 @@ fn laco(
                 None
             } else {
                 match sint.sintetizar(&frase.texto, voz, trabalho.velocidade) {
-                    Ok(audio) => Some(audio),
+                    Ok(audio) => {
+                        falou = true;
+                        Some(audio)
+                    }
                     Err(erro) => {
                         tracing::warn!(
                             erro = cadeia(&erro),
                             frase = frase.texto,
                             "frase não sintetizada"
                         );
+                        falhou = true;
+                        // A voz ou o idioma não existem: nenhuma frase vai falar.
+                        if matches!(
+                            erro,
+                            ErroKokoro::VozDesconhecida(_) | ErroKokoro::IdiomaDesconhecido(_)
+                        ) {
+                            desistir = true;
+                            break;
+                        }
                         None
                     }
                 }
@@ -384,7 +412,13 @@ fn laco(
             if !comum.atual(g) {
                 break;
             }
-            if let Some(marca) = frase.marca.filter(|_| trabalho.avisar) {
+            // A marca de uma frase que falhou antes de qualquer outra falar não sai: se o bloco
+            // todo falhar, o frontend só recebe o `Interrompido`.
+            let sem_som = audio.is_none() && !frase.texto.is_empty();
+            if let Some(marca) = frase
+                .marca
+                .filter(|_| trabalho.avisar && !(sem_som && !falou))
+            {
                 let c = Arc::clone(&comum);
                 saida.tocar(Item::Aviso(Box::new(move || {
                     if c.atual(g) {
@@ -393,8 +427,20 @@ fn laco(
                 })));
             }
             if let Some(audio) = audio {
+                duracao += Duration::from_secs_f64(audio.len() as f64 / f64::from(TAXA));
                 saida.tocar(Item::Audio(audio));
             }
+        }
+        if comum.atual(g) && (desistir || (falhou && !falou)) {
+            tracing::warn!("voz neural: nada no bloco pôde ser falado; leitura interrompida");
+            if comum.falando.swap(false, Ordering::SeqCst) {
+                saida.limpar();
+                comum.emitir(EventoVoz::Interrompido);
+            }
+            continue;
+        }
+        if let Some(pronto) = trabalho.pronto.filter(|_| falou && comum.atual(g)) {
+            let _ = pronto.send(duracao);
         }
         if comum.atual(g) && trabalho.avisar {
             let c = Arc::clone(&comum);
@@ -432,6 +478,9 @@ impl Sintetizador for Kokoro {
 
 // --- saída de som (rodio) ------------------------------------------------------------------
 
+const MONO: std::num::NonZero<u16> = std::num::NonZero::new(1).unwrap();
+const TAXA_NZ: std::num::NonZero<u32> = std::num::NonZero::new(TAXA).unwrap();
+
 struct SaidaRodio {
     player: rodio::Player,
     /// Mantém a saída de som aberta enquanto o player existir.
@@ -439,9 +488,30 @@ struct SaidaRodio {
 }
 
 impl SaidaRodio {
+    /// Abre a saída já na taxa do modelo (24 kHz, mono): quem converte para a taxa da placa é o
+    /// servidor de som (PipeWire, PulseAudio), com um reamostrador de qualidade. Na taxa padrão
+    /// do dispositivo (48 kHz), o rodio convertia por interpolação linear, que deixa réplicas do
+    /// som acima de 12 kHz: a voz soava áspera, "de baixa qualidade". Se o dispositivo recusar
+    /// 24 kHz, fica a configuração padrão.
     fn abrir() -> Result<Self, String> {
-        let mut dispositivo = rodio::DeviceSinkBuilder::open_default_sink()
-            .map_err(|e| format!("saída de som: {e}"))?;
+        let no_modelo = rodio::DeviceSinkBuilder::from_default_device().and_then(|b| {
+            b.with_sample_rate(TAXA_NZ)
+                .with_channels(MONO)
+                .open_stream()
+        });
+        let mut dispositivo = match no_modelo {
+            Ok(d) => d,
+            Err(erro) => {
+                tracing::info!(%erro, "saída de som a 24 kHz recusada; usando a padrão");
+                rodio::DeviceSinkBuilder::open_default_sink()
+                    .map_err(|e| format!("saída de som: {e}"))?
+            }
+        };
+        tracing::info!(
+            taxa = dispositivo.config().sample_rate().get(),
+            canais = dispositivo.config().channel_count().get(),
+            "saída de som aberta"
+        );
         dispositivo.log_on_drop(false);
         let player = rodio::Player::connect_new(dispositivo.mixer());
         Ok(Self {
@@ -465,8 +535,6 @@ impl Saida for SaidaRodio {
                     })));
             }
             Item::Audio(amostras) => {
-                const MONO: std::num::NonZero<u16> = std::num::NonZero::new(1).unwrap();
-                const TAXA_NZ: std::num::NonZero<u32> = std::num::NonZero::new(TAXA).unwrap();
                 self.player
                     .append(rodio::buffer::SamplesBuffer::new(MONO, TAXA_NZ, amostras));
             }
@@ -552,6 +620,13 @@ mod tests {
         fn sintetizar(&mut self, frase: &str, voz: &str, _: f32) -> Result<Vec<f32>, ErroKokoro> {
             if let Some(t) = &self.trava {
                 let _ = t.lock().unwrap().recv_timeout(Duration::from_secs(5));
+            }
+            // "xx": voz que não existe; frases com "ruim": falham por outro motivo.
+            if voz == "xx" {
+                return Err(ErroKokoro::IdiomaDesconhecido("xx".into()));
+            }
+            if frase.contains("ruim") {
+                return Err(ErroKokoro::ArquivoInvalido("teste".into()));
             }
             self.vozes.lock().unwrap().push(voz.to_string());
             Ok(vec![frase.len() as f32])
@@ -699,6 +774,47 @@ mod tests {
     }
 
     #[test]
+    fn voz_que_nao_existe_interrompe_em_vez_de_passar_pelo_livro_mudo() {
+        let (m, rx, saida, _) = motor_com(None, OCIOSO);
+        m.configurar(config("/m", "xx"));
+        m.falar(ssml(&["0", "1"]), ConfigVoz::default()).unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Interrompido);
+        assert!(rx.recv_timeout(Duration::from_millis(200)).is_err());
+        assert!(saida.tocado.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn uma_frase_ruim_e_pulada_mas_um_bloco_todo_ruim_para() {
+        let (m, rx, _, _) = motor_com(None, OCIOSO);
+        let bloco = |frases: &[&str]| {
+            let corpo: String = frases
+                .iter()
+                .enumerate()
+                .map(|(i, f)| format!(r#"<s><mark name="{i}"/>{f}</s>"#))
+                .collect();
+            format!("<speak>{corpo}</speak>")
+        };
+        m.falar(bloco(&["Boa.", "Frase ruim."]), ConfigVoz::default())
+            .unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Marca("1".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        m.falar(bloco(&["ruim 1.", "ruim 2."]), ConfigVoz::default())
+            .unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Interrompido);
+        assert!(rx.recv_timeout(Duration::from_millis(200)).is_err());
+    }
+
+    /// Abre a saída de som de verdade (sem tocar nada): `cargo test -p folio-core -- --ignored
+    /// saida_de_som_na_taxa_do_modelo`.
+    #[test]
+    #[ignore = "precisa de uma saída de som"]
+    fn saida_de_som_na_taxa_do_modelo() {
+        let saida = SaidaRodio::abrir().unwrap();
+        assert_eq!(saida._dispositivo.config().sample_rate().get(), TAXA);
+    }
+
+    #[test]
     fn sem_configuracao_nao_ha_voz_neural() {
         let (m, _, _) = motor(None);
         assert!(m.disponivel());
@@ -712,6 +828,8 @@ mod tests {
             m.amostra("Hi.", "am_michael"),
             Err(ErroVoz::SemVozNeural)
         ));
+        m.configurar(config("/m", "af_heart"));
+        assert!(matches!(m.amostra("Hi.", "xx"), Err(ErroVoz::NaoFalou)));
     }
 
     #[test]
@@ -743,10 +861,16 @@ mod tests {
         let (libera, trava) = mpsc::channel();
         let (m, rx, saida, registro) = motor_com(Some(trava), OCIOSO);
         m.falar(ssml(&["0", "1"]), ConfigVoz::default()).unwrap();
-        m.amostra("Hello there.", "bm_george").unwrap();
-        for _ in 0..3 {
-            let _ = libera.send(());
-        }
+        // A amostra espera o áudio: libera as frases de outra thread.
+        let liberar = thread::spawn(move || {
+            for _ in 0..3 {
+                let _ = libera.send(());
+            }
+        });
+        // O falso gera uma amostra de áudio por frase (a 24 kHz).
+        let dura = m.amostra("Hello there.", "bm_george").unwrap();
+        assert_eq!(dura, Duration::from_secs_f64(1.0 / f64::from(TAXA)));
+        liberar.join().unwrap();
         assert_eq!(proximo(&rx), EventoVoz::Interrompido);
         assert!(rx.recv_timeout(Duration::from_millis(200)).is_err());
         assert_eq!(registro.vozes.lock().unwrap().last().unwrap(), "bm_george");

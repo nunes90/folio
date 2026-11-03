@@ -77,15 +77,11 @@ describe("PainelPagina (seção Página)", () => {
     expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
   });
 
-  it("a velocidade da voz: só no PDF (no EPUB, fica na seção Texto)", async () => {
-    const { unmount, onMudar } = renderizar("pdf", { velocidadeVoz: 20 });
-    const controle = screen.getByLabelText("Velocidade da leitura em voz alta") as HTMLInputElement;
-    expect(controle.value).toBe("20");
-    expect(screen.getByText("+20")).toBeTruthy();
-    await fireEvent.input(controle, { target: { value: "30" } });
-    expect(onMudar).toHaveBeenCalledWith({ velocidadeVoz: 30 });
-    unmount();
-    renderizar("epub");
-    expect(screen.queryByLabelText("Velocidade da leitura em voz alta")).toBeNull();
+  it("a velocidade da voz saiu para a seção Voz", () => {
+    for (const formato of ["epub", "pdf"] as const) {
+      const { unmount } = renderizar(formato);
+      expect(screen.queryByLabelText("Velocidade da leitura em voz alta")).toBeNull();
+      unmount();
+    }
   });
 });

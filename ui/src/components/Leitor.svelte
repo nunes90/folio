@@ -14,6 +14,14 @@
   import MolduraLeitor from "./MolduraLeitor.svelte";
   import PainelLeitura from "./PainelLeitura.svelte";
   import PainelPagina from "./PainelPagina.svelte";
+  import PainelVoz from "./PainelVoz.svelte";
+  import { avisar, dispensar } from "../lib/avisos.svelte";
+  import {
+    AvisoDePreparo,
+    SEM_VOZ,
+    comandosDaVozNaturalDoApp,
+    vozNatural,
+  } from "../lib/vozNatural.svelte";
   import PainelTema from "./PainelTema.svelte";
   import {
     criarView,
@@ -61,7 +69,6 @@
   import { deveMostrar, haQuanto, limpar, type Continuacao } from "../lib/continuacao";
   import { piscar } from "../lib/piscar";
   import { Revisitas, comandosDasRevisitas, trechoDePaginas } from "../lib/revisitas.svelte";
-  import { avisar } from "../lib/avisos.svelte";
   import type { Trecho } from "../lib/biblioteca";
   import { ritmoDeLeitura } from "../lib/biblioteca";
   import {
@@ -353,6 +360,15 @@
   // Leitura em voz alta: um bloco (parágrafo) por vez; ao terminar, o próximo.
   let voz = $state<EstadoVoz>("parado");
   let vozPossivel = $state(false);
+  /** "Preparando a voz…" se a primeira frase demorar (a voz natural carrega o modelo). */
+  const preparo = new AvisoDePreparo((t) => avisar(t, "progresso"), dispensar);
+  // Pergunta de novo quando a voz natural é baixada ou removida.
+  $effect(() => {
+    void vozNatural.mudancas;
+    vozDisponivel()
+      .then((d) => (vozPossivel = d))
+      .catch(() => {});
+  });
   let idiomaDoLivro: string | null = null;
 
   // O CSS do livro e a largura da coluna, iguais nos dois lados (M25b).
@@ -384,9 +400,7 @@
       log.error(`não foi possível abrir o livro: ${e}`);
     });
     let pararDeOuvir: (() => void) | undefined;
-    vozDisponivel()
-      .then((d) => (vozPossivel = d))
-      .catch(() => {});
+    vozNatural.carregar().catch(() => {});
     ouvirVoz(aoEventoVoz)
       .then((f) => (pararDeOuvir = f))
       .catch(() => {});
@@ -394,6 +408,7 @@
       window.removeEventListener("keydown", aoTeclar);
       window.removeEventListener("pointerdown", aoApontarFora);
       // Fechar o livro encerra a leitura em voz alta.
+      preparo.terminar();
       if (voz !== "parado") pararVoz().catch(() => {});
       pararDeOuvir?.();
       view?.close();
@@ -417,10 +432,10 @@
   async function lerEmVozAlta(desde?: Range) {
     if (!view) return;
     if (!vozPossivel) {
-      anuncio =
-        "Leitura em voz alta indisponível: o speech-dispatcher não está instalado ou ativo.";
+      anuncio = SEM_VOZ;
       return;
     }
+    preparo.comecar();
     if (voz !== "parado") await pararLeitura();
     await view.initTTS("sentence", mostrarFraseLida);
     // Começa na página atual (ou no trecho pedido), não no início do capítulo.
@@ -470,6 +485,7 @@
   function aoEventoVoz(e: EventoVoz) {
     // Eventos atrasados depois de parar ou pausar (ou de outro livro) são ignorados.
     if (voz !== "falando" || !view?.tts) return;
+    preparo.terminar();
     if (e.tipo === "marca") view.tts.setMark(e.marca);
     else if (e.tipo === "fim") seguirLendo(view.tts.next()).catch((erro) => log.warn(`${erro}`));
     else voz = "parado";
@@ -483,14 +499,18 @@
   async function pausarOuRetomar() {
     if (voz === "falando") {
       voz = "pausado";
+      preparo.terminar();
       await pararVoz();
     } else if (voz === "pausado") {
+      // Depois de uma pausa longa, a voz natural pode ter fechado o modelo (2 min).
+      preparo.comecar();
       voz = "falando";
       await seguirLendo(view?.tts?.resume());
     }
   }
 
   async function pararLeitura() {
+    preparo.terminar();
     voz = "parado";
     fraseLida = null;
     trocarRealce(null);
@@ -904,6 +924,7 @@
       ),
     );
     lista.push(...comandosDaVelocidade(preferencias, atualizarPreferencias));
+    lista.push(...comandosDaVozNaturalDoApp(preferencias, atualizarPreferencias));
     lista.push(comandoQuantoFalta(estimativa, "epub", (texto) => (anuncio = texto)));
     lista.push(...comandosDasRevisitas(revisitas.lista, irParaTrecho));
     lista.push(...destaques.comandos(destacarSelecao), ...comandosDaMeta(meta, "epub"),
@@ -1157,6 +1178,7 @@
       interface={temaEfetivo()}
     />
     <PainelLeitura {preferencias} onMudar={atualizarPreferencias} onRestaurar={restaurarPadrao} />
+    <PainelVoz {preferencias} onMudar={atualizarPreferencias} />
   {/snippet}
 
   {#snippet rodape()}

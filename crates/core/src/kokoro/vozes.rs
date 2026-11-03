@@ -73,14 +73,18 @@ pub fn indice_da_voz(nome: &str) -> Option<usize> {
     VOZES.iter().position(|v| *v == nome)
 }
 
-/// O idioma do espeak-ng para a pronúncia da voz. `None` para os idiomas que a voz neural
-/// ainda não lê (japonês e chinês precisam de outra conversão em fonemas).
+/// A voz do espeak-ng para a pronúncia da voz. `None` para os idiomas que a voz neural ainda
+/// não lê (japonês e chinês precisam de outra conversão em fonemas).
+///
+/// É o nome que o `espeak_SetVoiceByName` aceita, o do arquivo da voz (`espeak-ng --voices`,
+/// coluna File), e não o código do idioma: o inglês britânico é `gmw/en`, então "en" (pedir
+/// "en-gb" falha); o francês é `roa/fr`, então "fr".
 pub fn idioma_da_voz(nome: &str) -> Option<&'static str> {
     match nome.as_bytes().first()? {
         b'a' => Some("en-us"),
-        b'b' => Some("en-gb"),
+        b'b' => Some("en"),
         b'e' => Some("es"),
-        b'f' => Some("fr-fr"),
+        b'f' => Some("fr"),
         b'h' => Some("hi"),
         b'i' => Some("it"),
         b'p' => Some("pt-br"),
@@ -128,7 +132,7 @@ mod tests {
         assert_eq!(indice_da_voz("pf_dora"), Some(42));
         assert_eq!(indice_da_voz("em_santa"), Some(53));
         assert_eq!(indice_da_voz("xx"), None);
-        assert_eq!(idioma_da_voz("bm_george"), Some("en-gb"));
+        assert_eq!(idioma_da_voz("bm_george"), Some("en"));
         assert_eq!(idioma_da_voz("pm_alex"), Some("pt-br"));
         assert_eq!(idioma_da_voz("zf_xiaobei"), None);
         assert_eq!(idioma_da_voz(""), None);
