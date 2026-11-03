@@ -28,6 +28,10 @@ export interface Preferencias {
   movimento: Movimento;
   /** Velocidade da leitura em voz alta, -100 a 100 (0 = normal do sistema). */
   velocidadeVoz: number;
+  /** Voz natural escolhida (id do catálogo); vazio = a padrão. */
+  vozNatural: string;
+  /** Ler livros em inglês com a voz natural, quando baixada. */
+  vozNaturalEmIngles: boolean;
   /** Animação ao virar a página (EPUB e PDF). */
   virada: EstiloVirada;
   /** PDF página a página ou em rolagem contínua. */
@@ -52,6 +56,8 @@ export const PADRAO: Preferencias = {
   tema: "sistema",
   movimento: "sistema",
   velocidadeVoz: 0,
+  vozNatural: "",
+  vozNaturalEmIngles: true,
   virada: "nenhuma",
   modoPdf: "paginas",
   pagina: "automatica",

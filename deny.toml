@@ -3,6 +3,8 @@
 # A allow-list é mínima: adicione uma licença só quando uma dependência nova precisar.
 
 [graph]
+# Só Linux por enquanto (ADR 0006): dependências de outros alvos (ex.: wasm32) não entram no app.
+targets = ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
 all-features = true
 
 [advisories]

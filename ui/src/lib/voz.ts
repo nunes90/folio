@@ -91,6 +91,16 @@ export function blocoParaFala(ssmlFoliate: string): BlocoDeFala | null {
  * do EPUB. As marcas são os índices das frases a partir de `primeira` (ex.: retomar da 5ª frase
  * da página dá as marcas "4", "5", …). Frases vazias não entram. `null` = nada a falar.
  */
+/**
+ * O idioma declarado no arquivo (`/Lang` do PDF), se parecer uma etiqueta BCP 47 ("en-US", "pt").
+ * Alguns PDFs trazem lixo nesse campo: aí, `null` (a escolha da voz fica com o sistema).
+ */
+export function idiomaValido(idioma: unknown): string | null {
+  if (typeof idioma !== "string") return null;
+  const limpo = idioma.trim();
+  return /^[a-z]{2,3}([-_][a-z0-9]{1,8})*$/i.test(limpo) ? limpo : null;
+}
+
 export function blocoDasFrases(
   frases: string[],
   primeira = 0,

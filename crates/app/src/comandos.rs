@@ -10,6 +10,8 @@ use folio_core::preferencias::PreferenciasLeitura;
 use folio_core::sessoes::Sessao;
 use folio_core::visitas::{Trecho, Visita};
 use folio_core::voz::{ConfigVoz, MotorDeVoz};
+
+use crate::voz_natural::EstadoVoz;
 use serde::Serialize;
 use tauri::State;
 use tauri::ipc::{InvokeBody, Request, Response};
@@ -508,15 +510,20 @@ pub fn preferencias_leitura(
 }
 
 /// Devolve o que foi gravado: valores fora dos limites voltam corrigidos.
+/// A voz natural segue as preferências novas (voz escolhida, usar em inglês).
 #[tauri::command]
 pub fn salvar_preferencias_leitura(
     bib: State<'_, EstadoBiblioteca>,
+    voz: State<'_, EstadoVoz>,
     preferencias: PreferenciasLeitura,
 ) -> Result<PreferenciasLeitura, String> {
-    bib.lock()
+    let salvas = bib
+        .lock()
         .unwrap()
         .salvar_preferencias_leitura(preferencias)
-        .map_err(|e| registrar(&e))
+        .map_err(|e| registrar(&e))?;
+    voz.aplicar(&salvas);
+    Ok(salvas)
 }
 
 /// Erros de comando precisam ser serializáveis; viram texto depois de ir para o log.
@@ -537,15 +544,6 @@ pub fn escala_texto(estado: State<'_, crate::escala::EscalaTexto>) -> f64 {
     *estado.0.lock().unwrap()
 }
 
-/// Motor de voz, se o sistema de voz estiver disponível (`None` = leitura em voz alta desligada).
-pub struct EstadoVoz(pub Option<Box<dyn MotorDeVoz>>);
-
-fn motor<'a>(voz: &'a State<'_, EstadoVoz>) -> Result<&'a dyn MotorDeVoz, String> {
-    voz.0.as_deref().ok_or_else(|| {
-        "a leitura em voz alta precisa do speech-dispatcher ou da voz natural".to_string()
-    })
-}
-
 /// Fica na thread principal (sem `async`): a chamada ao D-Bus responde no laço do GTK, sem esperar.
 #[tauri::command]
 pub fn anunciar_ao_leitor_de_tela(texto: String) {
@@ -554,26 +552,26 @@ pub fn anunciar_ao_leitor_de_tela(texto: String) {
 
 #[tauri::command]
 pub fn voz_disponivel(voz: State<'_, EstadoVoz>) -> bool {
-    voz.0.is_some()
+    voz.motor.as_ref().is_some_and(|m| m.disponivel())
 }
 
 /// Fala um bloco SSML; o progresso chega pelo evento `voz` (emitido em `main.rs`).
 #[tauri::command]
 pub fn falar(voz: State<'_, EstadoVoz>, ssml: String, config: ConfigVoz) -> Result<(), String> {
-    motor(&voz)?.falar(ssml, config).map_err(|e| registrar(&e))
+    voz.motor()?.falar(ssml, config).map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
 pub fn pausar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
-    motor(&voz)?.pausar().map_err(|e| registrar(&e))
+    voz.motor()?.pausar().map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
 pub fn retomar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
-    motor(&voz)?.retomar().map_err(|e| registrar(&e))
+    voz.motor()?.retomar().map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
 pub fn parar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
-    motor(&voz)?.parar().map_err(|e| registrar(&e))
+    voz.motor()?.parar().map_err(|e| registrar(&e))
 }
