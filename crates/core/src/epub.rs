@@ -116,7 +116,7 @@ fn ler_texto<R: Read + std::io::Seek>(
 }
 
 /// Valor de um atributo, já com entidades (`&amp;`...) resolvidas.
-fn atributo(elemento: &BytesStart, nome: &str) -> Option<String> {
+pub(crate) fn atributo(elemento: &BytesStart, nome: &str) -> Option<String> {
     let attr = elemento.try_get_attribute(nome).ok()??;
     attr.normalized_value(XmlVersion::Implicit1_0)
         .ok()
@@ -124,7 +124,7 @@ fn atributo(elemento: &BytesStart, nome: &str) -> Option<String> {
 }
 
 /// Texto de uma referência (`&amp;`, `&#233;`); referências desconhecidas são descartadas.
-fn texto_da_referencia(referencia: &BytesRef) -> Option<String> {
+pub(crate) fn texto_da_referencia(referencia: &BytesRef) -> Option<String> {
     if let Ok(Some(c)) = referencia.resolve_char_ref() {
         return Some(c.to_string());
     }

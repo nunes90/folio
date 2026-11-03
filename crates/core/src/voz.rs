@@ -1,8 +1,8 @@
 //! Leitura em voz alta por um "motor de voz" trocável.
 //!
-//! Hoje há um motor: o speech-dispatcher do sistema, pelo protocolo SSIP (texto num socket
-//! local, sem biblioteca em C). Um motor neural local poderia entrar depois (ver "Futuro" no
-//! ROADMAP) implementando o mesmo trait.
+//! Há dois motores: o speech-dispatcher do sistema, pelo protocolo SSIP (texto num socket
+//! local, sem biblioteca em C), e a voz neural local (`voz_neural`, com o Kokoro). O
+//! `MotorPorIdioma` (`voz_por_idioma`) escolhe um deles a cada bloco.
 //!
 //! O frontend manda um bloco de texto por vez (um parágrafo) em SSML, com um `<mark>` antes
 //! de cada frase, do jeito que o `tts.js` do foliate-js produz. O motor avisa quando cada marca
@@ -45,6 +45,8 @@ pub enum ErroVoz {
     Indisponivel(#[source] std::io::Error),
     #[error("o motor de voz foi encerrado")]
     Encerrado,
+    #[error("não há voz para o idioma {0}")]
+    SemVozParaIdioma(String),
 }
 
 /// Um motor de voz. `&self` em todos os métodos: os comandos vão por um canal para a thread

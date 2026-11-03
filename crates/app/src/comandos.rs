@@ -541,9 +541,9 @@ pub fn escala_texto(estado: State<'_, crate::escala::EscalaTexto>) -> f64 {
 pub struct EstadoVoz(pub Option<Box<dyn MotorDeVoz>>);
 
 fn motor<'a>(voz: &'a State<'_, EstadoVoz>) -> Result<&'a dyn MotorDeVoz, String> {
-    voz.0
-        .as_deref()
-        .ok_or_else(|| "a leitura em voz alta precisa do speech-dispatcher".to_string())
+    voz.0.as_deref().ok_or_else(|| {
+        "a leitura em voz alta precisa do speech-dispatcher ou da voz natural".to_string()
+    })
 }
 
 /// Fica na thread principal (sem `async`): a chamada ao D-Bus responde no laço do GTK, sem esperar.

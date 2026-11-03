@@ -200,8 +200,10 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
   palavras fora do dicionário.
   - [x] M27a — síntese no core (`core::kokoro`): fonemas (espeak-ng) e ONNX Runtime oficial, as duas
     bibliotecas carregadas durante a execução (a do ONNX Runtime vem com a voz); tokens, vozes, modelo
-  - [ ] M27b — `MotorNeural` (implementa `MotorDeVoz`): gera a frase seguinte enquanto a atual toca,
-    marcas no início de cada frase, saída de áudio; escolha do motor pelo idioma do livro
+  - [x] M27b — `MotorNeural` (implementa `MotorDeVoz`): gera a frase seguinte enquanto a atual toca,
+    marcas no início de cada frase, saída de áudio (rodio); escolha do motor pelo idioma do livro
+    (`MotorPorIdioma`). Por enquanto ligado por `FOLIO_VOZ_NEURAL=<pasta>` (até o M27c). Pendentes para o M27c:
+    o PDF não manda idioma (vai ao sistema); a saída de som e o modelo ficam abertos depois da primeira fala
   - [ ] M27c — catálogo de vozes (cada uma diz o modelo, de onde baixar, SHA-256 e tamanho, mais o ONNX Runtime;
     pronto para outros modelos), baixar (progresso, cancelar, remover), seção "Voz" no painel Aparência dos dois formatos
     (modelo, voz com amostra, usar em livros em inglês, velocidade, que sai de Texto e Página), paleta
