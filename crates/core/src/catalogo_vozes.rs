@@ -200,9 +200,11 @@ pub const KOKORO: Modelo = Modelo {
             idioma: "en-US",
             genero: Genero::Masculina,
         },
+        // Não a Emma (bf_emma): no mesmo texto, chia bem mais que as outras (ruído de fundo nos
+        // agudos, ouvido em out/2026); um passa-baixa não a limpa. A Isabella soa limpa.
         VozDoCatalogo {
-            id: "bf_emma",
-            nome: "Emma",
+            id: "bf_isabella",
+            nome: "Isabella",
             idioma: "en-GB",
             genero: Genero::Feminina,
         },
@@ -255,8 +257,13 @@ mod tests {
         assert_eq!(KOKORO.voz("bm_george").map(|v| v.nome), Some("George"));
         assert!(KOKORO.voz("xx").is_none());
         assert_eq!(modelo("kokoro-v1.0-int8").map(|m| m.nome), Some("Kokoro"));
-        assert_eq!(voz("bf_emma").map(|(m, _)| m.id), Some("kokoro-v1.0-int8"));
+        assert_eq!(
+            voz("bf_isabella").map(|(m, _)| m.id),
+            Some("kokoro-v1.0-int8")
+        );
         assert!(voz("").is_none());
+        // Fora do catálogo (a preferência de quem a tinha volta à voz padrão).
+        assert!(voz("bf_emma").is_none());
     }
 
     #[test]
