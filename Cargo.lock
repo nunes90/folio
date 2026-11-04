@@ -1185,6 +1185,7 @@ dependencies = [
  "percent-encoding",
  "proptest",
  "quick-xml",
+ "regex",
  "rodio",
  "rusqlite",
  "serde",

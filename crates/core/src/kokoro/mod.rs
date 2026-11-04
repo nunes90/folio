@@ -2,6 +2,8 @@
 //! sem internet, pelo ONNX Runtime (crate `ort`).
 //!
 //! O caminho de um texto até o áudio:
+//! 0. `normalizar`: no inglês, o que o espeak-ng leria errado é reescrito ("$5.50", "1990s",
+//!    "Chapter IV", "Nov. 3").
 //! 1. `fonemas`: o espeak-ng transforma o texto em fonemas IPA ("test" → "tˈɛst"). Só a pronúncia
 //!    vem dele; a voz é a do modelo. A pontuação, que o espeak-ng descarta, é devolvida aqui,
 //!    porque o modelo a usa para as pausas e a entonação.
@@ -15,6 +17,7 @@
 
 mod fonemas;
 mod modelo;
+mod normalizar;
 mod tokens;
 mod vozes;
 
@@ -22,6 +25,7 @@ pub use fonemas::{EspeakNg, Fonemizador, fonemas_com_pontuacao};
 pub use modelo::{
     ARQUIVO_MODELO, ARQUIVO_ONNX_RUNTIME, ARQUIVO_TOKENS, ARQUIVO_VOZES, Kokoro, TAXA,
 };
+pub use normalizar::normalizar_ingles;
 pub use tokens::{MAX_TOKENS, Vocabulario, dividir};
 pub use vozes::{VOZES, Vozes, idioma_da_voz, indice_da_voz};
 

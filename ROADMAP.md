@@ -212,8 +212,10 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
     - [x] M27c-2 — seção "Voz" no painel Aparência dos dois formatos (modelo, baixar com progresso, cancelar,
       remover, voz com amostra, usar em livros em inglês, velocidade, que sai de Texto e Página), aviso sem o
       espeak-ng, paleta, "Preparando a voz…"
-  - [ ] M27d — normalização do texto em inglês, frases longas cortadas nas vírgulas, ADR 0008, AppImage
-    (libespeak-ng e dados), guia e roteiro do Orca. (O chiado era a voz Emma, trocada pela Isabella: `fix/voz-isabella`.)
+  - [x] M27d-1 — normalização do texto em inglês (moeda, anos, décadas, romanos, abreviações) e frases longas
+    faladas em pedaços cortados na pontuação. (O chiado era a voz Emma, trocada pela Isabella: `fix/voz-isabella`.)
+  - [ ] M27d-2 — AppImage com a libespeak-ng e os dados dela
+  - [ ] M27d-3 — ADR 0008 (voz neural), guia e roteiro do Orca
   - [ ] M27e — Piper como segundo modelo (quando fizer falta): mais leve (~63 MB por voz) e rápido, mais
     idiomas; reaproveita os fonemas e o ONNX Runtime, entra como linhas no catálogo e um motor
   - [ ] pt-BR com o Kokoro (pf_dora, pm_alex)

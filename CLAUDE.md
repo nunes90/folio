@@ -794,4 +794,14 @@ docs/decisions/  # ADRs
   do app; `kokoro_gerar_wav` aceita uma frase por linha e `FOLIO_KOKORO_VELOCIDADE`. Uma frase que falha (fora voz ou
   idioma desconhecidos) é tentada mais uma vez: o ONNX Runtime deu uma vez "GetElementType is not implemented" numa
   frase longa que, repetida depois, sempre saiu.
-- Próximo passo: M27d (normalização do inglês, frases longas, ADR 0008, AppImage com o espeak-ng, guia e Orca).
+- **M27d-1** (branch `feat/m27d-normalizar`): `kokoro::normalizar_ingles` (só nas vozes em inglês, antes do espeak-ng;
+  `regex`): moeda ("$5.50" → "5 dollars and 50 cents", "£3.5M" → "3.5 million pounds"), anos de 1001 a 1999 e de 2010 a
+  2099 por extenso ("nineteen oh five"; o espeak-ng lia "nineteen hundred ninety nine"; não depois de page/p./No./line,
+  nem colado a outro número ou a %), décadas ("1990s", "’60s"), romanos depois de Chapter/Part/Book/War… ("Chapter 4") e
+  de nomes, com 2+ letras ("Henry the 8th"; o "I" sozinho é o pronome), abreviações que ele não conhece (Nov., p.,
+  pp., vol., fig., No. antes de número, St. antes de nome, e.g., i.e.) e travessão entre números ("to"). Números
+  seguem em algarismos onde o espeak-ng os lê bem. `pedacos_da_frase` (motor): frase acima de 150 caracteres é
+  falada em pedaços cortados depois da pontuação seguida de espaço (vírgula, ponto e vírgula, dois-pontos, travessão,
+  fim de frase), nenhum com menos de 40; cada pedaço vai à fila quando fica pronto (a fala começa antes) e a marca
+  sai antes do primeiro. Uma corrida no teste da amostra (falhava às vezes) corrigida.
+- Próximo passo: M27d-2 (AppImage com o espeak-ng), M27d-3 (ADR 0008, guia e Orca).
