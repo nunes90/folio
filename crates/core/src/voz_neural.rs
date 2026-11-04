@@ -77,6 +77,59 @@ pub(crate) fn frases_do_ssml(ssml: &str) -> Vec<Frase> {
 
 /// A velocidade do speech-dispatcher (-100 a 100, 0 = normal) como fator do Kokoro: -100 é a
 /// metade, 100 o dobro.
+/// Acima disto (em caracteres, ~10 s de fala), a frase é falada em pedaços.
+const PEDACO_MAXIMO: usize = 150;
+/// Um pedaço menor que isto não fica sozinho: junta-se ao vizinho.
+const PEDACO_MINIMO: usize = 40;
+
+/// Uma frase longa em pedaços, cortada depois da pontuação seguida de espaço (vírgula, ponto e
+/// vírgula, dois-pontos, travessão, e o fim de uma frase que o frontend juntou à seguinte). Cada
+/// pedaço vai à fila assim que fica pronto: a fala começa sem esperar o áudio da frase inteira
+/// (~4 s para 15 s de fala), e o modelo não recebe frases enormes, em que a entonação se perde.
+/// O pedaço termina na pontuação, que o modelo usa para a entonação. Frase vazia = nenhum pedaço.
+pub(crate) fn pedacos_da_frase(frase: &str) -> Vec<&str> {
+    let frase = frase.trim();
+    if frase.is_empty() {
+        return Vec::new();
+    }
+    let tamanho = |a: usize, b: usize| frase[a..b].chars().count();
+    if tamanho(0, frase.len()) <= PEDACO_MAXIMO {
+        return vec![frase];
+    }
+    // Onde cada oração termina ("1,000" não corta: depois da vírgula não há espaço).
+    let mut fins: Vec<usize> = Vec::new();
+    let mut letras = frase.char_indices().peekable();
+    while let Some((i, c)) = letras.next() {
+        let pausa = matches!(c, ',' | ';' | ':' | '—' | '–' | '.' | '!' | '?');
+        if pausa && letras.peek().is_some_and(|&(_, p)| p.is_whitespace()) {
+            fins.push(i + c.len_utf8());
+        }
+    }
+    fins.push(frase.len());
+    // Junta orações vizinhas enquanto couberem; um pedaço curto demais não é fechado.
+    let mut inicios = vec![0];
+    let mut anterior = 0;
+    for &fim in &fins {
+        let inicio = *inicios.last().unwrap_or(&0);
+        if anterior > inicio
+            && tamanho(inicio, anterior) >= PEDACO_MINIMO
+            && tamanho(inicio, fim) > PEDACO_MAXIMO
+        {
+            inicios.push(anterior);
+        }
+        anterior = fim;
+    }
+    // O último pedaço curto vai para o anterior.
+    if inicios.len() > 1 && tamanho(inicios[inicios.len() - 1], frase.len()) < PEDACO_MINIMO {
+        inicios.pop();
+    }
+    inicios
+        .iter()
+        .enumerate()
+        .map(|(i, &a)| frase[a..inicios.get(i + 1).copied().unwrap_or(frase.len())].trim())
+        .collect()
+}
+
 pub(crate) fn fator_de_velocidade(velocidade: i8) -> f32 {
     2f32.powf(f32::from(velocidade.clamp(-100, 100)) / 100.0)
 }
@@ -378,37 +431,39 @@ fn laco(
         let (mut falou, mut falhou) = (false, false);
         let mut duracao = Duration::ZERO;
         let mut desistir = false;
-        for frase in trabalho.frases {
+        let avisar_marca = |marca: String| {
+            let c = Arc::clone(&comum);
+            saida.tocar(Item::Aviso(Box::new(move || {
+                if c.atual(g) {
+                    c.emitir(EventoVoz::Marca(marca));
+                }
+            })));
+        };
+        'frases: for frase in trabalho.frases {
             if !comum.atual(g) {
                 break;
             }
-            let audio = if frase.texto.is_empty() {
-                None
-            } else {
-                let mut resultado = sint.sintetizar(&frase.texto, voz, trabalho.velocidade);
-                // Uma falha dentro do ONNX Runtime ("GetElementType is not implemented") apareceu
-                // uma vez no app numa frase que, repetida depois, sempre saiu: tenta outra vez.
-                if let Err(erro) = &resultado
-                    && !matches!(
-                        erro,
-                        ErroKokoro::VozDesconhecida(_) | ErroKokoro::IdiomaDesconhecido(_)
-                    )
-                {
-                    tracing::warn!(
-                        erro = cadeia(erro),
-                        "frase não sintetizada; tentando de novo"
-                    );
-                    resultado = sint.sintetizar(&frase.texto, voz, trabalho.velocidade);
+            let mut marca = frase.marca.filter(|_| trabalho.avisar);
+            // A marca vai à fila logo antes do primeiro áudio da frase: o destaque acompanha a voz.
+            for pedaco in pedacos_da_frase(&frase.texto) {
+                let resultado =
+                    sintetizar_tentando_de_novo(sint.as_mut(), pedaco, voz, trabalho.velocidade);
+                if !comum.atual(g) {
+                    break 'frases;
                 }
                 match resultado {
                     Ok(audio) => {
                         falou = true;
-                        Some(audio)
+                        if let Some(m) = marca.take() {
+                            avisar_marca(m);
+                        }
+                        duracao += Duration::from_secs_f64(audio.len() as f64 / f64::from(TAXA));
+                        saida.tocar(Item::Audio(audio));
                     }
                     Err(erro) => {
                         tracing::warn!(
                             erro = cadeia(&erro),
-                            frase = frase.texto,
+                            frase = pedaco,
                             "frase não sintetizada"
                         );
                         falhou = true;
@@ -418,32 +473,16 @@ fn laco(
                             ErroKokoro::VozDesconhecida(_) | ErroKokoro::IdiomaDesconhecido(_)
                         ) {
                             desistir = true;
-                            break;
+                            break 'frases;
                         }
-                        None
                     }
                 }
-            };
-            if !comum.atual(g) {
-                break;
             }
-            // A marca de uma frase que falhou antes de qualquer outra falar não sai: se o bloco
-            // todo falhar, o frontend só recebe o `Interrompido`.
-            let sem_som = audio.is_none() && !frase.texto.is_empty();
-            if let Some(marca) = frase
-                .marca
-                .filter(|_| trabalho.avisar && !(sem_som && !falou))
-            {
-                let c = Arc::clone(&comum);
-                saida.tocar(Item::Aviso(Box::new(move || {
-                    if c.atual(g) {
-                        c.emitir(EventoVoz::Marca(marca));
-                    }
-                })));
-            }
-            if let Some(audio) = audio {
-                duracao += Duration::from_secs_f64(audio.len() as f64 / f64::from(TAXA));
-                saida.tocar(Item::Audio(audio));
+            // Frase sem texto, ou que falhou depois de outra ter falado: a marca sai assim mesmo
+            // (o destaque segue). Antes de qualquer frase falar, não: se o bloco todo falhar, o
+            // frontend só recebe o `Interrompido`.
+            if let Some(m) = marca.filter(|_| falou || frase.texto.trim().is_empty()) {
+                avisar_marca(m);
             }
         }
         if comum.atual(g) && (desistir || (falhou && !falou)) {
@@ -465,6 +504,32 @@ fn laco(
                 }
             })));
         }
+    }
+}
+
+/// Sintetiza; se falhar por outro motivo que não voz ou idioma desconhecidos, tenta mais uma vez.
+/// Uma falha dentro do ONNX Runtime ("GetElementType is not implemented") apareceu uma vez no app
+/// numa frase que, repetida depois, sempre saiu.
+fn sintetizar_tentando_de_novo(
+    sint: &mut dyn Sintetizador,
+    texto: &str,
+    voz: &str,
+    velocidade: f32,
+) -> Result<Vec<f32>, ErroKokoro> {
+    match sint.sintetizar(texto, voz, velocidade) {
+        Err(erro)
+            if !matches!(
+                erro,
+                ErroKokoro::VozDesconhecida(_) | ErroKokoro::IdiomaDesconhecido(_)
+            ) =>
+        {
+            tracing::warn!(
+                erro = cadeia(&erro),
+                "frase não sintetizada; tentando de novo"
+            );
+            sint.sintetizar(texto, voz, velocidade)
+        }
+        resultado => resultado,
     }
 }
 
@@ -614,6 +679,54 @@ mod tests {
     #[test]
     fn ssml_invalido_nao_fala_nada() {
         assert!(frases_do_ssml("<speak></s>").is_empty());
+    }
+
+    #[test]
+    fn frase_curta_fica_inteira_e_vazia_some() {
+        assert_eq!(pedacos_da_frase("  Hello, there.  "), ["Hello, there."]);
+        assert!(pedacos_da_frase("   ").is_empty());
+    }
+
+    #[test]
+    fn frase_longa_e_cortada_na_pontuacao() {
+        let frase = "We won’t need any other crates for this project, but we will in the first \
+                     project in Chapter 2, so we’ll use this dependencies section then. Now open \
+                     src/main.rs and take a look at the 1,000 lines of code in it, one by one.";
+        let pedacos = pedacos_da_frase(frase);
+        assert_eq!(
+            pedacos,
+            [
+                "We won’t need any other crates for this project, but we will in the first \
+                 project in Chapter 2, so we’ll use this dependencies section then.",
+                "Now open src/main.rs and take a look at the 1,000 lines of code in it, one by one."
+            ]
+        );
+        // Nada se perde nem se repete.
+        assert_eq!(pedacos.join(" "), frase);
+    }
+
+    #[test]
+    fn pedacos_respeitam_os_limites() {
+        let oracao = "and then the rain kept falling on the old roof, ";
+        let frase = oracao.repeat(12) + "end.";
+        let pedacos = pedacos_da_frase(&frase);
+        assert!(pedacos.len() > 3);
+        for p in &pedacos {
+            let n = p.chars().count();
+            assert!((PEDACO_MINIMO..=PEDACO_MAXIMO).contains(&n), "{n}: {p}");
+        }
+        // Sem pontuação, fica inteira (o modelo ainda divide no limite de tokens).
+        let corrida = "palavra ".repeat(40);
+        assert_eq!(pedacos_da_frase(&corrida).len(), 1);
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn pedacos_nao_perdem_texto(frase in "[a-z ,.;:—]{0,400}") {
+            let pedacos = pedacos_da_frase(&frase);
+            let sem_espacos = |t: &str| t.split_whitespace().collect::<String>();
+            proptest::prop_assert_eq!(sem_espacos(&pedacos.concat()), sem_espacos(&frase));
+        }
     }
 
     #[test]
@@ -829,6 +942,26 @@ mod tests {
     }
 
     #[test]
+    fn frase_longa_toca_em_pedacos_com_uma_marca() {
+        let (m, rx, saida, _) = motor_com(None, OCIOSO);
+        let longa = "uma oração bem comprida, ".repeat(10);
+        m.falar(
+            format!(
+                r#"<speak><s><mark name="0"/>{longa}</s><s><mark name="1"/>Curta.</s></speak>"#
+            ),
+            ConfigVoz::default(),
+        )
+        .unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Marca("1".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        // O falso devolve o tamanho do texto como "áudio": a longa foi em vários pedaços.
+        let tocado = saida.tocado.lock().unwrap();
+        assert!(tocado.len() > 2, "{tocado:?}");
+        assert_eq!(*tocado.last().unwrap(), "Curta.".len() as f32);
+    }
+
+    #[test]
     fn falha_do_modelo_tenta_a_frase_de_novo() {
         let (m, rx, saida, _) = motor_com(None, OCIOSO);
         m.falar(
@@ -920,17 +1053,20 @@ mod tests {
         let (libera, trava) = mpsc::channel();
         let (m, rx, saida, registro) = motor_com(Some(trava), OCIOSO);
         m.falar(ssml(&["0", "1"]), ConfigVoz::default()).unwrap();
-        // A amostra espera o áudio: libera as frases de outra thread.
+        // A amostra espera o áudio: as frases são liberadas de outra thread, só depois de a
+        // amostra interromper a leitura (liberar antes deixava a frase "0" falar, às vezes).
         let liberar = thread::spawn(move || {
+            let primeiro = proximo(&rx);
             for _ in 0..3 {
                 let _ = libera.send(());
             }
+            (primeiro, rx)
         });
         // O falso gera uma amostra de áudio por frase (a 24 kHz).
         let dura = m.amostra("Hello there.", "bm_george").unwrap();
         assert_eq!(dura, Duration::from_secs_f64(1.0 / f64::from(TAXA)));
-        liberar.join().unwrap();
-        assert_eq!(proximo(&rx), EventoVoz::Interrompido);
+        let (primeiro, rx) = liberar.join().unwrap();
+        assert_eq!(primeiro, EventoVoz::Interrompido);
         assert!(rx.recv_timeout(Duration::from_millis(200)).is_err());
         assert_eq!(registro.vozes.lock().unwrap().last().unwrap(), "bm_george");
         assert_eq!(*saida.tocado.lock().unwrap().last().unwrap(), 12.0);

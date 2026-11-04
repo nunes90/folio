@@ -7,7 +7,7 @@ use ort::value::Tensor;
 
 use super::{
     ErroKokoro, Fonemizador, MAX_TOKENS, Vocabulario, Vozes, dividir, fonemas_com_pontuacao,
-    idioma_da_voz, indice_da_voz,
+    idioma_da_voz, indice_da_voz, normalizar_ingles,
 };
 
 /// Taxa de amostragem do áudio que o modelo gera (mono).
@@ -74,7 +74,12 @@ impl Kokoro {
     ) -> Result<Vec<f32>, ErroKokoro> {
         let numero = indice_da_voz(voz).ok_or_else(|| ErroKokoro::VozDesconhecida(voz.into()))?;
         let idioma = idioma_da_voz(voz).ok_or_else(|| ErroKokoro::VozDesconhecida(voz.into()))?;
-        let fonemas = fonemas_com_pontuacao(self.fonemizador.as_ref(), frase, idioma)?;
+        let frase = if idioma == "en" {
+            normalizar_ingles(frase)
+        } else {
+            frase.to_string()
+        };
+        let fonemas = fonemas_com_pontuacao(self.fonemizador.as_ref(), &frase, idioma)?;
         let ids = self.vocabulario.ids(&fonemas);
         let mut audio = Vec::new();
         for pedaco in dividir(&self.vocabulario, &ids, MAX_TOKENS) {
