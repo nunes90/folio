@@ -213,8 +213,7 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
       remover, voz com amostra, usar em livros em inglês, velocidade, que sai de Texto e Página), aviso sem o
       espeak-ng, paleta, "Preparando a voz…"
   - [ ] M27d — normalização do texto em inglês, frases longas cortadas nas vírgulas, ADR 0008, AppImage
-    (libespeak-ng e dados), guia e roteiro do Orca; investigar a sensação de chiado no início da fala no app (os WAVs
-    gerados pelo core soam bem; suspeitas: a saída de som abrindo na primeira fala, ou a fila vazia no começo)
+    (libespeak-ng e dados), guia e roteiro do Orca. (O chiado era a voz Emma, trocada pela Isabella: `fix/voz-isabella`.)
   - [ ] M27e — Piper como segundo modelo (quando fizer falta): mais leve (~63 MB por voz) e rápido, mais
     idiomas; reaproveita os fonemas e o ONNX Runtime, entra como linhas no catálogo e um motor
   - [ ] pt-BR com o Kokoro (pf_dora, pm_alex)

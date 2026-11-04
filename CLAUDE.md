@@ -739,7 +739,7 @@ docs/decisions/  # ADRs
   da `libasound.so.2` (ALSA); `libasound2-dev` nos workflows. Testado pelo Lucas com áudio real num EPUB em inglês.
 - **M27c-1** (branch `feat/m27c-catalogo-vozes`): `core::catalogo_vozes` (`Modelo`, `Arquivo`, `VozDoCatalogo`;
   `KOKORO` com URLs do Hugging Face presas a um commit e o `.tgz` oficial do ONNX Runtime 1.31.1 da arquitetura, de que
-  só saem a `.so`, a licença e os avisos; 5 vozes em inglês: Heart, Bella, Michael, Emma, George). `core::baixar`:
+  só saem a `.so`, a licença e os avisos; 5 vozes em inglês: Heart, Bella, Michael, Isabella, George; a Emma saiu, ver abaixo). `core::baixar`:
   `baixar_modelo(rede, modelo, vozes, progresso, cancelar)` grava em `<id>.parcial/`, confere tamanho e SHA-256 enquanto
   chega e renomeia no fim (instalado = a pasta existe); `RedeHttp` = `ureq` com os certificados do sistema
   (`platform-verifier`, provedor ring). `cargo deny` agora só olha os alvos Linux (`[graph] targets`): a
@@ -786,4 +786,12 @@ docs/decisions/  # ADRs
   energia entre 8 e 12 kHz (é do vocoder), mas ouvindo os WAVs pelo `pw-play` o Lucas achou bons, com e sem passa-baixa.
   Fica o int8 (download menor). O chiado que ele sentiu no começo da fala no app segue em aberto (ROADMAP, M27d).
 - **M27c concluído.**
+- **Chiado da voz** (branch `fix/voz-isabella`): era a Emma (`bf_emma`), não o app. Gravado por uma saída de som
+  virtual (`pactl load-module module-null-sink`; `PIPEWIRE_NODE=<nome>` leva a saída do rodio até ela; `parec` grava
+  o monitor), o som do app bate com o do modelo (< 1 dB por janela, sem ruído no começo). Ouvindo o mesmo trecho em
+  todas as vozes, a Emma chia (ruído de fundo nos agudos) e um passa-baixa não a limpa; a **Isabella** (`bf_isabella`)
+  entra no lugar (quem tinha a Emma volta à voz padrão). O teste ignorado `tocar_de_verdade` toca uma frase pela saída
+  do app; `kokoro_gerar_wav` aceita uma frase por linha e `FOLIO_KOKORO_VELOCIDADE`. Uma frase que falha (fora voz ou
+  idioma desconhecidos) é tentada mais uma vez: o ONNX Runtime deu uma vez "GetElementType is not implemented" numa
+  frase longa que, repetida depois, sempre saiu.
 - Próximo passo: M27d (normalização do inglês, frases longas, ADR 0008, AppImage com o espeak-ng, guia e Orca).

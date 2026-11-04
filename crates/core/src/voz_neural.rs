@@ -385,7 +385,22 @@ fn laco(
             let audio = if frase.texto.is_empty() {
                 None
             } else {
-                match sint.sintetizar(&frase.texto, voz, trabalho.velocidade) {
+                let mut resultado = sint.sintetizar(&frase.texto, voz, trabalho.velocidade);
+                // Uma falha dentro do ONNX Runtime ("GetElementType is not implemented") apareceu
+                // uma vez no app numa frase que, repetida depois, sempre saiu: tenta outra vez.
+                if let Err(erro) = &resultado
+                    && !matches!(
+                        erro,
+                        ErroKokoro::VozDesconhecida(_) | ErroKokoro::IdiomaDesconhecido(_)
+                    )
+                {
+                    tracing::warn!(
+                        erro = cadeia(erro),
+                        "frase não sintetizada; tentando de novo"
+                    );
+                    resultado = sint.sintetizar(&frase.texto, voz, trabalho.velocidade);
+                }
+                match resultado {
                     Ok(audio) => {
                         falou = true;
                         Some(audio)
@@ -615,6 +630,8 @@ mod tests {
     struct Falso {
         trava: Option<Arc<Mutex<mpsc::Receiver<()>>>>,
         vozes: Arc<Mutex<Vec<String>>>,
+        /// As frases "instáveis" que já falharam uma vez.
+        falharam: Vec<String>,
     }
     impl Sintetizador for Falso {
         fn sintetizar(&mut self, frase: &str, voz: &str, _: f32) -> Result<Vec<f32>, ErroKokoro> {
@@ -627,6 +644,11 @@ mod tests {
             }
             if frase.contains("ruim") {
                 return Err(ErroKokoro::ArquivoInvalido("teste".into()));
+            }
+            // "instável": o modelo falha na primeira tentativa.
+            if frase.contains("instável") && !self.falharam.iter().any(|f| f == frase) {
+                self.falharam.push(frase.to_string());
+                return Err(ErroKokoro::ArquivoInvalido("instável".into()));
             }
             self.vozes.lock().unwrap().push(voz.to_string());
             Ok(vec![frase.len() as f32])
@@ -688,6 +710,7 @@ mod tests {
                 Ok(Box::new(Falso {
                     trava: trava.clone(),
                     vozes: Arc::clone(&r1.vozes),
+                    falharam: Vec::new(),
                 }) as Box<dyn Sintetizador>)
             }),
             Box::new(move || {
@@ -805,6 +828,23 @@ mod tests {
         assert!(rx.recv_timeout(Duration::from_millis(200)).is_err());
     }
 
+    #[test]
+    fn falha_do_modelo_tenta_a_frase_de_novo() {
+        let (m, rx, saida, _) = motor_com(None, OCIOSO);
+        m.falar(
+            r#"<speak><s><mark name="0"/>Frase instável.</s></speak>"#.into(),
+            ConfigVoz::default(),
+        )
+        .unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        // O falso devolve o tamanho da frase como "áudio": ela tocou.
+        assert_eq!(
+            *saida.tocado.lock().unwrap(),
+            ["Frase instável.".len() as f32]
+        );
+    }
+
     /// Abre a saída de som de verdade (sem tocar nada): `cargo test -p folio-core -- --ignored
     /// saida_de_som_na_taxa_do_modelo`.
     #[test]
@@ -812,6 +852,25 @@ mod tests {
     fn saida_de_som_na_taxa_do_modelo() {
         let saida = SaidaRodio::abrir().unwrap();
         assert_eq!(saida._dispositivo.config().sample_rate().get(), TAXA);
+    }
+
+    /// Toca uma frase de verdade pela saída do app (para gravar e comparar com o que o modelo
+    /// gera): `FOLIO_KOKORO=<pasta> [FOLIO_KOKORO_VOZ=af_heart] [FOLIO_KOKORO_TEXTO=…] cargo test
+    /// -p folio-core --release -- --ignored tocar_de_verdade`.
+    #[test]
+    #[ignore = "precisa do modelo baixado (FOLIO_KOKORO), da libespeak-ng e de uma saída de som"]
+    fn tocar_de_verdade() {
+        let pasta = std::env::var("FOLIO_KOKORO").expect("FOLIO_KOKORO=<pasta do modelo>");
+        let voz = std::env::var("FOLIO_KOKORO_VOZ").unwrap_or_else(|_| "af_heart".into());
+        let texto = std::env::var("FOLIO_KOKORO_TEXTO")
+            .unwrap_or_else(|_| "She sells seashells by the seashore, she said.".into());
+        let espeak = crate::kokoro::EspeakNg::carregar(None).unwrap();
+        let mut kokoro = Kokoro::carregar(Path::new(&pasta), Box::new(espeak)).unwrap();
+        let audio = kokoro.sintetizar(&texto, &voz, 1.0).unwrap();
+        let dura = Duration::from_secs_f64(audio.len() as f64 / f64::from(TAXA));
+        let saida = SaidaRodio::abrir().unwrap();
+        saida.tocar(Item::Audio(audio));
+        thread::sleep(dura + Duration::from_millis(300));
     }
 
     #[test]
@@ -838,17 +897,17 @@ mod tests {
         m.falar(ssml(&["0"]), ConfigVoz::default()).unwrap();
         assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
         assert_eq!(proximo(&rx), EventoVoz::Fim);
-        m.configurar(config("/m", "bf_emma"));
+        m.configurar(config("/m", "bf_isabella"));
         m.falar(ssml(&["1"]), ConfigVoz::default()).unwrap();
         assert_eq!(proximo(&rx), EventoVoz::Marca("1".into()));
         assert_eq!(proximo(&rx), EventoVoz::Fim);
-        m.configurar(config("/outra", "bf_emma"));
+        m.configurar(config("/outra", "bf_isabella"));
         m.falar(ssml(&["2"]), ConfigVoz::default()).unwrap();
         assert_eq!(proximo(&rx), EventoVoz::Marca("2".into()));
         assert_eq!(proximo(&rx), EventoVoz::Fim);
         assert_eq!(
             *registro.vozes.lock().unwrap(),
-            ["af_heart", "bf_emma", "bf_emma"]
+            ["af_heart", "bf_isabella", "bf_isabella"]
         );
         assert_eq!(
             *registro.pastas.lock().unwrap(),

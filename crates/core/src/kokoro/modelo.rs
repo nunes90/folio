@@ -136,6 +136,7 @@ mod tests {
 
     /// Gera um WAV para ouvir e compara velocidades: `FOLIO_KOKORO=<pasta>
     /// FOLIO_KOKORO_WAV=<saida.wav> [FOLIO_KOKORO_VOZ=af_heart] [FOLIO_KOKORO_TEXTO=…]
+    /// [FOLIO_KOKORO_VELOCIDADE=1.0]. No texto, uma frase por linha.
     /// cargo test -p folio-core --release -- --ignored kokoro_gerar_wav --nocapture`.
     #[test]
     #[ignore = "ferramenta: precisa do modelo baixado (FOLIO_KOKORO)"]
@@ -149,12 +150,23 @@ mod tests {
              programs."
                 .into()
         });
+        let velocidade = std::env::var("FOLIO_KOKORO_VELOCIDADE").map_or(1.0, |v| {
+            v.parse()
+                .expect("FOLIO_KOKORO_VELOCIDADE: um número, 1,0 = normal")
+        });
         let espeak = EspeakNg::carregar(None).unwrap();
         let inicio = std::time::Instant::now();
         let mut kokoro = Kokoro::carregar(Path::new(&pasta), Box::new(espeak)).unwrap();
         let carregar = inicio.elapsed();
         let inicio = std::time::Instant::now();
-        let audio = kokoro.sintetizar(&texto, &voz, 1.0).unwrap();
+        // Uma frase por linha, uma depois da outra, como o motor faz (o áudio vai emendado).
+        let mut audio = Vec::new();
+        for frase in texto.lines().filter(|l| !l.trim().is_empty()) {
+            match kokoro.sintetizar(frase, &voz, velocidade) {
+                Ok(a) => audio.extend(a),
+                Err(e) => panic!("{e:?} em {frase:?}"),
+            }
+        }
         let gerar = inicio.elapsed();
         let segundos = audio.len() as f32 / TAXA as f32;
         eprintln!(
