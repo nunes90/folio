@@ -804,4 +804,11 @@ docs/decisions/  # ADRs
   falada em pedaços cortados depois da pontuação seguida de espaço (vírgula, ponto e vírgula, dois-pontos, travessão,
   fim de frase), nenhum com menos de 40; cada pedaço vai à fila quando fica pronto (a fala começa antes) e a marca
   sai antes do primeiro. Uma corrida no teste da amostra (falhava às vezes) corrigida.
-- Próximo passo: M27d-2 (AppImage com o espeak-ng), M27d-3 (ADR 0008, guia e Orca).
+- **M27d-2** (branch `feat/m27d2-appimage-espeak`): o AppImage leva um espeak-ng próprio em `usr/lib/folio/espeak-ng`
+  (biblioteca, `espeak-ng-data` só com os dicionários do inglês e do português, `COPYING`, `LEIA-ME` com a versão e o
+  código). O workflow o compila (1.52.0, tarball conferido por SHA-256, CMake sem som, mbrola, sonic, klatt,
+  speechplayer, async nem dicionários extras: o pacote do Ubuntu puxaria o PulseAudio e uma dúzia de bibliotecas) e o
+  põe no AppImage por `--config` (`bundle.linux.appimage.files`; no `tauri.conf.json` o build local falharia sem a
+  pasta). `EspeakNg::carregar(None)` procura `<exe>/../lib/folio/espeak-ng` antes do sistema (`pasta_embutida`) e diz
+  no log qual carregou. `testar_appimage.sh` confere os arquivos e que o `ldd` não acusa falta.
+- Próximo passo: M27d-3 (ADR 0008, guia e Orca).

@@ -3,9 +3,13 @@
 //! A biblioteca do espeak-ng (`libespeak-ng.so.1`) é carregada durante a execução, e não ligada
 //! na compilação: sem ela, o Folio abre normalmente e só a voz neural fica indisponível (a mesma
 //! regra do speech-dispatcher, ADR 0007).
+//!
+//! O AppImage leva um espeak-ng próprio (compilado na CI só com o que os fonemas usam) em
+//! `usr/lib/folio/espeak-ng`, ao lado do executável: ele vem antes do sistema, e assim a voz
+//! natural funciona sem instalar nada. Fora do AppImage, vale o do sistema.
 
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use super::ErroKokoro;
@@ -123,12 +127,23 @@ struct Funcoes {
     idioma: Option<String>,
 }
 
+const BIBLIOTECA: &str = "libespeak-ng.so.1";
+
+/// A pasta do espeak-ng que vem com o app, a partir do executável (`<prefixo>/bin/folio` →
+/// `<prefixo>/lib/folio/espeak-ng`), se a biblioteca estiver lá. Ela contém também a
+/// `espeak-ng-data`.
+fn pasta_embutida(executavel: &Path) -> Option<PathBuf> {
+    let pasta = executavel.parent()?.parent()?.join("lib/folio/espeak-ng");
+    pasta.join(BIBLIOTECA).is_file().then_some(pasta)
+}
+
 /// O espeak-ng do processo, depois de carregado.
 static ESPEAK: Mutex<Option<Arc<EspeakNg>>> = Mutex::new(None);
 
 impl EspeakNg {
     /// O espeak-ng do processo: na primeira vez, carrega a biblioteca e a inicia. `dados` é a
-    /// pasta que contém `espeak-ng-data` (sem ela, a do sistema); só vale na primeira vez.
+    /// pasta que contém `espeak-ng-data` (sem ela, a do espeak-ng do app, se houver, ou a do
+    /// sistema); só vale na primeira vez.
     pub fn carregar(dados: Option<&Path>) -> Result<Arc<Self>, ErroKokoro> {
         let mut atual = ESPEAK.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(espeak) = atual.as_ref() {
@@ -140,11 +155,20 @@ impl EspeakNg {
     }
 
     fn iniciar(dados: Option<&Path>) -> Result<Self, ErroKokoro> {
+        let embutida = dados
+            .is_none()
+            .then(|| std::env::current_exe().ok())
+            .flatten()
+            .and_then(|exe| pasta_embutida(&exe));
         // SAFETY: carregar a biblioteca roda os construtores dela; a do espeak-ng não tem
         // efeitos além de iniciar variáveis próprias.
-        let biblioteca = unsafe { libloading::Library::new("libespeak-ng.so.1") }
-            .or_else(|_| unsafe { libloading::Library::new("libespeak-ng.so") })
-            .map_err(ErroKokoro::SemEspeak)?;
+        let biblioteca = match &embutida {
+            Some(pasta) => unsafe { libloading::Library::new(pasta.join(BIBLIOTECA)) },
+            None => unsafe { libloading::Library::new(BIBLIOTECA) }
+                .or_else(|_| unsafe { libloading::Library::new("libespeak-ng.so") }),
+        }
+        .map_err(ErroKokoro::SemEspeak)?;
+        let dados = dados.or(embutida.as_deref());
         // SAFETY: as assinaturas são as do `speak_lib.h` do espeak-ng.
         let (iniciar, voz, fonemas) = unsafe {
             (
@@ -176,6 +200,15 @@ impl EspeakNg {
         if taxa <= 0 {
             return Err(ErroKokoro::EspeakNaoIniciou);
         }
+        tracing::info!(
+            pasta = embutida.as_ref().map(|p| p.display().to_string()),
+            "espeak-ng carregado ({})",
+            if embutida.is_some() {
+                "o do app"
+            } else {
+                "o do sistema"
+            }
+        );
         Ok(Self {
             funcoes: Mutex::new(Funcoes {
                 voz,
@@ -231,6 +264,20 @@ impl Fonemizador for EspeakNg {
 mod tests {
     use super::*;
     use proptest::prelude::*;
+
+    #[test]
+    fn espeak_do_app_fica_ao_lado_do_executavel() {
+        let dir = tempfile::tempdir().unwrap();
+        let exe = dir.path().join("usr/bin/folio");
+        assert_eq!(pasta_embutida(&exe), None);
+        let pasta = dir.path().join("usr/lib/folio/espeak-ng");
+        std::fs::create_dir_all(&pasta).unwrap();
+        // Só a pasta não basta: precisa da biblioteca.
+        assert_eq!(pasta_embutida(&exe), None);
+        std::fs::write(pasta.join(BIBLIOTECA), b"").unwrap();
+        assert_eq!(pasta_embutida(&exe), Some(pasta));
+        assert_eq!(pasta_embutida(Path::new("folio")), None);
+    }
 
     /// Põe cada trecho entre colchetes, para o teste ver onde a frase foi cortada.
     struct Colchetes;
