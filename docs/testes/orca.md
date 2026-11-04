@@ -108,6 +108,14 @@ Com o Orca ligado as duas vozes se sobrepõem: pause o Orca (`Orca+S`) ou só co
 | 9.2 | Pausar e continuar | Retoma da frase em que parou |
 | 9.3 | `Ctrl+D` lendo | A voz pausa; a barra abre sobre a frase lida; fechar a barra retoma |
 | 9.4 | Barra → "Ouvir" | Lê a partir do trecho |
+| 9.5 | Aparência → `Tab` até a seção "Voz" | Lê "Voz", o controle "Velocidade da leitura em voz alta" com o valor, e o grupo "Voz natural" com a explicação |
+| 9.6 | "Baixar a voz natural (152 MB)" | A barra de progresso é anunciada com a porcentagem e "Cancelar o download" fica no `Tab`; no fim, o aviso "Voz natural instalada…" é lido |
+| 9.7 | Cancelar no meio e baixar de novo | Anuncia "Download da voz natural cancelado."; o botão de baixar volta |
+| 9.8 | Instalada: setas no grupo "Voz" | Cada rádio lê o nome, o idioma e o gênero ("George, inglês britânico, masculina") |
+| 9.9 | "Ouvir amostra (<voz>)" | Anuncia "Preparando a voz…" e "Tocando a amostra de <voz>."; a amostra toca na voz natural |
+| 9.10 | "Ler em voz alta" num livro em inglês | A voz natural lê (na primeira vez, "Preparando a voz…"); num livro em português, a voz do sistema |
+| 9.11 | "Remover a voz natural…" | A confirmação aparece no lugar, com "Remover (152 MB)" e "Cancelar"; remover anuncia "Voz natural removida." |
+| 9.12 | `Ctrl+K`, "voz" | Lista os comandos da voz natural do estado atual (baixar; ou as vozes, a amostra e remover) |
 
 ## 10. Sessão: meta, ritmo e continuação
 | # | Ação | Esperado |

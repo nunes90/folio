@@ -784,7 +784,7 @@ docs/decisions/  # ADRs
   e mede o tempo): o fp32 do mesmo autor (`csukuangfj/kokoro-multi-lang-v1_0`, 325 MB, mesmas entradas e `voices.bin`)
   gera ~4,2× o tempo real contra ~3,7× do int8, e o som medido é praticamente igual. Nos "s" os dois põem ~90% da
   energia entre 8 e 12 kHz (é do vocoder), mas ouvindo os WAVs pelo `pw-play` o Lucas achou bons, com e sem passa-baixa.
-  Fica o int8 (download menor). O chiado que ele sentiu no começo da fala no app segue em aberto (ROADMAP, M27d).
+  Fica o int8 (download menor). O chiado que ele sentiu no começo da fala era a voz Emma (ver "Chiado da voz").
 - **M27c concluído.**
 - **Chiado da voz** (branch `fix/voz-isabella`): era a Emma (`bf_emma`), não o app. Gravado por uma saída de som
   virtual (`pactl load-module module-null-sink`; `PIPEWIRE_NODE=<nome>` leva a saída do rodio até ela; `parec` grava
@@ -811,4 +811,11 @@ docs/decisions/  # ADRs
   põe no AppImage por `--config` (`bundle.linux.appimage.files`; no `tauri.conf.json` o build local falharia sem a
   pasta). `EspeakNg::carregar(None)` procura `<exe>/../lib/folio/espeak-ng` antes do sistema (`pasta_embutida`) e diz
   no log qual carregou. `testar_appimage.sh` confere os arquivos e que o `ldd` não acusa falta.
-- Próximo passo: M27d-3 (ADR 0008, guia e Orca).
+- **M27d-3** (branch `docs/m27d3-adr-voz`): ADR 0008 (voz natural: Kokoro int8 no ONNX Runtime oficial carregado
+  durante a execução, o espeak-ng para a pronúncia e embutido no AppImage, download conferido, escolha por idioma, e o
+  que foi descartado: sherpa-onnx, o ONNX Runtime da `ort`, o pacote do espeak-ng do Ubuntu, o fp32, a Emma). Guia
+  (seção Voz na Aparência, as duas vozes, a pasta `vozes`, a internet só no download), README (a voz natural;
+  `libasound2-dev` para compilar) e o roteiro do Orca (9.5–9.12: seção Voz, download, vozes, amostra, remover,
+  leitura por idioma, paleta). **Falta executar 9.5–9.12 com o Orca** (só o Lucas).
+- **M27d concluído.**
+- Próximo passo: pt-BR com o Kokoro (pf_dora, pm_alex), ou o M27e (Piper) quando fizer falta.

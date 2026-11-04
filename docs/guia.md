@@ -38,6 +38,7 @@ O botão **Aparência** tem três partes, com prévia ao vivo:
 - **Página:** a cor da página (automática, original, creme, sépia, noite, nos dois formatos) e a virada de página.
 - **Texto** (só EPUB): fonte, tamanho, entrelinha, espaçamentos, caracteres por linha, colunas, alinhamento e hifenização.
   Aumentar a letra alarga a coluna junto, e a linha continua com o mesmo tanto de caracteres.
+- **Voz:** a velocidade da leitura em voz alta e a voz natural (ver "Ouvir").
 
 ## Destacar
 
@@ -57,10 +58,22 @@ ou só os do motivo filtrado.
 
 "Ler em voz alta" fica no rodapé e na paleta. A frase lida fica realçada, e a leitura segue pelos parágrafos e
 capítulos. No PDF, só o texto principal é lido: margem, legendas e número da página ficam de fora. Listas e código
-são lidos mais devagar. "Ouvir", na barra de destaque, lê a partir daquele trecho. A velocidade fica na Aparência (seção Texto no EPUB, Página no PDF) e na paleta ("Voz mais rápida", "Voz mais lenta").
+são lidos mais devagar. "Ouvir", na barra de destaque, lê a partir daquele trecho. A velocidade fica na Aparência
+(seção Voz) e na paleta ("Voz mais rápida", "Voz mais lenta").
 
-Requer o `speech-dispatcher`. A voz é a do sistema, e a padrão (espeak-ng) soa robótica; o speech-dispatcher pode usar
-outras vozes.
+Há duas vozes:
+
+- **A voz natural**, para livros em inglês: uma voz neural que roda no seu computador. Em **Aparência → Voz**, "Baixar
+  a voz natural" baixa 152 MB uma vez (dá para cancelar; o resto do app continua funcionando). Depois, escolha a voz
+  (Heart, Bella e Michael, em inglês americano; Isabella e George, em inglês britânico), ouça a amostra e, se quiser,
+  desligue "Usar a voz natural em livros em inglês". "Remover a voz natural…" apaga o download. A primeira frase pode
+  levar um segundo para começar ("Preparando a voz…"). Na paleta: "Baixar a voz natural", "Voz: Heart", "Ouvir amostra
+  da voz".
+- **A voz do sistema**, para os outros idiomas (e para o inglês, sem a voz natural). Requer o `speech-dispatcher`; a
+  padrão (espeak-ng) soa robótica, e o speech-dispatcher pode usar outras vozes.
+
+O idioma é o do livro: o do EPUB e, no PDF, o que o arquivo declara (sem ele, a voz do sistema). Fora do AppImage, a voz
+natural precisa também do pacote `espeak-ng` (para a pronúncia); o AppImage já o traz.
 
 ## Concentrar
 
@@ -93,6 +106,7 @@ principal); voz, meta e progresso ficam só no principal.
 |---|---|
 | Biblioteca, livros, destaques, sessões | `~/.local/share/io.github.nunes90.folio` |
 | Capas | `~/.cache/io.github.nunes90.folio` |
+| Voz natural (o download) | `~/.local/share/io.github.nunes90.folio/vozes` |
 | Registros (logs) | `~/.local/state/folio/logs` |
 
-Nada sai do seu computador. Para fazer uma cópia de segurança, copie a primeira pasta com o Folio fechado.
+Nada sai do seu computador. A internet só é usada quando você baixa a voz natural. Para fazer uma cópia de segurança, copie a primeira pasta com o Folio fechado.
