@@ -6,6 +6,7 @@
   import "../lib/paginasPdf.css";
   import BarraPdf from "./BarraPdf.svelte";
   import ControlesVoz from "./ControlesVoz.svelte";
+  import { idiomaDoTexto } from "../lib/idioma";
   import {
     blocoDasFrases,
     comandosDaVoz,
@@ -480,10 +481,16 @@
     pedidoSenha = null;
     documentoPdf = documento;
     total = documento.numPages;
-    // O idioma do PDF escolhe a voz (a natural para inglês, M27).
+    // O idioma do PDF escolhe a voz (a natural para inglês, M27). A maioria dos PDFs não o declara
+    // no catálogo: aí vale o idioma do texto, a partir da página salva.
+    const paginaSalva = Number(inicio?.match(/^pagina:(\d+)$/)?.[1]) || 1;
     documento
       .getMetadata()
-      .then(({ info }) => (idiomaDoPdf = idiomaValido((info as { Language?: unknown }).Language)))
+      .then(async ({ info }) => {
+        idiomaDoPdf = idiomaValido((info as { Language?: unknown }).Language);
+        idiomaDoPdf ??= await idiomaPelasPaginas(documento, paginaSalva);
+        log.info(`idioma do PDF: ${idiomaDoPdf ?? "desconhecido"}`);
+      })
       .catch(() => {});
     v.setDocument(documento);
     l.setDocument(documento);
@@ -527,15 +534,34 @@
     );
   }
 
+  /** Texto de uma página pelo pdf.js (sem desenhá-la). */
+  async function textoDaPagina(documento: PDFDocumentProxy, n: number): Promise<string> {
+    const conteudo = await (await documento.getPage(n)).getTextContent();
+    return conteudo.items
+      .map((item) => ("str" in item ? item.str + (item.hasEOL ? " " : "") : ""))
+      .join("");
+  }
+
+  /**
+   * O idioma pelo texto de até 6 páginas a partir de `n` (a capa ou um título sozinho não bastam),
+   * juntando o texto até dar para dizer.
+   */
+  async function idiomaPelasPaginas(documento: PDFDocumentProxy, n: number): Promise<string | null> {
+    let texto = "";
+    for (let p = n; p <= Math.min(documento.numPages, n + 5); p++) {
+      texto += " " + (await textoDaPagina(documento, p));
+      const idioma = idiomaDoTexto(texto);
+      if (idioma) return idioma;
+    }
+    return null;
+  }
+
   async function montarContinuacao(documento: PDFDocumentProxy, n: number) {
     const agora = Date.now() / 1000;
     if (!deveMostrar(!!inicio, ultimaLeitura, agora)) return;
     let trecho: string[] = [];
     if (n > 1) {
-      const conteudo = await (await documento.getPage(n - 1)).getTextContent();
-      const texto = conteudo.items
-        .map((item) => ("str" in item ? item.str + (item.hasEOL ? " " : "") : ""))
-        .join("");
+      const texto = await textoDaPagina(documento, n - 1);
       trecho = ultimasFrases(texto, 3).map((f) => resumo(f, 300));
     }
     const secao = capituloDa(n);

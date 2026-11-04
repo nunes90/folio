@@ -818,4 +818,10 @@ docs/decisions/  # ADRs
   `libasound2-dev` para compilar) e o roteiro do Orca (9.5–9.12: seção Voz, download, vozes, amostra, remover,
   leitura por idioma, paleta). **Falta executar 9.5–9.12 com o Orca** (só o Lucas).
 - **M27d concluído.**
+- **Idioma pelo texto** (branch `fix/idioma-pelo-texto`): a maioria dos PDFs não declara `/Lang` no catálogo (5 dos 8
+  da biblioteca daqui; o "Learn C Programming" tem lixo no campo e o `/Lang` só nas marcações internas, que o pdf.js
+  não expõe), e sem idioma a leitura ia à voz do sistema. `lib/idioma.ts`: `idiomaDoTexto` (en, pt, es, fr, de pelas
+  palavras curtas mais comuns de cada um; `null` com menos de 30 palavras, com menos de 10% delas comuns ou sem
+  vencer o segundo por 2×). O `LeitorPdf` junta o texto de até 6 páginas a partir da salva (`getTextContent`, sem
+  desenhar) até dar para dizer; no log, "idioma do PDF: …". Conferido com os PDFs da biblioteca pelo pdf.js no Node.
 - Próximo passo: pt-BR com o Kokoro (pf_dora, pm_alex), ou o M27e (Piper) quando fizer falta.
