@@ -811,4 +811,10 @@ docs/decisions/  # ADRs
   põe no AppImage por `--config` (`bundle.linux.appimage.files`; no `tauri.conf.json` o build local falharia sem a
   pasta). `EspeakNg::carregar(None)` procura `<exe>/../lib/folio/espeak-ng` antes do sistema (`pasta_embutida`) e diz
   no log qual carregou. `testar_appimage.sh` confere os arquivos e que o `ldd` não acusa falta.
+- **Idioma pelo texto** (branch `fix/idioma-pelo-texto`): a maioria dos PDFs não declara `/Lang` no catálogo (5 dos 8
+  da biblioteca daqui; o "Learn C Programming" tem lixo no campo e o `/Lang` só nas marcações internas, que o pdf.js
+  não expõe), e sem idioma a leitura ia à voz do sistema. `lib/idioma.ts`: `idiomaDoTexto` (en, pt, es, fr, de pelas
+  palavras curtas mais comuns de cada um; `null` com menos de 30 palavras, com menos de 10% delas comuns ou sem
+  vencer o segundo por 2×). O `LeitorPdf` junta o texto de até 6 páginas a partir da salva (`getTextContent`, sem
+  desenhar) até dar para dizer; no log, "idioma do PDF: …". Conferido com os PDFs da biblioteca pelo pdf.js no Node.
 - Próximo passo: M27d-3 (ADR 0008, guia e Orca).
