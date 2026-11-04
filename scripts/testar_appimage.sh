@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Confere um AppImage do Folio (M6b): o .desktop e, numa tela virtual, se ele abre um livro como o
 # "Abrir com" do sistema. Não usa FUSE nem os dados de ninguém (pastas temporárias).
+# Também o espeak-ng embutido (a voz natural).
 # Uso, numa sessão D-Bus e numa tela (a CI usa xvfb-run e dbus-run-session):
 #   scripts/testar_appimage.sh Folio.AppImage tests/fixtures/dom-casmurro.epub
 # Requer sqlite3 e desktop-file-validate.
@@ -20,6 +21,15 @@ done
 for arquivo in LICENSE THIRD-PARTY-NOTICES.md; do
   [ -s "squashfs-root/usr/lib/Folio/$arquivo" ] || { echo "FALHOU: sem $arquivo"; exit 1; }
 done
+# O espeak-ng da voz natural (M27d-2): a biblioteca, as dependências dela (sem nenhuma a instalar) e os
+# dados do inglês.
+ESPEAK=squashfs-root/usr/lib/folio/espeak-ng
+for arquivo in libespeak-ng.so.1 COPYING espeak-ng-data/en_dict espeak-ng-data/phontab; do
+  [ -s "$ESPEAK/$arquivo" ] || { echo "FALHOU: espeak-ng sem $arquivo"; exit 1; }
+done
+if LD_LIBRARY_PATH=squashfs-root/usr/lib ldd "$ESPEAK/libespeak-ng.so.1" | grep -q "not found"; then
+  echo "FALHOU: falta dependência do espeak-ng"; LD_LIBRARY_PATH=squashfs-root/usr/lib ldd "$ESPEAK/libespeak-ng.so.1"; exit 1
+fi
 
 export XDG_DATA_HOME="$PASTA/dados" XDG_CACHE_HOME="$PASTA/cache" XDG_STATE_HOME="$PASTA/estado"
 export XDG_CONFIG_HOME="$PASTA/config" GDK_BACKEND=x11
