@@ -12,6 +12,7 @@ leitor de tela, em voz alta. Tudo fica no seu computador: sem conta, sem nuvem, 
 - **Aparência sua.** Temas de interface, cores de página (creme, sépia, noite, inclusive no PDF), fontes
   como Atkinson Hyperlegible, Lexend e OpenDyslexic, tamanho, entrelinha e caracteres por linha.
 - **Em voz alta**, nos dois formatos, com a frase lida realçada. Listas e código são lidos mais devagar.
+  Para livros em inglês, uma voz natural (neural) que roda no seu computador, baixada só se você quiser.
 - **Destaques que servem para reler**, com cor, nota e motivo (dúvida, citar, revisar), exportados em
   Markdown. Sem seleção, `Ctrl+D` destaca a frase atual.
 - **Comparar trechos.** Dois pontos do mesmo livro lado a lado, e destaques fixados ao lado do texto.
@@ -36,13 +37,15 @@ Se ele não abrir por falta do FUSE, instale o `fuse2` (Arch), `libfuse2` (Debia
 O AppImage traz o WebKitGTK e o GStreamer, mas usa as bibliotecas gráficas do sistema. Se o app fechar com
 `Couldn't open libGLESv2.so.2`, instale o OpenGL ES: `libgles2` (Debian, Ubuntu) ou `libglvnd-gles` (Fedora).
 
-Para a leitura em voz alta, instale o `speech-dispatcher` pelo gerenciador de pacotes. Sem ele, o resto
-funciona normalmente.
+Para a leitura em voz alta com a voz do sistema, instale o `speech-dispatcher` pelo gerenciador de pacotes. A voz
+natural (inglês) é baixada pelo próprio app, em Aparência → Voz, e o AppImage já traz o que ela precisa. Sem nenhuma
+das duas, o resto funciona normalmente.
 
 ## Compilar
 
 Requer Rust (estável), Node.js e as bibliotecas de desenvolvimento do WebKitGTK 4.1 (no Ubuntu:
-`libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev`).
+`libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev libasound2-dev`). A voz natural usa o
+`espeak-ng` do sistema quando o app não vem num AppImage.
 
 ```sh
 cargo install tauri-cli --version "^2" --locked
