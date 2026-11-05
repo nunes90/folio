@@ -847,7 +847,8 @@ docs/decisions/  # ADRs
   fim de frase ("—Abaixo ou acima?" | "perguntou-lhe tio Cosme", "—D." | "Gloria…", "mamãe!" | "» Ella"; 212 vezes
   no Dom Casmurro). O motor junta essas frases (`juntar_frases`: a seguinte em minúscula ou com a aspa de fecho, ou a
   anterior numa abreviação ou inicial) e sintetiza de uma vez; a marca de cada uma vai no ponto do áudio estimado pela
-  proporção das letras (`dividir_audio`). O modo frase (`lib/frases.ts`) ainda corta nesses pontos.
+  proporção das letras (`dividir_audio`). O modo frase segue a mesma regra
+  (`continua` em `lib/frases.ts`, no `frasesDe`: EPUB e PDF), e a voz do PDF, que usa essas frases, também.
   E o `tts.js` do foliate-js (as frases da voz no EPUB) não trocava as quebras de linha do XHTML por espaço, como o
   `lib/frases.ts` já fazia: cada linha do Dom Casmurro virava uma frase (alteração local, `PATCHES.md`).
   Ferramenta: `fonemas_de_uma_frase` (ignorado).

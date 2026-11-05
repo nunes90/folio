@@ -92,6 +92,7 @@ const ABREVIACOES: &[&str] = &[
 /// depois de "?" e "!" mesmo quando a frase segue em minúscula ("—Abaixo ou acima? perguntou-lhe
 /// tio Cosme"), deixa a aspa de fecho no começo da seguinte ("mamãe!" | "» Ella acudiu") e corta
 /// nas abreviações. Sintetizado sozinho, cada pedaço sai com a entonação de fim: soava picado.
+/// O frontend tem a mesma regra (`continua` em `ui/src/lib/frases.ts`), para o modo frase.
 fn continua(anterior: &str, seguinte: &str) -> bool {
     let Some(primeira) = seguinte.chars().next() else {
         return false;
