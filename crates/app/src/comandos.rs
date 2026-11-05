@@ -561,6 +561,17 @@ pub fn falar(voz: State<'_, EstadoVoz>, ssml: String, config: ConfigVoz) -> Resu
     voz.motor()?.falar(ssml, config).map_err(|e| registrar(&e))
 }
 
+/// O bloco seguinte ao que está sendo falado: a voz natural adianta o começo dele.
+#[tauri::command]
+pub fn preparar_voz(
+    voz: State<'_, EstadoVoz>,
+    ssml: String,
+    config: ConfigVoz,
+) -> Result<(), String> {
+    voz.motor()?.preparar(ssml, config);
+    Ok(())
+}
+
 #[tauri::command]
 pub fn pausar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
     voz.motor()?.pausar().map_err(|e| registrar(&e))

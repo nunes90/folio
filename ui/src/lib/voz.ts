@@ -23,6 +23,14 @@ export function falar(ssml: string, config: ConfigVoz): Promise<void> {
   return invoke("falar", { ssml, config });
 }
 
+/**
+ * O bloco que vem depois do que está sendo falado: a voz natural gera o começo dele enquanto o
+ * atual toca, e ele começa sem espera. Não interrompe nada; o speech-dispatcher ignora.
+ */
+export function prepararVoz(ssml: string, config: ConfigVoz): Promise<void> {
+  return invoke("preparar_voz", { ssml, config });
+}
+
 export const pausarVoz = (): Promise<void> => invoke("pausar_voz");
 export const retomarVoz = (): Promise<void> => invoke("retomar_voz");
 export const pararVoz = (): Promise<void> => invoke("parar_voz");

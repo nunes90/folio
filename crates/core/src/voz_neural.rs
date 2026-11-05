@@ -263,6 +263,8 @@ struct Trabalho {
     voz: String,
     /// Emitir as marcas e o fim (a amostra de uma voz não emite nada).
     avisar: bool,
+    /// Só gerar o começo do bloco e guardar (`preparar`): é o bloco seguinte ao que toca.
+    so_preparar: bool,
     /// Recebe quanto tempo de áudio foi para a fila (a amostra espera por ele); se nada falar, o
     /// canal se fecha sem resposta.
     pronto: Option<mpsc::Sender<Duration>>,
@@ -394,6 +396,7 @@ impl MotorNeural {
                 config,
                 voz: voz.to_string(),
                 avisar: false,
+                so_preparar: false,
                 pronto: Some(pronto),
             },
         )?;
@@ -453,9 +456,34 @@ impl MotorDeVoz for MotorNeural {
                 config: neural,
                 voz,
                 avisar: true,
+                so_preparar: false,
                 pronto: None,
             },
         )
+    }
+
+    /// Gera o começo de `ssml` enquanto o bloco atual toca, sem interrompê-lo: no `falar`
+    /// seguinte, se o texto bater, ele toca na hora. Sem isso, cada parágrafo esperava o modelo
+    /// gerar a primeira frase (0,4 a 1,2 s de silêncio entre parágrafos).
+    fn preparar(&self, ssml: String, config: ConfigVoz) {
+        let Some(neural) = self.comum.config() else {
+            return;
+        };
+        let Some(voz) = neural.voz_para(config.idioma.as_deref()) else {
+            return;
+        };
+        let voz = voz.to_string();
+        // Na geração atual: vale enquanto nada for interrompido (o `falar` seguinte ainda o usa).
+        let _ = self.trabalhos.send(Trabalho {
+            geracao: self.comum.geracao.load(Ordering::SeqCst),
+            frases: frases_do_ssml(&ssml),
+            velocidade: fator_de_velocidade(config.velocidade),
+            config: neural,
+            voz,
+            avisar: false,
+            so_preparar: true,
+            pronto: None,
+        });
     }
 
     fn disponivel(&self) -> bool {
@@ -497,6 +525,10 @@ fn laco(
     let mut carregado: Option<(PathBuf, Box<dyn Sintetizador>)> = None;
     // Quanto o modelo leva por letra, medido a cada frase (decide onde cortar).
     let mut segundos_por_letra = SEGUNDOS_POR_LETRA;
+    // Quando o áudio já na fila acaba de tocar (estimado: pausar a leitura só adia o fim).
+    let mut fim_da_fila = Instant::now();
+    // O começo do bloco seguinte, gerado de antemão (`preparar`).
+    let mut preparado: Option<Preparado> = None;
     loop {
         let trabalho = match fila.recv_timeout(ocioso) {
             Ok(t) => t,
@@ -538,6 +570,36 @@ fn laco(
             continue;
         };
         let voz = &trabalho.voz;
+        if trabalho.so_preparar {
+            let primeira = juntar_frases(trabalho.frases)
+                .into_iter()
+                .find(|u| !u.texto.trim().is_empty());
+            if let Some(unidade) = primeira {
+                // O que fica pronto antes de a fila acabar: o resto é gerado enquanto ele toca.
+                let adiante = fim_da_fila.saturating_duration_since(Instant::now()) + FOLGA;
+                let cabe = (adiante.as_secs_f64() / segundos_por_letra) as usize;
+                let (pedaco, _) = cortar(&unidade.texto, cabe);
+                let inicio = Instant::now();
+                match sint.sintetizar(pedaco, voz, trabalho.velocidade) {
+                    Ok(audio) => {
+                        let letras = pedaco.chars().count().max(1) as f64;
+                        segundos_por_letra =
+                            (segundos_por_letra + inicio.elapsed().as_secs_f64() / letras) / 2.0;
+                        preparado = Some(Preparado {
+                            texto: pedaco.to_string(),
+                            voz: voz.clone(),
+                            velocidade: trabalho.velocidade,
+                            audio,
+                        });
+                    }
+                    // O `falar` tenta de novo e diz o que houve.
+                    Err(_) => preparado = None,
+                }
+            }
+            continue;
+        }
+        // Só o `falar` logo depois do preparo o aproveita.
+        let mut pronto = preparado.take();
         // Uma frase que falha é pulada (sem som), mas um bloco em que nenhuma falou para a
         // leitura: senão o frontend recebia as marcas e o fim na hora e passava de bloco em bloco
         // pelo livro todo, mudo (aconteceu com a voz do espeak-ng errada para o inglês britânico).
@@ -552,8 +614,8 @@ fn laco(
                 }
             })));
         };
-        // Quando o áudio já na fila acaba de tocar (estimado: pausar a leitura só adia o fim).
-        let mut fim_da_fila = Instant::now();
+        // A fila foi limpa: o que entra agora começa a tocar já.
+        fim_da_fila = Instant::now();
         'frases: for unidade in juntar_frases(trabalho.frases) {
             if !comum.atual(g) {
                 break;
@@ -571,24 +633,45 @@ fn laco(
                 // Quantas letras dá para gerar antes de a fila acabar (mais a folga).
                 let adiante = fim_da_fila.saturating_duration_since(Instant::now()) + FOLGA;
                 let cabe = (adiante.as_secs_f64() / segundos_por_letra) as usize;
-                let (pedaco, depois) = cortar(resto, cabe);
-                resto = depois;
+                let adiantado = pronto
+                    .take_if(|p| p.voz == *voz && p.velocidade == trabalho.velocidade)
+                    .and_then(|p| comeco_pronto(resto, p));
+                let (pedaco, resultado) = match adiantado {
+                    Some((pedaco, depois, audio)) => {
+                        tracing::debug!(letras = pedaco.chars().count(), "começo preparado usado");
+                        resto = depois;
+                        (pedaco, Ok(audio))
+                    }
+                    None => {
+                        let (pedaco, depois) = cortar(resto, cabe);
+                        resto = depois;
+                        let inicio = Instant::now();
+                        let resultado = sintetizar_tentando_de_novo(
+                            sint.as_mut(),
+                            pedaco,
+                            voz,
+                            trabalho.velocidade,
+                        );
+                        if resultado.is_ok() {
+                            // A média com a medida anterior: uma frase lenta não muda tudo.
+                            let letras = pedaco.chars().count().max(1) as f64;
+                            segundos_por_letra = (segundos_por_letra
+                                + inicio.elapsed().as_secs_f64() / letras)
+                                / 2.0;
+                        }
+                        (pedaco, resultado)
+                    }
+                };
                 // `pedaco` é um pedaço de `texto`: onde ele começa e acaba ali.
                 let de = pedaco.as_ptr() as usize - texto.as_ptr() as usize;
                 let ate = de + pedaco.len();
-                let inicio = Instant::now();
-                let resultado =
-                    sintetizar_tentando_de_novo(sint.as_mut(), pedaco, voz, trabalho.velocidade);
                 if !comum.atual(g) {
                     break 'frases;
                 }
                 match resultado {
                     Ok(audio) => {
                         falou = true;
-                        // A média com a medida anterior: uma frase lenta não muda tudo.
                         let letras = pedaco.chars().count().max(1) as f64;
-                        segundos_por_letra =
-                            (segundos_por_letra + inicio.elapsed().as_secs_f64() / letras) / 2.0;
                         let dura = Duration::from_secs_f64(audio.len() as f64 / f64::from(TAXA));
                         duracao += dura;
                         fim_da_fila = fim_da_fila.max(Instant::now()) + dura;
@@ -655,6 +738,24 @@ fn laco(
             })));
         }
     }
+}
+
+/// O começo de um bloco gerado de antemão (`MotorNeural::preparar`).
+struct Preparado {
+    texto: String,
+    voz: String,
+    velocidade: f32,
+    audio: Vec<f32>,
+}
+
+/// Se `resto` começa com o texto preparado (até o fim de uma palavra): esse começo, o que vem
+/// depois e o áudio pronto.
+fn comeco_pronto(resto: &str, p: Preparado) -> Option<(&str, &str, Vec<f32>)> {
+    let depois = resto.strip_prefix(p.texto.as_str())?;
+    if !depois.is_empty() && !depois.starts_with(char::is_whitespace) {
+        return None;
+    }
+    Some((&resto[..p.texto.len()], depois.trim_start(), p.audio))
 }
 
 /// Sintetiza; se falhar por outro motivo que não voz ou idioma desconhecidos, tenta mais uma vez.
@@ -1179,6 +1280,64 @@ mod tests {
             *saida.tocado.lock().unwrap(),
             ["—Abaixo? perguntou ele.".len() as f32]
         );
+    }
+
+    #[test]
+    fn o_bloco_preparado_toca_sem_gerar_de_novo() {
+        let (m, rx, saida, registro) = motor_com(None, OCIOSO);
+        let seguinte =
+            r#"<speak><s><mark name="5"/>Frase seguinte.</s><s><mark name="6"/>Outra.</s></speak>"#;
+        m.falar(ssml(&["0"]), ConfigVoz::default()).unwrap();
+        m.preparar(seguinte.into(), ConfigVoz::default());
+        // Preparar não interrompe o bloco atual.
+        assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        m.falar(seguinte.into(), ConfigVoz::default()).unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("5".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Marca("6".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        // "Frase 0.", o preparo de "Frase seguinte." e "Outra.": a primeira do bloco seguinte
+        // não foi gerada de novo.
+        assert_eq!(registro.vozes.lock().unwrap().len(), 3);
+        assert_eq!(
+            *saida.tocado.lock().unwrap(),
+            ["Frase seguinte.".len() as f32, "Outra.".len() as f32]
+        );
+    }
+
+    #[test]
+    fn preparo_de_outro_texto_ou_outra_velocidade_nao_serve() {
+        let (m, rx, _, registro) = motor_com(None, OCIOSO);
+        m.preparar(ssml(&["1"]), ConfigVoz::default());
+        m.falar(ssml(&["2"]), ConfigVoz::default()).unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("2".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        m.preparar(ssml(&["3"]), ConfigVoz::default());
+        let devagar = ConfigVoz {
+            velocidade: -30,
+            ..ConfigVoz::default()
+        };
+        m.falar(ssml(&["3"]), devagar).unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("3".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        // Dois preparos e duas falas, todos gerados.
+        assert_eq!(registro.vozes.lock().unwrap().len(), 4);
+    }
+
+    #[test]
+    fn comeco_pronto_so_ate_o_fim_de_uma_palavra() {
+        let p = |t: &str| Preparado {
+            texto: t.into(),
+            voz: "v".into(),
+            velocidade: 1.0,
+            audio: vec![1.0],
+        };
+        let (a, b, _) = comeco_pronto("Era uma vez, um rei.", p("Era uma vez,")).unwrap();
+        assert_eq!((a, b), ("Era uma vez,", "um rei."));
+        assert!(comeco_pronto("Era uma vezinha.", p("Era uma vez")).is_none());
+        assert!(comeco_pronto("Outra coisa.", p("Era")).is_none());
+        let (a, b, _) = comeco_pronto("Fim.", p("Fim.")).unwrap();
+        assert_eq!((a, b), ("Fim.", ""));
     }
 
     #[test]

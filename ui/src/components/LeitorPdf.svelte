@@ -11,6 +11,7 @@
     blocoDasFrases,
     comandosDaVoz,
     falar,
+    prepararVoz,
     idiomaValido,
     ouvirVoz,
     pararVoz,
@@ -1083,11 +1084,34 @@
         idioma: idiomaDoPdf,
         velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
       });
+      void prepararSeguinte(minha, p, frases, de + ate);
       return;
     }
     voz = "parado";
     leitura = null;
     anuncio = "Fim do documento.";
+  }
+
+  /**
+   * Adianta a voz do trecho seguinte: o resto da página ou o começo da próxima (se a camada de
+   * texto dela já existir; o pdf.js costuma desenhar a página seguinte de antemão).
+   */
+  async function prepararSeguinte(minha: number, p: number, frases: Range[], fim: number) {
+    let [pagina, lista, de] = [p, frases, fim];
+    if (de >= lista.length) {
+      if (p >= total) return;
+      [pagina, lista, de] = [p + 1, await frasesDaPagina(p + 1), 0];
+    }
+    const principais = (await ideiasDaPagina(pagina)).flat();
+    if (minha !== vez) return;
+    const textos = frasesParaFalar(lista, de, principais, false);
+    const { ate, tipo } = trechoDeFala(lista.slice(de).map(tipoDaFrasePdf), textos);
+    const bloco = blocoDasFrases(textos.slice(0, ate), de);
+    if (!bloco) return;
+    prepararVoz(bloco.ssml, {
+      idioma: idiomaDoPdf,
+      velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
+    }).catch((erro) => log.warn(`${erro}`));
   }
 
   function aoEventoVoz(e: EventoVoz) {

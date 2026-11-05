@@ -65,6 +65,9 @@ pub trait MotorDeVoz: Send + Sync {
     fn disponivel(&self) -> bool {
         true
     }
+    /// O bloco que vem depois do que está sendo falado: o motor pode adiantar o começo dele,
+    /// sem interromper nada (a voz neural gera o áudio enquanto o atual toca). Por padrão, nada.
+    fn preparar(&self, _ssml: String, _config: ConfigVoz) {}
 }
 
 impl<M: MotorDeVoz + ?Sized> MotorDeVoz for std::sync::Arc<M> {
@@ -82,6 +85,9 @@ impl<M: MotorDeVoz + ?Sized> MotorDeVoz for std::sync::Arc<M> {
     }
     fn disponivel(&self) -> bool {
         (**self).disponivel()
+    }
+    fn preparar(&self, ssml: String, config: ConfigVoz) {
+        (**self).preparar(ssml, config)
     }
 }
 

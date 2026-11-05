@@ -151,6 +151,16 @@ impl MotorDeVoz for MotorPorIdioma {
     fn disponivel(&self) -> bool {
         self.sistema.is_some() || !self.neurais().is_empty()
     }
+
+    /// Vai ao motor que falaria o bloco (o do idioma dele); não muda o motor em uso.
+    fn preparar(&self, ssml: String, config: ConfigVoz) {
+        let idioma = config.idioma.as_deref();
+        if let Some(motor) =
+            escolher(idioma, self.sistema.is_some(), &self.neurais()).and_then(|q| self.motor(q))
+        {
+            motor.preparar(ssml, config);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -205,6 +215,12 @@ mod tests {
         }
         fn retomar(&self) -> Result<(), ErroVoz> {
             Ok(())
+        }
+        fn preparar(&self, ssml: String, _: ConfigVoz) {
+            self.registro
+                .lock()
+                .unwrap()
+                .push(format!("{} preparar {ssml}", self.nome));
         }
         fn parar(&self) -> Result<(), ErroVoz> {
             self.registro
@@ -274,6 +290,19 @@ mod tests {
                 EventoVoz::Marca("sistema b".into())
             ]
         );
+    }
+
+    #[test]
+    fn preparar_vai_ao_motor_do_idioma_sem_trocar_o_em_uso() {
+        let (m, registro, eventos) = montar();
+        m.falar("a".into(), config("pt-BR")).unwrap();
+        m.preparar("b".into(), config("en"));
+        m.pausar().unwrap();
+        assert_eq!(
+            *registro.lock().unwrap(),
+            ["sistema falar a", "neural preparar b", "sistema pausar"]
+        );
+        assert_eq!(eventos.lock().unwrap().len(), 1);
     }
 
     #[test]
