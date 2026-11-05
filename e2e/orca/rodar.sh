@@ -10,8 +10,11 @@ export ORCA_SAIDA="$PWD/orca/falas.tsv"
 unset WAYLAND_DISPLAY GDK_SCALE GDK_DPI_SCALE
 export GDK_BACKEND=x11 GSETTINGS_BACKEND=memory LANG="${ORCA_LANG:-pt_BR.UTF-8}"
 CODIGO=0
-for FOLIO_SPEC in epub pdf senha; do
+# ORCA_SPECS: quais roteiros (padrão: epub pdf senha; "voz" é a parte 9, que baixa a voz natural).
+for FOLIO_SPEC in ${ORCA_SPECS:-epub pdf senha}; do
   export FOLIO_SPEC
+  # Na voz, o som vai a um dispositivo nulo (a sessão isolada não alcança o servidor de som).
+  if [ "$FOLIO_SPEC" = voz ]; then export ALSA_CONFIG_PATH="$PWD/orca/asound.conf"; else unset ALSA_CONFIG_PATH; fi
   PASTA=$(mktemp -d); chmod 700 "$PASTA"
   export ORCA_LOG="$PASTA/orca.log" XDG_RUNTIME_DIR="$PASTA" XDG_CONFIG_HOME="$PASTA/config" XDG_DATA_HOME="$PASTA/dados"
   /usr/lib/at-spi-bus-launcher --launch-immediately &
@@ -29,6 +32,8 @@ for FOLIO_SPEC in epub pdf senha; do
   npx wdio run wdio.conf.js || CODIGO=1
   kill "$ORCA" "$REGISTRO" "$BARRAMENTO" 2>/dev/null
   wait "$ORCA" "$REGISTRO" "$BARRAMENTO" 2>/dev/null
+  # ORCA_GUARDAR_LOG=<arquivo>: guarda o log do Orca (o diagnóstico de uma queda); apague-o depois.
+  [ -n "${ORCA_GUARDAR_LOG:-}" ] && cp "$ORCA_LOG" "$ORCA_GUARDAR_LOG.$FOLIO_SPEC"
   rm -rf "$PASTA"
 done
 exit $CODIGO

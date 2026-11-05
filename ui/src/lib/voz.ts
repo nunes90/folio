@@ -31,6 +31,16 @@ export function prepararVoz(ssml: string, config: ConfigVoz): Promise<void> {
   return invoke("preparar_voz", { ssml, config });
 }
 
+/**
+ * O que anunciar quando a leitura em voz alta não começa. Os erros do core chegam como texto
+ * ("não há voz para o idioma es") e dizem o motivo; os outros, não (só vão ao log).
+ */
+export function textoDaFalhaDaVoz(erro: unknown): string {
+  return typeof erro === "string" && erro
+    ? `Não foi possível ler em voz alta: ${erro}.`
+    : "Não foi possível ler em voz alta.";
+}
+
 export const pausarVoz = (): Promise<void> => invoke("pausar_voz");
 export const retomarVoz = (): Promise<void> => invoke("retomar_voz");
 export const pararVoz = (): Promise<void> => invoke("parar_voz");

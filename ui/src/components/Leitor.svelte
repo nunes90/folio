@@ -47,7 +47,7 @@
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
   import { tirarEspacoAposUltimaQuebra } from "../lib/contornosWebkit";
-  import { primeiroBlocoDaSecaoSeguinte } from "../lib/vozNaSecao";
+  import { blocoInicial, primeiroBlocoDaSecaoSeguinte } from "../lib/vozNaSecao";
   import { frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "../lib/frases";
   import {
     blocoNaTela,
@@ -96,6 +96,7 @@
     comandosDaVoz,
     falar,
     prepararVoz,
+    textoDaFalhaDaVoz,
     ouvirVoz,
     pararVoz,
     tipoDoElemento,
@@ -438,11 +439,19 @@
       return;
     }
     preparo.comecar();
-    if (voz !== "parado") await pararLeitura();
-    await view.initTTS("sentence", mostrarFraseLida);
-    // Começa na página atual (ou no trecho pedido), não no início do capítulo.
-    const range = desde ?? view.lastLocation?.range;
-    await seguirLendo(range ? view.tts?.from(range) : view.tts?.start());
+    try {
+      if (voz !== "parado") await pararLeitura();
+      await view.initTTS("sentence", mostrarFraseLida);
+      if (!view.tts) return;
+      // Começa na página atual (ou no trecho pedido), não no início do capítulo.
+      await seguirLendo(blocoInicial(view.tts, desde ?? view.lastLocation?.range));
+    } catch (erro) {
+      // Sem isto, um erro deixava "Preparando a voz…" na tela e a leitura parada, sem aviso.
+      log.warn(`ler em voz alta: ${erro}`);
+      preparo.terminar();
+      voz = "parado";
+      anuncio = textoDaFalhaDaVoz(erro);
+    }
   }
 
   /** Fala o bloco dado ou, se não houver o que falar, procura o próximo (inclusive em outros capítulos). */

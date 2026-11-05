@@ -12,6 +12,7 @@
     comandosDaVoz,
     falar,
     prepararVoz,
+    textoDaFalhaDaVoz,
     idiomaValido,
     ouvirVoz,
     pararVoz,
@@ -1057,8 +1058,17 @@
       return;
     }
     preparo.comecar();
-    if (voz !== "parado") await pararLeitura();
-    await lerDesde(n, frase);
+    try {
+      if (voz !== "parado") await pararLeitura();
+      await lerDesde(n, frase);
+    } catch (erro) {
+      // Sem isto, um erro deixava "Preparando a voz…" na tela e a leitura parada, sem aviso.
+      log.warn(`ler em voz alta: ${erro}`);
+      preparo.terminar();
+      voz = "parado";
+      leitura = null;
+      anuncio = textoDaFalhaDaVoz(erro);
+    }
   }
 
   /**

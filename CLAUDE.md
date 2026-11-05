@@ -816,7 +816,7 @@ docs/decisions/  # ADRs
   que foi descartado: sherpa-onnx, o ONNX Runtime da `ort`, o pacote do espeak-ng do Ubuntu, o fp32, a Emma). Guia
   (seção Voz na Aparência, as duas vozes, a pasta `vozes`, a internet só no download), README (a voz natural;
   `libasound2-dev` para compilar) e o roteiro do Orca (9.5–9.12: seção Voz, download, vozes, amostra, remover,
-  leitura por idioma, paleta). **Falta executar 9.5–9.12 com o Orca** (só o Lucas).
+  leitura por idioma, paleta). 9.5–9.12 executados com o Orca sem áudio (ver "Roteiro da voz com o Orca").
 - **M27d concluído.**
 - **Idioma pelo texto** (branch `fix/idioma-pelo-texto`): a maioria dos PDFs não declara `/Lang` no catálogo (5 dos 8
   da biblioteca daqui; o "Learn C Programming" tem lixo no campo e o `/Lang` só nas marcações internas, que o pdf.js
@@ -863,4 +863,23 @@ docs/decisions/  # ADRs
   próxima seção linear (`createDocument` do foliate-js, sem ir até ela) e pega o primeiro bloco com texto de um `TTS`
   temporário (branch `feat/voz-preparar-capitulo`). PDF:
   `prepararSeguinte` (o resto da página ou o começo da seguinte, se a camada de texto dela já existir).
-- Próximo passo: M27e (Piper), quando fizer falta; executar 9.5–9.12 do roteiro do Orca.
+- **Roteiro da voz com o Orca** (branch `fix/voz-com-orca`): os passos 9.5–9.12 rodam com o Orca de verdade, sem áudio
+  (`ORCA_SPECS=voz ./virtual.sh npm run orca` em `e2e/`; `e2e/orca/voz.e2e.js`; baixa a voz duas vezes). A voz natural fala por
+  um ALSA nulo (`e2e/orca/asound.conf`, via `ALSA_CONFIG_PATH`, só nessa sessão); `ORCA_SPECS` escolhe os roteiros e
+  `ORCA_GUARDAR_LOG=<arquivo>` guarda o log do Orca (apagar depois). Fixtures `ingles.epub` e `espanhol.epub` (`gerar.py`).
+  Achados e corrigidos: **duas quedas do WebKitGTK** (mesma família do `atspi/rodar.sh`; o Orca pede os atributos de texto
+  do grupo "Voz natural" na posição do objeto focado): (1) no download, com o rótulo "Baixando… X MB de 154 MB" mudando a
+  cada 150 ms (o texto acessível muda e a posição fica velha; o `aria-hidden` não tira o texto do grupo no WebKitGTK) e o
+  bloco terminando em barra + botão: agora o rótulo é fixo ("Baixando a voz natural (154 MB)", só o valor da barra muda,
+  de 10 em 10%: o Orca anuncia cada mudança, mesmo com o foco em outro lugar)
+  e o bloco é `display: contents`; (2) ao focar "Remover a voz natural…", o último objeto do grupo: o status da amostra
+  foi para depois dele. **Regras**: num contêiner com texto, nada do texto acessível muda enquanto o leitor de tela pode
+  estar nele, e um objeto focável não fica por último (algo depois dele). As sondas AT-SPI (posição por posição) não
+  reproduziram a (2): o diagnóstico foi com o Orca real e variações do DOM aplicadas no teste. **Foco**: "Baixar" →
+  "Cancelar o download" → a primeira opção da voz (concluído) ou "Baixar" (cancelado); "Remover…" → o "Cancelar" da
+  confirmação (com a pergunta em `aria-describedby`) → "Remover…" de novo ou, removida, "Baixar". O aviso de instalada
+  cita o português; o modelo fica instalado já no aviso de concluído (antes, "Baixar" piscava até o catálogo voltar).
+  **"Ler em voz alta" na capa não fazia nada**: a seção só com a imagem não tem bloco, o `tts.from` do foliate-js lança e o
+  "Preparando a voz…" ficava na tela; agora `blocoInicial` (`lib/vozNaSecao.ts`) segue ao próximo capítulo, e um erro
+  ao começar a ler (EPUB e PDF) para a leitura e anuncia o motivo (`textoDaFalhaDaVoz`: "não há voz para o idioma es").
+- Próximo passo: M27e (Piper), quando fizer falta; ouvir a voz natural com o Orca ligado (o roteiro automático não ouve).

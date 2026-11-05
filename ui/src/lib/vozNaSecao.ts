@@ -4,7 +4,7 @@
 import { TTS } from "../vendor/foliate-js/tts.js";
 // @ts-expect-error: o foliate-js não tem tipos
 import { textWalker } from "../vendor/foliate-js/text-walker.js";
-import type { SecaoDoLivro } from "./foliate";
+import type { SecaoDoLivro, TtsFoliate } from "./foliate";
 import { blocoParaFala } from "./voz";
 
 /** Blocos vazios seguidos que se aceita pular (capa, imagem) antes de desistir. */
@@ -39,4 +39,17 @@ export async function primeiroBlocoDaSecaoSeguinte(
   const i = secaoSeguinte(secoes, atual);
   const documento = i === null ? undefined : await secoes[i]?.createDocument?.();
   return documento ? primeiroBlocoFalavel(documento) : null;
+}
+
+/**
+ * O bloco de onde a leitura começa: o do ponto (`from`) ou, sem ponto, o primeiro. Numa seção sem
+ * nenhum bloco de texto (a página da capa), o `from` do tts.js lança (desestrutura `undefined`):
+ * aí não há o que falar aqui, e `undefined` faz a leitura seguir para o próximo capítulo.
+ */
+export function blocoInicial(tts: TtsFoliate, ponto?: Range): string | undefined {
+  try {
+    return ponto ? tts.from(ponto) : tts.start();
+  } catch {
+    return undefined;
+  }
 }

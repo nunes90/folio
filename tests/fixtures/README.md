@@ -6,6 +6,8 @@
 | `minimo.epub` | EPUB 3 mínimo válido: 2 capítulos e índice, sem capa |
 | `capa-epub3.epub` | capa por `properties="cover-image"` em `imagens/minha%20capa.png`; título com entidades XML |
 | `capa-epub2.epub` | capa por `<meta name="cover">` (estilo EPUB 2) |
+| `ingles.epub` | começo de *Pride and Prejudice* (Jane Austen), `en`, domínio público (voz por idioma, roteiro do Orca) |
+| `espanhol.epub` | começo de *Don Quijote* (Cervantes), `es`, domínio público (voz do sistema para o espanhol) |
 | `minimo.pdf` | PDF de uma página em branco, sem metadados |
 | `metadados-utf16.pdf` | 2 páginas; título e autores em UTF-16BE (`Memórias Póstumas`, dois autores separados por `;`) |
 | `metadados-pdfdoc.pdf` | 2 páginas; título em PDFDocEncoding com escapes octais e parênteses; autor só com espaços |

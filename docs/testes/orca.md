@@ -109,13 +109,18 @@ Com o Orca ligado as duas vozes se sobrepõem: pause o Orca (`Orca+S`) ou só co
 | 9.3 | `Ctrl+D` lendo | A voz pausa; a barra abre sobre a frase lida; fechar a barra retoma |
 | 9.4 | Barra → "Ouvir" | Lê a partir do trecho |
 | 9.5 | Aparência → `Tab` até a seção "Voz" | Lê "Voz", o controle "Velocidade da leitura em voz alta" com o valor, e o grupo "Voz natural" com a explicação |
-| 9.6 | "Baixar a voz natural (152 MB)" | A barra de progresso é anunciada com a porcentagem e "Cancelar o download" fica no `Tab`; no fim, o aviso "Voz natural instalada…" é lido |
-| 9.7 | Cancelar no meio e baixar de novo | Anuncia "Download da voz natural cancelado."; o botão de baixar volta |
-| 9.8 | Instalada: setas no grupo "Voz em inglês" | Cada rádio lê o nome, o idioma e o gênero ("George, inglês britânico, masculina"); o grupo "Livros em português" lê "Voz: Dora" e a caixa "Usar a voz natural em livros em português" |
+| 9.6 | "Baixar a voz natural (154 MB)" | O foco vai a "Cancelar o download"; a barra "Baixando a voz natural (154 MB)" é anunciada de 10 em 10% (o nome não muda durante o download); no fim, "Voz natural instalada. Os livros em inglês e em português já podem usá-la." e o foco vai à primeira opção da voz |
+| 9.7 | Cancelar no meio e baixar de novo | Anuncia "Download da voz natural cancelado."; o botão de baixar volta, com o foco nele |
+| 9.8 | Instalada: setas no grupo "Voz em inglês" | Cada rádio lê o nome, o idioma e o gênero ("George, inglês britânico, masculina"); no `Tab`, o grupo "Livros em português", a caixa "Usar a voz natural em livros em português" e "Ouvir amostra (Dora)" |
 | 9.9 | "Ouvir amostra (<voz>)" | Anuncia "Preparando a voz…" e "Tocando a amostra de <voz>."; a amostra toca na voz natural |
-| 9.10 | "Ler em voz alta" num livro em inglês | A voz natural lê (na primeira vez, "Preparando a voz…"); num livro em português, a Dora; num livro em espanhol, a voz do sistema |
-| 9.11 | "Remover a voz natural…" | A confirmação aparece no lugar, com "Remover (152 MB)" e "Cancelar"; remover anuncia "Voz natural removida." |
+| 9.10 | "Ler em voz alta" num livro em inglês | A voz natural lê (na primeira vez, "Preparando a voz…"); num livro em português, a Dora (também a partir da capa); num livro em espanhol, a voz do sistema (sem ela: "Não foi possível ler em voz alta: não há voz para o idioma es.") |
+| 9.11 | "Remover a voz natural…" | A confirmação aparece no lugar, com o foco em "Cancelar", que lê a pergunta ("Remover a voz natural? Para usá-la de novo…"); `Shift+Tab` leva a "Remover (154 MB)"; remover anuncia "Voz natural removida." e o foco vai a "Baixar" |
 | 9.12 | `Ctrl+K`, "voz" | Lista os comandos da voz natural do estado atual (baixar; ou as vozes, a amostra e remover) |
+
+Os passos 9.5–9.12 também rodam com o Orca de verdade, sem áudio, numa sessão isolada (baixa a voz da
+internet duas vezes): `ORCA_SPECS=voz ./virtual.sh npm run orca` em `e2e/` (roteiro `e2e/orca/voz.e2e.js`, falas em
+`e2e/orca/falas.tsv`). A voz natural fala por um dispositivo ALSA nulo (`e2e/orca/asound.conf`); não há
+speech-dispatcher na sessão, então o espanhol diz que não há voz. Ouvir de fato a voz continua sendo manual.
 
 ## 10. Sessão: meta, ritmo e continuação
 | # | Ação | Esperado |

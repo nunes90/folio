@@ -131,6 +131,76 @@ def epub(
             z.writestr(zipfile.ZipInfo(nome, (2026, 1, 1, 0, 0, 0)), conteudo)
 
 
+# Livros pequenos em outros idiomas, para a voz por idioma (roteiro do Orca, e2e/orca/voz.e2e.js):
+# o começo de Pride and Prejudice (Jane Austen) e de Don Quijote (Cervantes), domínio público.
+EM_INGLES = [
+    "It is a truth universally acknowledged, that a single man in possession of a good fortune, "
+    "must be in want of a wife.",
+    "However little known the feelings or views of such a man may be on his first entering a "
+    "neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he "
+    "is considered the rightful property of some one or other of their daughters.",
+    "“My dear Mr. Bennet,” said his lady to him one day, “have you heard that Netherfield Park is "
+    "let at last?”",
+    "Mr. Bennet replied that he had not.",
+]
+EM_ESPANHOL = [
+    "En un lugar de la Mancha, de cuyo nombre no quiero acordarme, no ha mucho tiempo que vivía un "
+    "hidalgo de los de lanza en astillero, adarga antigua, rocín flaco y galgo corredor.",
+    "Una olla de algo más vaca que carnero, salpicón las más noches, duelos y quebrantos los "
+    "sábados, lantejas los viernes, algún palomino de añadidura los domingos, consumían las tres "
+    "partes de su hacienda.",
+    "El resto della concluían sayo de velarte, calzas de velludo para las fiestas, con sus "
+    "pantuflos de lo mesmo.",
+]
+
+
+def epub_no_idioma(caminho: Path, idioma: str, titulo: str, autor: str, paragrafos: list[str]) -> None:
+    """Um capítulo só, com o idioma no OPF e no XHTML."""
+    corpo = "".join(f"<p>{p}</p>" for p in paragrafos)
+    xhtml = (
+        f'<?xml version="1.0" encoding="utf-8"?>\n<html xmlns="http://www.w3.org/1999/xhtml" '
+        f'xml:lang="{idioma}" lang="{idioma}"><head><title>{titulo}</title></head>'
+        f"<body><h1>{titulo}</h1>{corpo}</body></html>"
+    )
+    nav = (
+        f'<?xml version="1.0" encoding="utf-8"?>\n<html xmlns="http://www.w3.org/1999/xhtml" '
+        f'xmlns:epub="http://www.idpf.org/2007/ops" lang="{idioma}"><head><title>{titulo}</title>'
+        f'</head><body><nav epub:type="toc"><ol><li><a href="cap1.xhtml">{titulo}</a></li></ol>'
+        f"</nav></body></html>"
+    )
+    opf = f"""<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="id">folio-teste-{idioma}</dc:identifier>
+    <dc:title>{titulo}</dc:title>
+    <dc:creator>{autor}</dc:creator>
+    <dc:language>{idioma}</dc:language>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="c1" href="cap1.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine><itemref idref="c1"/></spine>
+</package>
+"""
+    with zipfile.ZipFile(caminho, "w") as z:
+        z.writestr(zipfile.ZipInfo("mimetype", (2026, 1, 1, 0, 0, 0)), b"application/epub+zip")
+        for nome, conteudo in {
+            "META-INF/container.xml": CONTAINER,
+            "OEBPS/content.opf": opf,
+            "OEBPS/nav.xhtml": nav,
+            "OEBPS/cap1.xhtml": xhtml,
+        }.items():
+            info = zipfile.ZipInfo(nome, (2026, 1, 1, 0, 0, 0))
+            z.writestr(info, conteudo, compress_type=zipfile.ZIP_DEFLATED)
+
+
+def livros_em_outros_idiomas() -> None:
+    epub_no_idioma(AQUI / "ingles.epub", "en", "Pride and Prejudice", "Jane Austen", EM_INGLES)
+    epub_no_idioma(AQUI / "espanhol.epub", "es", "Don Quijote", "Miguel de Cervantes", EM_ESPANHOL)
+
+
 PDF_MINIMO = b"""%PDF-1.4
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
 2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
@@ -230,6 +300,7 @@ def utf16(texto: str) -> bytes:
 
 
 if __name__ == "__main__":
+    livros_em_outros_idiomas()
     epub(AQUI / "minimo.epub", b"application/epub+zip")
     epub(
         AQUI / "capa-epub3.epub",

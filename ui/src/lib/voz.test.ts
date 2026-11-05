@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  textoDaFalhaDaVoz,
   blocoDasFrases,
   blocoParaFala,
   comandosDaVoz,
@@ -119,5 +120,15 @@ describe("idiomaValido", () => {
     expect(idiomaValido("")).toBeNull();
     expect(idiomaValido(undefined)).toBeNull();
     expect(idiomaValido(42)).toBeNull();
+  });
+});
+
+describe("textoDaFalhaDaVoz", () => {
+  it("o motivo do core quando há; senão, só a falha", () => {
+    expect(textoDaFalhaDaVoz("não há voz para o idioma es")).toBe(
+      "Não foi possível ler em voz alta: não há voz para o idioma es.",
+    );
+    expect(textoDaFalhaDaVoz(new TypeError("x is undefined"))).toBe("Não foi possível ler em voz alta.");
+    expect(textoDaFalhaDaVoz("")).toBe("Não foi possível ler em voz alta.");
   });
 });
