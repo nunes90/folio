@@ -47,6 +47,7 @@
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
   import { tirarEspacoAposUltimaQuebra } from "../lib/contornosWebkit";
+  import { primeiroBlocoDaSecaoSeguinte } from "../lib/vozNaSecao";
   import { frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "../lib/frases";
   import {
     blocoNaTela,
@@ -467,16 +468,31 @@
           idioma: bloco.idioma ?? idiomaDoLivro,
           velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
         });
-        prepararSeguinte();
+        void prepararSeguinte();
         return;
       }
       ssml = view.tts.next();
     }
   }
 
-  /** Adianta a voz do bloco seguinte do capítulo (o `peekNext` não avança o tts.js). */
-  function prepararSeguinte() {
-    const seguinte = view?.tts?.peekNext();
+  /**
+   * Adianta a voz do bloco seguinte (o `peekNext` não avança o tts.js). No fim do capítulo, o
+   * primeiro bloco do seguinte, carregado à parte, sem ir até ele.
+   */
+  async function prepararSeguinte() {
+    const tts = view?.tts;
+    if (!view || !tts) return;
+    const atual = tts.block;
+    let seguinte = tts.peekNext() ?? null;
+    if (!seguinte) {
+      const secao = view.renderer.getContents()[0]?.index;
+      if (secao === undefined) return;
+      seguinte = await primeiroBlocoDaSecaoSeguinte(view.book.sections ?? [], secao).catch(
+        () => null,
+      );
+      // Enquanto carregava, a leitura parou ou passou de bloco: o preparo já não serve.
+      if (voz !== "falando" || view?.tts?.block !== atual) return;
+    }
     const bloco = seguinte && blocoParaFala(seguinte.ssml);
     if (!seguinte || !bloco) return;
     const tipo = tipoDoElemento(seguinte.range.commonAncestorContainer);
