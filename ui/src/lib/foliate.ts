@@ -9,11 +9,20 @@ export interface ItemIndice {
 /** Título pode vir como texto ou como mapa idioma → texto. */
 type TextoLocalizado = string | Record<string, string>;
 
+/** Uma seção (capítulo) do livro. */
+export interface SecaoDoLivro {
+  /** "no": fora da ordem de leitura (o `nextSection` a pula). */
+  linear?: string;
+  /** O documento da seção, carregado à parte (sem mostrá-lo). */
+  createDocument?: () => Promise<Document>;
+}
+
 export interface Livro {
   metadata?: { title?: TextoLocalizado; language?: string | string[] };
   /** Direção de leitura ("rtl" em livros da direita para a esquerda). */
   dir?: string;
   toc?: ItemIndice[];
+  sections?: SecaoDoLivro[];
 }
 
 export interface DetalheRelocate {

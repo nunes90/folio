@@ -859,6 +859,8 @@ docs/decisions/  # ADRs
   geração (não interrompe): depois de gerar o bloco atual, gera o começo do seguinte (`cortar` com o tempo que falta
   tocar) e o guarda num lugar só (`Preparado`); o `falar` seguinte o usa se a voz, a velocidade e o começo do texto
   baterem (`comeco_pronto`; no log, "começo preparado usado" em debug). EPUB: `TTS.peekNext` (alteração local no
-  `tts.js`: o bloco seguinte sem avançar nem mexer nas marcas; não atravessa o fim do capítulo). PDF:
+  `tts.js`: o bloco seguinte sem avançar nem mexer nas marcas); no fim do capítulo, `lib/vozNaSecao.ts` carrega à parte a
+  próxima seção linear (`createDocument` do foliate-js, sem ir até ela) e pega o primeiro bloco com texto de um `TTS`
+  temporário (branch `feat/voz-preparar-capitulo`). PDF:
   `prepararSeguinte` (o resto da página ou o começo da seguinte, se a camada de texto dela já existir).
 - Próximo passo: M27e (Piper), quando fizer falta; executar 9.5–9.12 do roteiro do Orca.
