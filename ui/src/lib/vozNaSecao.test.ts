@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { primeiroBlocoDaSecaoSeguinte, primeiroBlocoFalavel, secaoSeguinte } from "./vozNaSecao";
+import { blocoInicial, primeiroBlocoDaSecaoSeguinte, primeiroBlocoFalavel, secaoSeguinte } from "./vozNaSecao";
+// @ts-expect-error: o foliate-js não tem tipos
+import { TTS } from "../vendor/foliate-js/tts.js";
+// @ts-expect-error: o foliate-js não tem tipos
+import { textWalker } from "../vendor/foliate-js/text-walker.js";
 import { blocoParaFala } from "./voz";
 
 const documento = (corpo: string) =>
@@ -43,5 +47,19 @@ describe("voz na seção seguinte", () => {
     expect(bloco!.ssml).toContain("Dois começa aqui.");
     expect(pedidas).toEqual([2]);
     expect(await primeiroBlocoDaSecaoSeguinte(secoes, 2)).toBeNull();
+  });
+
+  it("blocoInicial: na página da capa (sem texto), nada aqui em vez de lançar", () => {
+    const capa = documento('<div><img src="capa.jpg" alt=""></div>');
+    const tts = new TTS(capa, textWalker, () => {}, "sentence");
+    const ponto = capa.createRange();
+    ponto.selectNodeContents(capa.body);
+    expect(() => tts.from(ponto)).toThrow();
+    expect(blocoInicial(new TTS(capa, textWalker, () => {}, "sentence"), ponto)).toBeUndefined();
+    expect(blocoInicial(new TTS(capa, textWalker, () => {}, "sentence"))).toBeUndefined();
+    const texto = documento("<p>Era uma vez.</p>");
+    const inicio = texto.createRange();
+    inicio.selectNodeContents(texto.body);
+    expect(blocoInicial(new TTS(texto, textWalker, () => {}, "sentence"), inicio)).toContain("Era uma vez.");
   });
 });

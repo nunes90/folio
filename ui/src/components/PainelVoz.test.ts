@@ -71,16 +71,32 @@ describe("PainelVoz (seção Voz)", () => {
     await fireEvent.click(baixar);
     expect(invoke).toHaveBeenCalledWith("baixar_voz_natural", { modelo: "kokoro" });
 
+    // O foco segue para o "Cancelar" (o botão de baixar sumiu).
+    const cancelar = await screen.findByRole("button", { name: "Cancelar o download" });
+    await waitFor(() => expect(document.activeElement).toBe(cancelar));
+
     avisoDoCore({ tipo: "progresso", modelo: "kokoro", baixado: 76_000_000, total: 152_000_000 });
-    const barra = await screen.findByRole("progressbar");
+    // O nome da barra não muda durante o download (só o valor): ver o comentário no componente.
+    const barra = await screen.findByRole("progressbar", { name: "Baixando a voz natural (152 MB)" });
     expect(barra.getAttribute("value")).toBe("50");
-    expect(screen.getByText(/76 MB de 152 MB/)).toBeTruthy();
-    await fireEvent.click(screen.getByRole("button", { name: "Cancelar o download" }));
+    expect(barra.getAttribute("aria-valuetext")).toBe("50%");
+    // De 10 em 10%: menos anúncios do Orca.
+    avisoDoCore({ tipo: "progresso", modelo: "kokoro", baixado: 89_000_000, total: 152_000_000 });
+    await waitFor(() => expect(barra.getAttribute("value")).toBe("50"));
+    avisoDoCore({ tipo: "progresso", modelo: "kokoro", baixado: 92_000_000, total: 152_000_000 });
+    await waitFor(() => expect(barra.getAttribute("aria-valuetext")).toBe("60%"));
+    await fireEvent.click(cancelar);
     expect(invoke).toHaveBeenCalledWith("cancelar_download_voz");
 
     estado = catalogo(true);
     avisoDoCore({ tipo: "concluido", modelo: "kokoro" });
     const george = (await screen.findByRole("radio", { name: /George/ })) as HTMLInputElement;
+    // Concluído: o foco vai à primeira opção da voz, não se perde com o "Cancelar".
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("checkbox", { name: "Usar a voz natural em livros em inglês" }),
+      ),
+    );
     expect((screen.getByRole("radio", { name: /Heart/ }) as HTMLInputElement).checked).toBe(true);
     await fireEvent.click(george);
     expect(onMudar).toHaveBeenCalledWith({ vozNatural: "bm_george" });
@@ -115,14 +131,21 @@ describe("PainelVoz (seção Voz)", () => {
     // Pela duração que o core devolveu, e volta ao normal.
     await screen.findByRole("button", { name: "Ouvir amostra (George)" });
 
+    // O foco não se perde quando o botão em que ele estava some: vai ao Cancelar (o que não
+    // apaga nada), volta ao "Remover…" ao cancelar e vai ao "Baixar" depois de remover.
     await fireEvent.click(screen.getByRole("button", { name: "Remover a voz natural…" }));
-    await fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    const cancelar = screen.getByRole("button", { name: "Cancelar" });
+    await waitFor(() => expect(document.activeElement).toBe(cancelar));
+    await fireEvent.click(cancelar);
     expect(invoke).not.toHaveBeenCalledWith("remover_voz_natural", expect.anything());
-    await fireEvent.click(screen.getByRole("button", { name: "Remover a voz natural…" }));
+    const remover = screen.getByRole("button", { name: "Remover a voz natural…" });
+    await waitFor(() => expect(document.activeElement).toBe(remover));
+    await fireEvent.click(remover);
     estado = catalogo(false);
     await fireEvent.click(screen.getByRole("button", { name: "Remover (152 MB)" }));
     expect(invoke).toHaveBeenCalledWith("remover_voz_natural", { modelo: "kokoro" });
-    await screen.findByRole("button", { name: "Baixar a voz natural (152 MB)" });
+    const baixar = await screen.findByRole("button", { name: "Baixar a voz natural (152 MB)" });
+    await waitFor(() => expect(document.activeElement).toBe(baixar));
   });
 
   it("português: grupo próprio, a voz única e usar em português", async () => {

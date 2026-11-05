@@ -185,8 +185,11 @@ class EstadoVozNatural {
         this.baixando = { modelo: a.modelo, baixado: a.baixado, total: a.total };
         return;
       case "concluido":
+        // Instalado já aqui: sem isso, o painel mostrava "Baixar" de novo até o catálogo voltar
+        // (e o foco, que estava no "Cancelar", não tinha para onde ir).
+        this.modelos = this.modelos.map((m) => (m.id === a.modelo ? { ...m, instalado: true } : m));
         this.baixando = null;
-        avisar("Voz natural instalada. Os livros em inglês já podem usá-la.");
+        avisar("Voz natural instalada. Os livros em inglês e em português já podem usá-la.");
         break;
       case "cancelado":
         this.baixando = null;

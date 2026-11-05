@@ -46,6 +46,7 @@ export const config = {
           epub: "dom-casmurro.epub",
           pdf: "texto.pdf",
           senha: "quebrados/pdf-com-senha.pdf",
+          voz: "ingles.epub",
         }[process.env.FOLIO_SPEC]),
       ]
     : process.env.FOLIO_MEDIR

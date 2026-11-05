@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { LIMITES, type Preferencias } from "../lib/preferencias.svelte";
   import {
     descreverVoz,
@@ -39,12 +39,35 @@
   /** Remover pede confirmação no próprio lugar (o download é grande para refazer por engano). */
   let confirmarRemocao = $state(false);
 
+  // O foco não se perde quando o botão em que ele estava some: "Baixar" vira a barra com
+  // "Cancelar o download", que vira as opções da voz (concluído) ou "Baixar" de novo (cancelado
+  // ou falhou). Sem isso, o foco caía no body e o leitor de tela ficava sem saber onde estava.
+  let painel = $state<HTMLElement>();
+  let focoNoDownload = false;
+  let estavaBaixando = false;
+  function focar(seletor: string) {
+    tick().then(() => painel?.querySelector<HTMLElement>(seletor)?.focus());
+  }
+  function baixar(id: string) {
+    focoNoDownload = true;
+    vozNatural.baixar(id);
+    focar(".baixando button");
+  }
+  $effect(() => {
+    const agora = baixando !== null;
+    if (estavaBaixando && !agora && focoNoDownload) {
+      focoNoDownload = false;
+      focar(modelo?.instalado ? ".vozes input" : "button.primario");
+    }
+    estavaBaixando = agora;
+  });
+
   onMount(() => {
     vozNatural.carregar().catch(() => {});
   });
 </script>
 
-<div class="painel">
+<div class="painel" bind:this={painel}>
   <h2>Voz</h2>
 
   <div class="velocidade">
@@ -77,16 +100,25 @@
           <code>espeak-ng</code> da sua distribuição e abra o Folio de novo.
         </p>
       {:else if baixando}
-        {@const pct = porcentagem(baixando)}
+        <!-- De 10 em 10%: o Orca anuncia cada mudança da barra, mesmo com o foco em outro lugar. -->
+        {@const pct = Math.floor(porcentagem(baixando) / 10) * 10}
         <div class="baixando">
-          <label for="progresso-voz">
-            Baixando… {megabytes(baixando.baixado)} de {megabytes(baixando.total)}
-          </label>
+          <!-- Nada no texto acessível muda durante o download (só o valor da barra), e o bloco não
+               tem caixa própria: com o texto "X MB de 154 MB" mudando a cada 150 ms e o bloco
+               terminando em barra + botão, o WebKitGTK travava e caía quando o Orca pedia os
+               atributos de texto do grupo (sonda em e2e/, mesma família de quedas de
+               atspi/rodar.sh). O tamanho total não muda: fica no rótulo. -->
+          <label for="progresso-voz">Baixando a voz natural ({megabytes(baixando.total)})</label>
           <progress id="progresso-voz" max="100" value={pct} aria-valuetext="{pct}%">{pct}%</progress>
-          <button type="button" onclick={() => vozNatural.cancelar()}>Cancelar o download</button>
+          <button
+            type="button"
+            onfocus={() => (focoNoDownload = true)}
+            onblur={() => (focoNoDownload = false)}
+            onclick={() => vozNatural.cancelar()}>Cancelar o download</button
+          >
         </div>
       {:else if !modelo.instalado}
-        <button type="button" class="primario" onclick={() => vozNatural.baixar(modelo.id)}>
+        <button type="button" class="primario" onclick={() => baixar(modelo.id)}>
           Baixar a voz natural ({megabytes(modelo.tamanho)})
         </button>
       {:else}
@@ -151,25 +183,48 @@
             </button>
           </fieldset>
         {/each}
-        <p class="so-leitor-de-tela" role="status">{statusAmostra}</p>
 
         {#if confirmarRemocao}
           <div class="confirmar" role="group" aria-label="Remover a voz natural?">
-            <p>Remover a voz natural? Para usá-la de novo, será preciso baixar outra vez.</p>
+            <p id="pergunta-remover-voz">
+              Remover a voz natural? Para usá-la de novo, será preciso baixar outra vez.
+            </p>
+            <!-- A pergunta como descrição: o foco chega direto ao Cancelar, e o Orca só lia o botão. -->
             <button
               type="button"
+              aria-describedby="pergunta-remover-voz"
               onclick={() => {
                 confirmarRemocao = false;
-                vozNatural.remover(modelo.id);
+                vozNatural.remover(modelo.id).then(() => focar("button.primario"));
               }}>Remover ({megabytes(modelo.tamanho)})</button
             >
-            <button type="button" onclick={() => (confirmarRemocao = false)}>Cancelar</button>
+            <!-- Como no Confirmacao.svelte: o foco vai ao que não apaga nada. -->
+            <button
+              type="button"
+              class="cancelar-remocao"
+              aria-describedby="pergunta-remover-voz"
+              onclick={() => {
+                confirmarRemocao = false;
+                focar(".remover");
+              }}>Cancelar</button
+            >
           </div>
         {:else}
-          <button type="button" onclick={() => (confirmarRemocao = true)}>
+          <button
+            type="button"
+            class="remover"
+            onclick={() => {
+              confirmarRemocao = true;
+              focar(".cancelar-remocao");
+            }}
+          >
             Remover a voz natural…
           </button>
         {/if}
+        <!-- Por último de propósito: com o botão "Remover…" como o último objeto do grupo, o WebKitGTK
+             travava e caía quando o Orca, ao focá-lo, pedia os atributos de texto do grupo naquela
+             posição (com o Orca de verdade; a mesma família de quedas de e2e/atspi/rodar.sh). -->
+        <p class="so-leitor-de-tela" role="status">{statusAmostra}</p>
       {/if}
     </fieldset>
   {/if}
@@ -188,23 +243,24 @@
     font-size: 1.1rem;
   }
 
-  .velocidade,
-  .baixando {
+  .velocidade {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0.25rem 0.5rem;
   }
 
-  .velocidade input,
-  .baixando progress,
-  .baixando button {
+  .velocidade input {
     grid-column: 1 / -1;
     width: 100%;
   }
 
-  .baixando button {
-    justify-self: start;
-    width: auto;
+  /* Sem caixa própria (ver o comentário no bloco): rótulo, barra e botão entram no fieldset. */
+  .baixando {
+    display: contents;
+  }
+
+  .baixando progress {
+    width: 100%;
   }
 
   fieldset {
