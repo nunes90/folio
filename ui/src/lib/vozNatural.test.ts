@@ -110,6 +110,36 @@ describe("comandosDaVozNatural", () => {
     expect(titulos(desligada)).toContain("Usar a voz natural em livros em inglês");
   });
 
+  it("com o português: amostra e usar em português, sem escolher a voz (só há uma)", () => {
+    const a = acoes();
+    const mudar = vi.fn();
+    const m = {
+      ...MODELO,
+      vozes: [...MODELO.vozes, { id: "pf_dora", nome: "Dora", idioma: "pt-BR", genero: "feminina" as const }],
+    };
+    const lista = comandosDaVozNatural({ modelo: m, baixando: null, espeak: true }, PADRAO, mudar, a);
+    expect(titulos(lista)).toEqual([
+      "Voz: Heart",
+      "Voz: George",
+      "Ouvir amostra da voz",
+      "Não usar a voz natural em livros em inglês",
+      "Ouvir amostra da voz em português",
+      "Não usar a voz natural em livros em português",
+      "Remover a voz natural",
+    ]);
+    lista[4].executar();
+    expect(a.amostra).toHaveBeenCalledWith("pf_dora");
+    lista[5].executar();
+    expect(mudar).toHaveBeenCalledWith({ vozNaturalEmPortugues: false });
+    expect(
+      comandosDaVozNatural({ modelo: { ...m, instalado: false }, baixando: null, espeak: true }, PADRAO, mudar, a)[0]
+        .dica,
+    ).toBe("Kokoro, 152 MB, inglês e português");
+    // A escolha (do inglês) nunca vira a voz do português.
+    expect(vozEscolhida(m, { ...PADRAO, vozNatural: "pf_dora" }).nome).toBe("Heart");
+    expect(vozEscolhida(m, PADRAO, "pt").nome).toBe("Dora");
+  });
+
   it("sem catálogo: nada", () => {
     expect(
       comandosDaVozNatural({ modelo: undefined, baixando: null, espeak: true }, PADRAO, vi.fn(), acoes()),

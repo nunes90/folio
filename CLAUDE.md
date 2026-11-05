@@ -824,4 +824,31 @@ docs/decisions/  # ADRs
   palavras curtas mais comuns de cada um; `null` com menos de 30 palavras, com menos de 10% delas comuns ou sem
   vencer o segundo por 2×). O `LeitorPdf` junta o texto de até 6 páginas a partir da salva (`getTextContent`, sem
   desenhar) até dar para dizer; no log, "idioma do PDF: …". Conferido com os PDFs da biblioteca pelo pdf.js no Node.
-- Próximo passo: pt-BR com o Kokoro (pf_dora, pm_alex), ou o M27e (Piper) quando fizer falta.
+- **pt-BR** (branch `feat/ptbr-voz`): a **Dora** (`pf_dora`) no catálogo (das três vozes do Brasil, a que soou boa
+  num trecho de livro). `kokoro::normalizar_portugues` (`normalizar_pt.rs`, usa `re`/`substituir`/`romano` do
+  `normalizar`): todo número solto por extenso (`por_extenso`, até 999 trilhões, "e" antes do último grupo só se
+  < 100 ou centena redonda; feminino para horas e libras), porque o espeak-ng juntava "mil oitocentos e sessenta e
+  nove" numa palavra só nos fonemas e o modelo tropeçava; ponto de milhar e vírgula decimal; não em versões,
+  "10:30", "1º" nem colados a letras. Moeda ("R$ 5,50" → "cinco reais e cinquenta centavos"; "R$ 3,5 milhões" → "…
+  de reais"), romanos depois de capítulo/século… (cardinal) e de nomes (ordinal até 10: "Dom Pedro Segundo", "Luís
+  Catorze"; "I" sozinho vale, "V"/"X" não), "D." → Dom/Dona, Sr./Sra./Dr./Profa./pág./p./nº/séc., "10h30", "50%".
+  Motor: `ConfigNeural.vozes` (idioma base → voz; `voz_para`), `Trabalho.voz`; `MotorPorIdioma::usar_neural_em`
+  (os idiomas ligados) e `idioma_base`; `Modelo::voz_do_idioma`/`idiomas`. Preferência `vozNaturalEmPortugues`
+  (padrão sim); `vozNatural` é só do inglês (uma voz de outro idioma volta à padrão). Seção Voz: um grupo por
+  idioma ("Livros em inglês": caixa, rádios e amostra; "Livros em português": caixa, "Voz: Dora" e amostra). Paleta:
+  "Ouvir amostra da voz em português", "Usar/Não usar a voz natural em livros em português". Amostra em português.
+  Ouvido pelo Lucas no app: a Dora apitava no "s" (metálico) → `kokoro::corte_da_voz` (8 kHz só nela; 6 kHz abafava)
+  e `filtro::passa_baixa` (Butterworth de 4ª ordem, duas biquads). E o Dom Casmurro soava picado: cada pedaço do
+  corte do M27d-1 é sintetizado sozinho e o modelo fecha a entonação no fim dele (a pausa na emenda era a mesma da
+  frase inteira; era a entonação). O `pedacos_da_frase` (150/40) saiu: agora `cortar(frase, cabe)` só corta se a
+  frase não ficaria pronta antes de a fila acabar; o motor estima o fim da fila (`fim_da_fila`) e os segundos por
+  letra (média com a medida anterior, começa em 0,02) e dá `FOLGA` = 400 ms. No começo de um parágrafo (fila vazia),
+  só a primeira oração vai antes; com ela tocando, o resto cabe. Ainda picado: o `Intl.Segmenter` corta onde não é
+  fim de frase ("—Abaixo ou acima?" | "perguntou-lhe tio Cosme", "—D." | "Gloria…", "mamãe!" | "» Ella"; 212 vezes
+  no Dom Casmurro). O motor junta essas frases (`juntar_frases`: a seguinte em minúscula ou com a aspa de fecho, ou a
+  anterior numa abreviação ou inicial) e sintetiza de uma vez; a marca de cada uma vai no ponto do áudio estimado pela
+  proporção das letras (`dividir_audio`). O modo frase (`lib/frases.ts`) ainda corta nesses pontos.
+  E o `tts.js` do foliate-js (as frases da voz no EPUB) não trocava as quebras de linha do XHTML por espaço, como o
+  `lib/frases.ts` já fazia: cada linha do Dom Casmurro virava uma frase (alteração local, `PATCHES.md`).
+  Ferramenta: `fonemas_de_uma_frase` (ignorado).
+- Próximo passo: M27e (Piper), quando fizer falta; executar 9.5–9.12 do roteiro do Orca.

@@ -25,7 +25,9 @@ const getSegmenter = (lang = 'en', granularity = 'word') => {
     const segmenter = new Intl.Segmenter(lang, { granularity })
     const granularityIsWord = granularity === 'word'
     return function* (strs, makeRange) {
-        const str = strs.join('')
+        // LEITOR: quebras de linha no meio do parágrafo (comuns no XHTML) são espaço na tela, mas o
+        // Intl.Segmenter as trata como fim de frase; mesmo tamanho, então as posições não mudam.
+        const str = strs.join('').replace(/[\r\n\u2028\u2029]/g, ' ')
         let name = 0
         let strIndex = -1
         let sum = 0

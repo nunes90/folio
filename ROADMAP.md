@@ -218,7 +218,8 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
   - [x] M27d-3 — ADR 0008 (voz neural), guia e roteiro do Orca (falta executar 9.5–9.12 com o Orca)
   - [ ] M27e — Piper como segundo modelo (quando fizer falta): mais leve (~63 MB por voz) e rápido, mais
     idiomas; reaproveita os fonemas e o ONNX Runtime, entra como linhas no catálogo e um motor
-  - [ ] pt-BR com o Kokoro (pf_dora, pm_alex)
+  - [x] pt-BR com o Kokoro: a Dora (o Alex e o Santa não soaram bem), normalização do português (números por
+    extenso, moeda, romanos, abreviações, horas) e uma voz por idioma no motor
 
 ## Futuro
 - **Slider de páginas** (arrastar para qualquer ponto do livro).

@@ -32,6 +32,7 @@ export interface Preferencias {
   vozNatural: string;
   /** Ler livros em inglês com a voz natural, quando baixada. */
   vozNaturalEmIngles: boolean;
+  vozNaturalEmPortugues: boolean;
   /** Animação ao virar a página (EPUB e PDF). */
   virada: EstiloVirada;
   /** PDF página a página ou em rolagem contínua. */
@@ -58,6 +59,7 @@ export const PADRAO: Preferencias = {
   velocidadeVoz: 0,
   vozNatural: "",
   vozNaturalEmIngles: true,
+  vozNaturalEmPortugues: true,
   virada: "nenhuma",
   modoPdf: "paginas",
   pagina: "automatica",

@@ -3,6 +3,7 @@
   import { LIMITES, type Preferencias } from "../lib/preferencias.svelte";
   import {
     descreverVoz,
+    idiomasDoModelo,
     megabytes,
     porcentagem,
     vozEscolhida,
@@ -10,7 +11,7 @@
   } from "../lib/vozNatural.svelte";
 
   // Seção "Voz" do painel Aparência, igual nos dois formatos (M27c): a velocidade e a voz
-  // natural (baixar, escolher a voz com amostra, usar em livros em inglês, remover).
+  // natural (baixar; por idioma, usar em livros naquele idioma, a voz e a amostra; remover).
   let {
     preferencias,
     onMudar,
@@ -23,7 +24,18 @@
   const textoVelocidade = $derived(v === 0 ? "normal" : v > 0 ? `+${v}` : `${v}`);
   const modelo = $derived(vozNatural.modelo);
   const baixando = $derived(vozNatural.baixando);
-  const atual = $derived(modelo ? vozEscolhida(modelo, preferencias) : undefined);
+  const idiomas = $derived(
+    modelo
+      ? idiomasDoModelo(modelo).map((i) => ({ ...i, atual: vozEscolhida(modelo, preferencias, i.base) }))
+      : [],
+  );
+  /** O que o status diz ao leitor de tela sobre a amostra. */
+  const statusAmostra = $derived.by(() => {
+    const a = vozNatural.amostraAtual;
+    const nome = modelo?.vozes.find((v) => v.id === a?.voz)?.nome;
+    if (!a || !nome) return "";
+    return a.fase === "preparando" ? "Preparando a voz…" : `Tocando a amostra de ${nome}.`;
+  });
   /** Remover pede confirmação no próprio lugar (o download é grande para refazer por engano). */
   let confirmarRemocao = $state(false);
 
@@ -55,7 +67,8 @@
       <legend>Voz natural</legend>
       <p class="nota">
         Uma voz neural ({modelo.nome}) que roda no seu computador, sem internet depois de baixada.
-        Por enquanto, só para livros em inglês; os outros continuam com a voz do sistema.
+        Para livros em {idiomas.map((i) => i.nome).join(" e ")}; os outros continuam com a voz do
+        sistema.
       </p>
 
       {#if !vozNatural.espeak && !modelo.instalado}
@@ -83,60 +96,62 @@
             Instale o pacote <code>espeak-ng</code> da sua distribuição.
           </p>
         {/if}
-        <label class="opcao">
-          <input
-            type="checkbox"
-            checked={preferencias.vozNaturalEmIngles}
-            onchange={(e) => onMudar({ vozNaturalEmIngles: e.currentTarget.checked })}
-          />
-          Usar a voz natural em livros em inglês
-        </label>
-
-        <fieldset class="vozes">
-          <legend>Voz</legend>
-          {#each modelo.vozes as voz (voz.id)}
-            <label class="opcao">
-              <input
-                type="radio"
-                name="voz-natural"
-                value={voz.id}
-                checked={atual?.id === voz.id}
-                onchange={() => onMudar({ vozNatural: voz.id })}
-              />
-              <span>
-                {voz.nome}
-                <span class="descricao">{descreverVoz(voz)}</span>
-              </span>
-            </label>
-          {/each}
-        </fieldset>
-        {#if atual}
+        {#each idiomas as idioma (idioma.base)}
+          {@const atual = idioma.atual}
           {@const amostra = vozNatural.amostraAtual}
           {@const desta = amostra?.voz === atual.id ? amostra.fase : null}
-          <!-- O botão diz o que está acontecendo; o status repete para o leitor de tela. -->
-          <button
-            type="button"
-            class="amostra"
-            class:ativa={desta !== null}
-            aria-busy={desta === "preparando"}
-            onclick={() => vozNatural.amostra(atual.id)}
-          >
-            {#if desta === "preparando"}
-              <span class="girando" aria-hidden="true"></span>Preparando a voz…
-            {:else if desta === "tocando"}
-              <span class="ondas" aria-hidden="true"><i></i><i></i><i></i></span>Tocando {atual.nome}…
+          <fieldset class="vozes">
+            <legend>Livros em {idioma.nome}</legend>
+            <label class="opcao">
+              <input
+                type="checkbox"
+                checked={preferencias[idioma.pref]}
+                onchange={(e) => onMudar({ [idioma.pref]: e.currentTarget.checked })}
+              />
+              Usar a voz natural em livros em {idioma.nome}
+            </label>
+            {#if idioma.vozes.length > 1}
+              <div role="radiogroup" aria-label="Voz em {idioma.nome}" class="radios">
+                {#each idioma.vozes as voz (voz.id)}
+                  <label class="opcao">
+                    <input
+                      type="radio"
+                      name="voz-natural-{idioma.base}"
+                      value={voz.id}
+                      checked={atual.id === voz.id}
+                      onchange={() => onMudar({ vozNatural: voz.id })}
+                    />
+                    <span>
+                      {voz.nome}
+                      <span class="descricao">{descreverVoz(voz)}</span>
+                    </span>
+                  </label>
+                {/each}
+              </div>
             {:else}
-              Ouvir amostra ({atual.nome})
+              <p class="voz-unica">
+                Voz: {atual.nome} <span class="descricao">{descreverVoz(atual)}</span>
+              </p>
             {/if}
-          </button>
-          <p class="so-leitor-de-tela" role="status">
-            {desta === "preparando"
-              ? "Preparando a voz…"
-              : desta === "tocando"
-                ? `Tocando a amostra de ${atual.nome}.`
-                : ""}
-          </p>
-        {/if}
+            <!-- O botão diz o que está acontecendo; o status (abaixo) repete para o leitor de tela. -->
+            <button
+              type="button"
+              class="amostra"
+              class:ativa={desta !== null}
+              aria-busy={desta === "preparando"}
+              onclick={() => vozNatural.amostra(atual.id)}
+            >
+              {#if desta === "preparando"}
+                <span class="girando" aria-hidden="true"></span>Preparando a voz…
+              {:else if desta === "tocando"}
+                <span class="ondas" aria-hidden="true"><i></i><i></i><i></i></span>Tocando {atual.nome}…
+              {:else}
+                Ouvir amostra ({atual.nome})
+              {/if}
+            </button>
+          </fieldset>
+        {/each}
+        <p class="so-leitor-de-tela" role="status">{statusAmostra}</p>
 
         {#if confirmarRemocao}
           <div class="confirmar" role="group" aria-label="Remover a voz natural?">
@@ -211,8 +226,20 @@
     align-self: flex-start;
   }
 
-  .vozes {
+  .vozes,
+  .radios {
+    display: flex;
+    flex-direction: column;
     gap: 0.25rem;
+  }
+
+  .vozes > button {
+    align-self: flex-start;
+    margin-block-start: 0.25rem;
+  }
+
+  .voz-unica {
+    margin: 0;
   }
 
   legend {

@@ -137,10 +137,13 @@ pub struct PreferenciasLeitura {
     pub movimento: Movimento,
     /// Velocidade da leitura em voz alta, de -100 (mais lenta) a 100; 0 é a normal do sistema.
     pub velocidade_voz: i8,
-    /// A voz natural escolhida (o id no catálogo, ex.: "af_heart"); vazio = a padrão do modelo.
+    /// A voz natural escolhida para o inglês (o id no catálogo, ex.: "af_heart"); vazio = a padrão.
+    /// O português tem uma voz só (a Dora), sem escolha por enquanto.
     pub voz_natural: String,
     /// Ler os livros em inglês com a voz natural, quando ela está baixada.
     pub voz_natural_em_ingles: bool,
+    /// Ler os livros em português com a voz natural, quando ela está baixada.
+    pub voz_natural_em_portugues: bool,
     pub virada: Virada,
     pub modo_pdf: ModoPdf,
     pub pagina: Pagina,
@@ -165,6 +168,7 @@ impl Default for PreferenciasLeitura {
             velocidade_voz: 0,
             voz_natural: String::new(),
             voz_natural_em_ingles: true,
+            voz_natural_em_portugues: true,
             virada: Virada::Nenhuma,
             modo_pdf: ModoPdf::Paginas,
             pagina: Pagina::Automatica,
@@ -205,7 +209,10 @@ impl PreferenciasLeitura {
                 .velocidade_voz
                 .clamp(limites::VELOCIDADE_VOZ.0, limites::VELOCIDADE_VOZ.1),
             // Uma voz que saiu do catálogo volta à padrão.
-            voz_natural: if crate::catalogo_vozes::voz(&self.voz_natural).is_some() {
+            // Só uma voz do inglês (a escolha é a do inglês).
+            voz_natural: if crate::catalogo_vozes::voz(&self.voz_natural)
+                .is_some_and(|(_, v)| v.idioma.starts_with("en"))
+            {
                 self.voz_natural
             } else {
                 String::new()
@@ -371,6 +378,13 @@ mod tests {
         );
         assert_eq!(p.voz_natural, "");
         assert!(!p.voz_natural_em_ingles);
+        assert!(p.voz_natural_em_portugues);
+        // A escolha é a voz do inglês: uma do português não serve.
+        let p = PreferenciasLeitura::de_json(
+            r#"{"vozNatural": "pf_dora", "vozNaturalEmPortugues": false}"#,
+        );
+        assert_eq!(p.voz_natural, "");
+        assert!(!p.voz_natural_em_portugues);
     }
 
     #[test]

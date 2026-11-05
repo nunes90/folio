@@ -125,6 +125,27 @@ describe("PainelVoz (seção Voz)", () => {
     await screen.findByRole("button", { name: "Baixar a voz natural (152 MB)" });
   });
 
+  it("português: grupo próprio, a voz única e usar em português", async () => {
+    estado = catalogo(true);
+    estado.modelos[0].vozes.push({
+      id: "pf_dora",
+      nome: "Dora",
+      idioma: "pt-BR",
+      genero: "feminina",
+    });
+    const { onMudar } = renderizar();
+    const grupo = await screen.findByRole("group", { name: "Livros em português" });
+    expect(grupo.textContent).toContain("Voz: Dora");
+    // Sem rádio para a voz única; os do inglês continuam.
+    expect(screen.queryByRole("radio", { name: /Dora/ })).toBeNull();
+    expect(screen.getByRole("radio", { name: /Heart/ })).toBeTruthy();
+    const usar = screen.getByRole("checkbox", { name: "Usar a voz natural em livros em português" });
+    await fireEvent.click(usar);
+    expect(onMudar).toHaveBeenCalledWith({ vozNaturalEmPortugues: false });
+    await fireEvent.click(screen.getByRole("button", { name: "Ouvir amostra (Dora)" }));
+    expect(invoke).toHaveBeenCalledWith("ouvir_amostra_voz", { id: "pf_dora" });
+  });
+
   it("sem o espeak-ng, diz o que instalar em vez de oferecer o download", async () => {
     estado = catalogo(false, false);
     renderizar();

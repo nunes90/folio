@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
@@ -75,29 +75,109 @@ pub(crate) fn frases_do_ssml(ssml: &str) -> Vec<Frase> {
     frases
 }
 
+/// O que vai inteiro ao modelo: uma frase do frontend, ou várias quando o corte entre elas não
+/// era fim de frase. `marcas` = onde cada frase começa no texto (em bytes), para o destaque.
+pub(crate) struct Unidade {
+    pub texto: String,
+    pub marcas: Vec<(usize, String)>,
+}
+
+/// Abreviações que o `Intl.Segmenter` toma por fim de frase ("D. Gloria", "Sr. José").
+const ABREVIACOES: &[&str] = &[
+    "Sr", "Sra", "Srta", "Srs", "Sras", "D", "Dr", "Dra", "Drs", "Prof", "Profa", "Pe", "Fr",
+    "Exmo", "Exma", "Sto", "Sta", "Av", "Mr", "Mrs", "Ms", "Mt", "St", "Jr", "Sen", "Gen", "Cap",
+];
+
+/// Se `seguinte` continua a frase de `anterior` em vez de começar outra. O segmentador corta
+/// depois de "?" e "!" mesmo quando a frase segue em minúscula ("—Abaixo ou acima? perguntou-lhe
+/// tio Cosme"), deixa a aspa de fecho no começo da seguinte ("mamãe!" | "» Ella acudiu") e corta
+/// nas abreviações. Sintetizado sozinho, cada pedaço sai com a entonação de fim: soava picado.
+fn continua(anterior: &str, seguinte: &str) -> bool {
+    let Some(primeira) = seguinte.chars().next() else {
+        return false;
+    };
+    if matches!(primeira, '»' | '”' | ')' | ']' | '’') {
+        return true;
+    }
+    let letra = seguinte
+        .chars()
+        .find(|c| !matches!(c, '«' | '“' | '"' | '‘' | '\'' | '(' | ' '));
+    if letra.is_some_and(char::is_lowercase) {
+        return true;
+    }
+    let Some(sem_ponto) = anterior.strip_suffix('.') else {
+        return false;
+    };
+    let palavra = sem_ponto
+        .rsplit(|c: char| c.is_whitespace())
+        .next()
+        .unwrap_or("")
+        .trim_start_matches(|c: char| !c.is_alphabetic());
+    let mut letras = palavra.chars();
+    let inicial = matches!((letras.next(), letras.next()), (Some(c), None) if c.is_uppercase());
+    inicial || ABREVIACOES.contains(&palavra)
+}
+
+/// Junta as frases que se continuam (`continua`); uma frase sem texto fica sozinha (só a marca).
+pub(crate) fn juntar_frases(frases: Vec<Frase>) -> Vec<Unidade> {
+    let mut unidades: Vec<Unidade> = Vec::new();
+    for frase in frases {
+        let marcas = |inicio| frase.marca.iter().map(|m| (inicio, m.clone())).collect();
+        match unidades.last_mut() {
+            Some(u)
+                if !u.texto.is_empty()
+                    && !frase.texto.is_empty()
+                    && continua(&u.texto, &frase.texto) =>
+            {
+                u.texto.push(' ');
+                let inicio = u.texto.len();
+                u.marcas.extend(marcas(inicio));
+                u.texto.push_str(&frase.texto);
+            }
+            _ => unidades.push(Unidade {
+                marcas: marcas(0),
+                texto: frase.texto,
+            }),
+        }
+    }
+    unidades
+}
+
+/// `audio` dividido nas `fracoes` (de 0 a 1, em ordem): uma parte antes da primeira e uma depois
+/// de cada uma. O ponto de cada frase juntada é estimado pela proporção das letras: o modelo não
+/// diz quando cada palavra começa, e para o destaque basta.
+pub(crate) fn dividir_audio(mut audio: Vec<f32>, fracoes: &[f64]) -> Vec<Vec<f32>> {
+    let total = audio.len();
+    let mut partes = Vec::with_capacity(fracoes.len() + 1);
+    let mut feito = 0;
+    for f in fracoes {
+        let ponto = ((f.clamp(0.0, 1.0) * total as f64) as usize).max(feito);
+        let resto = audio.split_off(ponto - feito);
+        partes.push(std::mem::replace(&mut audio, resto));
+        feito = ponto;
+    }
+    partes.push(audio);
+    partes
+}
+
 /// A velocidade do speech-dispatcher (-100 a 100, 0 = normal) como fator do Kokoro: -100 é a
 /// metade, 100 o dobro.
-/// Acima disto (em caracteres, ~10 s de fala), a frase é falada em pedaços.
-const PEDACO_MAXIMO: usize = 150;
-/// Um pedaço menor que isto não fica sozinho: junta-se ao vizinho.
-const PEDACO_MINIMO: usize = 40;
+pub(crate) fn fator_de_velocidade(velocidade: i8) -> f32 {
+    2f32.powf(f32::from(velocidade.clamp(-100, 100)) / 100.0)
+}
 
-/// Uma frase longa em pedaços, cortada depois da pontuação seguida de espaço (vírgula, ponto e
-/// vírgula, dois-pontos, travessão, e o fim de uma frase que o frontend juntou à seguinte). Cada
-/// pedaço vai à fila assim que fica pronto: a fala começa sem esperar o áudio da frase inteira
-/// (~4 s para 15 s de fala), e o modelo não recebe frases enormes, em que a entonação se perde.
-/// O pedaço termina na pontuação, que o modelo usa para a entonação. Frase vazia = nenhum pedaço.
-pub(crate) fn pedacos_da_frase(frase: &str) -> Vec<&str> {
-    let frase = frase.trim();
-    if frase.is_empty() {
-        return Vec::new();
-    }
-    let tamanho = |a: usize, b: usize| frase[a..b].chars().count();
-    if tamanho(0, frase.len()) <= PEDACO_MAXIMO {
-        return vec![frase];
-    }
-    // Onde cada oração termina ("1,000" não corta: depois da vírgula não há espaço).
-    let mut fins: Vec<usize> = Vec::new();
+/// Um pedaço menor que isto (em caracteres) não é cortado nem fica sozinho.
+const PEDACO_MINIMO: usize = 40;
+/// Quanto a fila pode ficar vazia esperando o áudio seguinte (a pausa que ninguém nota).
+const FOLGA: Duration = Duration::from_millis(400);
+/// Quanto o modelo leva para gerar uma letra antes da primeira medida (~3,5× o tempo real).
+const SEGUNDOS_POR_LETRA: f64 = 0.02;
+
+/// Onde as orações de `frase` terminam: depois da pontuação seguida de espaço (vírgula, ponto e
+/// vírgula, dois-pontos, travessão, e o fim de uma frase que o frontend juntou à seguinte).
+/// "1,000" não corta: depois da vírgula não há espaço.
+fn fins_de_oracao(frase: &str) -> Vec<usize> {
+    let mut fins = Vec::new();
     let mut letras = frase.char_indices().peekable();
     while let Some((i, c)) = letras.next() {
         let pausa = matches!(c, ',' | ';' | ':' | '—' | '–' | '.' | '!' | '?');
@@ -105,33 +185,38 @@ pub(crate) fn pedacos_da_frase(frase: &str) -> Vec<&str> {
             fins.push(i + c.len_utf8());
         }
     }
-    fins.push(frase.len());
-    // Junta orações vizinhas enquanto couberem; um pedaço curto demais não é fechado.
-    let mut inicios = vec![0];
-    let mut anterior = 0;
-    for &fim in &fins {
-        let inicio = *inicios.last().unwrap_or(&0);
-        if anterior > inicio
-            && tamanho(inicio, anterior) >= PEDACO_MINIMO
-            && tamanho(inicio, fim) > PEDACO_MAXIMO
-        {
-            inicios.push(anterior);
-        }
-        anterior = fim;
-    }
-    // O último pedaço curto vai para o anterior.
-    if inicios.len() > 1 && tamanho(inicios[inicios.len() - 1], frase.len()) < PEDACO_MINIMO {
-        inicios.pop();
-    }
-    inicios
-        .iter()
-        .enumerate()
-        .map(|(i, &a)| frase[a..inicios.get(i + 1).copied().unwrap_or(frase.len())].trim())
-        .collect()
+    fins
 }
 
-pub(crate) fn fator_de_velocidade(velocidade: i8) -> f32 {
-    2f32.powf(f32::from(velocidade.clamp(-100, 100)) / 100.0)
+/// O começo de `frase` que cabe em `cabe` caracteres, cortado no fim de uma oração, e o resto.
+///
+/// Cada pedaço é sintetizado sozinho, e o modelo fecha a entonação no fim dele: uma frase longa
+/// cortada em várias vírgulas soava picada (no Dom Casmurro). Por isso só se corta quando a frase
+/// inteira não ficaria pronta antes de a fila acabar (`cabe` vem dessa conta, no motor): no começo
+/// de um parágrafo, a fila está vazia, e a primeira oração vai antes para a fala começar logo; com
+/// ela tocando, o resto já cabe. Sem onde cortar, ou se um dos lados ficaria com menos de
+/// `PEDACO_MINIMO`, a frase vai inteira (o modelo ainda divide no limite de tokens).
+pub(crate) fn cortar(frase: &str, cabe: usize) -> (&str, &str) {
+    let frase = frase.trim();
+    let tamanho = |a: usize, b: usize| frase[a..b].chars().count();
+    let total = tamanho(0, frase.len());
+    if total <= cabe {
+        return (frase, "");
+    }
+    let validos: Vec<usize> = fins_de_oracao(frase)
+        .into_iter()
+        .filter(|&f| tamanho(0, f) >= PEDACO_MINIMO && tamanho(f, frase.len()) >= PEDACO_MINIMO)
+        .collect();
+    // O maior começo que cabe; se nenhum cabe, o menor possível.
+    let corte = validos
+        .iter()
+        .rev()
+        .find(|&&f| tamanho(0, f) <= cabe)
+        .or(validos.first());
+    match corte {
+        Some(&f) => (frase[..f].trim(), frase[f..].trim()),
+        None => (frase, ""),
+    }
 }
 
 // --- motor ---------------------------------------------------------------------------------
@@ -173,6 +258,8 @@ struct Trabalho {
     frases: Vec<Frase>,
     velocidade: f32,
     config: ConfigNeural,
+    /// A voz deste trabalho (a do idioma do texto, ou a pedida na amostra).
+    voz: String,
     /// Emitir as marcas e o fim (a amostra de uma voz não emite nada).
     avisar: bool,
     /// Recebe quanto tempo de áudio foi para a fila (a amostra espera por ele); se nada falar, o
@@ -236,13 +323,31 @@ pub struct MotorNeural {
     trabalhos: mpsc::Sender<Trabalho>,
 }
 
-/// Onde estão os arquivos da voz e qual voz usar.
+/// Onde estão os arquivos da voz e qual voz usar em cada idioma.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfigNeural {
     /// A pasta com o modelo, as vozes, os tokens e a `libonnxruntime.so`.
     pub pasta: PathBuf,
-    /// Nome da voz (ex.: "af_heart").
-    pub voz: String,
+    /// A voz de cada idioma, pela base dele ("en" → "af_heart", "pt" → "pf_dora"). A primeira
+    /// vale para um texto sem idioma.
+    pub vozes: Vec<(String, String)>,
+}
+
+impl ConfigNeural {
+    /// A voz para um texto em `idioma` ("en-US", "pt-BR"); sem idioma, a primeira.
+    pub fn voz_para(&self, idioma: Option<&str>) -> Option<&str> {
+        let primeira = || self.vozes.first().map(|(_, v)| v.as_str());
+        match idioma {
+            None => primeira(),
+            Some(i) => {
+                let base = crate::voz_por_idioma::idioma_base(i);
+                self.vozes
+                    .iter()
+                    .find(|(b, _)| *b == base)
+                    .map(|(_, v)| v.as_str())
+            }
+        }
+    }
 }
 
 impl MotorNeural {
@@ -273,8 +378,7 @@ impl MotorNeural {
     /// estava sendo falado. Espera o áudio ficar pronto (na primeira vez, o modelo carrega) e
     /// devolve quanto ele dura: o painel mostra "Tocando…" por esse tempo.
     pub fn amostra(&self, texto: &str, voz: &str) -> Result<Duration, ErroVoz> {
-        let mut config = self.comum.config().ok_or(ErroVoz::SemVozNeural)?;
-        config.voz = voz.to_string();
+        let config = self.comum.config().ok_or(ErroVoz::SemVozNeural)?;
         self.comum.interromper();
         let (pronto, resposta) = mpsc::channel();
         self.comum.enviar(
@@ -287,6 +391,7 @@ impl MotorNeural {
                 }],
                 velocidade: 1.0,
                 config,
+                voz: voz.to_string(),
                 avisar: false,
                 pronto: Some(pronto),
             },
@@ -333,6 +438,10 @@ impl MotorNeural {
 impl MotorDeVoz for MotorNeural {
     fn falar(&self, ssml: String, config: ConfigVoz) -> Result<(), ErroVoz> {
         let neural = self.comum.config().ok_or(ErroVoz::SemVozNeural)?;
+        let voz = neural
+            .voz_para(config.idioma.as_deref())
+            .ok_or(ErroVoz::SemVozNeural)?
+            .to_string();
         self.comum.falando.store(true, Ordering::SeqCst);
         self.comum.enviar(
             &self.trabalhos,
@@ -341,6 +450,7 @@ impl MotorDeVoz for MotorNeural {
                 frases: frases_do_ssml(&ssml),
                 velocidade: fator_de_velocidade(config.velocidade),
                 config: neural,
+                voz,
                 avisar: true,
                 pronto: None,
             },
@@ -384,6 +494,8 @@ fn laco(
 ) {
     // O sintetizador e a pasta de onde ele veio.
     let mut carregado: Option<(PathBuf, Box<dyn Sintetizador>)> = None;
+    // Quanto o modelo leva por letra, medido a cada frase (decide onde cortar).
+    let mut segundos_por_letra = SEGUNDOS_POR_LETRA;
     loop {
         let trabalho = match fila.recv_timeout(ocioso) {
             Ok(t) => t,
@@ -424,7 +536,7 @@ fn laco(
             }
             continue;
         };
-        let voz = &trabalho.config.voz;
+        let voz = &trabalho.voz;
         // Uma frase que falha é pulada (sem som), mas um bloco em que nenhuma falou para a
         // leitura: senão o frontend recebia as marcas e o fim na hora e passava de bloco em bloco
         // pelo livro todo, mudo (aconteceu com a voz do espeak-ng errada para o inglês britânico).
@@ -439,13 +551,31 @@ fn laco(
                 }
             })));
         };
-        'frases: for frase in trabalho.frases {
+        // Quando o áudio já na fila acaba de tocar (estimado: pausar a leitura só adia o fim).
+        let mut fim_da_fila = Instant::now();
+        'frases: for unidade in juntar_frases(trabalho.frases) {
             if !comum.atual(g) {
                 break;
             }
-            let mut marca = frase.marca.filter(|_| trabalho.avisar);
-            // A marca vai à fila logo antes do primeiro áudio da frase: o destaque acompanha a voz.
-            for pedaco in pedacos_da_frase(&frase.texto) {
+            let texto = unidade.texto.as_str();
+            // As marcas que ainda não saíram, na ordem: cada uma vai à fila no ponto do áudio em
+            // que a frase dela começa (a primeira, logo antes do primeiro áudio).
+            let mut marcas = unidade
+                .marcas
+                .into_iter()
+                .filter(|_| trabalho.avisar)
+                .peekable();
+            let mut resto = texto.trim();
+            while !resto.is_empty() {
+                // Quantas letras dá para gerar antes de a fila acabar (mais a folga).
+                let adiante = fim_da_fila.saturating_duration_since(Instant::now()) + FOLGA;
+                let cabe = (adiante.as_secs_f64() / segundos_por_letra) as usize;
+                let (pedaco, depois) = cortar(resto, cabe);
+                resto = depois;
+                // `pedaco` é um pedaço de `texto`: onde ele começa e acaba ali.
+                let de = pedaco.as_ptr() as usize - texto.as_ptr() as usize;
+                let ate = de + pedaco.len();
+                let inicio = Instant::now();
                 let resultado =
                     sintetizar_tentando_de_novo(sint.as_mut(), pedaco, voz, trabalho.velocidade);
                 if !comum.atual(g) {
@@ -454,11 +584,30 @@ fn laco(
                 match resultado {
                     Ok(audio) => {
                         falou = true;
-                        if let Some(m) = marca.take() {
-                            avisar_marca(m);
+                        // A média com a medida anterior: uma frase lenta não muda tudo.
+                        let letras = pedaco.chars().count().max(1) as f64;
+                        segundos_por_letra =
+                            (segundos_por_letra + inicio.elapsed().as_secs_f64() / letras) / 2.0;
+                        let dura = Duration::from_secs_f64(audio.len() as f64 / f64::from(TAXA));
+                        duracao += dura;
+                        fim_da_fila = fim_da_fila.max(Instant::now()) + dura;
+                        // As marcas dentro do pedaço, cada uma antes do trecho de áudio dela.
+                        let mut fracoes = Vec::new();
+                        let mut nomes = Vec::new();
+                        while let Some((pos, nome)) = marcas.next_if(|(pos, _)| *pos < ate) {
+                            fracoes.push(texto[de..pos.max(de)].chars().count() as f64 / letras);
+                            nomes.push(nome);
                         }
-                        duracao += Duration::from_secs_f64(audio.len() as f64 / f64::from(TAXA));
-                        saida.tocar(Item::Audio(audio));
+                        let mut partes = dividir_audio(audio, &fracoes).into_iter();
+                        if let Some(antes) = partes.next().filter(|a| !a.is_empty()) {
+                            saida.tocar(Item::Audio(antes));
+                        }
+                        for (nome, parte) in nomes.into_iter().zip(partes) {
+                            avisar_marca(nome);
+                            if !parte.is_empty() {
+                                saida.tocar(Item::Audio(parte));
+                            }
+                        }
                     }
                     Err(erro) => {
                         tracing::warn!(
@@ -481,8 +630,8 @@ fn laco(
             // Frase sem texto, ou que falhou depois de outra ter falado: a marca sai assim mesmo
             // (o destaque segue). Antes de qualquer frase falar, não: se o bloco todo falhar, o
             // frontend só recebe o `Interrompido`.
-            if let Some(m) = marca.filter(|_| falou || frase.texto.trim().is_empty()) {
-                avisar_marca(m);
+            if falou || texto.trim().is_empty() {
+                marcas.for_each(|m| avisar_marca(m.1));
             }
         }
         if comum.atual(g) && (desistir || (falhou && !falou)) {
@@ -681,51 +830,62 @@ mod tests {
         assert!(frases_do_ssml("<speak></s>").is_empty());
     }
 
+    const LONGA: &str = "Como ia dizendo, subi as escadas sem estrepito, empurrei a cancella, que \
+                         estava apenas encostada, o dei com prima Justina e José Dias jogando \
+                         cartas na saleta proxima.";
+
     #[test]
-    fn frase_curta_fica_inteira_e_vazia_some() {
-        assert_eq!(pedacos_da_frase("  Hello, there.  "), ["Hello, there."]);
-        assert!(pedacos_da_frase("   ").is_empty());
+    fn frase_que_cabe_vai_inteira() {
+        assert_eq!(cortar("  Hello, there.  ", 100), ("Hello, there.", ""));
+        assert_eq!(cortar(LONGA, 1000), (LONGA, ""));
+        assert_eq!(cortar("   ", 10), ("", ""));
     }
 
     #[test]
-    fn frase_longa_e_cortada_na_pontuacao() {
-        let frase = "We won’t need any other crates for this project, but we will in the first \
-                     project in Chapter 2, so we’ll use this dependencies section then. Now open \
-                     src/main.rs and take a look at the 1,000 lines of code in it, one by one.";
-        let pedacos = pedacos_da_frase(frase);
+    fn sem_folga_corta_no_maior_comeco_que_cabe() {
+        // Nada cabe (a fila está vazia): o menor começo possível, de 40 letras ou mais.
+        let (a, b) = cortar(LONGA, 0);
+        assert_eq!(a, "Como ia dizendo, subi as escadas sem estrepito,");
+        assert_eq!(format!("{a} {b}"), LONGA);
+        // Com espaço para ~100 letras: o maior começo até lá.
+        let (a, _) = cortar(LONGA, 100);
         assert_eq!(
-            pedacos,
-            [
-                "We won’t need any other crates for this project, but we will in the first \
-                 project in Chapter 2, so we’ll use this dependencies section then.",
-                "Now open src/main.rs and take a look at the 1,000 lines of code in it, one by one."
-            ]
+            a,
+            "Como ia dizendo, subi as escadas sem estrepito, empurrei a cancella, que estava \
+             apenas encostada,"
         );
-        // Nada se perde nem se repete.
-        assert_eq!(pedacos.join(" "), frase);
     }
 
     #[test]
-    fn pedacos_respeitam_os_limites() {
-        let oracao = "and then the rain kept falling on the old roof, ";
-        let frase = oracao.repeat(12) + "end.";
-        let pedacos = pedacos_da_frase(&frase);
-        assert!(pedacos.len() > 3);
-        for p in &pedacos {
-            let n = p.chars().count();
-            assert!((PEDACO_MINIMO..=PEDACO_MAXIMO).contains(&n), "{n}: {p}");
-        }
-        // Sem pontuação, fica inteira (o modelo ainda divide no limite de tokens).
+    fn nenhum_lado_fica_curto_demais() {
+        // O "Divina arte!" tem menos de 40 letras: não fica sozinho.
+        let frase = "Divina arte! Ia-se formando um grupo na rua, deixei a porta da loja e vim \
+                     andando para casa.";
+        let (a, b) = cortar(frase, 0);
+        assert_eq!(a, "Divina arte! Ia-se formando um grupo na rua,");
+        assert_eq!(b, "deixei a porta da loja e vim andando para casa.");
+        // Se o resto ficasse curto, vai inteira.
+        let curta = "Divina arte! Ia-se formando um grupo na rua, deixei a porta e vim.";
+        assert_eq!(cortar(curta, 0).1, "");
+        // Sem pontuação, fica inteira; "1,000" não é onde cortar.
         let corrida = "palavra ".repeat(40);
-        assert_eq!(pedacos_da_frase(&corrida).len(), 1);
+        assert_eq!(cortar(&corrida, 0).1, "");
+        assert_eq!(
+            cortar(
+                "We counted 1,000,000 stars in the sky that night above us all.",
+                0
+            )
+            .1,
+            ""
+        );
     }
 
     proptest::proptest! {
         #[test]
-        fn pedacos_nao_perdem_texto(frase in "[a-z ,.;:—]{0,400}") {
-            let pedacos = pedacos_da_frase(&frase);
+        fn cortar_nao_perde_texto(frase in "[a-z ,.;:—]{0,400}", cabe in 0usize..300) {
+            let (a, b) = cortar(&frase, cabe);
             let sem_espacos = |t: &str| t.split_whitespace().collect::<String>();
-            proptest::prop_assert_eq!(sem_espacos(&pedacos.concat()), sem_espacos(&frase));
+            proptest::prop_assert_eq!(sem_espacos(&format!("{a}{b}")), sem_espacos(&frase));
         }
     }
 
@@ -798,7 +958,7 @@ mod tests {
     fn config(pasta: &str, voz: &str) -> Option<ConfigNeural> {
         Some(ConfigNeural {
             pasta: pasta.into(),
-            voz: voz.into(),
+            vozes: vec![("en".into(), voz.into())],
         })
     }
 
@@ -942,12 +1102,90 @@ mod tests {
     }
 
     #[test]
-    fn frase_longa_toca_em_pedacos_com_uma_marca() {
+    fn juntar_frases_que_se_continuam() {
+        let frase = |m: &str, t: &str| Frase {
+            marca: Some(m.into()),
+            texto: t.into(),
+        };
+        let unidades = juntar_frases(vec![
+            frase("0", "—Abaixo ou acima?"),
+            frase("1", "perguntou-lhe tio Cosme um dia."),
+            frase("2", "—Mas, D."),
+            frase("3", "Gloria, a senhora não sabe."),
+            frase("4", "«Mamãe!"),
+            frase("5", "» Ella acudiu."),
+            frase("6", "Nova frase."),
+            frase("7", "“Yes?” he asked."),
+            frase("8", "Ask J."),
+            frase("9", "R. R. Tolkien."),
+            Frase {
+                marca: Some("10".into()),
+                texto: String::new(),
+            },
+            frase("11", "and then."),
+        ]);
+        let textos: Vec<&str> = unidades.iter().map(|u| u.texto.as_str()).collect();
+        assert_eq!(
+            textos,
+            [
+                "—Abaixo ou acima? perguntou-lhe tio Cosme um dia.",
+                "—Mas, D. Gloria, a senhora não sabe.",
+                "«Mamãe! » Ella acudiu.",
+                "Nova frase.",
+                "“Yes?” he asked.",
+                "Ask J. R. R. Tolkien.",
+                "",
+                "and then.",
+            ]
+        );
+        let u = &unidades[0];
+        assert_eq!(u.marcas[0], (0, "0".into()));
+        assert_eq!(&u.texto[u.marcas[1].0..], "perguntou-lhe tio Cosme um dia.");
+        // "Fim." e "Fala." são frases: maiúscula, sem abreviação antes.
+        assert_eq!(
+            juntar_frases(vec![frase("0", "Era o fim."), frase("1", "Outra.")]).len(),
+            2
+        );
+    }
+
+    #[test]
+    fn dividir_audio_nas_marcas() {
+        let audio: Vec<f32> = (0..10).map(|i| i as f32).collect();
+        let partes = dividir_audio(audio.clone(), &[0.0, 0.3, 0.3, 1.0]);
+        assert_eq!(partes.len(), 5);
+        assert!(partes[0].is_empty());
+        assert_eq!(partes[1], [0.0, 1.0, 2.0]);
+        assert!(partes[2].is_empty());
+        assert_eq!(partes[3].len(), 7);
+        assert!(partes[4].is_empty());
+        assert_eq!(dividir_audio(audio, &[]).len(), 1);
+    }
+
+    #[test]
+    fn frases_juntadas_vao_ao_modelo_numa_vez_com_as_duas_marcas() {
         let (m, rx, saida, _) = motor_com(None, OCIOSO);
-        let longa = "uma oração bem comprida, ".repeat(10);
+        m.falar(
+            r#"<speak><s><mark name="0"/>—Abaixo?</s><s><mark name="1"/>perguntou ele.</s></speak>"#
+                .into(),
+            ConfigVoz::default(),
+        )
+        .unwrap();
+        assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Marca("1".into()));
+        assert_eq!(proximo(&rx), EventoVoz::Fim);
+        // Uma síntese só, do texto inteiro (o falso devolve o tamanho dele).
+        assert_eq!(
+            *saida.tocado.lock().unwrap(),
+            ["—Abaixo? perguntou ele.".len() as f32]
+        );
+    }
+
+    #[test]
+    fn frase_longa_no_comeco_toca_em_pedacos_com_uma_marca() {
+        let (m, rx, saida, _) = motor_com(None, OCIOSO);
         m.falar(
             format!(
-                r#"<speak><s><mark name="0"/>{longa}</s><s><mark name="1"/>Curta.</s></speak>"#
+                r#"<speak><s><mark name="0"/>{LONGA}</s><s><mark name="1"/>Curta.</s></speak>"#
             ),
             ConfigVoz::default(),
         )
@@ -955,10 +1193,47 @@ mod tests {
         assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
         assert_eq!(proximo(&rx), EventoVoz::Marca("1".into()));
         assert_eq!(proximo(&rx), EventoVoz::Fim);
-        // O falso devolve o tamanho do texto como "áudio": a longa foi em vários pedaços.
+        // O falso devolve o tamanho do texto como "áudio". No começo do bloco a fila está vazia:
+        // a primeira oração vai antes, e nada se perde.
         let tocado = saida.tocado.lock().unwrap();
-        assert!(tocado.len() > 2, "{tocado:?}");
+        assert!(tocado.len() >= 3, "{tocado:?}");
+        assert_eq!(
+            tocado[0],
+            "Como ia dizendo, subi as escadas sem estrepito,".len() as f32
+        );
+        let soma: f32 = tocado[..tocado.len() - 1].iter().sum();
+        assert!(soma <= LONGA.len() as f32 && soma >= LONGA.len() as f32 - 10.0);
         assert_eq!(*tocado.last().unwrap(), "Curta.".len() as f32);
+    }
+
+    #[test]
+    fn a_voz_vem_do_idioma_do_texto() {
+        let (m, rx, _, registro) = motor_com(None, OCIOSO);
+        m.configurar(Some(ConfigNeural {
+            pasta: "/m".into(),
+            vozes: vec![
+                ("en".into(), "af_heart".into()),
+                ("pt".into(), "pf_dora".into()),
+            ],
+        }));
+        let em = |idioma: Option<&str>| ConfigVoz {
+            idioma: idioma.map(Into::into),
+            ..ConfigVoz::default()
+        };
+        for idioma in [Some("pt-BR"), Some("en-US"), None] {
+            m.falar(ssml(&["0"]), em(idioma)).unwrap();
+            assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
+            assert_eq!(proximo(&rx), EventoVoz::Fim);
+        }
+        assert_eq!(
+            *registro.vozes.lock().unwrap(),
+            ["pf_dora", "af_heart", "af_heart"]
+        );
+        // Um idioma sem voz no modelo não fala aqui.
+        assert!(matches!(
+            m.falar(ssml(&["1"]), em(Some("es"))),
+            Err(ErroVoz::SemVozNeural)
+        ));
     }
 
     #[test]

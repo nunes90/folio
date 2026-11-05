@@ -1,11 +1,11 @@
 //! Escolha do motor de voz pelo idioma do texto.
 //!
-//! A voz neural (Kokoro) fala inglês; o resto continua no speech-dispatcher. A escolha é feita a
+//! A voz neural (Kokoro) fala os idiomas ligados (inglês e português); o resto continua no
+//! speech-dispatcher. A escolha é feita a
 //! cada bloco, pelo `idioma` que o frontend manda (o `xml:lang` do EPUB). Quando o motor muda, o
 //! anterior é parado, e os eventos dele são descartados: só passam os do motor em uso (senão um
 //! `Interrompido` atrasado do antigo pararia a leitura no frontend).
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::voz::{ConfigVoz, ErroVoz, EventoVoz, MotorDeVoz};
@@ -16,14 +16,25 @@ pub(crate) enum Qual {
     Neural,
 }
 
-/// Qual motor fala um texto no `idioma`. Inglês vai à voz neural, se houver; sem idioma, ao
-/// sistema (ou à neural, se só ela existir). `None`: nenhum motor fala esse idioma.
-pub(crate) fn escolher(idioma: Option<&str>, tem_sistema: bool, tem_neural: bool) -> Option<Qual> {
-    let ingles = idioma.is_some_and(|i| {
-        let i = i.to_ascii_lowercase();
-        i == "en" || i.starts_with("en-") || i.starts_with("en_")
-    });
-    if tem_neural && (ingles || (idioma.is_none() && !tem_sistema)) {
+/// A base de uma etiqueta de idioma, em minúsculas: "pt-BR" → "pt", "EN_us" → "en".
+pub fn idioma_base(idioma: &str) -> String {
+    idioma
+        .split(['-', '_'])
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase()
+}
+
+/// Qual motor fala um texto no `idioma`. Os idiomas em `neurais` (bases: "en", "pt") vão à voz
+/// neural; o resto, ao sistema. Sem idioma, ao sistema (ou à neural, se só ela existir). `None`:
+/// nenhum motor fala esse idioma.
+pub(crate) fn escolher(
+    idioma: Option<&str>,
+    tem_sistema: bool,
+    neurais: &[String],
+) -> Option<Qual> {
+    let na_neural = idioma.is_some_and(|i| neurais.contains(&idioma_base(i)));
+    if na_neural || (idioma.is_none() && !tem_sistema && !neurais.is_empty()) {
         Some(Qual::Neural)
     } else if tem_sistema {
         Some(Qual::Sistema)
@@ -38,8 +49,8 @@ pub type AoEvento = Box<dyn Fn(EventoVoz) + Send + Sync>;
 pub struct MotorPorIdioma {
     sistema: Option<Box<dyn MotorDeVoz>>,
     neural: Option<Box<dyn MotorDeVoz>>,
-    /// A preferência "usar a voz natural em livros em inglês".
-    usar_neural: AtomicBool,
+    /// Os idiomas (bases) em que a voz natural fala: as preferências "usar em livros em …".
+    neural_em: Mutex<Vec<String>>,
     ativo: Arc<Mutex<Option<Qual>>>,
 }
 
@@ -67,19 +78,27 @@ impl MotorPorIdioma {
         (sistema.is_some() || neural.is_some()).then_some(Self {
             sistema,
             neural,
-            usar_neural: AtomicBool::new(true),
+            neural_em: Mutex::new(vec!["en".into()]),
             ativo,
         })
     }
 
-    /// Liga ou desliga a voz neural (a preferência). Vale a partir do bloco seguinte.
-    pub fn usar_neural(&self, usar: bool) {
-        self.usar_neural.store(usar, Ordering::SeqCst);
+    /// Os idiomas (bases: "en", "pt") em que a voz neural fala; vazio = desligada. Vale a partir
+    /// do bloco seguinte.
+    pub fn usar_neural_em(&self, idiomas: Vec<String>) {
+        *self.neural_em.lock().unwrap_or_else(|e| e.into_inner()) = idiomas;
     }
 
-    fn tem_neural(&self) -> bool {
-        self.usar_neural.load(Ordering::SeqCst)
-            && self.neural.as_ref().is_some_and(|n| n.disponivel())
+    /// Os idiomas da voz neural agora (nenhum, se ela não estiver disponível).
+    fn neurais(&self) -> Vec<String> {
+        if self.neural.as_ref().is_some_and(|n| n.disponivel()) {
+            self.neural_em
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone()
+        } else {
+            Vec::new()
+        }
     }
 
     fn motor(&self, qual: Qual) -> Option<&dyn MotorDeVoz> {
@@ -98,7 +117,7 @@ impl MotorPorIdioma {
 impl MotorDeVoz for MotorPorIdioma {
     fn falar(&self, ssml: String, config: ConfigVoz) -> Result<(), ErroVoz> {
         let idioma = config.idioma.as_deref();
-        let qual = escolher(idioma, self.sistema.is_some(), self.tem_neural())
+        let qual = escolher(idioma, self.sistema.is_some(), &self.neurais())
             .ok_or_else(|| ErroVoz::SemVozParaIdioma(idioma.unwrap_or("?").to_string()))?;
         let anterior = self
             .ativo
@@ -130,7 +149,7 @@ impl MotorDeVoz for MotorPorIdioma {
     }
 
     fn disponivel(&self) -> bool {
-        self.sistema.is_some() || self.tem_neural()
+        self.sistema.is_some() || !self.neurais().is_empty()
     }
 }
 
@@ -139,21 +158,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn ingles_vai_a_voz_neural() {
-        assert_eq!(escolher(Some("en"), true, true), Some(Qual::Neural));
-        assert_eq!(escolher(Some("en-GB"), true, true), Some(Qual::Neural));
-        assert_eq!(escolher(Some("EN_us"), true, true), Some(Qual::Neural));
-        assert_eq!(escolher(Some("en"), true, false), Some(Qual::Sistema));
-        assert_eq!(escolher(Some("eng"), true, true), Some(Qual::Sistema));
+    fn idiomas_ligados_vao_a_voz_neural() {
+        let en = ["en".to_string()];
+        let en_pt = ["en".to_string(), "pt".to_string()];
+        assert_eq!(escolher(Some("en"), true, &en), Some(Qual::Neural));
+        assert_eq!(escolher(Some("en-GB"), true, &en), Some(Qual::Neural));
+        assert_eq!(escolher(Some("EN_us"), true, &en), Some(Qual::Neural));
+        assert_eq!(escolher(Some("en"), true, &[]), Some(Qual::Sistema));
+        assert_eq!(escolher(Some("eng"), true, &en), Some(Qual::Sistema));
+        assert_eq!(escolher(Some("pt-BR"), true, &en_pt), Some(Qual::Neural));
+        assert_eq!(escolher(Some("pt"), true, &en_pt), Some(Qual::Neural));
+        assert_eq!(idioma_base("pt-BR"), "pt");
     }
 
     #[test]
     fn outros_idiomas_e_sem_idioma() {
-        assert_eq!(escolher(Some("pt-BR"), true, true), Some(Qual::Sistema));
-        assert_eq!(escolher(Some("pt-BR"), false, true), None);
-        assert_eq!(escolher(None, true, true), Some(Qual::Sistema));
-        assert_eq!(escolher(None, false, true), Some(Qual::Neural));
-        assert_eq!(escolher(None, false, false), None);
+        let en = ["en".to_string()];
+        assert_eq!(escolher(Some("pt-BR"), true, &en), Some(Qual::Sistema));
+        assert_eq!(escolher(Some("pt-BR"), false, &en), None);
+        assert_eq!(escolher(None, true, &en), Some(Qual::Sistema));
+        assert_eq!(escolher(None, false, &en), Some(Qual::Neural));
+        assert_eq!(escolher(None, false, &[]), None);
     }
 
     /// Guarda o que recebeu e, ao parar, avisa `Interrompido` (como os motores de verdade).
@@ -271,9 +296,9 @@ mod tests {
     #[test]
     fn neural_desligada_ou_sem_modelo_vai_ao_sistema() {
         let (m, registro, _) = montar();
-        m.usar_neural(false);
+        m.usar_neural_em(Vec::new());
         m.falar("a".into(), config("en")).unwrap();
-        m.usar_neural(true);
+        m.usar_neural_em(vec!["en".into()]);
         m.falar("b".into(), config("en")).unwrap();
         assert_eq!(
             *registro.lock().unwrap(),

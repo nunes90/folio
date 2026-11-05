@@ -53,9 +53,40 @@ export function megabytes(bytes: number): string {
   return `${Math.round(bytes / 1_000_000)} MB`;
 }
 
-/** A voz em uso: a escolhida, se for do modelo, ou a primeira (a padrão do core). */
-export function vozEscolhida(modelo: ModeloDeVoz, p: Preferencias): VozDoCatalogo {
-  return modelo.vozes.find((v) => v.id === p.vozNatural) ?? modelo.vozes[0];
+/** Os idiomas da voz natural, cada um com a preferência que o liga. */
+export const IDIOMAS_DA_VOZ = [
+  { base: "en", nome: "inglês", pref: "vozNaturalEmIngles" },
+  { base: "pt", nome: "português", pref: "vozNaturalEmPortugues" },
+] as const satisfies readonly { base: string; nome: string; pref: keyof Preferencias }[];
+
+export type IdiomaDaVoz = (typeof IDIOMAS_DA_VOZ)[number];
+
+/** "pt-BR" → "pt". */
+const base = (idioma: string) => idioma.split(/[-_]/)[0].toLowerCase();
+
+export function vozesDoIdioma(modelo: ModeloDeVoz, idioma: string): VozDoCatalogo[] {
+  return modelo.vozes.filter((v) => base(v.idioma) === idioma);
+}
+
+/** Os idiomas que o modelo fala, com as vozes de cada um. */
+export function idiomasDoModelo(modelo: ModeloDeVoz) {
+  return IDIOMAS_DA_VOZ.map((i) => ({ ...i, vozes: vozesDoIdioma(modelo, i.base) })).filter(
+    (i) => i.vozes.length > 0,
+  );
+}
+
+/**
+ * A voz em uso num idioma: no inglês, a escolhida, se for dele, ou a primeira (a padrão do core);
+ * nos outros, a primeira (ainda não há escolha).
+ */
+export function vozEscolhida(
+  modelo: ModeloDeVoz,
+  p: Preferencias,
+  idioma = "en",
+): VozDoCatalogo {
+  const vozes = vozesDoIdioma(modelo, idioma);
+  const escolhida = idioma === "en" ? vozes.find((v) => v.id === p.vozNatural) : undefined;
+  return escolhida ?? vozes[0] ?? modelo.vozes[0];
 }
 
 class EstadoVozNatural {
@@ -216,39 +247,50 @@ export function comandosDaVozNatural(
         id: "voz-natural-baixar",
         titulo: "Baixar a voz natural",
         grupo: "Voz",
-        dica: `${m.nome}, ${megabytes(m.tamanho)}, inglês`,
+        dica: `${m.nome}, ${megabytes(m.tamanho)}, ${idiomasDoModelo(m)
+          .map((i) => i.nome)
+          .join(" e ")}`,
         palavras,
         executar: () => acoes.baixar(m.id),
       },
     ];
   }
-  const atual = vozEscolhida(m, p);
+  const idiomas = idiomasDoModelo(m);
   return [
-    ...m.vozes.map((v) => ({
-      id: `voz-natural-${v.id}`,
-      titulo: `Voz: ${v.nome}`,
-      grupo: "Voz",
-      dica: v.id === atual.id ? `atual · ${descreverVoz(v)}` : descreverVoz(v),
-      palavras,
-      executar: () => mudar({ vozNatural: v.id }),
-    })),
-    {
-      id: "voz-natural-amostra",
-      titulo: "Ouvir amostra da voz",
-      grupo: "Voz",
-      dica: atual.nome,
-      palavras,
-      executar: () => acoes.amostra(atual.id),
-    },
-    {
-      id: "voz-natural-em-ingles",
-      titulo: p.vozNaturalEmIngles
-        ? "Não usar a voz natural em livros em inglês"
-        : "Usar a voz natural em livros em inglês",
-      grupo: "Voz",
-      palavras,
-      executar: () => mudar({ vozNaturalEmIngles: !p.vozNaturalEmIngles }),
-    },
+    ...idiomas.flatMap((i) => {
+      const atual = vozEscolhida(m, p, i.base);
+      const sufixo = i.base === "en" ? "" : ` em ${i.nome}`;
+      return [
+        // Escolher a voz, só onde há mais de uma (hoje, o inglês).
+        ...(i.vozes.length > 1
+          ? i.vozes.map((v) => ({
+              id: `voz-natural-${v.id}`,
+              titulo: `Voz: ${v.nome}`,
+              grupo: "Voz",
+              dica: v.id === atual.id ? `atual · ${descreverVoz(v)}` : descreverVoz(v),
+              palavras,
+              executar: () => mudar({ vozNatural: v.id }),
+            }))
+          : []),
+        {
+          id: `voz-natural-amostra-${i.base}`,
+          titulo: `Ouvir amostra da voz${sufixo}`,
+          grupo: "Voz",
+          dica: atual.nome,
+          palavras,
+          executar: () => acoes.amostra(atual.id),
+        },
+        {
+          id: `voz-natural-em-${i.base}`,
+          titulo: p[i.pref]
+            ? `Não usar a voz natural em livros em ${i.nome}`
+            : `Usar a voz natural em livros em ${i.nome}`,
+          grupo: "Voz",
+          palavras,
+          executar: () => mudar({ [i.pref]: !p[i.pref] }),
+        },
+      ];
+    }),
     {
       id: "voz-natural-remover",
       titulo: "Remover a voz natural",
