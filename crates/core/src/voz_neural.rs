@@ -1292,6 +1292,9 @@ mod tests {
         // Preparar não interrompe o bloco atual.
         assert_eq!(proximo(&rx), EventoVoz::Marca("0".into()));
         assert_eq!(proximo(&rx), EventoVoz::Fim);
+        // No app, o bloco seguinte só é pedido quando o atual acaba de tocar; aqui a saída falsa
+        // "toca" na hora: espera o preparo, senão o `falar` o tornaria velho antes de ele rodar.
+        esperar_sinteses(&registro, 2);
         m.falar(seguinte.into(), ConfigVoz::default()).unwrap();
         assert_eq!(proximo(&rx), EventoVoz::Marca("5".into()));
         assert_eq!(proximo(&rx), EventoVoz::Marca("6".into()));
@@ -1309,10 +1312,12 @@ mod tests {
     fn preparo_de_outro_texto_ou_outra_velocidade_nao_serve() {
         let (m, rx, _, registro) = motor_com(None, OCIOSO);
         m.preparar(ssml(&["1"]), ConfigVoz::default());
+        esperar_sinteses(&registro, 1);
         m.falar(ssml(&["2"]), ConfigVoz::default()).unwrap();
         assert_eq!(proximo(&rx), EventoVoz::Marca("2".into()));
         assert_eq!(proximo(&rx), EventoVoz::Fim);
         m.preparar(ssml(&["3"]), ConfigVoz::default());
+        esperar_sinteses(&registro, 3);
         let devagar = ConfigVoz {
             velocidade: -30,
             ..ConfigVoz::default()
@@ -1322,6 +1327,15 @@ mod tests {
         assert_eq!(proximo(&rx), EventoVoz::Fim);
         // Dois preparos e duas falas, todos gerados.
         assert_eq!(registro.vozes.lock().unwrap().len(), 4);
+    }
+
+    /// Espera o motor falso ter gerado `n` frases (até 5 s).
+    fn esperar_sinteses(registro: &Registro, n: usize) {
+        let limite = Instant::now() + Duration::from_secs(5);
+        while registro.vozes.lock().unwrap().len() < n {
+            assert!(Instant::now() < limite, "o motor não gerou {n} frases");
+            thread::sleep(Duration::from_millis(5));
+        }
     }
 
     #[test]
