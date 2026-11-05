@@ -6,8 +6,8 @@ use ort::session::Session;
 use ort::value::Tensor;
 
 use super::{
-    ErroKokoro, Fonemizador, MAX_TOKENS, Vocabulario, Vozes, dividir, fonemas_com_pontuacao,
-    idioma_da_voz, indice_da_voz, normalizar_ingles,
+    ErroKokoro, Fonemizador, MAX_TOKENS, Vocabulario, Vozes, corte_da_voz, dividir,
+    fonemas_com_pontuacao, idioma_da_voz, indice_da_voz, normalizar_ingles, normalizar_portugues,
 };
 
 /// Taxa de amostragem do áudio que o modelo gera (mono).
@@ -74,10 +74,10 @@ impl Kokoro {
     ) -> Result<Vec<f32>, ErroKokoro> {
         let numero = indice_da_voz(voz).ok_or_else(|| ErroKokoro::VozDesconhecida(voz.into()))?;
         let idioma = idioma_da_voz(voz).ok_or_else(|| ErroKokoro::VozDesconhecida(voz.into()))?;
-        let frase = if idioma == "en" {
-            normalizar_ingles(frase)
-        } else {
-            frase.to_string()
+        let frase = match idioma {
+            "en" => normalizar_ingles(frase),
+            "pt-br" => normalizar_portugues(frase),
+            _ => frase.to_string(),
         };
         let fonemas = fonemas_com_pontuacao(self.fonemizador.as_ref(), &frase, idioma)?;
         let ids = self.vocabulario.ids(&fonemas);
@@ -96,6 +96,9 @@ impl Kokoro {
             ])?;
             let (_, amostras) = saidas[0].try_extract_tensor::<f32>()?;
             audio.extend_from_slice(amostras);
+        }
+        if let Some(corte) = corte_da_voz(voz) {
+            super::filtro::passa_baixa(&mut audio, TAXA, corte);
         }
         Ok(audio)
     }

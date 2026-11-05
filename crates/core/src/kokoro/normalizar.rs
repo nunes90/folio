@@ -25,13 +25,13 @@ pub fn normalizar_ingles(texto: &str) -> String {
     anos(&t)
 }
 
-fn re(padrao: &str) -> Regex {
+pub(super) fn re(padrao: &str) -> Regex {
     Regex::new(padrao).expect("expressão regular válida")
 }
 
 /// Troca cada ocorrência de `padrao` pelo que `trocar` devolver; `None` deixa como está. `trocar`
 /// recebe também o texto antes e depois da ocorrência (o `regex` não olha em volta).
-fn substituir(
+pub(super) fn substituir(
     texto: &str,
     padrao: &Regex,
     mut trocar: impl FnMut(&Captures, &str, &str) -> Option<String>,
@@ -254,7 +254,7 @@ fn abreviacoes(texto: &str) -> String {
 }
 
 /// O valor de um numeral romano bem formado ("IV" = 4); `None` se não for ("IIII", "VX", "IC").
-fn romano(texto: &str) -> Option<u32> {
+pub(super) fn romano(texto: &str) -> Option<u32> {
     let valor = |c| match c {
         'I' => Some(1),
         'V' => Some(5),

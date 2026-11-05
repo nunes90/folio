@@ -24,8 +24,9 @@ a usa. Foram testados no app real (out–nov/2026):
   marca por frase é o mesmo; uma thread sintetiza frase a frase e põe na fila da saída a marca e o áudio, e a marca
   dispara quando o áudio dela começa a tocar. A saída (rodio) abre já a 24 kHz mono, a taxa do modelo: o servidor de
   som converte com qualidade, e o rodio, por interpolação linear, deixava a voz áspera. Frases longas vão em pedaços
-  cortados na pontuação, para a fala começar antes.
-- **Por idioma**: `MotorPorIdioma` manda o inglês à voz natural (se baixada e ligada) e o resto ao sistema. O PDF
+  cortadas na pontuação só quando não ficariam prontas antes de a fila acabar (cada pedaço é sintetizado sozinho e o
+  modelo fecha a entonação no fim dele: cortar sempre deixava a frase picada).
+- **Por idioma**: `MotorPorIdioma` manda o inglês e o português (cada um ligável) à voz natural (se baixada e ligada) e o resto ao sistema. O PDF
   informa o idioma do arquivo (`/Lang`); sem idioma, vai ao sistema.
 - **Pronúncia**: o espeak-ng dá os fonemas (só a pronúncia; a voz é a do modelo), carregado durante a execução. Antes
   dele, o inglês é normalizado onde ele erra (moeda, anos, romanos, abreviações; `kokoro::normalizar_ingles`). O
@@ -45,7 +46,9 @@ a usa. Foram testados no app real (out–nov/2026):
   normalmente, com a voz do sistema.
 - A primeira fala depois de abrir (ou de 2 min parado) demora ~1 s para carregar o modelo; o app mostra
   "Preparando a voz…".
-- Por enquanto só inglês. O Kokoro tem vozes em português do Brasil (pf_dora, pm_alex), que entram depois.
+- Inglês e português do Brasil. Das três vozes do Brasil, só a Dora (`pf_dora`) soou boa; no português, todo número
+  solto é escrito por extenso (`kokoro::normalizar_portugues`): o espeak-ng lia "1869" certo, mas numa palavra só nos
+  fonemas, e o modelo tropeçava. A voz do inglês tem escolha; a do português, por ora, não.
 - O Orca continua com a voz do sistema: a voz natural é só da leitura em voz alta.
 - O download é a única vez em que o Folio usa a internet, e só quando a pessoa pede.
 - Testes reais, fora da CI (precisam do modelo baixado): `FOLIO_KOKORO=<pasta> cargo test -p folio-core --release --

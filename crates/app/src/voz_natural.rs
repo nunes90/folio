@@ -48,24 +48,38 @@ impl EstadoVoz {
             })
     }
 
-    /// Aplica as preferências (voz escolhida, usar em inglês) e o que está instalado.
+    /// Aplica as preferências (voz do inglês, usar em inglês e em português) e o que está
+    /// instalado.
     pub fn aplicar(&self, preferencias: &PreferenciasLeitura) {
-        let escolhida = catalogo_vozes::voz(&preferencias.voz_natural)
-            .unwrap_or((&catalogo_vozes::KOKORO, catalogo_vozes::KOKORO.voz_padrao()));
-        let (modelo, voz) = escolhida;
-        let config = modelo.instalado(&self.vozes).then(|| ConfigNeural {
+        let modelo = &catalogo_vozes::KOKORO;
+        // A voz de cada idioma: no inglês, a escolhida; nos outros, a primeira do catálogo.
+        let vozes: Vec<(String, String)> = modelo
+            .idiomas()
+            .into_iter()
+            .filter_map(|base| {
+                let escolhida = (base == "en")
+                    .then(|| modelo.voz(&preferencias.voz_natural))
+                    .flatten();
+                let voz = escolhida.or_else(|| modelo.voz_do_idioma(&base))?;
+                Some((base, voz.id.to_string()))
+            })
+            .collect();
+        let ligados: Vec<String> = [
+            ("en", preferencias.voz_natural_em_ingles),
+            ("pt", preferencias.voz_natural_em_portugues),
+        ]
+        .into_iter()
+        .filter(|&(_, ligado)| ligado)
+        .map(|(base, _)| base.to_string())
+        .collect();
+        let instalada = modelo.instalado(&self.vozes);
+        tracing::info!(?vozes, instalada, ?ligados, "voz natural");
+        self.neural.configurar(instalada.then(|| ConfigNeural {
             pasta: modelo.pasta(&self.vozes),
-            voz: voz.id.to_string(),
-        });
-        tracing::info!(
-            voz = voz.id,
-            instalada = config.is_some(),
-            em_ingles = preferencias.voz_natural_em_ingles,
-            "voz natural"
-        );
-        self.neural.configurar(config);
+            vozes,
+        }));
         if let Some(motor) = &self.motor {
-            motor.usar_neural(preferencias.voz_natural_em_ingles);
+            motor.usar_neural_em(ligados);
         }
     }
 }
@@ -253,6 +267,7 @@ pub fn ouvir_amostra_voz(voz: State<'_, EstadoVoz>, id: String) -> Result<u64, S
     let (_, escolhida) = catalogo_vozes::voz(&id).ok_or("voz desconhecida")?;
     let texto = match escolhida.idioma {
         "en-GB" => "Hello. This is how I sound when I read your books aloud.",
+        "pt-BR" => "Olá. É assim que eu leio os seus livros em voz alta.",
         _ => "Hi. This is how I sound when I read your books aloud.",
     };
     voz.neural

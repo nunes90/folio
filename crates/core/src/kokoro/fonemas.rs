@@ -340,6 +340,21 @@ mod tests {
         }
     }
 
+    /// Mostra os fonemas que o modelo recebe (sem a normalização): `FOLIO_FONEMAS_TEXTO=<frase>
+    /// [FOLIO_FONEMAS_IDIOMA=pt-br] cargo test -p folio-core -- --ignored fonemas_de_uma_frase
+    /// --nocapture`.
+    #[test]
+    #[ignore = "ferramenta: precisa da libespeak-ng"]
+    fn fonemas_de_uma_frase() {
+        let texto = std::env::var("FOLIO_FONEMAS_TEXTO").expect("FOLIO_FONEMAS_TEXTO=<frase>");
+        let idioma = std::env::var("FOLIO_FONEMAS_IDIOMA").unwrap_or_else(|_| "en-us".into());
+        let espeak = EspeakNg::carregar(None).unwrap();
+        eprintln!(
+            "{}",
+            fonemas_com_pontuacao(espeak.as_ref(), &texto, &idioma).unwrap()
+        );
+    }
+
     /// Com o espeak-ng do sistema: `cargo test -p folio-core -- --ignored espeak`.
     #[test]
     #[ignore = "precisa da libespeak-ng instalada"]

@@ -69,6 +69,25 @@ impl Modelo {
         &self.vozes[0]
     }
 
+    /// A primeira voz do idioma (base: "en", "pt"), se houver.
+    pub fn voz_do_idioma(&self, base: &str) -> Option<&'static VozDoCatalogo> {
+        self.vozes
+            .iter()
+            .find(|v| crate::voz_por_idioma::idioma_base(v.idioma) == base)
+    }
+
+    /// Os idiomas (bases) que o modelo fala, na ordem do catálogo.
+    pub fn idiomas(&self) -> Vec<String> {
+        let mut idiomas: Vec<String> = Vec::new();
+        for v in self.vozes {
+            let base = crate::voz_por_idioma::idioma_base(v.idioma);
+            if !idiomas.contains(&base) {
+                idiomas.push(base);
+            }
+        }
+        idiomas
+    }
+
     pub fn pasta(&self, vozes: &Path) -> PathBuf {
         vozes.join(self.id)
     }
@@ -214,6 +233,14 @@ pub const KOKORO: Modelo = Modelo {
             idioma: "en-GB",
             genero: Genero::Masculina,
         },
+        // Das três vozes do Brasil, a que soou boa ouvindo um trecho de livro (nov/2026); o Alex e
+        // o Santa, não.
+        VozDoCatalogo {
+            id: "pf_dora",
+            nome: "Dora",
+            idioma: "pt-BR",
+            genero: Genero::Feminina,
+        },
     ],
 };
 
@@ -264,6 +291,10 @@ mod tests {
         assert!(voz("").is_none());
         // Fora do catálogo (a preferência de quem a tinha volta à voz padrão).
         assert!(voz("bf_emma").is_none());
+        assert_eq!(KOKORO.voz_do_idioma("pt").map(|v| v.id), Some("pf_dora"));
+        assert_eq!(KOKORO.voz_do_idioma("en").map(|v| v.id), Some("af_heart"));
+        assert!(KOKORO.voz_do_idioma("es").is_none());
+        assert_eq!(KOKORO.idiomas(), ["en", "pt"]);
     }
 
     #[test]
