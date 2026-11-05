@@ -112,17 +112,48 @@ export function frasesDe(bloco: Range, idioma?: string | null): Range[] {
   } catch {
     segmentador = new Intl.Segmenter(undefined, { granularity: "sentence" });
   }
-  const frases: Range[] = [];
+  const trechos: [number, number][] = [];
   for (const { index, segment } of segmentador.segment(texto)) {
     const inicio = index + (segment.length - segment.trimStart().length);
     const fim = index + segment.trimEnd().length;
     if (fim <= inicio) continue;
+    const anterior = trechos.at(-1);
+    if (anterior && continua(texto.slice(...anterior), texto.slice(inicio, fim))) {
+      anterior[1] = fim;
+    } else {
+      trechos.push([inicio, fim]);
+    }
+  }
+  return trechos.map(([inicio, fim]) => {
     const r = doc.createRange();
     r.setStart(...ponto(inicio, false));
     r.setEnd(...ponto(fim, true));
-    frases.push(r);
-  }
-  return frases;
+    return r;
+  });
+}
+
+/** Abreviações que o Intl.Segmenter toma por fim de frase ("D. Gloria", "Sr. José"). */
+const ABREVIACOES = new Set([
+  "Sr", "Sra", "Srta", "Srs", "Sras", "D", "Dr", "Dra", "Drs", "Prof", "Profa", "Pe", "Fr",
+  "Exmo", "Exma", "Sto", "Sta", "Av", "Mr", "Mrs", "Ms", "Mt", "St", "Jr", "Sen", "Gen", "Cap",
+]);
+
+/**
+ * Se `seguinte` continua a frase de `anterior`: o Intl.Segmenter corta depois de "?" e "!" mesmo
+ * quando a frase segue em minúscula ("—Abaixo ou acima? perguntou-lhe tio Cosme"), deixa a aspa
+ * de fecho no começo da seguinte ("Mamãe!" | "» Ella acudiu") e corta nas abreviações e
+ * iniciais ("D." | "Gloria"). A mesma regra do motor da voz natural (`continua`, no core).
+ */
+export function continua(anterior: string, seguinte: string): boolean {
+  const primeira = seguinte[0];
+  if (!primeira || !anterior) return false;
+  if ("»”)]’".includes(primeira)) return true;
+  const letra = [...seguinte].find((c) => !"«“\"‘'( ".includes(c));
+  if (letra && letra !== letra.toUpperCase() && letra === letra.toLowerCase()) return true;
+  if (!anterior.endsWith(".")) return false;
+  const palavra = (anterior.slice(0, -1).split(/\s/).at(-1) ?? "").replace(/^\P{L}+/u, "");
+  const inicial = [...palavra].length === 1 && palavra !== palavra.toLowerCase();
+  return inicial || ABREVIACOES.has(palavra);
 }
 
 /** Todas as frases do documento (capítulo), bloco a bloco. */

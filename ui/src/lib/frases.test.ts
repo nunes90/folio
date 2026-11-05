@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { blocosDe, frasesDe, frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "./frases";
+import { blocosDe, continua, frasesDe, frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "./frases";
 
 function doc(html: string): Document {
   const d = document.implementation.createHTMLDocument("t");
@@ -37,6 +37,33 @@ describe("frasesDe", () => {
       "Fiquei tão alegre com esta ideia, que ainda\nme treme a pena na mão.",
       "Fim.",
     ]);
+  });
+
+  it("continuação em minúscula, aspa de fecho e abreviação não cortam a frase", () => {
+    const d = doc(
+      "<p>—Abaixo ou acima? perguntou-lhe tio Cosme um dia.</p>" +
+        "<p>—Mas, D. Gloria, a senhora sabe. Era o seminario de S. José. Outra frase.</p>" +
+        "<p>Gritei: «Mamãe! mamãe!» Ella acudiu.</p>",
+    );
+    expect(textos(frasesDoDocumento(d, "pt"))).toEqual([
+      "—Abaixo ou acima? perguntou-lhe tio Cosme um dia.",
+      "—Mas, D. Gloria, a senhora sabe.",
+      "Era o seminario de S. José.",
+      "Outra frase.",
+      "Gritei: «Mamãe! mamãe!»",
+      "Ella acudiu.",
+    ]);
+  });
+
+  it("continua: as regras", () => {
+    expect(continua("—Nada!", "nada!")).toBe(true);
+    expect(continua("«Mamãe!", "» Ella acudiu.")).toBe(true);
+    expect(continua("Ask J.", "R. R. Tolkien.")).toBe(true);
+    expect(continua("—Mas, Sr.", "José Dias, tenho visto.")).toBe(true);
+    expect(continua("“Yes?”", "he asked.")).toBe(true);
+    expect(continua("Era o fim.", "Outra.")).toBe(false);
+    expect(continua("Fim!", "Outra.")).toBe(false);
+    expect(continua("Ele tem 5.", "Depois.")).toBe(false);
   });
 
   it("frases que atravessam elementos (ênfase, links) continuam inteiras", () => {
