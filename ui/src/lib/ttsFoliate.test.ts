@@ -18,4 +18,19 @@ rapaz aqui do bairro. Outra frase.</p></body></html>`,
     const marcas = ssml.match(/<mark /g) ?? [];
     expect(marcas).toHaveLength(2);
   });
+
+  it("peekNext mostra o bloco seguinte sem avançar", () => {
+    const doc = new DOMParser().parseFromString(
+      "<html lang=\"pt\"><body><p>Primeiro bloco.</p><p>Segundo bloco.</p></body></html>",
+      "text/html",
+    );
+    const tts = new TTS(doc, textWalker, () => {}, "sentence");
+    expect(tts.start()).toContain("Primeiro");
+    const seguinte = tts.peekNext();
+    expect(seguinte.ssml).toContain("Segundo");
+    expect(seguinte.range.toString()).toBe("Segundo bloco.");
+    expect(tts.peekNext().ssml).toBe(seguinte.ssml);
+    expect(tts.next()).toBe(seguinte.ssml);
+    expect(tts.peekNext()).toBeUndefined();
+  });
 });

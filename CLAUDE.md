@@ -852,4 +852,13 @@ docs/decisions/  # ADRs
   E o `tts.js` do foliate-js (as frases da voz no EPUB) não trocava as quebras de linha do XHTML por espaço, como o
   `lib/frases.ts` já fazia: cada linha do Dom Casmurro virava uma frase (alteração local, `PATCHES.md`).
   Ferramenta: `fonemas_de_uma_frase` (ignorado).
+- **Voz sem espera entre parágrafos** (branch `feat/voz-preparar`): cada bloco novo esperava o modelo gerar a primeira
+  frase (0,4 a 1,2 s; no diálogo do Dom Casmurro, toda hora). `MotorDeVoz::preparar(ssml, config)` (padrão: nada; o
+  `MotorPorIdioma` manda ao motor do idioma, sem trocar o em uso) e o comando `preparar_voz` (`prepararVoz` em
+  `lib/voz.ts`), chamado logo depois de `falar` com o bloco seguinte. O `MotorNeural` o põe na fila sem aumentar a
+  geração (não interrompe): depois de gerar o bloco atual, gera o começo do seguinte (`cortar` com o tempo que falta
+  tocar) e o guarda num lugar só (`Preparado`); o `falar` seguinte o usa se a voz, a velocidade e o começo do texto
+  baterem (`comeco_pronto`; no log, "começo preparado usado" em debug). EPUB: `TTS.peekNext` (alteração local no
+  `tts.js`: o bloco seguinte sem avançar nem mexer nas marcas; não atravessa o fim do capítulo). PDF:
+  `prepararSeguinte` (o resto da página ou o começo da seguinte, se a camada de texto dela já existir).
 - Próximo passo: M27e (Piper), quando fizer falta; executar 9.5–9.12 do roteiro do Orca.

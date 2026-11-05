@@ -36,6 +36,8 @@ export interface TtsFoliate {
   setMark(marca: string): void;
   /** O bloco que vai ser falado (alteração local, ver PATCHES.md). */
   block?: Range;
+  /** O bloco seguinte, sem avançar (alteração local): para adiantar a voz dele. */
+  peekNext(): { ssml: string; range: Range } | undefined;
 }
 
 export interface Paginador extends HTMLElement {

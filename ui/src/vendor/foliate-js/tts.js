@@ -186,6 +186,16 @@ class ListIterator {
             }
         }
     }
+    // LEITOR: o item seguinte, cru (sem o `f`), sem avançar
+    peekNext() {
+        const newIndex = this.#index + 1
+        while (!this.#arr[newIndex]) {
+            const { done, value } = this.#iter.next()
+            if (done) return
+            this.#arr.push(value)
+        }
+        return this.#arr[newIndex]
+    }
     find(f) {
         const index = this.#arr.findIndex(x => f(x))
         if (index > -1) {
@@ -209,9 +219,14 @@ export class TTS {
     #ranges
     #lastMark
     #serializer = new XMLSerializer()
+    // LEITOR: guardados para o `peekNext`
+    #textWalker
+    #granularity
     constructor(doc, textWalker, highlight, granularity) {
         this.doc = doc
         this.highlight = highlight
+        this.#textWalker = textWalker
+        this.#granularity = granularity
         this.#list = new ListIterator(getBlocks(doc), range => {
             const { entries, ssml } = getFragmentWithMarks(range, textWalker, granularity)
             this.#ranges = new Map(entries)
@@ -271,6 +286,14 @@ export class TTS {
                 break
             }
         return this.#speak(doc, ssml => this.#getMarkElement(ssml, mark))
+    }
+    // LEITOR: o SSML e o Range do bloco seguinte, sem avançar nem mudar as marcas (o Folio adianta
+    // a voz natural dele enquanto o atual toca)
+    peekNext() {
+        const range = this.#list.peekNext()
+        if (!range) return
+        const { ssml } = getFragmentWithMarks(range, this.#textWalker, this.#granularity)
+        return { ssml: this.#speak(ssml), range }
     }
     setMark(mark) {
         const range = this.#ranges.get(mark)

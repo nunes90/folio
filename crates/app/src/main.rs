@@ -151,6 +151,7 @@ fn main() -> anyhow::Result<()> {
             comandos::salvar_preferencias_leitura,
             comandos::voz_disponivel,
             comandos::falar,
+            comandos::preparar_voz,
             comandos::pausar_voz,
             comandos::retomar_voz,
             comandos::parar_voz,

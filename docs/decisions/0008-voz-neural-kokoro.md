@@ -25,7 +25,9 @@ a usa. Foram testados no app real (out–nov/2026):
   dispara quando o áudio dela começa a tocar. A saída (rodio) abre já a 24 kHz mono, a taxa do modelo: o servidor de
   som converte com qualidade, e o rodio, por interpolação linear, deixava a voz áspera. Frases longas vão em pedaços
   cortadas na pontuação só quando não ficariam prontas antes de a fila acabar (cada pedaço é sintetizado sozinho e o
-  modelo fecha a entonação no fim dele: cortar sempre deixava a frase picada).
+  modelo fecha a entonação no fim dele: cortar sempre deixava a frase picada). Pelo mesmo motivo, as frases que o
+  `Intl.Segmenter` separa sem ser fim de frase (abreviação, fala seguida de minúscula) vão juntas ao modelo. Enquanto
+  um bloco toca, o começo do seguinte já é gerado (`preparar`): sem isso, cada parágrafo esperava o modelo.
 - **Por idioma**: `MotorPorIdioma` manda o inglês e o português (cada um ligável) à voz natural (se baixada e ligada) e o resto ao sistema. O PDF
   informa o idioma do arquivo (`/Lang`); sem idioma, vai ao sistema.
 - **Pronúncia**: o espeak-ng dá os fonemas (só a pronúncia; a voz é a do modelo), carregado durante a execução. Antes

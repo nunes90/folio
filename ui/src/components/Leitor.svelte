@@ -94,6 +94,7 @@
     blocoParaFala,
     comandosDaVoz,
     falar,
+    prepararVoz,
     ouvirVoz,
     pararVoz,
     tipoDoElemento,
@@ -466,10 +467,23 @@
           idioma: bloco.idioma ?? idiomaDoLivro,
           velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
         });
+        prepararSeguinte();
         return;
       }
       ssml = view.tts.next();
     }
+  }
+
+  /** Adianta a voz do bloco seguinte do capítulo (o `peekNext` não avança o tts.js). */
+  function prepararSeguinte() {
+    const seguinte = view?.tts?.peekNext();
+    const bloco = seguinte && blocoParaFala(seguinte.ssml);
+    if (!seguinte || !bloco) return;
+    const tipo = tipoDoElemento(seguinte.range.commonAncestorContainer);
+    prepararVoz(bloco.ssml, {
+      idioma: bloco.idioma ?? idiomaDoLivro,
+      velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
+    }).catch((erro) => log.warn(`${erro}`));
   }
 
   /** Vai ao próximo capítulo e devolve o primeiro bloco dele; `null` no fim do livro. */
