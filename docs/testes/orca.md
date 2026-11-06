@@ -112,8 +112,8 @@ Com o Orca ligado as duas vozes se sobrepõem: pause o Orca (`Orca+S`) ou só co
 | 9.6 | "Baixar a voz natural (154 MB)" | O foco vai a "Cancelar o download"; a barra "Baixando a voz natural (154 MB)" é anunciada de 10 em 10% (o nome não muda durante o download); no fim, "Voz natural instalada. Os livros em inglês e em português já podem usá-la." e o foco vai à primeira opção da voz |
 | 9.7 | Cancelar no meio e baixar de novo | Anuncia "Download da voz natural cancelado."; o botão de baixar volta, com o foco nele |
 | 9.8 | Instalada: setas no grupo "Voz em inglês" | Cada rádio lê o nome, o idioma e o gênero ("George, inglês britânico, masculina"); no `Tab`, o grupo "Livros em português", a caixa "Usar a voz natural em livros em português" e "Ouvir amostra (Dora)" |
-| 9.9 | "Ouvir amostra (<voz>)" | Anuncia "Preparando a voz…" e "Tocando a amostra de <voz>."; a amostra toca na voz natural |
-| 9.10 | "Ler em voz alta" num livro em inglês | A voz natural lê (na primeira vez, "Preparando a voz…"); num livro em português, a Dora (também a partir da capa); num livro em espanhol, a voz do sistema (sem ela: "Não foi possível ler em voz alta: não há voz para o idioma es.") |
+| 9.9 | "Ouvir amostra (<voz>)" | A amostra toca na voz natural; o Orca não fala por cima (só "Preparando a voz…" se a geração demorar; o nome do botão não muda) |
+| 9.10 | "Ler em voz alta" num livro em inglês | A voz natural lê (na primeira vez, "Preparando a voz…"); num livro em português, a Dora (também a partir da capa); num livro em espanhol, a voz do sistema (sem ela: "Não foi possível ler em voz alta: não há voz para o idioma es."). Pelo botão do rodapé, o foco fica nele ("Pausar leitura") e o Orca não diz nada; "Parar leitura" devolve o foco a "Ler em voz alta" |
 | 9.11 | "Remover a voz natural…" | A confirmação aparece no lugar, com o foco em "Cancelar", que lê a pergunta ("Remover a voz natural? Para usá-la de novo…"); `Shift+Tab` leva a "Remover (154 MB)"; remover anuncia "Voz natural removida." e o foco vai a "Baixar" |
 | 9.12 | `Ctrl+K`, "voz" | Lista os comandos da voz natural do estado atual (baixar; ou as vozes, a amostra e remover) |
 

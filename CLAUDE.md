@@ -882,4 +882,11 @@ docs/decisions/  # ADRs
   **"Ler em voz alta" na capa não fazia nada**: a seção só com a imagem não tem bloco, o `tts.from` do foliate-js lança e o
   "Preparando a voz…" ficava na tela; agora `blocoInicial` (`lib/vozNaSecao.ts`) segue ao próximo capítulo, e um erro
   ao começar a ler (EPUB e PDF) para a leitura e anuncia o motivo (`textoDaFalhaDaVoz`: "não há voz para o idioma es").
-- Próximo passo: M27e (Piper), quando fizer falta; ouvir a voz natural com o Orca ligado (o roteiro automático não ouve).
+- **Voz sem o Orca por cima** (branch `fix/voz-sem-atropelar`): ouvido pelo Lucas com o Orca ligado, as falas do Orca
+  atropelavam a voz natural. Amostra: o status dizia "Tocando a amostra de <voz>." quando ela começava, e o nome do
+  botão mudava ("Preparando a voz…", "Tocando <voz>…"); agora o nome é fixo (só o ícone muda) e o status só diz
+  "Preparando a voz…" se a geração passar de 400 ms. Leitura: "Ler em voz alta" e "Pausar/Continuar leitura" são o
+  mesmo botão (o foco não cai no body ao começar) e "Parar leitura" devolve o foco a ele; o `AvisoDePreparo` espera
+  1 s (era 400 ms: o modelo aberto gera a primeira frase em 0,4–1 s, e o aviso saía junto com a voz). Conferido com
+  o Orca real (`voz.e2e.js`, passos 9.10d): ao começar pelo rodapé, o Orca não fala nada.
+- Próximo passo: M27e (Piper), quando fizer falta; o Lucas ouvir de novo a voz natural com o Orca ligado.

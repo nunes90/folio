@@ -17,7 +17,11 @@ vi.mock("@tauri-apps/api/event", () => ({
 import { PADRAO, type Preferencias } from "../lib/preferencias.svelte";
 import PainelVoz from "./PainelVoz.svelte";
 
-function catalogo(instalado: boolean, espeak = true, baixando: string | null = null) {
+function catalogo(
+  instalado: boolean,
+  espeak = true,
+  baixando: string | null = null,
+) {
   return {
     modelos: [
       {
@@ -27,8 +31,18 @@ function catalogo(instalado: boolean, espeak = true, baixando: string | null = n
         tamanho: 152_000_000,
         instalado,
         vozes: [
-          { id: "af_heart", nome: "Heart", idioma: "en-US", genero: "feminina" },
-          { id: "bm_george", nome: "George", idioma: "en-GB", genero: "masculina" },
+          {
+            id: "af_heart",
+            nome: "Heart",
+            idioma: "en-US",
+            genero: "feminina",
+          },
+          {
+            id: "bm_george",
+            nome: "George",
+            idioma: "en-GB",
+            genero: "masculina",
+          },
         ],
       },
     ],
@@ -49,16 +63,22 @@ beforeEach(() => {
 
 function renderizar(mudancas: Partial<Preferencias> = {}) {
   const onMudar = vi.fn();
-  const r = render(PainelVoz, { preferencias: { ...PADRAO, ...mudancas }, onMudar });
+  const r = render(PainelVoz, {
+    preferencias: { ...PADRAO, ...mudancas },
+    onMudar,
+  });
   return { ...r, onMudar };
 }
 
-const avisoDoCore = (payload: unknown) => ouvintes.forEach((f) => f({ payload }));
+const avisoDoCore = (payload: unknown) =>
+  ouvintes.forEach((f) => f({ payload }));
 
 describe("PainelVoz (seção Voz)", () => {
   it("a velocidade fica aqui, nos dois formatos", async () => {
     const { onMudar } = renderizar({ velocidadeVoz: 20 });
-    const controle = screen.getByLabelText("Velocidade da leitura em voz alta") as HTMLInputElement;
+    const controle = screen.getByLabelText(
+      "Velocidade da leitura em voz alta",
+    ) as HTMLInputElement;
     expect(controle.value).toBe("20");
     expect(screen.getByText("+20")).toBeTruthy();
     await fireEvent.input(controle, { target: { value: "30" } });
@@ -67,37 +87,69 @@ describe("PainelVoz (seção Voz)", () => {
 
   it("baixar, acompanhar, cancelar e, no fim, escolher a voz", async () => {
     const { onMudar } = renderizar();
-    const baixar = await screen.findByRole("button", { name: "Baixar a voz natural (152 MB)" });
+    const baixar = await screen.findByRole("button", {
+      name: "Baixar a voz natural (152 MB)",
+    });
     await fireEvent.click(baixar);
-    expect(invoke).toHaveBeenCalledWith("baixar_voz_natural", { modelo: "kokoro" });
+    expect(invoke).toHaveBeenCalledWith("baixar_voz_natural", {
+      modelo: "kokoro",
+    });
 
     // O foco segue para o "Cancelar" (o botão de baixar sumiu).
-    const cancelar = await screen.findByRole("button", { name: "Cancelar o download" });
+    const cancelar = await screen.findByRole("button", {
+      name: "Cancelar o download",
+    });
     await waitFor(() => expect(document.activeElement).toBe(cancelar));
 
-    avisoDoCore({ tipo: "progresso", modelo: "kokoro", baixado: 76_000_000, total: 152_000_000 });
+    avisoDoCore({
+      tipo: "progresso",
+      modelo: "kokoro",
+      baixado: 76_000_000,
+      total: 152_000_000,
+    });
     // O nome da barra não muda durante o download (só o valor): ver o comentário no componente.
-    const barra = await screen.findByRole("progressbar", { name: "Baixando a voz natural (152 MB)" });
+    const barra = await screen.findByRole("progressbar", {
+      name: "Baixando a voz natural (152 MB)",
+    });
     expect(barra.getAttribute("value")).toBe("50");
     expect(barra.getAttribute("aria-valuetext")).toBe("50%");
     // De 10 em 10%: menos anúncios do Orca.
-    avisoDoCore({ tipo: "progresso", modelo: "kokoro", baixado: 89_000_000, total: 152_000_000 });
+    avisoDoCore({
+      tipo: "progresso",
+      modelo: "kokoro",
+      baixado: 89_000_000,
+      total: 152_000_000,
+    });
     await waitFor(() => expect(barra.getAttribute("value")).toBe("50"));
-    avisoDoCore({ tipo: "progresso", modelo: "kokoro", baixado: 92_000_000, total: 152_000_000 });
-    await waitFor(() => expect(barra.getAttribute("aria-valuetext")).toBe("60%"));
+    avisoDoCore({
+      tipo: "progresso",
+      modelo: "kokoro",
+      baixado: 92_000_000,
+      total: 152_000_000,
+    });
+    await waitFor(() =>
+      expect(barra.getAttribute("aria-valuetext")).toBe("60%"),
+    );
     await fireEvent.click(cancelar);
     expect(invoke).toHaveBeenCalledWith("cancelar_download_voz");
 
     estado = catalogo(true);
     avisoDoCore({ tipo: "concluido", modelo: "kokoro" });
-    const george = (await screen.findByRole("radio", { name: /George/ })) as HTMLInputElement;
+    const george = (await screen.findByRole("radio", {
+      name: /George/,
+    })) as HTMLInputElement;
     // Concluído: o foco vai à primeira opção da voz, não se perde com o "Cancelar".
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        screen.getByRole("checkbox", { name: "Usar a voz natural em livros em inglês" }),
+        screen.getByRole("checkbox", {
+          name: "Usar a voz natural em livros em inglês",
+        }),
       ),
     );
-    expect((screen.getByRole("radio", { name: /Heart/ }) as HTMLInputElement).checked).toBe(true);
+    expect(
+      (screen.getByRole("radio", { name: /Heart/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
     await fireEvent.click(george);
     expect(onMudar).toHaveBeenCalledWith({ vozNatural: "bm_george" });
 
@@ -118,33 +170,57 @@ describe("PainelVoz (seção Voz)", () => {
         : Promise.resolve(cmd === "vozes_naturais" ? estado : undefined),
     );
     const { container } = renderizar({ vozNatural: "bm_george" });
-    const status = () => container.querySelector("p[role=status]")?.textContent ?? "";
-    await fireEvent.click(await screen.findByRole("button", { name: "Ouvir amostra (George)" }));
-    expect(invoke).toHaveBeenCalledWith("ouvir_amostra_voz", { id: "bm_george" });
-    // Enquanto o áudio é gerado: o botão diz, e o status anuncia.
-    const botao = screen.getByRole("button", { name: "Preparando a voz…" });
+    const status = () =>
+      container.querySelector("p[role=status]")?.textContent ?? "";
+    const botao = await screen.findByRole("button", {
+      name: "Ouvir amostra (George)",
+    });
+    await fireEvent.click(botao);
+    expect(invoke).toHaveBeenCalledWith("ouvir_amostra_voz", {
+      id: "bm_george",
+    });
+    // O nome do botão não muda (o Orca o anunciaria por cima da amostra); só o ícone e o aria-busy.
     expect(botao.getAttribute("aria-busy")).toBe("true");
-    expect(status()).toContain("Preparando a voz…");
+    expect(botao.textContent?.trim()).toBe("Ouvir amostra (George)");
+    // O status só fala se a geração demorar, e nada ao começar a tocar.
+    expect(status()).toBe("");
+    await waitFor(() => expect(status()).toContain("Preparando a voz…"), {
+      timeout: 1000,
+    });
     terminarGeracao(30);
-    await screen.findByRole("button", { name: "Tocando George…" });
-    expect(status()).toContain("Tocando a amostra de George.");
+    await waitFor(() => expect(botao.getAttribute("aria-busy")).toBe("false"));
+    expect(status()).toBe("");
+    expect(botao.classList.contains("ativa")).toBe(true);
     // Pela duração que o core devolveu, e volta ao normal.
-    await screen.findByRole("button", { name: "Ouvir amostra (George)" });
+    await waitFor(() => expect(botao.classList.contains("ativa")).toBe(false));
 
     // O foco não se perde quando o botão em que ele estava some: vai ao Cancelar (o que não
     // apaga nada), volta ao "Remover…" ao cancelar e vai ao "Baixar" depois de remover.
-    await fireEvent.click(screen.getByRole("button", { name: "Remover a voz natural…" }));
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Remover a voz natural…" }),
+    );
     const cancelar = screen.getByRole("button", { name: "Cancelar" });
     await waitFor(() => expect(document.activeElement).toBe(cancelar));
     await fireEvent.click(cancelar);
-    expect(invoke).not.toHaveBeenCalledWith("remover_voz_natural", expect.anything());
-    const remover = screen.getByRole("button", { name: "Remover a voz natural…" });
+    expect(invoke).not.toHaveBeenCalledWith(
+      "remover_voz_natural",
+      expect.anything(),
+    );
+    const remover = screen.getByRole("button", {
+      name: "Remover a voz natural…",
+    });
     await waitFor(() => expect(document.activeElement).toBe(remover));
     await fireEvent.click(remover);
     estado = catalogo(false);
-    await fireEvent.click(screen.getByRole("button", { name: "Remover (152 MB)" }));
-    expect(invoke).toHaveBeenCalledWith("remover_voz_natural", { modelo: "kokoro" });
-    const baixar = await screen.findByRole("button", { name: "Baixar a voz natural (152 MB)" });
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Remover (152 MB)" }),
+    );
+    expect(invoke).toHaveBeenCalledWith("remover_voz_natural", {
+      modelo: "kokoro",
+    });
+    const baixar = await screen.findByRole("button", {
+      name: "Baixar a voz natural (152 MB)",
+    });
     await waitFor(() => expect(document.activeElement).toBe(baixar));
   });
 
@@ -157,15 +233,21 @@ describe("PainelVoz (seção Voz)", () => {
       genero: "feminina",
     });
     const { onMudar } = renderizar();
-    const grupo = await screen.findByRole("group", { name: "Livros em português" });
+    const grupo = await screen.findByRole("group", {
+      name: "Livros em português",
+    });
     expect(grupo.textContent).toContain("Voz: Dora");
     // Sem rádio para a voz única; os do inglês continuam.
     expect(screen.queryByRole("radio", { name: /Dora/ })).toBeNull();
     expect(screen.getByRole("radio", { name: /Heart/ })).toBeTruthy();
-    const usar = screen.getByRole("checkbox", { name: "Usar a voz natural em livros em português" });
+    const usar = screen.getByRole("checkbox", {
+      name: "Usar a voz natural em livros em português",
+    });
     await fireEvent.click(usar);
     expect(onMudar).toHaveBeenCalledWith({ vozNaturalEmPortugues: false });
-    await fireEvent.click(screen.getByRole("button", { name: "Ouvir amostra (Dora)" }));
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Ouvir amostra (Dora)" }),
+    );
     expect(invoke).toHaveBeenCalledWith("ouvir_amostra_voz", { id: "pf_dora" });
   });
 
