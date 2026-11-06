@@ -22,6 +22,7 @@
   import { preferencias } from "../lib/preferencias.svelte";
   import { animarVirada, cancelarVirada, quadrosDaVirada } from "../lib/virada";
   import Carregando from "./Carregando.svelte";
+  import { irParaFracao as irAte } from "../lib/posicao";
   import type { Destaque } from "../lib/biblioteca";
 
   let {
@@ -77,6 +78,13 @@
     await view.goTo(destino);
     view.renderer.focusView();
   }
+
+  /** Leva o lado à fração `f` do livro (o slider do rodapé). */
+  export async function irParaFracao(f: number) {
+    await irAte(view, f, () => relocacoes);
+  }
+  /** Quantas vezes o lado mudou de lugar (o slider confere se a ida aconteceu). */
+  let relocacoes = 0;
 
   export function focar() {
     view?.renderer.focusView();
@@ -262,6 +270,7 @@
         if (!modoFrase) destaques.esconderDe(true);
         const { fraction, tocItem } = (e as CustomEvent<DetalheRelocate>).detail;
         aoRelocar?.();
+        relocacoes++;
         progresso = fraction;
         const nova = tocItem?.label.trim() ?? "";
         if (nova && nova !== secao && secao) anuncio = `Lado: ${nova}`;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rotuloNoPonto } from "../lib/posicao";
   import { onMount, tick, untrack } from "svelte";
   import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
   import type { PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
@@ -262,6 +263,8 @@
   let itensIndice = $state<ItemIndice[]>([]);
   let destinos = new Map<string, string | unknown[]>();
   let paginasDoIndice = $state(new Map<string, number>());
+  /** A seção do sumário de uma página (o slider de posição a diz). */
+  const secaoDaPagina = (p: number) => rotuloNoPonto(itensIndice, paginasDoIndice, p);
   const hrefAtual = $derived(itemAtual(paginasDoIndice, pagina));
 
   // Progresso honesto (M21): o ritmo neste livro (das sessões), buscado ao abrir e de 5 em 5
@@ -1570,6 +1573,8 @@
       onZoomMenos={() => lado?.zoomMenos()}
       onZoomMais={() => lado?.zoomMais()}
       onAjustarLargura={() => lado?.ajustarLargura()}
+      {secaoDaPagina}
+      rotuloPosicao="Posição no livro, deste lado"
     />
   </ControlesLado>
 {/snippet}
@@ -1657,6 +1662,7 @@
       onZoomMenos={() => visor?.decreaseScale()}
       onZoomMais={() => visor?.increaseScale()}
       onAjustarLargura={() => visor && (visor.currentScaleValue = "page-width")}
+      {secaoDaPagina}
     />
   {/snippet}
 

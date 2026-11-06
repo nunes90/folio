@@ -221,8 +221,11 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
   - [x] pt-BR com o Kokoro: a Dora (o Alex e o Santa não soaram bem), normalização do português (números por
     extenso, moeda, romanos, abreviações, horas) e uma voz por idioma no motor
 
+- [x] **Slider de posição** (nov/2026): arrastar para qualquer ponto do livro, igual nos dois formatos e nos dois
+  lados; teclado (passo, um décimo, as pontas) e leitor de tela (a porcentagem ou a página e o capítulo); "37%" na
+  paleta do EPUB.
+
 ## Futuro
-- **Slider de páginas** (arrastar para qualquer ponto do livro).
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
   O código já trata o macOS em alguns pontos (diretório de logs, escala de texto) e deve continuar compilando.
 - **Windows**.

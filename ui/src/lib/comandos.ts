@@ -31,7 +31,9 @@ export interface Comando {
 
 /** Onde a busca procura: título, dica (ex.: o autor) e palavras extras. */
 function textoDe(comando: Comando): string {
-  return normalizar(`${comando.titulo} ${comando.dica ?? ""} ${comando.palavras ?? ""}`);
+  return normalizar(
+    `${comando.titulo} ${comando.dica ?? ""} ${comando.palavras ?? ""}`,
+  );
 }
 
 /** O que um leitor aberto publica para a paleta (ver `onComandos` nos leitores). */
@@ -42,7 +44,11 @@ export interface ComandosDoLeitor {
 }
 
 /** 0: o título começa com o termo; 1: cada palavra começa uma palavra; 2: só contém. */
-function relevancia(comando: Comando, termo: string, palavras: string[]): number {
+function relevancia(
+  comando: Comando,
+  termo: string,
+  palavras: string[],
+): number {
   if (normalizar(comando.titulo).startsWith(termo)) return 0;
   const inicios = textoDe(comando).split(/[\s:,]+/);
   return palavras.every((p) => inicios.some((i) => i.startsWith(p))) ? 1 : 2;
@@ -139,7 +145,11 @@ export interface AcoesDoLado {
  * Dois pontos do livro lado a lado (M25b). Fechado: "Abrir este ponto ao lado" e "Abrir ao
  * lado: <seção>"; aberto: alternar (F6), fechar e "Lado: ir para <seção>".
  */
-export function comandosDoLado(aberto: boolean, itens: ItemIndice[], a: AcoesDoLado): Comando[] {
+export function comandosDoLado(
+  aberto: boolean,
+  itens: ItemIndice[],
+  a: AcoesDoLado,
+): Comando[] {
   const lista: Comando[] = aberto
     ? [
         {
@@ -234,9 +244,14 @@ const NOMES_ALINHAMENTO: [Alinhamento, string][] = [
 const PASSO_TAMANHO = 0.1;
 
 /** Tipografia do EPUB (a seção Texto do painel Aparência). */
-export function comandosDoTexto(prefs: Preferencias, mudar: Mudar, restaurar: () => void): Comando[] {
+export function comandosDoTexto(
+  prefs: Preferencias,
+  mudar: Mudar,
+  restaurar: () => void,
+): Comando[] {
   const { min, max } = LIMITES.tamanho;
-  const tamanho = (n: number) => Math.round(Math.min(max, Math.max(min, n)) * 100) / 100;
+  const tamanho = (n: number) =>
+    Math.round(Math.min(max, Math.max(min, n)) * 100) / 100;
   const lista: Comando[] = [];
   // No limite, o comando não faria nada: some da lista.
   if (prefs.tamanho < max)
@@ -245,7 +260,8 @@ export function comandosDoTexto(prefs: Preferencias, mudar: Mudar, restaurar: ()
       titulo: "Aumentar o texto",
       grupo: "Texto",
       palavras: "fonte tamanho letra",
-      executar: () => mudar({ tamanho: tamanho(prefs.tamanho + PASSO_TAMANHO) }),
+      executar: () =>
+        mudar({ tamanho: tamanho(prefs.tamanho + PASSO_TAMANHO) }),
     });
   if (prefs.tamanho > min)
     lista.push({
@@ -253,7 +269,8 @@ export function comandosDoTexto(prefs: Preferencias, mudar: Mudar, restaurar: ()
       titulo: "Diminuir o texto",
       grupo: "Texto",
       palavras: "fonte tamanho letra",
-      executar: () => mudar({ tamanho: tamanho(prefs.tamanho - PASSO_TAMANHO) }),
+      executar: () =>
+        mudar({ tamanho: tamanho(prefs.tamanho - PASSO_TAMANHO) }),
     });
   for (const [fonte, nome] of NOMES_FONTE)
     lista.push({
@@ -274,7 +291,9 @@ export function comandosDoTexto(prefs: Preferencias, mudar: Mudar, restaurar: ()
   lista.push(
     {
       id: "hifenizacao",
-      titulo: prefs.hifenizacao ? "Desligar a hifenização" : "Ligar a hifenização",
+      titulo: prefs.hifenizacao
+        ? "Desligar a hifenização"
+        : "Ligar a hifenização",
       grupo: "Texto",
       executar: () => mudar({ hifenizacao: !prefs.hifenizacao }),
     },
@@ -296,6 +315,27 @@ function numeroDePagina(termo: string): number | null {
 }
 
 /**
+ * "Ir para 37% do livro" (EPUB), gerado pelo termo: "37%", "37 %" ou "37 por cento". O mesmo que
+ * o slider de posição, para quem prefere digitar.
+ */
+export function irParaPorcentagem(
+  termo: string,
+  ir: (fracao: number) => void,
+): Comando[] {
+  const m = normalizar(termo).match(/^(\d{1,3})\s*(?:%|por cento)$/);
+  const n = m ? Number(m[1]) : NaN;
+  if (!(n >= 0 && n <= 100)) return [];
+  return [
+    {
+      id: "ir-para-porcentagem",
+      titulo: `Ir para ${n}% do livro`,
+      grupo: "EPUB",
+      executar: () => ir(n / 100),
+    },
+  ];
+}
+
+/**
  * Comando gerado pelo termo (PDF, M25c): "ao lado 87" ou "lado 87" abre a página no lado (ou,
  * com ele aberto, leva-o até ela), se ela existir.
  */
@@ -311,7 +351,9 @@ export function ladoPorTermo(
   return [
     {
       id: "lado-pagina",
-      titulo: aberto ? `Lado: ir para a página ${n}` : `Abrir a página ${n} ao lado`,
+      titulo: aberto
+        ? `Lado: ir para a página ${n}`
+        : `Abrir a página ${n} ao lado`,
       grupo: "Lado a lado",
       dica: `de ${total}`,
       executar: () => abrir(n),
@@ -320,7 +362,11 @@ export function ladoPorTermo(
 }
 
 /** Comando gerado pelo termo (PDF): "Ir para a página N", se N existir no documento. */
-export function irParaPagina(termo: string, total: number, ir: (n: number) => void): Comando[] {
+export function irParaPagina(
+  termo: string,
+  total: number,
+  ir: (n: number) => void,
+): Comando[] {
   const n = numeroDePagina(termo);
   if (n === null || n < 1 || n > total) return [];
   return [

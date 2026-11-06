@@ -94,6 +94,12 @@ export interface FoliateView extends HTMLElement {
   getProgressOf(indice: number, range: Range): { tocItem?: { label: string; href: string } };
   /** Onde cada seção começa no livro (0 a 1). */
   getSectionFractions(): number[];
+  /** Vai à fração do livro (0 a 1): a seção e o ponto proporcional dentro dela. */
+  goToFraction(fracao: number): Promise<void>;
+  /** A seção de um href do índice, de um CFI ou de um número (`undefined` se não resolver). */
+  resolveNavigation(
+    alvo: string | number,
+  ): { index: number; anchor?: (doc: Document) => Node | Range | number | null } | undefined;
   /** Desenha (ou redesenha) a anotação, se a seção dela estiver carregada: dispara "draw-annotation". */
   addAnnotation(anotacao: Anotacao): Promise<unknown>;
   deleteAnnotation(anotacao: Anotacao): Promise<unknown>;

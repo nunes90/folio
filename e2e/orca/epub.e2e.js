@@ -55,6 +55,13 @@ describe("orca epub", () => { it("roteiro", async () => {
   await passo("8.5", "paleta: mostrar os destaques", async () => { await k(Key.Ctrl, "k"); await browser.pause(500); await browser.keys("mostrar os destaques"); await browser.pause(300); await k(Key.Enter); }, 1800);
   nota("foco: " + await estado());
   await passo("8.6", "Tab pelos itens (6×)", async () => { for (let i = 0; i < 6; i++) { await k(Key.Tab); await browser.pause(450); } }, 800);
+  nota("Slider de posição");
+  await passo("3.10a", "foco no slider", () => browser.execute(() => document.querySelector("footer input[type=range]")?.focus()), 1800);
+  await passo("3.10b", "→ → (passos; só navega quando param)", async () => { await k(Key.ArrowRight); await browser.pause(150); await k(Key.ArrowRight); }, 2000);
+  await passo("3.10c", "PageUp", () => k(Key.PageUp), 2000);
+  await passo("3.10d", "End", () => k(Key.End), 2000);
+  await passo("3.10e", "volta ao começo", async () => { for (const t of [Key.Home, Key.ArrowRight, Key.ArrowRight]) { await k(t); await browser.pause(150); } }, 2500);
+  nota("foco: " + await estado());
   nota("10. Sessão");
   await passo("10.1", "paleta: 25 min", async () => { await k(Key.Ctrl, "k"); await browser.pause(500); await browser.keys("25 min"); await browser.pause(300); await k(Key.Enter); }, 1500);
   await passo("10.3", "paleta: quanto falta", async () => { await k(Key.Ctrl, "k"); await browser.pause(500); await browser.keys("quanto falta"); await browser.pause(300); await k(Key.Enter); }, 1500);

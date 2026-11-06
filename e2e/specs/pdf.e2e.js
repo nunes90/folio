@@ -40,6 +40,19 @@ describe("PDF", () => {
     );
   });
 
+  it("o slider leva a qualquer página pelo teclado; as setas nele não viram a página duas vezes", async () => {
+    const slider = await $("footer input[type=range]");
+    await slider.click();
+    await browser.keys(Key.End);
+    await ate(async () => (await paginaEm("footer")) === "3", "End no slider não levou à página 3");
+    expect(await slider.getAttribute("aria-valuetext")).toBe("Página 3 de 3");
+    await browser.keys(Key.Home);
+    await browser.keys(Key.ArrowRight);
+    await ate(async () => (await paginaEm("footer")) === "2", "Home e → no slider não levaram à página 2");
+    await browser.pause(600);
+    expect(await paginaEm("footer")).toBe("2");
+  });
+
   it("Ctrl+D destaca a frase atual, desenhada na página", async () => {
     await destacar("Azul");
     await ate(
