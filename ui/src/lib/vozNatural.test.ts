@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
-vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(() => Promise.resolve(() => {})),
+}));
 
 import { PADRAO } from "./preferencias.svelte";
 import {
@@ -43,9 +45,15 @@ describe("vozNatural: partes puras", () => {
   });
 
   it("a voz escolhida, ou a primeira se a escolha não for do modelo", () => {
-    expect(vozEscolhida(MODELO, { ...PADRAO, vozNatural: "bm_george" }).nome).toBe("George");
-    expect(vozEscolhida(MODELO, { ...PADRAO, vozNatural: "" }).nome).toBe("Heart");
-    expect(vozEscolhida(MODELO, { ...PADRAO, vozNatural: "zz" }).nome).toBe("Heart");
+    expect(
+      vozEscolhida(MODELO, { ...PADRAO, vozNatural: "bm_george" }).nome,
+    ).toBe("George");
+    expect(vozEscolhida(MODELO, { ...PADRAO, vozNatural: "" }).nome).toBe(
+      "Heart",
+    );
+    expect(vozEscolhida(MODELO, { ...PADRAO, vozNatural: "zz" }).nome).toBe(
+      "Heart",
+    );
   });
 });
 
@@ -55,20 +63,34 @@ describe("comandosDaVozNatural", () => {
   it("sem o modelo baixado: baixar (só com o espeak-ng)", () => {
     const a = acoes();
     const m = { ...MODELO, instalado: false };
-    const lista = comandosDaVozNatural({ modelo: m, baixando: null, espeak: true }, PADRAO, vi.fn(), a);
+    const lista = comandosDaVozNatural(
+      { modelo: m, baixando: null, espeak: true },
+      PADRAO,
+      vi.fn(),
+      a,
+    );
     expect(titulos(lista)).toEqual(["Baixar a voz natural"]);
     expect(lista[0].dica).toBe("Kokoro, 152 MB, inglês");
     lista[0].executar();
     expect(a.baixar).toHaveBeenCalledWith("kokoro");
     expect(
-      comandosDaVozNatural({ modelo: m, baixando: null, espeak: false }, PADRAO, vi.fn(), a),
+      comandosDaVozNatural(
+        { modelo: m, baixando: null, espeak: false },
+        PADRAO,
+        vi.fn(),
+        a,
+      ),
     ).toEqual([]);
   });
 
   it("baixando: só cancelar, com a porcentagem", () => {
     const a = acoes();
     const lista = comandosDaVozNatural(
-      { modelo: MODELO, baixando: { modelo: "kokoro", baixado: 38, total: 152 }, espeak: true },
+      {
+        modelo: MODELO,
+        baixando: { modelo: "kokoro", baixado: 38, total: 152 },
+        espeak: true,
+      },
       PADRAO,
       vi.fn(),
       a,
@@ -83,7 +105,12 @@ describe("comandosDaVozNatural", () => {
     const a = acoes();
     const mudar = vi.fn();
     const p = { ...PADRAO, vozNatural: "bm_george" };
-    const lista = comandosDaVozNatural({ modelo: MODELO, baixando: null, espeak: true }, p, mudar, a);
+    const lista = comandosDaVozNatural(
+      { modelo: MODELO, baixando: null, espeak: true },
+      p,
+      mudar,
+      a,
+    );
     expect(titulos(lista)).toEqual([
       "Voz: Heart",
       "Voz: George",
@@ -107,7 +134,9 @@ describe("comandosDaVozNatural", () => {
       mudar,
       a,
     );
-    expect(titulos(desligada)).toContain("Usar a voz natural em livros em inglês");
+    expect(titulos(desligada)).toContain(
+      "Usar a voz natural em livros em inglês",
+    );
   });
 
   it("com o português: amostra e usar em português, sem escolher a voz (só há uma)", () => {
@@ -115,9 +144,22 @@ describe("comandosDaVozNatural", () => {
     const mudar = vi.fn();
     const m = {
       ...MODELO,
-      vozes: [...MODELO.vozes, { id: "pf_dora", nome: "Dora", idioma: "pt-BR", genero: "feminina" as const }],
+      vozes: [
+        ...MODELO.vozes,
+        {
+          id: "pf_dora",
+          nome: "Dora",
+          idioma: "pt-BR",
+          genero: "feminina" as const,
+        },
+      ],
     };
-    const lista = comandosDaVozNatural({ modelo: m, baixando: null, espeak: true }, PADRAO, mudar, a);
+    const lista = comandosDaVozNatural(
+      { modelo: m, baixando: null, espeak: true },
+      PADRAO,
+      mudar,
+      a,
+    );
     expect(titulos(lista)).toEqual([
       "Voz: Heart",
       "Voz: George",
@@ -132,17 +174,28 @@ describe("comandosDaVozNatural", () => {
     lista[5].executar();
     expect(mudar).toHaveBeenCalledWith({ vozNaturalEmPortugues: false });
     expect(
-      comandosDaVozNatural({ modelo: { ...m, instalado: false }, baixando: null, espeak: true }, PADRAO, mudar, a)[0]
-        .dica,
+      comandosDaVozNatural(
+        { modelo: { ...m, instalado: false }, baixando: null, espeak: true },
+        PADRAO,
+        mudar,
+        a,
+      )[0].dica,
     ).toBe("Kokoro, 152 MB, inglês e português");
     // A escolha (do inglês) nunca vira a voz do português.
-    expect(vozEscolhida(m, { ...PADRAO, vozNatural: "pf_dora" }).nome).toBe("Heart");
+    expect(vozEscolhida(m, { ...PADRAO, vozNatural: "pf_dora" }).nome).toBe(
+      "Heart",
+    );
     expect(vozEscolhida(m, PADRAO, "pt").nome).toBe("Dora");
   });
 
   it("sem catálogo: nada", () => {
     expect(
-      comandosDaVozNatural({ modelo: undefined, baixando: null, espeak: true }, PADRAO, vi.fn(), acoes()),
+      comandosDaVozNatural(
+        { modelo: undefined, baixando: null, espeak: true },
+        PADRAO,
+        vi.fn(),
+        acoes(),
+      ),
     ).toEqual([]);
   });
 });
@@ -156,14 +209,14 @@ describe("AvisoDePreparo", () => {
     const dispensar = vi.fn();
     const p = new AvisoDePreparo(avisar, dispensar);
     p.comecar();
-    vi.advanceTimersByTime(300);
+    vi.advanceTimersByTime(900);
     p.terminar();
     vi.advanceTimersByTime(1000);
     expect(avisar).not.toHaveBeenCalled();
     expect(dispensar).not.toHaveBeenCalled();
 
     p.comecar();
-    vi.advanceTimersByTime(401);
+    vi.advanceTimersByTime(1001);
     expect(avisar).toHaveBeenCalledWith("Preparando a voz…");
     p.terminar();
     expect(dispensar).toHaveBeenCalledWith(7);

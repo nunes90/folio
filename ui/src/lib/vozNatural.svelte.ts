@@ -99,7 +99,10 @@ class EstadoVozNatural {
   /** Muda a cada instalação ou remoção: os leitores perguntam de novo se há voz. */
   mudancas = $state(0);
   /** A amostra em andamento: gerando o áudio (na 1ª vez, o modelo carrega) ou tocando. */
-  amostraAtual = $state<{ voz: string; fase: "preparando" | "tocando" } | null>(null);
+  /** `demorando`: a geração passou de 400 ms (só então o leitor de tela ouve "Preparando a voz…"). */
+  amostraAtual = $state<{ voz: string; fase: "preparando" | "tocando"; demorando?: boolean } | null>(
+    null,
+  );
   #ouvindo = false;
   #fimDaAmostra: ReturnType<typeof setTimeout> | undefined;
 
@@ -156,6 +159,10 @@ class EstadoVozNatural {
   async amostra(voz: string, comAviso = false): Promise<void> {
     clearTimeout(this.#fimDaAmostra);
     this.amostraAtual = { voz, fase: "preparando" };
+    const demora = setTimeout(() => {
+      if (this.amostraAtual?.voz === voz && this.amostraAtual.fase === "preparando")
+        this.amostraAtual = { voz, fase: "preparando", demorando: true };
+    }, 400);
     try {
       const pedido = invoke<number>("ouvir_amostra_voz", { id: voz });
       const ms = await (comAviso ? avisarSeDemorar(pedido, "Preparando a voz…") : pedido);
@@ -168,6 +175,8 @@ class EstadoVozNatural {
     } catch (e) {
       if (this.amostraAtual?.voz === voz) this.amostraAtual = null;
       avisar(`Não foi possível tocar a amostra: ${e}`, "erro");
+    } finally {
+      clearTimeout(demora);
     }
   }
 
@@ -320,7 +329,12 @@ export class AvisoDePreparo {
     this.#dispensar = dispensarFn;
   }
 
-  comecar(atrasoMs = 400) {
+  /**
+   * 1 s, e não os 400 ms dos outros avisos: o aviso também vai ao leitor de tela, e a voz que
+   * começa logo depois dele (o modelo já aberto gera a primeira frase em 0,4–1 s) era atropelada
+   * pelo "Preparando a voz…" do Orca. Fica para a primeira fala, quando o modelo ainda carrega.
+   */
+  comecar(atrasoMs = 1000) {
     this.terminar();
     this.#espera = setTimeout(() => (this.#id = this.#avisar("Preparando a voz…")), atrasoMs);
   }

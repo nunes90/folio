@@ -104,6 +104,16 @@ describe("orca voz", () => { it("roteiro", async () => {
     await passo(id, `${titulo}: Ler em voz alta`, () => naPaleta("ler em voz alta"), 8000);
     nota("tela: " + await browser.execute(() => [document.querySelector("footer")?.innerText, ...[...document.querySelectorAll("[role=status],[role=alert],[aria-live]")].map((e) => e.textContent.trim())].filter(Boolean).join(" ¦ ").replace(/\s+/g, " ").slice(0, 400)));
     await passo(id + "2", "parar", () => naPaleta("parar a leitura"), 1500);
+    if (id === "9.10c") {
+      // Pelo botão do rodapé: o foco fica no mesmo botão ("Pausar leitura") e volta a ele ao parar.
+      const LER = "//footer//button[normalize-space(.)='Ler em voz alta']";
+      await passo("9.10d", "rodapé: Ler em voz alta", async () => { await focar(LER); await browser.pause(1200); falasNovas(); await k(Key.Enter); }, 6000);
+      nota("foco: " + await estado());
+      await passo("9.10d2", "Enter (pausar)", () => k(Key.Enter), 2000);
+      await passo("9.10d3", "Enter (continuar)", () => k(Key.Enter), 4000);
+      await passo("9.10d4", "Tab, Enter (parar)", async () => { await k(Key.Tab); await browser.pause(800); await k(Key.Enter); }, 2000);
+      nota("foco: " + await estado());
+    }
     // Sem leitura (sem voz para o idioma), o comando não existe e a paleta fica aberta.
     if (await existe("//dialog[@open]")) { await k(Key.Escape); await browser.pause(800); }
   }

@@ -29,13 +29,11 @@
       ? idiomasDoModelo(modelo).map((i) => ({ ...i, atual: vozEscolhida(modelo, preferencias, i.base) }))
       : [],
   );
-  /** O que o status diz ao leitor de tela sobre a amostra. */
-  const statusAmostra = $derived.by(() => {
-    const a = vozNatural.amostraAtual;
-    const nome = modelo?.vozes.find((v) => v.id === a?.voz)?.nome;
-    if (!a || !nome) return "";
-    return a.fase === "preparando" ? "Preparando a voz…" : `Tocando a amostra de ${nome}.`;
-  });
+  /**
+   * O que o status diz ao leitor de tela sobre a amostra: só "Preparando a voz…", e só se a
+   * geração demorar. Com o Orca ligado, anunciar o começo ("Tocando…") falava por cima da amostra.
+   */
+  const statusAmostra = $derived(vozNatural.amostraAtual?.demorando ? "Preparando a voz…" : "");
   /** Remover pede confirmação no próprio lugar (o download é grande para refazer por engano). */
   let confirmarRemocao = $state(false);
 
@@ -165,7 +163,8 @@
                 Voz: {atual.nome} <span class="descricao">{descreverVoz(atual)}</span>
               </p>
             {/if}
-            <!-- O botão diz o que está acontecendo; o status (abaixo) repete para o leitor de tela. -->
+            <!-- O nome não muda (só o ícone): com o foco no botão, o Orca anunciaria cada mudança
+                 por cima da amostra. -->
             <button
               type="button"
               class="amostra"
@@ -174,12 +173,11 @@
               onclick={() => vozNatural.amostra(atual.id)}
             >
               {#if desta === "preparando"}
-                <span class="girando" aria-hidden="true"></span>Preparando a voz…
+                <span class="girando" aria-hidden="true"></span>
               {:else if desta === "tocando"}
-                <span class="ondas" aria-hidden="true"><i></i><i></i><i></i></span>Tocando {atual.nome}…
-              {:else}
-                Ouvir amostra ({atual.nome})
+                <span class="ondas" aria-hidden="true"><i></i><i></i><i></i></span>
               {/if}
+              Ouvir amostra ({atual.nome})
             </button>
           </fieldset>
         {/each}
