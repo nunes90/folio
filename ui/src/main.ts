@@ -1,11 +1,9 @@
-import { invoke } from "@tauri-apps/api/core";
 import { mount } from "svelte";
 import App from "./App.svelte";
 import "./app.css";
 import { iniciarEscala } from "./lib/escala.svelte";
 import { log } from "./lib/log";
 import { carregarPreferencias } from "./lib/preferencias.svelte";
-import { observarRegioesVivas } from "./lib/regioesVivas";
 
 // Erros da webview não aparecem em lugar nenhum se não forem para o log.
 window.addEventListener("error", (e) => log.error(`erro não tratado: ${e.message}`));
@@ -17,10 +15,6 @@ document.addEventListener("securitypolicyviolation", (e) =>
 await Promise.all([iniciarEscala(), carregarPreferencias()]);
 
 const app = mount(App, { target: document.getElementById("app")! });
-
-observarRegioesVivas(document.body, (texto) => {
-  invoke("anunciar_ao_leitor_de_tela", { texto }).catch((e) => log.warn(`anúncio falhou: ${e}`));
-});
 
 log.info("ui carregada");
 

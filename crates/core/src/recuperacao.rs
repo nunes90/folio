@@ -1,6 +1,6 @@
 //! Quando recarregar a página depois de o processo dela cair.
 //!
-//! O WebKitGTK pode abortar o processo da página (ver `e2e/atspi/rodar.sh`). Recarregar devolve a
+//! O WebKitGTK pode abortar o processo da página (ver `docs/leitor-de-tela.md`). Recarregar devolve a
 //! janela, mas uma queda que se repete ao carregar viraria um ciclo sem fim: depois de
 //! [`MAXIMO`] quedas em [`JANELA`], o app desiste.
 

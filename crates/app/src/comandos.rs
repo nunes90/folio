@@ -544,12 +544,6 @@ pub fn escala_texto(estado: State<'_, crate::escala::EscalaTexto>) -> f64 {
     *estado.0.lock().unwrap()
 }
 
-/// Fica na thread principal (sem `async`): a chamada ao D-Bus responde no laço do GTK, sem esperar.
-#[tauri::command]
-pub fn anunciar_ao_leitor_de_tela(texto: String) {
-    crate::orca::anunciar(&texto);
-}
-
 #[tauri::command]
 pub fn voz_disponivel(voz: State<'_, EstadoVoz>) -> bool {
     voz.motor.as_ref().is_some_and(|m| m.disponivel())

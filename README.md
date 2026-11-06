@@ -8,7 +8,8 @@ leitor de tela, em voz alta. Tudo fica no seu computador: sem conta, sem nuvem, 
 ## O que ele faz
 
 - **Leitura sem mouse.** Todo recurso tem atalho ou comando na paleta (`Ctrl+K`); `F1` lista os atalhos.
-  Funciona com o Orca, e as animações respeitam a opção de reduzir movimento.
+  As animações respeitam a opção de reduzir movimento. (O suporte ao leitor de tela Orca está adiado: ver
+  `docs/leitor-de-tela.md`.)
 - **Aparência sua.** Temas de interface, cores de página (creme, sépia, noite, inclusive no PDF), fontes
   como Atkinson Hyperlegible, Lexend e OpenDyslexic, tamanho, entrelinha e caracteres por linha.
 - **Em voz alta**, nos dois formatos, com a frase lida realçada. Listas e código são lidos mais devagar.

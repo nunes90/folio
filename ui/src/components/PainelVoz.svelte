@@ -105,7 +105,7 @@
                tem caixa própria: com o texto "X MB de 154 MB" mudando a cada 150 ms e o bloco
                terminando em barra + botão, o WebKitGTK travava e caía quando o Orca pedia os
                atributos de texto do grupo (sonda em e2e/, mesma família de quedas de
-               atspi/rodar.sh). O tamanho total não muda: fica no rótulo. -->
+               docs/leitor-de-tela.md). O tamanho total não muda: fica no rótulo. -->
           <label for="progresso-voz">Baixando a voz natural ({megabytes(baixando.total)})</label>
           <progress id="progresso-voz" max="100" value={pct} aria-valuetext="{pct}%">{pct}%</progress>
           <button
@@ -221,7 +221,7 @@
         {/if}
         <!-- Por último de propósito: com o botão "Remover…" como o último objeto do grupo, o WebKitGTK
              travava e caía quando o Orca, ao focá-lo, pedia os atributos de texto do grupo naquela
-             posição (com o Orca de verdade; a mesma família de quedas de e2e/atspi/rodar.sh). -->
+             posição (com o Orca de verdade; a mesma família de quedas de docs/leitor-de-tela.md). -->
         <p class="so-leitor-de-tela" role="status">{statusAmostra}</p>
       {/if}
     </fieldset>

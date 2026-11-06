@@ -3,7 +3,7 @@
   // qualquer ponto; no teclado, ←/→ e ↑/↓ dão um passo, PageUp/PageDown um décimo, Home/End as
   // pontas. Ao arrastar com o ponteiro, um balão diz aonde se vai (a seção). No teclado, sem balão:
   // o leitor de tela ouve o mesmo pelo aria-valuetext, e texto que muda perto do foco derruba o
-  // WebKitGTK com o Orca (CLAUDE.md, "Roteiro da voz com o Orca"). Só navega ao soltar (no teclado,
+  // WebKitGTK com o Orca (docs/leitor-de-tela.md). Só navega ao soltar (no teclado,
   // quando as teclas param), não a cada passo.
   import { untrack } from "svelte";
   import { valorPelaTecla } from "../lib/posicao";

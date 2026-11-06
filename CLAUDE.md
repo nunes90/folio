@@ -70,6 +70,9 @@ docs/decisions/  # ADRs
 - **Setas rolam o que transborda**: no WebKitGTK, ↓/→ rolam a página inteira se algo passar da janela (inclusive um
   elemento só deslocado por `transform`) e rolam contêineres com `overflow: hidden`. A moldura e a área do livro usam
   `overflow: clip` (não é contêiner de rolagem). O Chromium não reproduz: testar no app.
+- **Leitor de tela (Orca) adiado** (nov/2026): sem testes nem integração específica até a interface estabilizar. O que
+  se aprendeu (as quedas do WebKitGTK com leitor de tela) e o que saiu estão em `docs/leitor-de-tela.md`. O resto da
+  acessibilidade (teclado, ARIA, axe, foco) continua regra.
 - foliate-js tem alterações locais marcadas com `LEITOR:` e listadas em `ui/src/vendor/foliate-js/PATCHES.md`.
 - Empacotamento: Flatpak (preferido) / AppImage. (`.dmg` quando o macOS voltar.)
 
@@ -904,4 +907,9 @@ docs/decisions/  # ADRs
   (flex-basis não vale): o slider tem `width: 14rem` e encolhe; o grupo de páginas da `BarraPdf` também encolhe (com o
   lado aberto, transbordava a metade). Paleta do EPUB: "37%" → "Ir para 37% do livro" (`irParaPorcentagem`). F1:
   linha do slider em Navegação. Conferido com o Orca real (passos 3.10 e 4.8 de `orca/epub.e2e.js` e `pdf.e2e.js`).
-- Próximo passo: M27e (Piper), quando fizer falta; o Lucas ouvir de novo a voz natural com o Orca ligado.
+- **Sem o Orca** (branch `chore/sem-orca`): saíram `orca.rs` e o comando `anunciar_ao_leitor_de_tela`, `lib/regioesVivas.ts`,
+  `e2e/orca/`, `e2e/atspi/`, os specs `leitor-de-tela*` (e o passo da CI) e `docs/testes/orca.md`. Os contornos já no código
+  ficaram. Tudo descrito em `docs/leitor-de-tela.md`, com o commit (`b3aaf78`) para recuperar os arquivos. As entradas
+  acima que citam esses arquivos são histórico.
+- Próximo passo: o Alex (voz masculina em português, com o filtro da Dora); depois a revisão de design (M28: Aparência
+  menos carregada e adaptação a todos os tamanhos de tela).
