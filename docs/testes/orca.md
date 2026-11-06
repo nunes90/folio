@@ -50,6 +50,7 @@ os atalhos de leitura (setas que viram a página), fique no modo de foco.
 | 3.6 | "Aparência" → "Tamanho do texto" com as setas | Anuncia o valor ("125%"); o livro muda; as setas **não** viram a página |
 | 3.7 | "Caracteres por linha" com as setas | Anuncia "~90"; a coluna muda |
 | 3.8 | `Esc` com o painel aberto | Fecha o painel; o foco volta ao botão "Aparência" |
+| 3.10 | `Tab` até o slider "Posição no livro" no rodapé; `→`, `Page Up`, `End`, `Home` | Anuncia "Posição no livro, deslizador" com a porcentagem e o capítulo ("2% · A denuncia."); cada tecla diz o novo ponto; o livro vai até ele quando as teclas param (e anuncia "Seção: …"); as setas **não** viram a página |
 | 3.9 | "Voltar à biblioteca" | O foco volta para o livro que estava aberto |
 
 ## 4. Leitura de PDF
@@ -62,6 +63,7 @@ os atalhos de leitura (setas que viram a página), fique no modo de foco.
 | 4.5 | Campo "Página": um número e `Enter` | Vai para a página; o campo anuncia o número |
 | 4.6 | Botões de zoom | Anuncia o valor ("125%") |
 | 4.7 | `Ctrl+K`, "42" e `Enter` | "Ir para a página 42"; vai para a página |
+| 4.8 | Slider "Posição no livro" no rodapé: `←`, `End`, `Home` | Anuncia "Página 2 de 3" (e a seção do sumário, se houver); vai para a página quando as teclas param |
 
 ## 5. Mais opções e barras
 | # | Ação | Esperado |

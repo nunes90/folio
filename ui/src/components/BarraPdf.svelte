@@ -1,5 +1,7 @@
 <script lang="ts">
   import Icone from "./Icone.svelte";
+  import Posicao from "./Posicao.svelte";
+  import { passoGrande, textoDaPagina } from "../lib/posicao";
 
   let {
     pagina,
@@ -9,6 +11,8 @@
     onZoomMenos,
     onZoomMais,
     onAjustarLargura,
+    secaoDaPagina = () => undefined,
+    rotuloPosicao = "Posição no livro",
   }: {
     pagina: number;
     total: number;
@@ -18,6 +22,9 @@
     onZoomMenos: () => void;
     onZoomMais: () => void;
     onAjustarLargura: () => void;
+    /** A seção do sumário em que a página cai (o slider a diz). */
+    secaoDaPagina?: (pagina: number) => string | undefined;
+    rotuloPosicao?: string;
   } = $props();
 
   const porcento = new Intl.NumberFormat("pt-BR", { style: "percent" });
@@ -49,11 +56,23 @@
 </script>
 
 <div class="barra">
-  <div class="grupo grupo-barra">
+  <div class="grupo grupo-barra paginas">
     <div class="grupo-sem-caixa" role="group" aria-label="Páginas">
       <button type="button" onclick={() => onIrPara(pagina - 1)} disabled={pagina <= 1}>
         <Icone nome="anterior" /><span class="rotulo">Página anterior</span>
       </button>
+      {#if total > 1}
+        <Posicao
+          valor={pagina}
+          min={1}
+          max={total}
+          passo={1}
+          grande={passoGrande(1, total, 1)}
+          rotulo={rotuloPosicao}
+          texto={(p) => textoDaPagina(p, total, secaoDaPagina(p))}
+          onIr={onIrPara}
+        />
+      {/if}
       <label>
         <!-- A palavra some da tela junto com os outros rótulos (o nome do campo fica). -->
         <span class="rotulo">Página</span>
@@ -133,6 +152,12 @@
 
   .grupo {
     flex: none;
+  }
+
+  /* O das páginas encolhe (o slider cede espaço) antes de transbordar. */
+  .grupo.paginas {
+    flex: 0 1 auto;
+    min-width: 0;
   }
 
   /* "1.000%" é o mais largo: o zoom não empurra os botões ao mudar. */

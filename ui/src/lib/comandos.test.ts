@@ -7,13 +7,18 @@ import {
   comandosDoTexto,
   filtrarComandos,
   irParaPagina,
+  irParaPorcentagem,
   ladoPorTermo,
   type Comando,
 } from "./comandos";
 import { LIMITES, PADRAO } from "./preferencias.svelte";
 
 const nada = () => {};
-const c = (id: string, titulo: string, extra: Partial<Comando> = {}): Comando => ({
+const c = (
+  id: string,
+  titulo: string,
+  extra: Partial<Comando> = {},
+): Comando => ({
   id,
   titulo,
   grupo: "Teste",
@@ -39,7 +44,9 @@ describe("filtrarComandos", () => {
 
   it("acha sem acentos nem maiúsculas, com as palavras em qualquer ordem", () => {
     expect(ids(filtrarComandos(COMANDOS, "cortico"))).toEqual(["cortico"]);
-    expect(ids(filtrarComandos(COMANDOS, "ESCURO interface"))).toEqual(["escuro"]);
+    expect(ids(filtrarComandos(COMANDOS, "ESCURO interface"))).toEqual([
+      "escuro",
+    ]);
   });
 
   it("busca também na dica (ex.: o autor do livro) e nas palavras extras", () => {
@@ -59,7 +66,11 @@ describe("filtrarComandos", () => {
     ];
     expect(ids(filtrarComandos(lista, "le"))).toEqual(["comeco", "dentro"]);
     expect(ids(filtrarComandos(lista, "li"))).toEqual(["meio"]);
-    const ordem = [c("a", "Abrir Hamlet"), c("b", "Estante: Lendo"), c("c", "Lendo agora")];
+    const ordem = [
+      c("a", "Abrir Hamlet"),
+      c("b", "Estante: Lendo"),
+      c("c", "Lendo agora"),
+    ];
     expect(ids(filtrarComandos(ordem, "le"))).toEqual(["c", "b", "a"]);
   });
 });
@@ -71,7 +82,11 @@ describe("comandos do leitor", () => {
     const navegar = vi.fn();
     const itens = [
       { label: "I. Do título", href: "c1" },
-      { label: " II. Do livro ", href: "c2", subitems: [{ label: "Parte A", href: "c2a" }] },
+      {
+        label: " II. Do livro ",
+        href: "c2",
+        subitems: [{ label: "Parte A", href: "c2a" }],
+      },
     ];
     const lista = comandosDoIndice(itens, "c2", navegar);
     expect(lista.map((c) => c.titulo)).toEqual([
@@ -108,7 +123,9 @@ describe("comandos do leitor", () => {
   it("texto: aumentar e diminuir respeitam os limites", () => {
     const mudar = vi.fn();
     const no = (tamanho: number, titulo: string) =>
-      comandosDoTexto({ ...prefs, tamanho }, mudar, () => {}).find((c) => c.titulo === titulo);
+      comandosDoTexto({ ...prefs, tamanho }, mudar, () => {}).find(
+        (c) => c.titulo === titulo,
+      );
     no(1, "Aumentar o texto")!.executar();
     expect(mudar).toHaveBeenLastCalledWith({ tamanho: 1.1 });
     no(1, "Diminuir o texto")!.executar();
@@ -121,7 +138,11 @@ describe("comandos do leitor", () => {
   it("texto: fontes, alinhamento, hifenização e restaurar", () => {
     const mudar = vi.fn();
     const restaurar = vi.fn();
-    const lista = comandosDoTexto({ ...prefs, hifenizacao: false }, mudar, restaurar);
+    const lista = comandosDoTexto(
+      { ...prefs, hifenizacao: false },
+      mudar,
+      restaurar,
+    );
     lista.find((c) => c.titulo === "Fonte: Atkinson Hyperlegible")!.executar();
     expect(mudar).toHaveBeenCalledWith({ fonte: "atkinson" });
     lista.find((c) => c.titulo === "Alinhamento: justificado")!.executar();
@@ -134,7 +155,17 @@ describe("comandos do leitor", () => {
 
   it("ir para a página: só com um número válido no termo", () => {
     const ir = vi.fn();
-    expect(irParaPagina("42", 300, ir).map((c) => c.titulo)).toEqual(["Ir para a página 42"]);
+    expect(irParaPagina("42", 300, ir).map((c) => c.titulo)).toEqual([
+      "Ir para a página 42",
+    ]);
+    expect(irParaPorcentagem("37%", ir).map((c) => c.titulo)).toEqual([
+      "Ir para 37% do livro",
+    ]);
+    expect(irParaPorcentagem("50 por cento", ir)).toHaveLength(1);
+    expect(irParaPorcentagem("101%", ir)).toEqual([]);
+    expect(irParaPorcentagem("37", ir)).toEqual([]);
+    irParaPorcentagem("25 %", ir)[0].executar();
+    expect(ir).toHaveBeenLastCalledWith(0.25);
     expect(irParaPagina("página 7", 300, ir)).toHaveLength(1);
     expect(irParaPagina("pag 7", 300, ir)).toHaveLength(1);
     expect(irParaPagina("0", 300, ir)).toEqual([]);
@@ -148,9 +179,18 @@ describe("comandos do leitor", () => {
 describe("comandosDoLado", () => {
   const itens = [
     { label: "I. Do título", href: "c1" },
-    { label: "II. Do livro", href: "c2", subitems: [{ label: "Parte A", href: "c2a" }] },
+    {
+      label: "II. Do livro",
+      href: "c2",
+      subitems: [{ label: "Parte A", href: "c2a" }],
+    },
   ];
-  const acoes = () => ({ abrir: vi.fn(), abrirAqui: vi.fn(), fechar: vi.fn(), alternar: vi.fn() });
+  const acoes = () => ({
+    abrir: vi.fn(),
+    abrirAqui: vi.fn(),
+    fechar: vi.fn(),
+    alternar: vi.fn(),
+  });
 
   it("fechado: abrir este ponto ou uma seção ao lado", () => {
     const a = acoes();
@@ -171,11 +211,16 @@ describe("comandosDoLado", () => {
   it("aberto: alternar (F6) e fechar vêm primeiro; as seções levam o lado até elas", () => {
     const a = acoes();
     const lista = comandosDoLado(true, itens, a);
-    expect(lista.slice(0, 2).map((c) => c.titulo)).toEqual(["Alternar entre os lados", "Fechar o lado"]);
+    expect(lista.slice(0, 2).map((c) => c.titulo)).toEqual([
+      "Alternar entre os lados",
+      "Fechar o lado",
+    ]);
     expect(lista[0]!.teclas).toEqual([["F6"]]);
     expect(lista[1]!.teclas).toEqual([["Ctrl", "Shift", "L"]]);
     expect(lista.map((c) => c.titulo)).toContain("Lado: ir para II. Do livro");
-    expect(lista.map((c) => c.titulo)).not.toContain("Abrir este ponto ao lado");
+    expect(lista.map((c) => c.titulo)).not.toContain(
+      "Abrir este ponto ao lado",
+    );
     lista[1]!.executar();
     expect(a.fechar).toHaveBeenCalled();
   });
@@ -188,9 +233,9 @@ describe("ladoPorTermo", () => {
     expect(lista.map((c) => c.titulo)).toEqual(["Abrir a página 87 ao lado"]);
     lista[0]!.executar();
     expect(abrir).toHaveBeenCalledWith(87);
-    expect(ladoPorTermo("lado 12", 300, true, abrir).map((c) => c.titulo)).toEqual([
-      "Lado: ir para a página 12",
-    ]);
+    expect(
+      ladoPorTermo("lado 12", 300, true, abrir).map((c) => c.titulo),
+    ).toEqual(["Lado: ir para a página 12"]);
     expect(ladoPorTermo("ao lado página 5", 300, false, abrir)).toHaveLength(1);
     expect(ladoPorTermo("ao lado 301", 300, false, abrir)).toEqual([]);
     expect(ladoPorTermo("87", 300, false, abrir)).toEqual([]);
@@ -202,7 +247,10 @@ describe("comandosDaVelocidade", () => {
   it("mais rápida e mais lenta, um passo por vez, dizendo a atual", () => {
     const mudar = vi.fn();
     const lista = comandosDaVelocidade({ ...PADRAO, velocidadeVoz: 20 }, mudar);
-    expect(lista.map((c) => c.titulo)).toEqual(["Voz mais rápida", "Voz mais lenta"]);
+    expect(lista.map((c) => c.titulo)).toEqual([
+      "Voz mais rápida",
+      "Voz mais lenta",
+    ]);
     expect(lista[0]!.dica).toBe("agora: +20");
     lista[0]!.executar();
     expect(mudar).toHaveBeenCalledWith({ velocidadeVoz: 30 });
@@ -213,11 +261,15 @@ describe("comandosDaVelocidade", () => {
   it("some no limite", () => {
     const max = LIMITES.velocidadeVoz.max;
     const min = LIMITES.velocidadeVoz.min;
-    expect(comandosDaVelocidade({ ...PADRAO, velocidadeVoz: max }, nada).map((c) => c.titulo)).toEqual([
-      "Voz mais lenta",
-    ]);
-    expect(comandosDaVelocidade({ ...PADRAO, velocidadeVoz: min }, nada).map((c) => c.titulo)).toEqual([
-      "Voz mais rápida",
-    ]);
+    expect(
+      comandosDaVelocidade({ ...PADRAO, velocidadeVoz: max }, nada).map(
+        (c) => c.titulo,
+      ),
+    ).toEqual(["Voz mais lenta"]);
+    expect(
+      comandosDaVelocidade({ ...PADRAO, velocidadeVoz: min }, nada).map(
+        (c) => c.titulo,
+      ),
+    ).toEqual(["Voz mais rápida"]);
   });
 });

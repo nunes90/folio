@@ -11,6 +11,9 @@
   import Carregando from "./Carregando.svelte";
   import Icone from "./Icone.svelte";
   import ControlesVoz from "./ControlesVoz.svelte";
+  import Posicao from "./Posicao.svelte";
+  import { fracoesDasAncoras, irParaFracao, rotuloNoPonto, textoDaFracao } from "../lib/posicao";
+  import { achatar } from "../lib/sumario";
   import MolduraLeitor from "./MolduraLeitor.svelte";
   import PainelLeitura from "./PainelLeitura.svelte";
   import PainelPagina from "./PainelPagina.svelte";
@@ -78,6 +81,7 @@
     hexDaCor,
     paginaEscura,
     posicaoNoIframe,
+    posicaoNoLivro,
     resumo,
     selecaoNoEpub,
   } from "../lib/destaques";
@@ -88,6 +92,7 @@
     comandosDoIndice,
     comandosDoLado,
     comandosDoTexto,
+    irParaPorcentagem,
     type Comando,
     type ComandosDoLeitor,
   } from "../lib/comandos";
@@ -135,6 +140,12 @@
 
   let titulo = $state("");
   let itensIndice = $state<ItemIndice[]>([]);
+  /** Onde cada item do índice começa no livro (0 a 1), para o slider dizer o capítulo de um ponto. */
+  let posicoesDoIndice = $state.raw(new Map<string, number>());
+  /** Livro da direita para a esquerda: o slider começa à direita. */
+  let livroRtl = $state(false);
+  /** Quantas vezes o livro mudou de lugar (o slider confere se a ida aconteceu). */
+  let relocacoes = 0;
   let hrefAtual = $state<string>();
   /** Texto da região aria-live: anuncia a mudança de seção (não cada página). */
   let anuncio = $state("");
@@ -419,6 +430,62 @@
     };
   });
 
+  /** Slider de posição: o valor vai de 0 a 1000 (décimos de 1%). */
+  const MIL = 1000;
+  function textoDoPonto(v: number): string {
+    const f = v / MIL;
+    return textoDaFracao(f, rotuloNoPonto(itensIndice, posicoesDoIndice, f));
+  }
+
+  /**
+   * Onde cada item do índice começa. Logo: o início da seção, só para o primeiro item de cada
+   * uma. Depois (em segundo plano, cada seção com âncoras carregada à parte uma vez): o ponto de
+   * cada âncora dentro da seção.
+   */
+  async function posicionarIndice(v: FoliateView) {
+    const inicios = v.getSectionFractions();
+    const itens = achatar(itensIndice).flatMap((item) => {
+      const r = v.resolveNavigation(item.href);
+      return r && r.index >= 0 ? [{ item, ...r }] : [];
+    });
+    const primeiros = new Map<string, number>();
+    const vistas = new Set<number>();
+    for (const { item, index } of itens) {
+      if (!vistas.has(index)) primeiros.set(item.href, inicios[index] ?? 0);
+      vistas.add(index);
+    }
+    posicoesDoIndice = primeiros;
+
+    const dentro = new Map<string, number>();
+    for (const index of vistas) {
+      const daSecao = itens.filter((i) => i.index === index);
+      if (daSecao.length < 2) continue;
+      try {
+        const doc = await v.book.sections?.[index]?.createDocument?.();
+        if (!doc || view !== v) continue;
+        const alvos = daSecao.map((i) => i.anchor?.(doc));
+        const nos = alvos.map((a) => (a instanceof Node ? a : doc.body));
+        const fracoes = fracoesDasAncoras(doc, nos);
+        daSecao.forEach((i, k) => dentro.set(i.item.href, alvos[k] instanceof Node ? fracoes[k] : 0));
+      } catch (e) {
+        log.warn(`posições do índice na seção ${index}: ${e}`);
+      }
+    }
+    if (view !== v) return;
+    // Na ordem do índice: no empate, o item mais específico (o último) vence.
+    posicoesDoIndice = new Map(
+      itens.map(({ item, index }) => [item.href, posicaoNoLivro(inicios, index, dentro.get(item.href) ?? 0)]),
+    );
+  }
+  async function irParaPonto(v: number) {
+    destaques.esconder();
+    try {
+      await irParaFracao(view, v / MIL, () => relocacoes);
+    } catch (e) {
+      log.warn(`slider: não foi possível ir a ${v / 10}%: ${e}`);
+    }
+  }
+
   /** Lado de onde vem a página seguinte: a direita, salvo em livros da direita para a esquerda. */
   const ladoDaProxima = () => (view?.book.dir === "rtl" ? "esquerda" : "direita");
   const ladoDaAnterior = () => (ladoDaProxima() === "direita" ? "esquerda" : "direita");
@@ -612,6 +679,7 @@
       // No modo frase, a página vira para acompanhar a frase: a barra vai junto.
       if (!modoFrase) destaques.esconderDe(false);
       const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;
+      relocacoes++;
       progresso = fraction;
       if (cfi) cfiAtual = cfi;
       hrefAtual = tocItem?.href;
@@ -662,6 +730,8 @@
     const idioma = v.book.metadata?.language;
     idiomaDoLivro = (Array.isArray(idioma) ? idioma[0] : idioma) ?? null;
     itensIndice = v.book.toc ?? [];
+    livroRtl = v.book.dir === "rtl";
+    void posicionarIndice(v);
     await destaques.carregar();
     await v.init({ lastLocation: inicio ?? null, showTextStart: !inicio });
     moldura.focarTitulo();
@@ -980,7 +1050,13 @@
       ...comandosDaPagina(preferencias, atualizarPreferencias),
       ...comandosDoTexto(preferencias, atualizarPreferencias, restaurarPadrao),
     );
-    onComandos?.({ comandos: lista, porTermo: (termo) => metaPorTermo(termo, meta, "epub") });
+    onComandos?.({
+      comandos: lista,
+      porTermo: (termo) => [
+        ...irParaPorcentagem(termo, (f) => void irParaPonto(Math.round(f * MIL))),
+        ...metaPorTermo(termo, meta, "epub"),
+      ],
+    });
   });
 
   // Dois pontos do livro lado a lado (M25b): o lado novo lê e destaca (LadoEpub); o resto
@@ -1152,6 +1228,17 @@
         <button type="button" onclick={() => void lado?.virar("esquerda")}>
           <Icone nome="anterior" /><span class="rotulo">Anterior</span>
         </button>
+        <Posicao
+          valor={Math.round(progressoLado * MIL)}
+          min={0}
+          max={MIL}
+          passo={10}
+          grande={100}
+          rotulo="Posição no livro, deste lado"
+          texto={textoDoPonto}
+          rtl={livroRtl}
+          onIr={(v) => void lado?.irParaFracao(v / MIL)}
+        />
         <span class="porcento">{porcento.format(progressoLado)}</span>
         <button type="button" onclick={() => void lado?.virar("direita")}>
           <Icone nome="proxima" /><span class="rotulo">Próxima</span>
@@ -1236,6 +1323,17 @@
         <button type="button" onclick={anterior}>
           <Icone nome="anterior" /><span class="rotulo">Anterior</span>
         </button>
+        <Posicao
+          valor={Math.round(progresso * MIL)}
+          min={0}
+          max={MIL}
+          passo={10}
+          grande={100}
+          rotulo="Posição no livro"
+          texto={textoDoPonto}
+          rtl={livroRtl}
+          onIr={irParaPonto}
+        />
         <span class="porcento">{porcento.format(progresso)}</span>
         <button type="button" onclick={proxima}>
           <Icone nome="proxima" /><span class="rotulo">Próxima</span>

@@ -22,6 +22,26 @@ describe("EPUB", () => {
     await ate(async () => (await fracao()) !== antes, "o botão não virou a página");
   });
 
+  it("o slider leva a qualquer ponto: clique na trilha e teclado", async () => {
+    const slider = await $("footer input[type=range]");
+    const porcento = () => browser.execute(() => parseInt(document.querySelector("footer .porcento")?.textContent ?? ""));
+    expect(await slider.getAttribute("aria-label")).toBe("Posição no livro");
+    // Clique no meio da trilha logo depois de virar a página (o foliate-js ignora navegação nos 100 ms
+    // seguintes a uma virada; o slider tenta de novo): vai para perto de 50%, e diz o capítulo.
+    await browser.keys(Key.ArrowRight);
+    await slider.click();
+    await ate(async () => Math.abs((await porcento()) - 50) <= 3, "o clique na trilha não levou ao meio do livro");
+    expect(await slider.getAttribute("aria-valuetext")).toMatch(/^\d+% · ./);
+    await browser.keys(Key.End);
+    await ate(async () => (await porcento()) >= 98, "End não levou ao fim do livro");
+    // Volta ao começo do texto (para os testes seguintes): Home e 2%.
+    await browser.keys(Key.Home);
+    await browser.keys(Key.ArrowRight);
+    await browser.keys(Key.ArrowRight);
+    await ate(async () => (await porcento()) <= 3, "Home e → não voltaram ao começo");
+    await browser.pause(600);
+  });
+
   it("F1 mostra os atalhos agrupados; Esc fecha", async () => {
     await browser.keys(Key.F1);
     const dialogo = await $('dialog[aria-labelledby="titulo-atalhos"]');

@@ -889,4 +889,19 @@ docs/decisions/  # ADRs
   mesmo botão (o foco não cai no body ao começar) e "Parar leitura" devolve o foco a ele; o `AvisoDePreparo` espera
   1 s (era 400 ms: o modelo aberto gera a primeira frase em 0,4–1 s, e o aviso saía junto com a voz). Conferido com
   o Orca real (`voz.e2e.js`, passos 9.10d): ao começar pelo rodapé, o Orca não fala nada.
+- **Slider de posição** (branch `feat/slider-posicao`): `Posicao.svelte` no rodapé, entre ‹ e ›, nos dois formatos e
+  nos dois lados (EPUB: 0–1000, décimos de 1%; PDF: as páginas, dentro da `BarraPdf`). Arrastar mostra um balão com o
+  destino (`textoDaFracao`/`textoDaPagina` em `lib/posicao.ts`: "78% · Capítulo", "Página 42 de 300 · Seção") e navega
+  ao soltar; no teclado (`valorPelaTecla`: ←/→ e ↑/↓ um passo, PageUp/PageDown um décimo, Home/End; → volta em livro
+  RTL) os passos se somam e só navega 350 ms depois da última tecla, sem balão (texto que muda perto do foco derruba o
+  WebKitGTK com o Orca; o leitor de tela ouve o `aria-valuetext`); a tecla não chega ao leitor (não vira a página).
+  O valor escolhido fica até o livro chegar (ou 1,5 s). Capítulo de um ponto no EPUB: `rotuloNoPonto` (o `itemAtual`
+  do sumário) sobre `posicoesDoIndice`; o índice de muitos EPUBs aponta para âncoras dentro de poucos arquivos (o Dom
+  Casmurro: 153 entradas em 4), então, depois de abrir, cada seção com 2+ entradas é carregada à parte uma vez
+  (`createDocument`) e `fracoesDasAncoras` acha o ponto de cada âncora numa passada pelo texto. **O paginador do
+  foliate-js ignora, sem erro, um `goTo` nos 100 ms seguintes a uma virada** (`#locked`): `irParaFracao` confere pelo
+  número de `relocate` e tenta de novo. No WebKitGTK, o `input[type=range]` mede 129 px no cálculo do grupo
+  (flex-basis não vale): o slider tem `width: 14rem` e encolhe; o grupo de páginas da `BarraPdf` também encolhe (com o
+  lado aberto, transbordava a metade). Paleta do EPUB: "37%" → "Ir para 37% do livro" (`irParaPorcentagem`). F1:
+  linha do slider em Navegação. Conferido com o Orca real (passos 3.10 e 4.8 de `orca/epub.e2e.js` e `pdf.e2e.js`).
 - Próximo passo: M27e (Piper), quando fizer falta; o Lucas ouvir de novo a voz natural com o Orca ligado.

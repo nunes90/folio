@@ -10,6 +10,12 @@ describe("orca pdf", () => { it("roteiro", async () => {
   await passo("4.5", "Página: 2 e Enter", async () => { const i = await $('footer input[type="number"]'); await i.click(); await browser.keys([Key.Ctrl, "a"]); await browser.keys("2"); await k(Key.Enter); }, 1500);
   await passo("4.6", "Zoom +", () => botao("Aumentar zoom", "//footer").click(), 1200);
   await passo("4.7", "paleta: 3 e Enter", async () => { await k(Key.Ctrl, "k"); await browser.pause(500); await browser.keys("3"); await browser.pause(300); await k(Key.Enter); }, 1500);
+  nota("Slider de posição");
+  await passo("4.8a", "foco no slider", () => browser.execute(() => document.querySelector("footer input[type=range]")?.focus()), 1800);
+  await passo("4.8b", "←", () => k(Key.ArrowLeft), 2000);
+  await passo("4.8c", "End", () => k(Key.End), 2000);
+  await passo("4.8d", "Home", () => k(Key.Home), 2000);
+  nota("foco: " + await estado());
   nota("8. Destaques no PDF"); await browser.pause(800);
   await passo("8.1p", "Ctrl+D", () => k(Key.Ctrl, "d"), 1800);
   await passo("8.4p", "Enter na cor", () => k(Key.Enter), 1500);
