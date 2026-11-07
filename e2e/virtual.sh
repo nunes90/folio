@@ -5,7 +5,8 @@
 # sem ter a que se conectar, e cairia a cada execução, com notificação de crash no desktop.
 XDG_DESKTOP_PORTAL_DIR=$(mktemp -d)
 export XDG_DESKTOP_PORTAL_DIR
-xvfb-run --auto-servernum dbus-run-session -- "$@"
+# FOLIO_TELA: o tamanho da tela virtual (ex.: 2560x1600, para as capturas grandes).
+xvfb-run --auto-servernum ${FOLIO_TELA:+-s "-screen 0 ${FOLIO_TELA}x24"} dbus-run-session -- "$@"
 CODIGO=$?
 rm -rf "$XDG_DESKTOP_PORTAL_DIR"
 exit $CODIGO

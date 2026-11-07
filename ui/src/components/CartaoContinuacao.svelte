@@ -23,7 +23,7 @@
     <blockquote>…&nbsp;{continuacao.trecho.join(" ")}</blockquote>
   {/if}
   <div class="botoes">
-    <button type="button" onclick={onFechar}>Continuar lendo</button>
+    <button type="button" class="primario" onclick={onFechar}>Continuar lendo</button>
   </div>
 </section>
 

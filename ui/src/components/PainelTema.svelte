@@ -97,20 +97,6 @@
     font-size: 1.1rem;
   }
 
-  fieldset {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    margin: 0;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--borda);
-    border-radius: 0.25rem;
-  }
-
-  legend {
-    font-weight: 600;
-  }
-
   .opcao {
     display: flex;
     align-items: center;

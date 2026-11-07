@@ -262,14 +262,8 @@
   }
 
   fieldset {
-    display: flex;
-    flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
-    margin: 0;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--borda);
-    border-radius: 0.25rem;
   }
 
   fieldset > * {
@@ -296,10 +290,6 @@
     margin: 0;
   }
 
-  legend {
-    font-weight: 600;
-  }
-
   .opcao {
     display: flex;
     align-items: center;
@@ -324,13 +314,6 @@
     font-size: 0.875rem;
   }
 
-  /* A ação principal da seção, na cor de destaque (contraste testado em temas.ts). */
-  .primario {
-    border-color: var(--destaque);
-    background: var(--destaque);
-    color: var(--sobre-destaque);
-    font-weight: 600;
-  }
 
   .amostra {
     display: inline-flex;
