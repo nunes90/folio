@@ -220,6 +220,7 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
     idiomas; reaproveita os fonemas e o ONNX Runtime, entra como linhas no catálogo e um motor
   - [x] pt-BR com o Kokoro: a Dora (o Alex e o Santa não soaram bem), normalização do português (números por
     extenso, moeda, romanos, abreviações, horas) e uma voz por idioma no motor
+  - [x] Alex, a voz masculina do português (nov/2026), com o filtro da Dora e escolha de voz no português
 
 - [x] **Slider de posição** (nov/2026): arrastar para qualquer ponto do livro, igual nos dois formatos e nos dois
   lados; teclado (passo, um décimo, as pontas) e leitor de tela (a porcentagem ou a página e o capítulo); "37%" na

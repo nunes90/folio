@@ -149,7 +149,7 @@
                       name="voz-natural-{idioma.base}"
                       value={voz.id}
                       checked={atual.id === voz.id}
-                      onchange={() => onMudar({ vozNatural: voz.id })}
+                      onchange={() => onMudar({ [idioma.escolha]: voz.id })}
                     />
                     <span>
                       {voz.nome}

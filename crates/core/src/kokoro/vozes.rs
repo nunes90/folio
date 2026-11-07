@@ -93,10 +93,11 @@ pub fn idioma_da_voz(nome: &str) -> Option<&'static str> {
 }
 
 /// O corte do passa-baixa de uma voz que chia nos agudos (Hz), se ela precisar. A Dora soava
-/// metálica no "s"; com o corte em 8 kHz, melhor (ouvido em nov/2026).
+/// metálica no "s"; com o corte em 8 kHz, melhor (ouvido em nov/2026). O Alex, do mesmo
+/// conjunto, recebe o mesmo filtro.
 pub fn corte_da_voz(nome: &str) -> Option<f32> {
     match nome {
-        "pf_dora" => Some(8000.0),
+        "pf_dora" | "pm_alex" => Some(8000.0),
         _ => None,
     }
 }

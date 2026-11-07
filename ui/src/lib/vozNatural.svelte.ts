@@ -53,11 +53,16 @@ export function megabytes(bytes: number): string {
   return `${Math.round(bytes / 1_000_000)} MB`;
 }
 
-/** Os idiomas da voz natural, cada um com a preferência que o liga. */
+/** Os idiomas da voz natural, cada um com a preferência que o liga e a da voz escolhida. */
 export const IDIOMAS_DA_VOZ = [
-  { base: "en", nome: "inglês", pref: "vozNaturalEmIngles" },
-  { base: "pt", nome: "português", pref: "vozNaturalEmPortugues" },
-] as const satisfies readonly { base: string; nome: string; pref: keyof Preferencias }[];
+  { base: "en", nome: "inglês", pref: "vozNaturalEmIngles", escolha: "vozNatural" },
+  { base: "pt", nome: "português", pref: "vozNaturalEmPortugues", escolha: "vozNaturalPortugues" },
+] as const satisfies readonly {
+  base: string;
+  nome: string;
+  pref: keyof Preferencias;
+  escolha: keyof Preferencias;
+}[];
 
 export type IdiomaDaVoz = (typeof IDIOMAS_DA_VOZ)[number];
 
@@ -75,17 +80,15 @@ export function idiomasDoModelo(modelo: ModeloDeVoz) {
   );
 }
 
-/**
- * A voz em uso num idioma: no inglês, a escolhida, se for dele, ou a primeira (a padrão do core);
- * nos outros, a primeira (ainda não há escolha).
- */
+/** A voz em uso num idioma: a escolhida, se for dele, ou a primeira (a padrão do core). */
 export function vozEscolhida(
   modelo: ModeloDeVoz,
   p: Preferencias,
   idioma = "en",
 ): VozDoCatalogo {
   const vozes = vozesDoIdioma(modelo, idioma);
-  const escolhida = idioma === "en" ? vozes.find((v) => v.id === p.vozNatural) : undefined;
+  const chave = IDIOMAS_DA_VOZ.find((i) => i.base === idioma)?.escolha;
+  const escolhida = chave ? vozes.find((v) => v.id === p[chave]) : undefined;
   return escolhida ?? vozes[0] ?? modelo.vozes[0];
 }
 
@@ -273,15 +276,15 @@ export function comandosDaVozNatural(
       const atual = vozEscolhida(m, p, i.base);
       const sufixo = i.base === "en" ? "" : ` em ${i.nome}`;
       return [
-        // Escolher a voz, só onde há mais de uma (hoje, o inglês).
+        // Escolher a voz, só onde há mais de uma.
         ...(i.vozes.length > 1
           ? i.vozes.map((v) => ({
               id: `voz-natural-${v.id}`,
-              titulo: `Voz: ${v.nome}`,
+              titulo: `Voz${sufixo}: ${v.nome}`,
               grupo: "Voz",
               dica: v.id === atual.id ? `atual · ${descreverVoz(v)}` : descreverVoz(v),
               palavras,
-              executar: () => mudar({ vozNatural: v.id }),
+              executar: () => mudar({ [i.escolha]: v.id }),
             }))
           : []),
         {

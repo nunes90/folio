@@ -138,8 +138,9 @@ pub struct PreferenciasLeitura {
     /// Velocidade da leitura em voz alta, de -100 (mais lenta) a 100; 0 é a normal do sistema.
     pub velocidade_voz: i8,
     /// A voz natural escolhida para o inglês (o id no catálogo, ex.: "af_heart"); vazio = a padrão.
-    /// O português tem uma voz só (a Dora), sem escolha por enquanto.
     pub voz_natural: String,
+    /// A voz natural escolhida para o português (ex.: "pm_alex"); vazio = a padrão (a Dora).
+    pub voz_natural_portugues: String,
     /// Ler os livros em inglês com a voz natural, quando ela está baixada.
     pub voz_natural_em_ingles: bool,
     /// Ler os livros em português com a voz natural, quando ela está baixada.
@@ -167,6 +168,7 @@ impl Default for PreferenciasLeitura {
             movimento: Movimento::Sistema,
             velocidade_voz: 0,
             voz_natural: String::new(),
+            voz_natural_portugues: String::new(),
             voz_natural_em_ingles: true,
             voz_natural_em_portugues: true,
             virada: Virada::Nenhuma,
@@ -175,6 +177,13 @@ impl Default for PreferenciasLeitura {
             barras_so_pelo_teclado: false,
         }
     }
+}
+
+/// `id`, se for uma voz do catálogo no idioma `base`; senão, vazio (a voz padrão do idioma).
+fn voz_do_idioma(id: String, base: &str) -> String {
+    let do_idioma = crate::catalogo_vozes::voz(&id)
+        .is_some_and(|(_, v)| crate::voz_por_idioma::idioma_base(v.idioma) == base);
+    if do_idioma { id } else { String::new() }
 }
 
 impl PreferenciasLeitura {
@@ -208,15 +217,9 @@ impl PreferenciasLeitura {
             velocidade_voz: self
                 .velocidade_voz
                 .clamp(limites::VELOCIDADE_VOZ.0, limites::VELOCIDADE_VOZ.1),
-            // Uma voz que saiu do catálogo volta à padrão.
-            // Só uma voz do inglês (a escolha é a do inglês).
-            voz_natural: if crate::catalogo_vozes::voz(&self.voz_natural)
-                .is_some_and(|(_, v)| v.idioma.starts_with("en"))
-            {
-                self.voz_natural
-            } else {
-                String::new()
-            },
+            // Uma voz que saiu do catálogo, ou de outro idioma, volta à padrão.
+            voz_natural: voz_do_idioma(self.voz_natural, "en"),
+            voz_natural_portugues: voz_do_idioma(self.voz_natural_portugues, "pt"),
             ..self
         }
     }
@@ -385,6 +388,12 @@ mod tests {
         );
         assert_eq!(p.voz_natural, "");
         assert!(!p.voz_natural_em_portugues);
+        // A do português, idem: só uma voz do português.
+        let p = PreferenciasLeitura::de_json(r#"{"vozNaturalPortugues": "pm_alex"}"#);
+        assert_eq!(p.voz_natural_portugues, "pm_alex");
+        let p = PreferenciasLeitura::de_json(r#"{"vozNaturalPortugues": "af_heart"}"#);
+        assert_eq!(p.voz_natural_portugues, "");
+        assert_eq!(PreferenciasLeitura::default().voz_natural_portugues, "");
     }
 
     #[test]

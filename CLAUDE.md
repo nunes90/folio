@@ -911,5 +911,9 @@ docs/decisions/  # ADRs
   `e2e/orca/`, `e2e/atspi/`, os specs `leitor-de-tela*` (e o passo da CI) e `docs/testes/orca.md`. Os contornos já no código
   ficaram. Tudo descrito em `docs/leitor-de-tela.md`, com o commit (`b3aaf78`) para recuperar os arquivos. As entradas
   acima que citam esses arquivos são histórico.
-- Próximo passo: o Alex (voz masculina em português, com o filtro da Dora); depois a revisão de design (M28: Aparência
-  menos carregada e adaptação a todos os tamanhos de tela).
+- **Alex** (branch `feat/voz-alex`): a voz masculina do português (`pm_alex`), ouvida de novo pelo Lucas e aprovada, com o
+  mesmo passa-baixa de 8 kHz da Dora (`corte_da_voz`). Preferência `vozNaturalPortugues` (vazio = Dora; só uma voz do
+  português, senão volta à padrão: `voz_do_idioma` no core), aplicada em `voz_natural.rs`. Frontend: `IDIOMAS_DA_VOZ`
+  ganhou `escolha` (a preferência da voz de cada idioma); o grupo do português passa a ter rádios; paleta "Voz em
+  português: Alex".
+- Próximo passo: a revisão de design (M28: Aparência menos carregada e adaptação a todos os tamanhos de tela).
