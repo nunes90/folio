@@ -22,6 +22,8 @@
   import MenuLivro, { type AcaoLivro } from "./MenuLivro.svelte";
   import PainelLateral from "./PainelLateral.svelte";
   import PainelTema from "./PainelTema.svelte";
+  import PainelVoz from "./PainelVoz.svelte";
+  import AbasAparencia from "./AbasAparencia.svelte";
 
   let {
     livros,
@@ -432,7 +434,15 @@
 
     {#if preferencias && onMudarPreferencias}
       <section id="aparencia-biblioteca" aria-label="Aparência" hidden={!aparenciaAberta}>
-        <PainelTema {preferencias} onMudar={onMudarPreferencias} {temaDoSistema} />
+        <!-- Sem página aqui: só as abas Voz e Interface (M28b). -->
+        <AbasAparencia prefixo="aparencia-biblioteca">
+          {#snippet voz()}
+            <PainelVoz {preferencias} onMudar={onMudarPreferencias} />
+          {/snippet}
+          {#snippet aparenciaDoApp()}
+            <PainelTema {preferencias} onMudar={onMudarPreferencias} {temaDoSistema} />
+          {/snippet}
+        </AbasAparencia>
       </section>
     {/if}
 

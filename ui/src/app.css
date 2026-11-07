@@ -102,6 +102,97 @@ legend {
   letter-spacing: 0.01em;
 }
 
+/* Escolhas compactas (M28b), com rádios de verdade (teclado e leitor de tela como sempre) e outro
+   visual. Envolvem os <label><input type="radio">…</label> dentro do fieldset.
+   - .segmentado: poucas opções curtas numa linha, como as abas;
+   - .amostras: uma grade de cartões com uma amostra (cores da página, da interface). */
+.segmentado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-radius: var(--raio);
+  background: var(--hover);
+}
+
+.segmentado label,
+.amostras label {
+  position: relative;
+  cursor: pointer;
+}
+
+.segmentado label {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--raio-pequeno);
+  text-align: center;
+}
+
+.segmentado input,
+.amostras input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segmentado label:has(input:checked) {
+  background: var(--card);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 15%);
+}
+
+.amostras {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.amostras label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.25rem 0.4rem;
+  border: 1px solid var(--divisoria);
+  border-radius: var(--raio);
+  font-size: 0.8125rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* A escolhida: borda de destaque mais grossa e texto forte (não só a cor). */
+.amostras label:has(input:checked) {
+  border-color: var(--destaque);
+  box-shadow: inset 0 0 0 1px var(--destaque);
+  font-weight: 600;
+}
+
+.segmentado label:has(input:focus-visible),
+.amostras label:has(input:focus-visible) {
+  outline: 3px solid var(--foco, Highlight);
+  outline-offset: 1px;
+}
+
+[data-tema="alto-contraste"] .segmentado label:has(input:checked),
+[data-tema="alto-contraste"] .amostras label {
+  border-color: var(--borda);
+}
+
+/* Uma linha de ajuda sob o grupo. */
+.ajuda {
+  margin: 0.25rem 0 0;
+  color: var(--suave);
+  font-size: 0.8125rem;
+}
+
 /* Toque (tela sensível, tablet): alvos de 44 px. */
 @media (pointer: coarse) {
   button,

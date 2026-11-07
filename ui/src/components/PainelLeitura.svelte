@@ -64,8 +64,9 @@
   ] as const;
 </script>
 
-<div class="painel">
-  <h2>Texto</h2>
+<!-- O texto, na aba Leitura do painel Aparência (M28b), só no EPUB (o PDF tem layout fixo). -->
+<section class="painel" aria-labelledby="titulo-texto">
+  <h3 id="titulo-texto">Texto</h3>
 
   <fieldset>
     <legend>Fonte</legend>
@@ -112,34 +113,38 @@
 
   <fieldset>
     <legend>Colunas em janelas largas</legend>
-    {#each [1, 2] as n (n)}
-      <label class="opcao">
-        <input
-          type="radio"
-          name="colunas"
-          value={n}
-          checked={preferencias.colunas === n}
-          onchange={() => onMudar({ colunas: n })}
-        />
-        {n === 1 ? "Uma" : "Até duas"}
-      </label>
-    {/each}
+    <div class="segmentado">
+      {#each [1, 2] as n (n)}
+        <label>
+          <input
+            type="radio"
+            name="colunas"
+            value={n}
+            checked={preferencias.colunas === n}
+            onchange={() => onMudar({ colunas: n })}
+          />
+          {n === 1 ? "Uma" : "Até duas"}
+        </label>
+      {/each}
+    </div>
   </fieldset>
 
   <fieldset>
     <legend>Alinhamento</legend>
-    {#each ALINHAMENTOS as a (a.valor)}
-      <label class="opcao">
-        <input
-          type="radio"
-          name="alinhamento"
-          value={a.valor}
-          checked={preferencias.alinhamento === a.valor}
-          onchange={() => onMudar({ alinhamento: a.valor })}
-        />
-        {a.nome}
-      </label>
-    {/each}
+    <div class="segmentado">
+      {#each ALINHAMENTOS as a (a.valor)}
+        <label>
+          <input
+            type="radio"
+            name="alinhamento"
+            value={a.valor}
+            checked={preferencias.alinhamento === a.valor}
+            onchange={() => onMudar({ alinhamento: a.valor })}
+          />
+          {a.nome}
+        </label>
+      {/each}
+    </div>
   </fieldset>
 
   <label class="opcao">
@@ -151,19 +156,20 @@
     Hifenizar palavras longas
   </label>
 
-  <button type="button" class="restaurar" onclick={onRestaurar}>Restaurar o padrão</button>
-</div>
+  <button type="button" class="restaurar" onclick={onRestaurar}>Restaurar o texto padrão</button>
+</section>
 
 <style>
   .painel {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
+    margin-block-end: 1.5rem;
   }
 
-  h2 {
+  h3 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 
   .opcao {
@@ -179,8 +185,8 @@
   }
 
   .descricao {
-    font-size: 0.875rem;
-    opacity: 0.8;
+    color: var(--suave);
+    font-size: 0.8125rem;
   }
 
   .deslizante {

@@ -13,8 +13,9 @@
     temaDoSistema?: TemaEfetivo;
   } = $props();
 
-  // Seção "Interface" do painel Aparência: só as cores do app. O papel do livro é a seção
-  // Página (PainelPagina); só o alto contraste também vale para a página do EPUB.
+  // Aba "Interface" do painel Aparência (M28b): as cores do app, as animações e as barras do
+  // modo foco. O papel do livro é da aba Leitura (PainelPagina); só o alto contraste também vale
+  // para a página do EPUB.
   const NOMES: Record<TemaEfetivo, string> = {
     claro: "Claro",
     escuro: "Escuro",
@@ -27,60 +28,73 @@
   ];
 
   const MOVIMENTOS: { valor: Movimento; nome: string }[] = [
-    { valor: "sistema", nome: "Seguir o sistema" },
-    { valor: "reduzido", nome: "Sempre reduzir animações" },
+    { valor: "sistema", nome: "Como o sistema" },
+    { valor: "reduzido", nome: "Sempre reduzidas" },
   ];
 </script>
 
 <div class="painel">
-  <h2>Interface</h2>
-
   <fieldset>
     <legend>Cores</legend>
-    {#each OPCOES as opcao (opcao.valor)}
-      {@const amostra = opcao.valor === "sistema" ? temaDoSistema : opcao.valor}
-      <label class="opcao">
-        <input
-          type="radio"
-          name="tema"
-          value={opcao.valor}
-          checked={preferencias.tema === opcao.valor}
-          onchange={() => onMudar({ tema: opcao.valor })}
-        />
-        {#if amostra}
+    <div class="amostras">
+      {#each OPCOES as opcao (opcao.valor)}
+        {@const amostra = opcao.valor === "sistema" ? temaDoSistema : opcao.valor}
+        <label>
+          <input
+            type="radio"
+            name="tema"
+            value={opcao.valor}
+            checked={preferencias.tema === opcao.valor}
+            onchange={() => onMudar({ tema: opcao.valor })}
+          />
           <!-- Amostra decorativa: o nome do tema já está no rótulo. -->
           <span
             class="amostra"
             aria-hidden="true"
-            style:background={TEMAS[amostra].fundo}
-            style:color={TEMAS[amostra].texto}
-            style:border-color={TEMAS[amostra].borda}>Aa</span
+            style:background={amostra ? TEMAS[amostra].fundo : null}
+            style:color={amostra ? TEMAS[amostra].texto : null}
+            style:border-color={amostra ? TEMAS[amostra].borda : null}>Aa</span
           >
-        {/if}
-        <span>
           {opcao.nome}
-          {#if opcao.valor === "sistema" && temaDoSistema}
-            <span class="agora">(agora: {NOMES[temaDoSistema].toLowerCase()})</span>
-          {/if}
-        </span>
-      </label>
-    {/each}
+        </label>
+      {/each}
+    </div>
+    {#if preferencias.tema === "sistema" && temaDoSistema}
+      <p class="ajuda">Agora o sistema está no {NOMES[temaDoSistema].toLowerCase()}.</p>
+    {/if}
   </fieldset>
 
   <fieldset>
     <legend>Animações</legend>
-    {#each MOVIMENTOS as m (m.valor)}
-      <label class="opcao">
-        <input
-          type="radio"
-          name="movimento"
-          value={m.valor}
-          checked={preferencias.movimento === m.valor}
-          onchange={() => onMudar({ movimento: m.valor })}
-        />
-        {m.nome}
-      </label>
-    {/each}
+    <div class="segmentado">
+      {#each MOVIMENTOS as m (m.valor)}
+        <label>
+          <input
+            type="radio"
+            name="movimento"
+            value={m.valor}
+            checked={preferencias.movimento === m.valor}
+            onchange={() => onMudar({ movimento: m.valor })}
+          />
+          {m.nome}
+        </label>
+      {/each}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Modo foco</legend>
+    <label class="opcao">
+      <input
+        type="checkbox"
+        checked={preferencias.barrasSoPeloTeclado}
+        onchange={(e) => onMudar({ barrasSoPeloTeclado: e.currentTarget.checked })}
+      />
+      <span>
+        Mostrar as barras só pelo teclado
+        <span class="descricao">com Tab; o ponteiro nas bordas não as revela</span>
+      </span>
+    </label>
   </fieldset>
 </div>
 
@@ -88,13 +102,8 @@
   .painel {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
     margin-block-end: 1rem;
-  }
-
-  h2 {
-    margin: 0;
-    font-size: 1.1rem;
   }
 
   .opcao {
@@ -105,16 +114,17 @@
   }
 
   .amostra {
-    display: inline-grid;
+    display: grid;
     place-items: center;
-    width: 2rem;
-    height: 1.75rem;
-    border: 1px solid;
-    border-radius: 0.25rem;
+    width: 100%;
+    height: 2.25rem;
+    border: 1px solid var(--borda);
+    border-radius: var(--raio-pequeno);
     font-weight: 600;
   }
 
-  .agora {
+  .descricao {
+    display: block;
     color: var(--suave);
     font-size: 0.875rem;
   }

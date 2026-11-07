@@ -18,6 +18,7 @@
   import PainelLeitura from "./PainelLeitura.svelte";
   import PainelPagina from "./PainelPagina.svelte";
   import PainelVoz from "./PainelVoz.svelte";
+  import AbasAparencia from "./AbasAparencia.svelte";
   import { avisar, dispensar } from "../lib/avisos.svelte";
   import {
     AvisoDePreparo,
@@ -1292,19 +1293,27 @@
   {/snippet}
 
   {#snippet aparencia()}
-    <PainelTema
-      {preferencias}
-      onMudar={atualizarPreferencias}
-      temaDoSistema={resolverTema("sistema", sistema)}
-    />
-    <PainelPagina
-      {preferencias}
-      onMudar={atualizarPreferencias}
-      formato="epub"
-      interface={temaEfetivo()}
-    />
-    <PainelLeitura {preferencias} onMudar={atualizarPreferencias} onRestaurar={restaurarPadrao} />
-    <PainelVoz {preferencias} onMudar={atualizarPreferencias} />
+    <AbasAparencia prefixo="aparencia-epub">
+      {#snippet leitura()}
+        <PainelPagina
+          {preferencias}
+          onMudar={atualizarPreferencias}
+          formato="epub"
+          interface={temaEfetivo()}
+        />
+        <PainelLeitura {preferencias} onMudar={atualizarPreferencias} onRestaurar={restaurarPadrao} />
+      {/snippet}
+      {#snippet voz()}
+        <PainelVoz {preferencias} onMudar={atualizarPreferencias} />
+      {/snippet}
+      {#snippet aparenciaDoApp()}
+        <PainelTema
+          {preferencias}
+          onMudar={atualizarPreferencias}
+          temaDoSistema={resolverTema("sistema", sistema)}
+        />
+      {/snippet}
+    </AbasAparencia>
   {/snippet}
 
   {#snippet rodape()}
