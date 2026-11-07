@@ -23,7 +23,7 @@ mod normalizar_pt;
 mod tokens;
 mod vozes;
 
-pub use fonemas::{EspeakNg, Fonemizador, fonemas_com_pontuacao};
+pub use fonemas::{EspeakNg, Fonemizador, fonemas_com_pontuacao, fonemas_pontuados};
 pub use modelo::{
     ARQUIVO_MODELO, ARQUIVO_ONNX_RUNTIME, ARQUIVO_TOKENS, ARQUIVO_VOZES, Kokoro, TAXA,
 };
@@ -56,4 +56,27 @@ pub enum ErroKokoro {
     },
     #[error("falha no modelo de voz")]
     Modelo(#[from] ort::Error),
+}
+
+/// Áudio mono em WAV de 16 bits, para ouvir o que os testes ignorados geram (Kokoro e Piper).
+#[cfg(test)]
+pub(crate) fn wav_mono_16(amostras: &[f32], taxa: u32) -> Vec<u8> {
+    let dados = (amostras.len() * 2) as u32;
+    let mut b = Vec::with_capacity(44 + dados as usize);
+    b.extend(b"RIFF");
+    b.extend((36 + dados).to_le_bytes());
+    b.extend(b"WAVEfmt ");
+    b.extend(16u32.to_le_bytes());
+    b.extend(1u16.to_le_bytes());
+    b.extend(1u16.to_le_bytes());
+    b.extend(taxa.to_le_bytes());
+    b.extend((taxa * 2).to_le_bytes());
+    b.extend(2u16.to_le_bytes());
+    b.extend(16u16.to_le_bytes());
+    b.extend(b"data");
+    b.extend(dados.to_le_bytes());
+    for a in amostras {
+        b.extend(((a.clamp(-1.0, 1.0) * 32767.0) as i16).to_le_bytes());
+    }
+    b
 }

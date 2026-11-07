@@ -107,7 +107,7 @@ impl Kokoro {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::kokoro::EspeakNg;
+    use crate::kokoro::{EspeakNg, wav_mono_16};
 
     /// Com o modelo baixado e o espeak-ng do sistema:
     /// `FOLIO_KOKORO=<pasta> cargo test -p folio-core -- --ignored kokoro_de_verdade`.
@@ -183,26 +183,5 @@ mod tests {
             segundos / gerar.as_secs_f32()
         );
         std::fs::write(wav, wav_mono_16(&audio, TAXA)).unwrap();
-    }
-
-    fn wav_mono_16(amostras: &[f32], taxa: u32) -> Vec<u8> {
-        let dados = (amostras.len() * 2) as u32;
-        let mut b = Vec::with_capacity(44 + dados as usize);
-        b.extend(b"RIFF");
-        b.extend((36 + dados).to_le_bytes());
-        b.extend(b"WAVEfmt ");
-        b.extend(16u32.to_le_bytes());
-        b.extend(1u16.to_le_bytes());
-        b.extend(1u16.to_le_bytes());
-        b.extend(taxa.to_le_bytes());
-        b.extend((taxa * 2).to_le_bytes());
-        b.extend(2u16.to_le_bytes());
-        b.extend(16u16.to_le_bytes());
-        b.extend(b"data");
-        b.extend(dados.to_le_bytes());
-        for a in amostras {
-            b.extend(((a.clamp(-1.0, 1.0) * 32767.0) as i16).to_le_bytes());
-        }
-        b
     }
 }

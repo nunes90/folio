@@ -944,4 +944,14 @@ docs/decisions/  # ADRs
   `minmax(clamp(8.5rem, 10vw, 13rem), 1fr)` e espaço com `clamp`: duas colunas a 360 px, capas maiores numa tela de
   2560. Janela estreita (`main.estreita`): título e ações só com ícones numa linha, a busca inteira na de baixo.
 - **M28 concluído** (nov/2026; PRs #114–#117, revisado pelo Lucas no app).
-- Próximo passo: a combinar (M27e/Piper, Séries e Flatpak seguem em aberto no ROADMAP).
+- **M27e-1** (branch `feat/m27e-piper-core`): Piper no core (`core::piper`). Licenças levantadas voz a voz (o
+  `MODEL_CARD` de cada uma e o da voz de onde ela foi ajustada): **nenhuma do pt-BR é limpa** (faber, cadu e jeff vêm da
+  lessac, cuja licença Blizzard 2013 é só para pesquisa; edresson vem da ryan, CC BY-NC-SA), e no inglês só as treinadas
+  do zero com dados em domínio público (Kristin, LJSpeech, Norman, Cori; John vem da Kristin). Ouvidas pelo Lucas: entram
+  **Kristin, LJSpeech, Norman e John** (a Cori não). `ConfigPiper::ler` (o `.onnx.json`: taxa, voz do espeak-ng,
+  `phoneme_id_map`, escalas), `ids_dos_fonemas` (`^`, cada símbolo seguido de `_`, `$`; símbolo desconhecido é pulado),
+  `Piper::carregar(modelo, onnx_runtime, fonemizador)` e `sintetizar(frase, velocidade)` (entradas `input`,
+  `input_lengths`, `scales` = ruído, duração ÷ velocidade, ruído_w; 22 050 Hz). Fonemas: `fonemas_pontuados` (o de
+  antes, sem as trocas do Kokoro, que agora ficam só em `fonemas_com_pontuacao`). Medido aqui: ~32× o tempo real (o
+  Kokoro, ~3,4×). Ferramenta: `piper_gerar_wav` (ignorado; `FOLIO_PIPER`, `FOLIO_ONNX_RUNTIME`, `FOLIO_PIPER_WAV`).
+- Próximo passo: M27e-2 (as vozes do Piper no catálogo, o download e o motor) e M27e-3 (a aba Voz).
