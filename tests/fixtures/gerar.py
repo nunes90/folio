@@ -131,7 +131,7 @@ def epub(
             z.writestr(zipfile.ZipInfo(nome, (2026, 1, 1, 0, 0, 0)), conteudo)
 
 
-# Livros pequenos em outros idiomas, para a voz por idioma (roteiro do Orca, e2e/orca/voz.e2e.js):
+# Livros pequenos em outros idiomas, para a voz por idioma:
 # o começo de Pride and Prejudice (Jane Austen) e de Don Quijote (Cervantes), domínio público.
 EM_INGLES = [
     "It is a truth universally acknowledged, that a single man in possession of a good fortune, "

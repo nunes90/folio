@@ -51,7 +51,7 @@
 </script>
 
 <!-- role="img" mesmo escondido: sem ele, um botão só com o ícone, no fim de um item de lista, faz o WebKitGTK
-     abortar quando o leitor de tela pede os atributos de texto (e2e/atspi/rodar.sh). -->
+     abortar quando o leitor de tela pede os atributos de texto (docs/leitor-de-tela.md). -->
 <svg
   viewBox="0 0 24 24"
   width="1em"

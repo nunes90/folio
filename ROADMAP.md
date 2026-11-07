@@ -225,6 +225,9 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
   lados; teclado (passo, um décimo, as pontas) e leitor de tela (a porcentagem ou a página e o capítulo); "37%" na
   paleta do EPUB.
 
+- [x] **Orca adiado** (nov/2026): o suporte específico ao leitor de tela sai até a interface estabilizar
+  (`docs/leitor-de-tela.md`).
+
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
   O código já trata o macOS em alguns pontos (diretório de logs, escala de texto) e deve continuar compilando.

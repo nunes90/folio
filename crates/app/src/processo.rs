@@ -1,4 +1,4 @@
-//! O processo da página pode cair (ver `e2e/atspi/rodar.sh`) e a janela ficaria parada, sem aviso.
+//! O processo da página pode cair (ver `docs/leitor-de-tela.md`) e a janela ficaria parada, sem aviso.
 //! Aqui ela recarrega; o frontend pergunta ao iniciar se foi por isso e avisa quem está lendo.
 
 use std::sync::atomic::{AtomicBool, Ordering};

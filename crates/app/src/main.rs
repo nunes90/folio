@@ -4,7 +4,6 @@
 mod comandos;
 mod escala;
 mod logging;
-mod orca;
 mod processo;
 mod voz_natural;
 
@@ -108,7 +107,6 @@ fn main() -> anyhow::Result<()> {
         })
         .invoke_handler(tauri::generate_handler![
             comandos::processo_recuperado,
-            comandos::anunciar_ao_leitor_de_tela,
             comandos::listar_livros,
             comandos::abrir_por_trechos,
             comandos::trecho_livro,

@@ -1705,7 +1705,7 @@
         {#each textoAcessivel.paragrafos as paragrafo, i (i)}
           <p>{paragrafo}</p>
         {/each}
-        <!-- Também evita que o bloco termine na âncora do {#each} (ver e2e/atspi/rodar.sh). -->
+        <!-- Também evita que o bloco termine na âncora do {#each} (ver docs/leitor-de-tela.md). -->
         <p>
           {textoAcessivel.paragrafos.length ? "Fim da página." : "Esta página não tem texto."}
           {textoAcessivel.pagina < total ? "Page Down vai para a seguinte." : "Fim do documento."}

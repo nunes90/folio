@@ -68,7 +68,7 @@
   }
 
   /* Sem caixa própria (o item de lista continua na árvore de acessibilidade): com ela, o WebKitGTK
-     aborta o processo quando um leitor de tela lê o item (ver e2e/atspi/rodar.sh). */
+     aborta o processo quando um leitor de tela lê o item (ver docs/leitor-de-tela.md). */
   li {
     display: contents;
   }
