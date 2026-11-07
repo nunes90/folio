@@ -295,7 +295,8 @@
 
   function situacao(livro: Livro): string {
     // A regra (inclusive "o que arredonda para 100% está concluído") fica no core.
-    if (livro.situacao === "nao-iniciado" || livro.fracao == null) return "Não iniciado";
+    if (livro.situacao === "nao-iniciado" || livro.fracao == null)
+      return livro.paraLerEm !== null ? "Para ler" : "Não iniciado";
     if (livro.situacao === "concluido") return "Lido";
     // Sem isso, um livro recém-aberto apareceria como "0% lido", igual a não iniciado.
     if (livro.fracao > 0 && livro.fracao < 0.01) return "menos de 1% lido";
@@ -327,7 +328,7 @@
 
 <svelte:window onkeydown={aoTeclarJanela} onpointerdown={aoApontar} />
 
-<main {...{ [ATRIBUTO_TELA]: "" }}>
+<main class:estreita {...{ [ATRIBUTO_TELA]: "" }}>
   {#if arrastando}
     <!-- Só para quem arrasta com o mouse; o teclado usa "Importar livros…". -->
     <div class="soltar" aria-hidden="true" transition:fade={{ duration: duracao("curta"), easing: curva }}>
@@ -570,39 +571,19 @@
               <!-- Ícones para o mouse (fora do Tab); no teclado, as mesmas ações estão no menu. -->
               <div class="acoes-card">
                 {#if !naLixeira}
-                  {@const lidoPeloProgresso = livro.situacao === "concluido" && livro.lidoEm === null}
-                  {#each [
-                    { acao: "favorito" as const, nome: "Favorito", icone: "estrela" as const, ativo: livro.favoritoEm !== null },
-                    { acao: "para-ler" as const, nome: "Para ler", icone: "marcador" as const, ativo: livro.paraLerEm !== null },
-                    { acao: "lido" as const, nome: "Lido", icone: "lido" as const, ativo: livro.situacao === "concluido" },
-                  ] as marca (marca.acao)}
-                    {@const travado = marca.acao === "lido" && lidoPeloProgresso}
-                    <button
-                      type="button"
-                      class="marca"
-                      tabindex="-1"
-                      aria-label={marca.nome}
-                      aria-pressed={marca.ativo}
-                      aria-disabled={travado || undefined}
-                      title={travado ? "Lido (pelo progresso)" : marca.nome}
-                      onclick={() => !travado && onAcao(livro, marca.acao)}
-                    >
-                      <Icone nome={marca.icone} preenchido={marca.ativo && marca.acao !== "lido"} />
-                    </button>
-                  {/each}
-                  {@const emColecoes = livro.colecoes.length}
-                  <!-- Abre o diálogo de coleções (não liga/desliga): destacado se o livro está em alguma. -->
+                  <!-- Só o favorito fica no card (M28d): "Para ler", "Lido" e as coleções estão no
+                       menu ⋯ (e na linha de situação); cinco ícones por card pesavam na estante. -->
+                  {@const favorito = livro.favoritoEm !== null}
                   <button
                     type="button"
                     class="marca"
-                    class:marcada={emColecoes > 0}
                     tabindex="-1"
-                    aria-label="Coleções"
-                    aria-haspopup="dialog"
-                    title={emColecoes ? `Coleções (${emColecoes})` : "Coleções"}
-                    onclick={() => onAcao(livro, "colecoes")}
+                    aria-label="Favorito"
+                    aria-pressed={favorito}
+                    title="Favorito"
+                    onclick={() => onAcao(livro, "favorito")}
                   >
-                    <Icone nome="pasta" preenchido={emColecoes > 0} />
+                    <Icone nome="estrela" preenchido={favorito} />
                   </button>
                 {/if}
                 <MenuLivro
@@ -637,7 +618,19 @@
   .principal {
     grid-column: 2;
     min-width: 0;
-    padding: 1rem 1.5rem;
+    padding: 1rem clamp(1rem, 3vw, 2.5rem);
+  }
+
+  /* Janela estreita (M28d): título e ações (só ícones, regra .estreita .rotulo) numa linha; a busca
+     inteira na linha de baixo, em vez de três linhas desencontradas. */
+  .estreita header .busca {
+    order: 1;
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .estreita header .acoes {
+    margin-inline-start: auto;
   }
 
   /* Barra lateral como painel flutuante (igual ao PainelLateral): margem em relação à janela,
@@ -843,8 +836,9 @@
 
   ul {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-    gap: 1.5rem;
+    /* Capas que acompanham a janela (M28d): duas colunas numa de 360 px, maiores numa tela grande. */
+    grid-template-columns: repeat(auto-fill, minmax(clamp(8.5rem, 10vw, 13rem), 1fr));
+    gap: clamp(1rem, 2vw, 2rem);
     margin: 1rem 0 0;
     padding: 0;
     list-style: none;
@@ -891,8 +885,7 @@
 
   /* Marcada: cor de destaque, fundo suave e, quando o ícone tem, a forma cheia. A cor não é a
      única pista (WCAG 1.4.1). */
-  .marca[aria-pressed="true"],
-  .marca.marcada {
+  .marca[aria-pressed="true"] {
     background: var(--destaque-suave);
     color: var(--destaque);
   }
@@ -901,8 +894,7 @@
     cursor: default;
   }
 
-  :global([data-tema="alto-contraste"]) .marca[aria-pressed="true"],
-  :global([data-tema="alto-contraste"]) .marca.marcada {
+  :global([data-tema="alto-contraste"]) .marca[aria-pressed="true"] {
     border-color: var(--destaque);
   }
 

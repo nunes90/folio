@@ -10,7 +10,7 @@ mostra os atalhos daquela tela. Todo recurso abaixo pode ser usado só com o tec
 | Importar livros | `Ctrl+O`, ou arraste os arquivos para a janela |
 | Abrir um livro | `Enter` no livro (setas, `Home` e `End` andam entre eles) |
 | Buscar por título ou autor | `Ctrl+F` |
-| Marcar como favorito, para ler ou lido; pôr numa coleção | `Shift+F10` ou a tecla `Menu` no livro (ou os ícones do cartão) |
+| Marcar como favorito, para ler ou lido; pôr numa coleção | `Shift+F10` ou a tecla `Menu` no livro, ou o ⋯ do cartão (a estrela do cartão favorita direto) |
 | Mandar para a lixeira | `Delete`; o aviso oferece "Desfazer" |
 
 O Folio guarda uma cópia do livro; o arquivo original não é alterado. Um arquivo danificado é recusado, com o motivo.
