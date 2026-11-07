@@ -970,4 +970,8 @@ docs/decisions/  # ADRs
   Lucas, depois da amostra da Kristin (Piper), toda leitura dava "voz neural indisponível", até com o Kokoro; o mesmo
   devia acontecer ao reabrir o Kokoro depois de 2 min parado. O aviso agora diz a causa (`erro`, `voz`). O
   `piper_no_motor` (ignorado) abre o Piper, o Kokoro e o Piper de novo e lê com eles.
-- Próximo passo: o Lucas ouvir as vozes leves no app (baixar uma e ler um EPUB em inglês).
+- **M27e concluído** (PR #119; testado pelo Lucas no app). **M27 concluído.**
+- **v1.1.0** (nov/2026; branch `chore/v1.1.0`): versão nos 4 lugares (`Cargo.toml`, `tauri.conf.json`, `ui/package.json`
+  e os lockfiles) e `THIRD-PARTY-NOTICES.md` gerado de novo (estava parado desde o M26e, sem as dependências da voz
+  natural; o workflow do AppImage já o regerava ao empacotar). Tag assinada e Release pelo Lucas.
+- Próximo passo: a combinar (Séries — a biblioteca daqui não tem livros com série — e Flatpak seguem em aberto).
