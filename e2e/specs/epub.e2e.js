@@ -60,6 +60,9 @@ describe("EPUB", () => {
         const c = document.querySelector(`#${p} .conteudo`);
         return c ? c.scrollWidth - c.clientWidth : -1;
       }, painel);
+    // A 1000 px, o índice começa fechado (M28c): abre-o (e fica aberto, como antes, para os seguintes).
+    const indice = await botao("Índice", "//header");
+    if ((await indice.getAttribute("aria-expanded")) !== "true") await indice.click();
     await ate(async () => (await sobra("indice")) === 0, "o índice transborda");
     await botao("Aparência", "//header").click();
     await ate(async () => (await sobra("aparencia")) === 0, "a Aparência transborda");

@@ -102,9 +102,10 @@
   let botaoAparencia: HTMLButtonElement;
 
   // Janela estreita: os painéis cobrem o livro (que não muda de tamanho nem é repaginado),
-  // um de cada vez, com um véu por trás. O índice começa fechado para o livro aparecer.
+  // um de cada vez, com um véu por trás. O índice só começa aberto em janela larga (M28c): numa
+  // de 1000 px, ele tomava um terço do livro.
   const estreita = $derived(sistema.estreita);
-  if (untrack(() => sistema.estreita)) indiceAberto = false;
+  if (untrack(() => !sistema.larga || sistema.estreita)) indiceAberto = false;
   $effect.pre(() => {
     if (estreita && untrack(() => indiceAberto && aparenciaAberta)) indiceAberto = false;
   });
@@ -852,12 +853,13 @@
   }
 
   /* Só o painel lateral: as seções da Aparência têm a mesma classe. */
+  /* Crescem um pouco com a janela (M28c): numa tela de 2560 px, 18rem parecia uma tira. */
   .area-indice > :global(.painel) {
-    width: 18rem;
+    width: clamp(18rem, 16vw, 24rem);
   }
 
   .area-aparencia > :global(.painel) {
-    width: 20rem;
+    width: clamp(20rem, 18vw, 26rem);
   }
 
   /* Itens de grid têm min-width: auto e cresceriam até caber o livro; aí o paginador do
@@ -1091,11 +1093,31 @@
     white-space: nowrap;
   }
 
+  /* Compacto (M28c): os grupos quebram de linha um a um (a barra do PDF se desfaz em grupos), e o
+     das páginas cresce para ocupar a linha, com o slider encolhendo antes de quebrar: a voz fica
+     na linha das páginas, e o zoom do PDF vai para a seguinte. */
   .rodape-compacto:not(.com-lado) footer {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.5rem 1.5rem;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .rodape-compacto:not(.com-lado) footer :global(.barra) {
+    display: contents;
+  }
+
+  /* Base pequena (cabe com a voz ao lado numa janela de 360 px) e cresce até ocupar a linha. */
+  .rodape-compacto:not(.com-lado) footer :global(.grupo-barra:has(.posicao)) {
+    flex: 1 1 15rem;
+    min-width: 0;
+    max-width: 32rem;
+  }
+
+  .rodape-compacto:not(.com-lado) footer :global(.posicao) {
+    flex: 1 1 4rem;
+    width: auto;
+    min-width: 4rem;
   }
 
   .rodape-principal,
