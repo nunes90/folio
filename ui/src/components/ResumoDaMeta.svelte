@@ -59,7 +59,7 @@
     <button type="button" onclick={() => escolher(onRepetir)}>
       Mais {resumo ? nomeDaMeta(resumo.meta) : ""}
     </button>
-    <button type="button" class="principal" bind:this={continuar} onclick={() => escolher(onContinuar)}>
+    <button type="button" class="primario" bind:this={continuar} onclick={() => escolher(onContinuar)}>
       Continuar lendo
     </button>
   </div>
@@ -84,7 +84,4 @@
     margin-block-start: 1.5rem;
   }
 
-  .principal {
-    font-weight: 600;
-  }
 </style>

@@ -148,10 +148,4 @@
     border-radius: var(--raio);
   }
 
-  .primario {
-    border-color: var(--destaque);
-    background: var(--destaque);
-    color: var(--sobre-destaque);
-    font-weight: 600;
-  }
 </style>

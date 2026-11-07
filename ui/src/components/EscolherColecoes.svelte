@@ -176,10 +176,4 @@
     margin-block-start: 1.25rem;
   }
 
-  .primario {
-    border-color: var(--destaque);
-    background: var(--destaque);
-    color: var(--sobre-destaque);
-    font-weight: 600;
-  }
 </style>

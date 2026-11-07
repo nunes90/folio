@@ -387,7 +387,7 @@
       {#if temLivros && estreita}
         <button
           type="button"
-          class="secundario"
+          class="discreto"
           bind:this={botaoEstantes}
           aria-expanded={estantesAbertas}
           aria-controls="estantes"
@@ -414,7 +414,7 @@
         {#if preferencias}
           <button
             type="button"
-            class="secundario"
+            class="discreto"
             aria-expanded={aparenciaAberta}
             aria-controls="aparencia-biblioteca"
             onclick={() => (aparenciaAberta = !aparenciaAberta)}
@@ -791,22 +791,6 @@
     border-radius: var(--raio);
   }
 
-  .secundario {
-    border-color: transparent;
-    background: transparent;
-  }
-
-  .secundario:hover {
-    background: var(--hover);
-  }
-
-  /* Ação principal da tela, na cor de destaque (contraste testado em temas.ts). */
-  .primario {
-    border-color: var(--destaque);
-    background: var(--destaque);
-    color: var(--sobre-destaque);
-    font-weight: 600;
-  }
 
   #aparencia-biblioteca {
     max-width: 24rem;

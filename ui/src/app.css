@@ -29,24 +29,86 @@ a {
   color: var(--link, LinkText);
 }
 
+/* Botões (M28): três variantes, as mesmas em toda a interface. Não invente outra num componente.
+   - padrão (secundário): superfície do cartão, borda discreta;
+   - .primario: a ação principal da superfície, na cor de destaque (uma por tela ou painel);
+   - .discreto: sem caixa até o ponteiro passar (barras, listas, ações secundárias).
+   As barras do leitor (MolduraLeitor) e os itens de lista ajustam o seu localmente. */
 button {
-  padding: 0.35rem 0.75rem;
-  border: 1px solid var(--borda, ButtonBorder);
-  border-radius: 0.25rem;
-  background: var(--controle, ButtonFace);
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--divisoria, ButtonBorder);
+  border-radius: var(--raio);
+  background: var(--card, ButtonFace);
   color: var(--texto, ButtonText);
+  line-height: 1.25;
   cursor: pointer;
-}
-
-button {
   transition:
     background-color var(--duracao-curta) var(--curva),
     border-color var(--duracao-curta) var(--curva);
 }
 
+button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+button.primario {
+  border-color: var(--destaque);
+  background: var(--destaque);
+  color: var(--sobre-destaque);
+  font-weight: 600;
+}
+
+button.primario:hover:not(:disabled) {
+  background: var(--destaque);
+  filter: brightness(1.1);
+}
+
+button.discreto {
+  border-color: transparent;
+  background: transparent;
+}
+
+button.discreto:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+/* No alto contraste, toda borda é a forte (a divisória é decorativa nos outros temas). */
+[data-tema="alto-contraste"] button:not(.discreto) {
+  border-color: var(--borda);
+}
+
 button:disabled {
   cursor: default;
   opacity: 0.6;
+}
+
+/* Grupos de opções (fieldset) sem caixa: um rótulo pequeno e espaço, não borda dentro de borda. */
+fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: 0.35rem;
+  padding: 0;
+  color: var(--suave);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Toque (tela sensível, tablet): alvos de 44 px. */
+@media (pointer: coarse) {
+  button,
+  input:not([type="checkbox"], [type="radio"]),
+  select {
+    min-height: 2.75rem;
+  }
 }
 
 /* Diálogos modais (atalhos, confirmação): mesma aparência e mesma entrada em toda a interface. */

@@ -916,4 +916,13 @@ docs/decisions/  # ADRs
   português, senão volta à padrão: `voz_do_idioma` no core), aplicada em `voz_natural.rs`. Frontend: `IDIOMAS_DA_VOZ`
   ganhou `escolha` (a preferência da voz de cada idioma); o grupo do português passa a ter rádios; paleta "Voz em
   português: Alex".
-- Próximo passo: a revisão de design (M28: Aparência menos carregada e adaptação a todos os tamanhos de tela).
+- **M28 — clareza** (revisão de design, sem recursos novos; PRs: componentes, Ajustes rápidos + Preferências, leitor e
+  biblioteca em todos os tamanhos de tela). Capturas: `FOLIO_TELA=2600x1600 FOLIO_CAPTURAS=<pasta> ./virtual.sh npm test`
+  em `e2e/` (`specs/capturas.e2e.js`: biblioteca, EPUB, Aparência e PDF em 360, 600, 800, 1000, 1400 e 2560 px;
+  `FOLIO_TAMANHOS` escolhe; `FOLIO_TELA` aumenta a tela virtual do `virtual.sh`).
+- **M28a** (branch `feat/m28a-componentes`): **botões em três variantes no `app.css`** — padrão (secundário: `--card`,
+  borda `--divisoria`, `--raio`), `.primario` (destaque; um por superfície) e `.discreto` (sem caixa até o ponteiro);
+  no alto contraste, borda forte. As 6 cópias locais do `.primario` saíram; "Continuar lendo" (cartão e meta) é primário.
+  **`fieldset` sem caixa** (global): `legend` pequena, em `--suave`, e espaço, em vez de borda dentro do painel.
+  Com `pointer: coarse`, alvos de 44 px. Regra: componente novo não inventa botão nem grupo; usa estes.
+- Próximo passo: M28b (Ajustes rápidos no lugar da Aparência; o resto num diálogo de Preferências com abas).

@@ -41,6 +41,8 @@ export const config = {
   // o importa e abre). Pastas de dados novas a cada sessão.
   capabilities: process.env.FOLIO_MEDIR
     ? [sessao("specs/medir-pdf.e2e.js", path.resolve(process.env.FOLIO_MEDIR))]
+    : process.env.FOLIO_CAPTURAS
+    ? [sessao("specs/capturas.e2e.js", "dom-casmurro.epub")]
     : [
         sessao("specs/epub.e2e.js", "dom-casmurro.epub"),
         sessao("specs/pdf.e2e.js", "texto.pdf"),
@@ -48,7 +50,7 @@ export const config = {
       ],
   reporters: ["spec"],
   framework: "mocha",
-  mochaOpts: { ui: "bdd", timeout: process.env.FOLIO_MEDIR ? 240000 : 60000 },
+  mochaOpts: { ui: "bdd", timeout: process.env.FOLIO_MEDIR || process.env.FOLIO_CAPTURAS ? 240000 : 60000 },
   waitforTimeout: 10000,
 
   // Pastas novas a cada sessão (o app herda o ambiente do tauri-driver).
