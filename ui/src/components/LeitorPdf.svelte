@@ -139,7 +139,7 @@
 
   let moldura: MolduraLeitor;
   let conteiner: HTMLDivElement;
-  let campoBusca = $state<HTMLInputElement>();
+  let busca = $state<ReturnType<typeof BuscaPdf>>();
   let visor: PDFViewer | undefined;
   /** Modos de rolagem do pdf.js (ScrollMode), disponíveis depois de carregar o visor. */
   let modosDeRolagem: { PAGE: number; VERTICAL: number } | undefined;
@@ -687,7 +687,7 @@
         titulo: "Buscar no documento",
         grupo: "Leitura",
         teclas: [["Ctrl", "F"]],
-        executar: () => campoBusca?.focus(),
+        executar: () => void busca?.abrir(),
       },
       {
         id: "modo-foco",
@@ -1488,7 +1488,7 @@
     // Sem Shift: Ctrl+Shift+F é o modo foco (da moldura).
     if (ctrl && !e.shiftKey && e.key.toLowerCase() === "f") {
       e.preventDefault();
-      campoBusca?.focus();
+      void busca?.abrir();
       return;
     }
     if (ctrl && (e.key === "+" || e.key === "=")) {
@@ -1600,7 +1600,7 @@
   {onFechar}
 >
   {#snippet acoes()}
-    <BuscaPdf resultado={resultadoBusca} onBuscar={buscar} bind:campo={campoBusca} />
+    <BuscaPdf bind:this={busca} resultado={resultadoBusca} onBuscar={buscar} />
   {/snippet}
 
   {#snippet indice()}

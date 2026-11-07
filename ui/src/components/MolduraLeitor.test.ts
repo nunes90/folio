@@ -1,13 +1,28 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/svelte";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/svelte";
 import axe from "axe-core";
 import { createRawSnippet, tick } from "svelte";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sistema } from "../lib/ambiente.svelte";
 import { MetaDaSessao } from "../lib/meta.svelte";
-import { atualizarPreferencias, preferencias } from "../lib/preferencias.svelte";
+import {
+  atualizarPreferencias,
+  preferencias,
+} from "../lib/preferencias.svelte";
 import MolduraLeitor from "./MolduraLeitor.svelte";
 
-const trecho = (html: string) => createRawSnippet(() => ({ render: () => html }));
+const trecho = (html: string) =>
+  createRawSnippet(() => ({ render: () => html }));
+
+// Janela larga (o índice começa aberto), salvo nos testes que dizem outra coisa.
+beforeEach(() => {
+  sistema.larga = true;
+});
 
 /** Abre "Mais opções" e devolve o item; `fechar` fecha o menu de novo (Esc, só no menu). */
 async function itemDoMenu(nome: string) {
@@ -29,7 +44,9 @@ function renderizar(extra = {}) {
   const r = render(MolduraLeitor, {
     titulo: "Dom Casmurro",
     onFechar,
-    indice: trecho('<ol><li><button type="button">Capítulo 1</button></li></ol>'),
+    indice: trecho(
+      '<ol><li><button type="button">Capítulo 1</button></li></ol>',
+    ),
     aparencia: trecho('<div><button type="button">Claro</button></div>'),
     rodape: trecho("<span>12%</span>"),
     children: trecho("<p>Texto do livro</p>"),
@@ -64,7 +81,9 @@ describe("MolduraLeitor", () => {
     expect(indice.getAttribute("aria-expanded")).toBe("true");
     expect(aparencia.getAttribute("aria-expanded")).toBe("false");
     expect(screen.getByRole("navigation", { name: "Índice" })).toBeTruthy();
-    expect(screen.queryByRole("complementary", { name: "Aparência" })).toBeNull();
+    expect(
+      screen.queryByRole("complementary", { name: "Aparência" }),
+    ).toBeNull();
 
     await fireEvent.click(aparencia);
     expect(aparencia.getAttribute("aria-expanded")).toBe("true");
@@ -79,7 +98,11 @@ describe("MolduraLeitor", () => {
     expect(document.activeElement?.id).toBe("aparencia");
     // Já aberto: não fecha (não é liga/desliga), só leva o foco.
     await component.mostrarPainel("indice");
-    expect(screen.getByRole("button", { name: "Índice" }).getAttribute("aria-expanded")).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: "Índice" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
     expect(document.activeElement?.id).toBe("indice");
   });
 
@@ -105,7 +128,9 @@ describe("MolduraLeitor", () => {
 
   it("Voltar chama onFechar", async () => {
     const { onFechar } = renderizar();
-    await fireEvent.click(screen.getByRole("button", { name: "Voltar à biblioteca" }));
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Voltar à biblioteca" }),
+    );
     expect(onFechar).toHaveBeenCalledOnce();
   });
 
@@ -145,18 +170,24 @@ describe("MolduraLeitor", () => {
     const { container } = renderizar({ progresso: 0.37 });
     const barra = container.querySelector<HTMLElement>(".progresso-leitura")!;
     expect(barra.getAttribute("aria-hidden")).toBe("true");
-    expect(barra.querySelector<HTMLElement>("span")!.style.transform).toBe("scaleX(0.37)");
+    expect(barra.querySelector<HTMLElement>("span")!.style.transform).toBe(
+      "scaleX(0.37)",
+    );
   });
 
   it("cada painel tem título e botão de fechar, que devolve o foco ao botão da barra", async () => {
     renderizar({ aparenciaAberta: true });
     expect(screen.getByRole("heading", { name: "Aparência" })).toBeTruthy();
-    await fireEvent.click(screen.getByRole("button", { name: "Fechar Aparência" }));
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Fechar Aparência" }),
+    );
     const aparencia = screen.getByRole("button", { name: "Aparência" });
     expect(aparencia.getAttribute("aria-expanded")).toBe("false");
     expect(document.activeElement).toBe(aparencia);
 
-    await fireEvent.click(screen.getByRole("button", { name: "Fechar Índice" }));
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Fechar Índice" }),
+    );
     const indice = screen.getByRole("button", { name: "Índice" });
     expect(indice.getAttribute("aria-expanded")).toBe("false");
     expect(document.activeElement).toBe(indice);
@@ -165,9 +196,21 @@ describe("MolduraLeitor", () => {
   it("publica a altura do rodapé (--rodape-leitor) para os avisos ficarem acima dele; ao sair, remove", () => {
     const raiz = document.documentElement;
     const { unmount } = renderizar();
-    expect(raiz.style.getPropertyValue("--rodape-leitor")).toMatch(/^\d+(\.\d+)?px$/);
+    expect(raiz.style.getPropertyValue("--rodape-leitor")).toMatch(
+      /^\d+(\.\d+)?px$/,
+    );
     unmount();
     expect(raiz.style.getPropertyValue("--rodape-leitor")).toBe("");
+  });
+
+  it("fora da janela larga, o índice começa fechado (M28c)", () => {
+    sistema.larga = false;
+    renderizar();
+    expect(
+      screen
+        .getByRole("button", { name: "Índice" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
   });
 
   describe("janela estreita", () => {
@@ -178,7 +221,9 @@ describe("MolduraLeitor", () => {
     it("o índice começa fechado e os painéis cobrem o livro (o livro não muda de tamanho)", async () => {
       sistema.estreita = true;
       const { container } = renderizar();
-      expect(container.querySelector(".moldura")!.classList.contains("estreita")).toBe(true);
+      expect(
+        container.querySelector(".moldura")!.classList.contains("estreita"),
+      ).toBe(true);
       const indice = screen.getByRole("button", { name: "Índice" });
       expect(indice.getAttribute("aria-expanded")).toBe("false");
       await fireEvent.click(indice);
@@ -226,7 +271,9 @@ describe("MolduraLeitor", () => {
       renderizar();
       const indice = screen.getByRole("button", { name: "Índice" });
       await fireEvent.click(indice);
-      const voltar = screen.getByRole("button", { name: "Voltar à biblioteca" });
+      const voltar = screen.getByRole("button", {
+        name: "Voltar à biblioteca",
+      });
       voltar.focus();
       await fireEvent.keyDown(voltar, { key: "Escape" });
       expect(indice.getAttribute("aria-expanded")).toBe("false");
@@ -237,18 +284,26 @@ describe("MolduraLeitor", () => {
       renderizar({ aparenciaAberta: true });
       sistema.estreita = true;
       await tick();
-      expect(screen.getByRole("button", { name: "Índice" }).getAttribute("aria-expanded")).toBe(
-        "false",
-      );
-      expect(screen.getByRole("button", { name: "Aparência" }).getAttribute("aria-expanded")).toBe(
-        "true",
-      );
+      expect(
+        screen
+          .getByRole("button", { name: "Índice" })
+          .getAttribute("aria-expanded"),
+      ).toBe("false");
+      expect(
+        screen
+          .getByRole("button", { name: "Aparência" })
+          .getAttribute("aria-expanded"),
+      ).toBe("true");
     });
 
     it("janela larga: os dois painéis podem ficar abertos lado a lado, sem véu", async () => {
       const { container } = renderizar();
       await fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
-      expect(screen.getByRole("button", { name: "Índice" }).getAttribute("aria-expanded")).toBe("true");
+      expect(
+        screen
+          .getByRole("button", { name: "Índice" })
+          .getAttribute("aria-expanded"),
+      ).toBe("true");
       expect(container.querySelector(".veu")).toBeNull();
     });
   });
@@ -264,28 +319,46 @@ describe("MolduraLeitor", () => {
       expect(botaoFoco().getAttribute("aria-pressed")).toBe("true");
       expect(moldura().classList.contains("foco")).toBe(true);
       expect(screen.queryByRole("navigation", { name: "Índice" })).toBeNull();
-      expect(screen.queryByRole("complementary", { name: "Aparência" })).toBeNull();
+      expect(
+        screen.queryByRole("complementary", { name: "Aparência" }),
+      ).toBeNull();
       await fireEvent.click(botaoFoco());
       expect(moldura().classList.contains("foco")).toBe(false);
       expect(screen.getByRole("navigation", { name: "Índice" })).toBeTruthy();
-      expect(screen.getByRole("complementary", { name: "Aparência" })).toBeTruthy();
+      expect(
+        screen.getByRole("complementary", { name: "Aparência" }),
+      ).toBeTruthy();
     });
 
     it("anuncia ao entrar e ao sair", async () => {
       renderizar();
       await fireEvent.click(botaoFoco());
-      expect(screen.getByText("Modo foco ativado. Esc para sair.")).toBeTruthy();
+      expect(
+        screen.getByText("Modo foco ativado. Esc para sair."),
+      ).toBeTruthy();
       await fireEvent.click(botaoFoco());
       expect(screen.getByText("Modo foco desativado.")).toBeTruthy();
     });
 
     it("Ctrl+Shift+F entra e sai; Esc sai", async () => {
       renderizar();
-      await fireEvent.keyDown(window, { key: "F", ctrlKey: true, shiftKey: true });
+      await fireEvent.keyDown(window, {
+        key: "F",
+        ctrlKey: true,
+        shiftKey: true,
+      });
       expect(moldura().classList.contains("foco")).toBe(true);
-      await fireEvent.keyDown(window, { key: "F", ctrlKey: true, shiftKey: true });
+      await fireEvent.keyDown(window, {
+        key: "F",
+        ctrlKey: true,
+        shiftKey: true,
+      });
       expect(moldura().classList.contains("foco")).toBe(false);
-      await fireEvent.keyDown(window, { key: "f", ctrlKey: true, shiftKey: true });
+      await fireEvent.keyDown(window, {
+        key: "f",
+        ctrlKey: true,
+        shiftKey: true,
+      });
       await fireEvent.keyDown(window, { key: "Escape" });
       expect(moldura().classList.contains("foco")).toBe(false);
     });
@@ -294,7 +367,9 @@ describe("MolduraLeitor", () => {
       renderizar();
       await fireEvent.click(botaoFoco());
       expect(moldura().classList.contains("revelada")).toBe(false);
-      const voltar = screen.getByRole("button", { name: "Voltar à biblioteca" });
+      const voltar = screen.getByRole("button", {
+        name: "Voltar à biblioteca",
+      });
       voltar.focus();
       await fireEvent.focusIn(voltar);
       expect(moldura().classList.contains("revelada")).toBe(true);
@@ -320,8 +395,12 @@ describe("MolduraLeitor", () => {
   describe("lado a lado", () => {
     it("Abrir ao lado fica em Mais opções só com o leitor que o oferece; Ctrl+Shift+L o aciona", async () => {
       renderizar();
-      await fireEvent.click(screen.getByRole("button", { name: "Mais opções" }));
-      expect(screen.queryByRole("menuitemcheckbox", { name: "Abrir ao lado" })).toBeNull();
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Mais opções" }),
+      );
+      expect(
+        screen.queryByRole("menuitemcheckbox", { name: "Abrir ao lado" }),
+      ).toBeNull();
       cleanup();
       const onAlternarLado = vi.fn();
       renderizar({ onAlternarLado });
@@ -330,14 +409,23 @@ describe("MolduraLeitor", () => {
       expect(item.getAttribute("aria-keyshortcuts")).toBe("Control+Shift+L");
       await fireEvent.click(item);
       expect(screen.queryByRole("menu")).toBeNull();
-      await fireEvent.keyDown(window, { key: "L", ctrlKey: true, shiftKey: true });
+      await fireEvent.keyDown(window, {
+        key: "L",
+        ctrlKey: true,
+        shiftKey: true,
+      });
       expect(onAlternarLado).toHaveBeenCalledTimes(2);
     });
 
     it("com o lado aberto, o item fica marcado e a área do lado aparece", async () => {
-      renderizar({ onAlternarLado: vi.fn(), lado: trecho("<section>Outro ponto</section>") });
+      renderizar({
+        onAlternarLado: vi.fn(),
+        lado: trecho("<section>Outro ponto</section>"),
+      });
       expect(await marcado("Abrir ao lado")).toBe("true");
-      expect(document.querySelector(".moldura")!.classList.contains("com-lado")).toBe(true);
+      expect(
+        document.querySelector(".moldura")!.classList.contains("com-lado"),
+      ).toBe(true);
       expect(screen.getByText("Outro ponto")).toBeTruthy();
     });
 
@@ -349,13 +437,20 @@ describe("MolduraLeitor", () => {
       });
       const rodape = screen.getByRole("contentinfo");
       const grupo = within(rodape).getByRole("group", { name: "Ao lado" });
-      expect(within(grupo).getByRole("button", { name: "Fechar o lado" })).toBeTruthy();
+      expect(
+        within(grupo).getByRole("button", { name: "Fechar o lado" }),
+      ).toBeTruthy();
     });
 
     it("na janela estreita, os dois continuam lado a lado", () => {
       sistema.estreita = true;
-      renderizar({ onAlternarLado: vi.fn(), lado: trecho("<section>Outro ponto</section>") });
-      expect(document.querySelector(".moldura")!.classList.contains("com-lado")).toBe(true);
+      renderizar({
+        onAlternarLado: vi.fn(),
+        lado: trecho("<section>Outro ponto</section>"),
+      });
+      expect(
+        document.querySelector(".moldura")!.classList.contains("com-lado"),
+      ).toBe(true);
       sistema.estreita = false;
     });
   });
@@ -369,7 +464,9 @@ describe("MolduraLeitor", () => {
       expect(await ligada()).toBe("false");
       let { item } = await itemDoMenu("Uma ideia por vez");
       await fireEvent.click(item);
-      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Mais opções" }));
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Mais opções" }),
+      );
       expect(screen.getByText(/Uma ideia por vez ativada/)).toBeTruthy();
       expect(await ligada()).toBe("true");
       ({ item } = await itemDoMenu("Uma ideia por vez"));
@@ -382,28 +479,50 @@ describe("MolduraLeitor", () => {
       const { item } = await itemDoMenu("Uma ideia por vez");
       expect(document.activeElement).toBe(item);
       await fireEvent.keyDown(item, { key: "ArrowDown" });
-      expect(document.activeElement).toBe(screen.getByRole("menuitemcheckbox", { name: "Abrir ao lado" }));
+      expect(document.activeElement).toBe(
+        screen.getByRole("menuitemcheckbox", { name: "Abrir ao lado" }),
+      );
       await fireEvent.keyDown(document.activeElement!, { key: "Escape" });
       expect(screen.queryByRole("menu")).toBeNull();
-      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Mais opções" }));
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Mais opções" }),
+      );
       expect(await ligada()).toBe("true");
     });
 
     it("Ctrl+Shift+B liga e desliga; Esc desliga", async () => {
       renderizar({ indiceAberto: false });
-      await fireEvent.keyDown(window, { key: "B", ctrlKey: true, shiftKey: true });
+      await fireEvent.keyDown(window, {
+        key: "B",
+        ctrlKey: true,
+        shiftKey: true,
+      });
       expect(await ligada()).toBe("true");
-      await fireEvent.keyDown(window, { key: "B", ctrlKey: true, shiftKey: true });
+      await fireEvent.keyDown(window, {
+        key: "B",
+        ctrlKey: true,
+        shiftKey: true,
+      });
       expect(await ligada()).toBe("false");
-      await fireEvent.keyDown(window, { key: "b", ctrlKey: true, shiftKey: true });
+      await fireEvent.keyDown(window, {
+        key: "b",
+        ctrlKey: true,
+        shiftKey: true,
+      });
       await fireEvent.keyDown(window, { key: "Escape" });
       expect(await ligada()).toBe("false");
     });
 
     it("o Esc fecha antes o painel aberto e o modo foco", async () => {
-      renderizar({ umaIdeia: true, indiceAberto: false, aparenciaAberta: true });
+      renderizar({
+        umaIdeia: true,
+        indiceAberto: false,
+        aparenciaAberta: true,
+      });
       await fireEvent.keyDown(window, { key: "Escape" });
-      expect(screen.queryByRole("complementary", { name: "Aparência" })).toBeNull();
+      expect(
+        screen.queryByRole("complementary", { name: "Aparência" }),
+      ).toBeNull();
       expect(await ligada()).toBe("true");
       await fireEvent.click(screen.getByRole("button", { name: "Modo foco" }));
       await fireEvent.keyDown(window, { key: "Escape" });
@@ -431,13 +550,19 @@ describe("MolduraLeitor", () => {
       const meta = new MetaDaSessao();
       meta.mover({ rotulo: "página 1", pagina: 1 });
       renderizar({ meta });
-      expect(screen.queryByRole("group", { name: "Meta da sessão" })).toBeNull();
+      expect(
+        screen.queryByRole("group", { name: "Meta da sessão" }),
+      ).toBeNull();
       meta.definir({ tipo: "paginas", paginas: 10 });
       await tick();
       expect(screen.getByText("Meta: 0 de 10 páginas")).toBeTruthy();
-      await fireEvent.click(screen.getByRole("button", { name: "Tirar a meta da sessão" }));
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Tirar a meta da sessão" }),
+      );
       expect(meta.meta).toBeNull();
-      expect(screen.queryByRole("group", { name: "Meta da sessão" })).toBeNull();
+      expect(
+        screen.queryByRole("group", { name: "Meta da sessão" }),
+      ).toBeNull();
     });
 
     it("ao cumprir, a pausa aparece; Voltar à biblioteca fecha o livro", async () => {
@@ -448,7 +573,9 @@ describe("MolduraLeitor", () => {
       meta.mover({ rotulo: "página 3", pagina: 3 });
       await tick();
       const pausa = screen.getByRole("dialog", { name: "Meta cumprida" });
-      await fireEvent.click(within(pausa).getByRole("button", { name: "Voltar à biblioteca" }));
+      await fireEvent.click(
+        within(pausa).getByRole("button", { name: "Voltar à biblioteca" }),
+      );
       expect(onFechar).toHaveBeenCalledOnce();
       expect(meta.meta).toBeNull();
     });
@@ -464,11 +591,15 @@ describe("MolduraLeitor", () => {
       component.focarPor({ tipo: "paginas", paginas: 2 });
       await tick();
       expect(moldura().classList.contains("foco")).toBe(true);
-      expect(screen.getByText("Modo foco por 2 páginas. Esc sai antes.")).toBeTruthy();
+      expect(
+        screen.getByText("Modo foco por 2 páginas. Esc sai antes."),
+      ).toBeTruthy();
       saidaDoFoco.mover({ rotulo: "página 3", pagina: 3 });
       await tick();
       expect(moldura().classList.contains("foco")).toBe(false);
-      expect(screen.getByText(/Modo foco encerrado como planejado/)).toBeTruthy();
+      expect(
+        screen.getByText(/Modo foco encerrado como planejado/),
+      ).toBeTruthy();
       expect(saidaDoFoco.meta).toBeNull();
     });
 
@@ -495,7 +626,9 @@ describe("MolduraLeitor", () => {
       const { component } = renderizar();
       component.alternarFoco();
       await tick();
-      const voltar = screen.getByRole("button", { name: "Voltar à biblioteca" });
+      const voltar = screen.getByRole("button", {
+        name: "Voltar à biblioteca",
+      });
       window.dispatchEvent(new Event("blur"));
       await fireEvent.focusIn(voltar);
       window.dispatchEvent(new Event("focus"));
@@ -519,12 +652,19 @@ describe("MolduraLeitor", () => {
 
   it("mostra a estimativa no rodapé, como texto, quando o leitor a dá", () => {
     renderizar({ estimativa: "~12 min no capítulo" });
-    expect(screen.getByText("~12 min no capítulo").closest("footer")).toBeTruthy();
+    expect(
+      screen.getByText("~12 min no capítulo").closest("footer"),
+    ).toBeTruthy();
   });
 
   describe("onde você parou", () => {
-    const continuacao = { onde: "em “Capítulo 3”", quando: "ontem", trecho: ["Uma frase."] };
-    const cartao = () => screen.queryByRole("region", { name: "Onde você parou" });
+    const continuacao = {
+      onde: "em “Capítulo 3”",
+      quando: "ontem",
+      trecho: ["Uma frase."],
+    };
+    const cartao = () =>
+      screen.queryByRole("region", { name: "Onde você parou" });
 
     it("aparece quando o leitor o dá, é anunciado e o Esc o fecha primeiro", async () => {
       const { rerender } = renderizar({ modoFoco: true });
@@ -539,13 +679,17 @@ describe("MolduraLeitor", () => {
       await fireEvent.keyDown(window, { key: "Escape" });
       await tick();
       expect(cartao()).toBeNull();
-      expect(document.querySelector(".moldura")!.classList.contains("foco")).toBe(true);
+      expect(
+        document.querySelector(".moldura")!.classList.contains("foco"),
+      ).toBe(true);
     });
 
     it("“Continuar lendo” e Esc pedem ao leitor que mostre o ponto; virar a página, não", async () => {
       const onContinuar = vi.fn();
       const { component } = renderizar({ continuacao, onContinuar });
-      await fireEvent.click(screen.getByRole("button", { name: "Continuar lendo" }));
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Continuar lendo" }),
+      );
       expect(onContinuar).toHaveBeenCalledOnce();
       component.mostrarContinuacao();
       await tick();

@@ -933,4 +933,10 @@ docs/decisions/  # ADRs
   tamanho do nome). Escolhas compactas no `app.css`, com rádios de verdade: `.segmentado` (poucas opções curtas:
   animações, virada, exibição do PDF, colunas, alinhamento) e `.amostras` (grade de cartões: cor da página e da
   interface; a linha `.ajuda` embaixo diz o que a escolhida faz).
-- Próximo passo: M28c (o leitor em todos os tamanhos de tela).
+- **M28c** (branch `feat/m28c-leitor-tamanhos`): o leitor em todos os tamanhos. O índice só começa aberto em janela
+  larga (`sistema.larga`, `min-width: 75rem`, fora da estreita): a 1000 px tomava um terço do livro. Painéis laterais
+  com `clamp` (índice 18–24rem, Aparência 20–26rem). Rodapé compacto: a `.barra` do PDF se desfaz em grupos e o das
+  páginas tem base de 15rem e cresce (o slider encolhe antes de quebrar): a 600 px, uma linha; a 360 px, duas (voz e
+  páginas; zoom). Busca do PDF na janela estreita: lupa (`aria-expanded`) que abre o campo por cima do cabeçalho; Esc
+  ou ✕ fecham e devolvem o foco à lupa (o Esc não segue para a moldura); Ctrl+F e a paleta chamam `abrir()`.
+- Próximo passo: M28d (a biblioteca em todos os tamanhos de tela).
