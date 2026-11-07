@@ -237,6 +237,10 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
   - [x] M28c — o leitor em todos os tamanhos (índice aberto só em janela larga, rodapé compacto, lupa no PDF)
   - [x] M28d — a biblioteca em todos os tamanhos (grade que acompanha a janela, card só com a estrela e o ⋯)
 
+**v1.1.0** (nov/2026): voz natural (Kokoro, com Dora e Alex no português, e as vozes leves do Piper), voz sem espera
+entre parágrafos, slider de posição, M28 (clareza: componentes, Aparência em abas, todos os tamanhos de tela) e o
+Orca adiado. Tag `v1.1.0` e Release, com o AppImage da CI.
+
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
   O código já trata o macOS em alguns pontos (diretório de logs, escala de texto) e deve continuar compilando.
