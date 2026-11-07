@@ -26,6 +26,7 @@ use quick_xml::events::Event;
 
 use crate::epub::{atributo, texto_da_referencia};
 use crate::kokoro::{ErroKokoro, EspeakNg, Kokoro, TAXA};
+use crate::piper::Piper;
 use crate::voz::{ConfigVoz, ErroVoz, EventoVoz, MotorDeVoz};
 
 // --- partes puras --------------------------------------------------------------------------
@@ -329,14 +330,23 @@ pub struct MotorNeural {
 /// Onde estão os arquivos da voz e qual voz usar em cada idioma.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfigNeural {
-    /// A pasta com o modelo, as vozes, os tokens e a `libonnxruntime.so`.
-    pub pasta: PathBuf,
     /// A voz de cada idioma, pela base dele ("en" → "af_heart", "pt" → "pf_dora"). A primeira
     /// vale para um texto sem idioma.
     pub vozes: Vec<(String, String)>,
+    /// A pasta do modelo de cada voz que pode falar (as dos idiomas e as das amostras): o Kokoro
+    /// tem várias vozes numa pasta; cada voz do Piper tem a sua (M27e).
+    pub pastas: Vec<(String, PathBuf)>,
 }
 
 impl ConfigNeural {
+    /// A pasta do modelo da voz `voz`, se ela estiver baixada.
+    pub fn pasta_da_voz(&self, voz: &str) -> Option<&Path> {
+        self.pastas
+            .iter()
+            .find(|(v, _)| v == voz)
+            .map(|(_, p)| p.as_path())
+    }
+
     /// A voz para um texto em `idioma` ("en-US", "pt-BR"); sem idioma, a primeira.
     pub fn voz_para(&self, idioma: Option<&str>) -> Option<&str> {
         let primeira = || self.vozes.first().map(|(_, v)| v.as_str());
@@ -357,11 +367,7 @@ impl MotorNeural {
     /// Cria o motor com o Kokoro e a saída de som do sistema, ainda sem modelo (ver
     /// `configurar`). Nada é carregado ainda.
     pub fn novo(ao_evento: impl Fn(EventoVoz) + Send + 'static) -> Self {
-        let sintetizador: FabricaSintetizador = Box::new(|pasta| {
-            let espeak = EspeakNg::carregar(None).map_err(|e| cadeia(&e))?;
-            let kokoro = Kokoro::carregar(pasta, Box::new(espeak)).map_err(|e| cadeia(&e))?;
-            Ok(Box::new(kokoro) as Box<dyn Sintetizador>)
-        });
+        let sintetizador = sintetizador_do_modelo();
         let saida: FabricaSaida =
             Box::new(|| SaidaRodio::abrir().map(|s| Arc::new(s) as Arc<dyn Saida>));
         Self::com(sintetizador, saida, OCIOSO, ao_evento)
@@ -548,12 +554,18 @@ fn laco(
         if !comum.atual(g) {
             continue;
         }
-        // Abre o modelo (de novo, se a pasta mudou) e a saída; se falhar, tenta na próxima.
-        let pasta = &trabalho.config.pasta;
+        // Abre o modelo da voz (de novo, se a pasta mudou: outro modelo) e a saída; se falhar,
+        // tenta na próxima.
+        let pasta = trabalho
+            .config
+            .pasta_da_voz(&trabalho.voz)
+            .map(Path::to_path_buf);
         let prontos = (|| {
-            if carregado.as_ref().is_none_or(|(p, _)| p != pasta) {
+            let pasta = pasta.ok_or_else(|| format!("a voz {} não está baixada", trabalho.voz))?;
+            if carregado.as_ref().is_none_or(|(p, _)| *p != pasta) {
                 carregado = None;
-                carregado = Some((pasta.clone(), criar_sintetizador(pasta)?));
+                let sintetizador = criar_sintetizador(&pasta)?;
+                carregado = Some((pasta, sintetizador));
             }
             if comum.saida().is_none() {
                 let saida = criar_saida()?;
@@ -561,9 +573,11 @@ fn laco(
             }
             Ok::<_, String>(())
         })();
+        if let Err(erro) = &prontos {
+            tracing::warn!(%erro, voz = %trabalho.voz, "voz neural indisponível");
+        }
         let (Ok(()), Some((_, sint)), Some(saida)) = (prontos, carregado.as_mut(), comum.saida())
         else {
-            tracing::warn!("voz neural indisponível");
             if comum.atual(g) && comum.falando.swap(false, Ordering::SeqCst) {
                 comum.emitir(EventoVoz::Interrompido);
             }
@@ -794,6 +808,37 @@ fn cadeia(erro: &dyn std::error::Error) -> String {
         causa = c.source();
     }
     texto
+}
+
+/// Cria o sintetizador de uma pasta de modelo: o Kokoro ou uma voz do Piper, pelos arquivos.
+fn sintetizador_do_modelo() -> FabricaSintetizador {
+    Box::new(|pasta| {
+        let espeak = EspeakNg::carregar(None).map_err(|e| cadeia(&e))?;
+        let modelo_piper = pasta.join(crate::piper::ARQUIVO_MODELO);
+        if modelo_piper.is_file() {
+            let runtime = pasta.join(crate::kokoro::ARQUIVO_ONNX_RUNTIME);
+            let piper = Piper::carregar(&modelo_piper, &runtime, Box::new(espeak))
+                .map_err(|e| cadeia(&e))?;
+            return Ok(Box::new(piper) as Box<dyn Sintetizador>);
+        }
+        let kokoro = Kokoro::carregar(pasta, Box::new(espeak)).map_err(|e| cadeia(&e))?;
+        Ok(Box::new(kokoro) as Box<dyn Sintetizador>)
+    })
+}
+
+/// O Piper gera a 22 050 Hz; a saída de som está na taxa do Kokoro (24 kHz): converte aqui, com
+/// um reamostrador de qualidade (a conversão linear do rodio deixava a voz áspera). A voz pedida é
+/// a da pasta (cada voz do Piper é um modelo).
+impl Sintetizador for Piper {
+    fn sintetizar(
+        &mut self,
+        frase: &str,
+        _voz: &str,
+        velocidade: f32,
+    ) -> Result<Vec<f32>, ErroKokoro> {
+        let audio = Piper::sintetizar(self, frase, velocidade)?;
+        Ok(crate::kokoro::reamostrar(&audio, self.taxa(), TAXA))
+    }
 }
 
 impl Sintetizador for Kokoro {
@@ -1059,10 +1104,17 @@ mod tests {
 
     fn config(pasta: &str, voz: &str) -> Option<ConfigNeural> {
         Some(ConfigNeural {
-            pasta: pasta.into(),
             vozes: vec![("en".into(), voz.into())],
+            pastas: VOZES_DOS_TESTES
+                .iter()
+                .chain([&voz])
+                .map(|v| (v.to_string(), pasta.into()))
+                .collect(),
         })
     }
+
+    /// As vozes que os testes usam, todas no mesmo "modelo".
+    const VOZES_DOS_TESTES: [&str; 6] = ["af_heart", "pf_dora", "bm_george", "af_bella", "x", "y"];
 
     fn motor_com(
         trava: Option<mpsc::Receiver<()>>,
@@ -1384,10 +1436,13 @@ mod tests {
     fn a_voz_vem_do_idioma_do_texto() {
         let (m, rx, _, registro) = motor_com(None, OCIOSO);
         m.configurar(Some(ConfigNeural {
-            pasta: "/m".into(),
             vozes: vec![
                 ("en".into(), "af_heart".into()),
                 ("pt".into(), "pf_dora".into()),
+            ],
+            pastas: vec![
+                ("af_heart".into(), "/m".into()),
+                ("pf_dora".into(), "/m".into()),
             ],
         }));
         let em = |idioma: Option<&str>| ConfigVoz {
@@ -1534,5 +1589,75 @@ mod tests {
         assert_eq!(proximo(&rx), EventoVoz::Fim);
         assert_eq!(registro.pastas.lock().unwrap().len(), 2);
         assert_eq!(*registro.saidas.lock().unwrap(), 2);
+    }
+
+    /// Uma voz do Piper pelo caminho de verdade (a fábrica, a síntese e a reamostragem), sem som:
+    /// `FOLIO_PIPER_PASTA=<pasta com modelo.onnx, modelo.onnx.json e libonnxruntime.so> cargo
+    /// test -p folio-core --release -- --ignored piper_no_motor`. Com `FOLIO_KOKORO=<pasta>`, troca
+    /// para o Kokoro e volta ao Piper no mesmo processo.
+    #[test]
+    #[ignore = "precisa de uma voz do Piper baixada (FOLIO_PIPER_PASTA) e da libespeak-ng"]
+    fn piper_no_motor() {
+        let pasta = std::env::var("FOLIO_PIPER_PASTA").expect("FOLIO_PIPER_PASTA=<pasta>");
+        // Abrir, fechar e abrir outro modelo no mesmo processo (o ONNX Runtime aceita um ambiente
+        // só: cada modelo criava o seu, e o segundo falhava).
+        if let Ok(k) = std::env::var("FOLIO_KOKORO") {
+            let mut f = sintetizador_do_modelo();
+            for p in [pasta.as_str(), k.as_str(), pasta.as_str()] {
+                assert!(f(Path::new(p)).is_ok(), "{p} não abriu");
+            }
+        }
+        let saida = Arc::new(SaidaFalsa::default());
+        let s = Arc::clone(&saida);
+        let (tx, rx) = mpsc::channel();
+        let m = MotorNeural::com(
+            sintetizador_do_modelo(),
+            Box::new(move || Ok(Arc::clone(&s) as Arc<dyn Saida>)),
+            OCIOSO,
+            move |e| tx.send(e).unwrap(),
+        );
+        m.configurar(Some(ConfigNeural {
+            vozes: vec![("en".into(), "en_US-norman-medium".into())],
+            pastas: vec![("en_US-norman-medium".into(), pasta.clone().into())],
+        }));
+        m.falar(
+            ssml(&["It was the best of times, it was the worst of times."]),
+            ConfigVoz::default(),
+        )
+        .unwrap();
+        loop {
+            match rx.recv_timeout(Duration::from_secs(30)).unwrap() {
+                EventoVoz::Fim => break,
+                EventoVoz::Interrompido => panic!("interrompido"),
+                _ => {}
+            }
+        }
+        {
+            let tocado = saida.tocado.lock().unwrap();
+            let segundos = tocado.len() as f32 / TAXA as f32;
+            assert!((2.0..8.0).contains(&segundos), "{segundos} s a 24 kHz");
+            assert!(tocado.iter().any(|a| a.abs() > 0.05), "áudio mudo");
+        }
+        // Depois do Piper, o Kokoro (outra pasta, outro modelo) no mesmo processo, e o Piper de novo.
+        if let Ok(kokoro) = std::env::var("FOLIO_KOKORO") {
+            for (voz, pasta) in [
+                ("af_heart", kokoro.as_str()),
+                ("en_US-norman-medium", pasta.as_str()),
+            ] {
+                m.configurar(Some(ConfigNeural {
+                    vozes: vec![("en".into(), voz.into())],
+                    pastas: vec![(voz.into(), pasta.into())],
+                }));
+                m.falar(ssml(&["Hello there."]), ConfigVoz::default())
+                    .unwrap();
+                loop {
+                    match rx.recv_timeout(Duration::from_secs(30)).unwrap() {
+                        EventoVoz::Fim => break,
+                        EventoVoz::Interrompido => panic!("{voz} interrompido"),
+                        _ => {}
+                    }
+                }
+            }
+        }
     }
 }

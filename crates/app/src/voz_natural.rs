@@ -51,21 +51,16 @@ impl EstadoVoz {
     /// Aplica as preferências (voz do inglês, usar em inglês e em português) e o que está
     /// instalado.
     pub fn aplicar(&self, preferencias: &PreferenciasLeitura) {
-        let modelo = &catalogo_vozes::KOKORO;
-        // A voz de cada idioma: a escolhida (inglês e português) ou a primeira do catálogo.
-        let vozes: Vec<(String, String)> = modelo
-            .idiomas()
-            .into_iter()
-            .filter_map(|base| {
-                let escolhida = match base.as_str() {
-                    "en" => modelo.voz(&preferencias.voz_natural),
-                    "pt" => modelo.voz(&preferencias.voz_natural_portugues),
-                    _ => None,
-                };
-                let voz = escolhida.or_else(|| modelo.voz_do_idioma(&base))?;
-                Some((base, voz.id.to_string()))
-            })
-            .collect();
+        // As vozes baixadas (do Kokoro e do Piper) e, em cada idioma, a escolhida se estiver
+        // entre elas; senão, a primeira baixada do idioma.
+        let instaladas = catalogo_vozes::vozes_instaladas(|m| m.instalado(&self.vozes));
+        let vozes = catalogo_vozes::vozes_dos_idiomas(
+            &[
+                ("en", preferencias.voz_natural.as_str()),
+                ("pt", preferencias.voz_natural_portugues.as_str()),
+            ],
+            &instaladas,
+        );
         let ligados: Vec<String> = [
             ("en", preferencias.voz_natural_em_ingles),
             ("pt", preferencias.voz_natural_em_portugues),
@@ -74,12 +69,13 @@ impl EstadoVoz {
         .filter(|&(_, ligado)| ligado)
         .map(|(base, _)| base.to_string())
         .collect();
-        let instalada = modelo.instalado(&self.vozes);
-        tracing::info!(?vozes, instalada, ?ligados, "voz natural");
-        self.neural.configurar(instalada.then(|| ConfigNeural {
-            pasta: modelo.pasta(&self.vozes),
-            vozes,
-        }));
+        tracing::info!(?vozes, ?ligados, "voz natural");
+        let pastas = instaladas
+            .iter()
+            .map(|(v, m)| (v.id.to_string(), m.pasta(&self.vozes)))
+            .collect();
+        self.neural
+            .configurar((!vozes.is_empty()).then_some(ConfigNeural { vozes, pastas }));
         if let Some(motor) = &self.motor {
             motor.usar_neural_em(ligados);
         }

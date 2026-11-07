@@ -216,8 +216,9 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
     faladas em pedaços cortados na pontuação. (O chiado era a voz Emma, trocada pela Isabella: `fix/voz-isabella`.)
   - [x] M27d-2 — AppImage com a libespeak-ng e os dados dela (compilada na CI, sem dependências de som)
   - [x] M27d-3 — ADR 0008 (voz neural), guia e roteiro do Orca (falta executar 9.5–9.12 com o Orca)
-  - [ ] M27e — Piper como segundo modelo (quando fizer falta): mais leve (~63 MB por voz) e rápido, mais
-    idiomas; reaproveita os fonemas e o ONNX Runtime, entra como linhas no catálogo e um motor
+  - [x] M27e — Piper como segundo modelo (nov/2026): vozes leves em inglês (Kristin, LJSpeech, Norman, John), ~10×
+    mais rápidas que o Kokoro, uma por download. Nenhuma voz do Piper em português tem licença limpa (todas vêm de
+    vozes de licença só para pesquisa ou não comercial); o português segue com Dora e Alex
   - [x] pt-BR com o Kokoro: a Dora (o Alex e o Santa não soaram bem), normalização do português (números por
     extenso, moeda, romanos, abreviações, horas) e uma voz por idioma no motor
   - [x] Alex, a voz masculina do português (nov/2026), com o filtro da Dora e escolha de voz no português

@@ -24,8 +24,6 @@ pub struct Kokoro {
     vozes: Vozes,
     vocabulario: Vocabulario,
     fonemizador: Box<dyn Fonemizador>,
-    /// O ambiente do ONNX Runtime precisa viver enquanto a sessão existir.
-    _ambiente: ort::environment::Environment,
 }
 
 impl Kokoro {
@@ -43,14 +41,11 @@ impl Kokoro {
         let tokens = String::from_utf8(ler(ARQUIVO_TOKENS)?)
             .map_err(|_| ErroKokoro::ArquivoInvalido("tokens.txt não é UTF-8".into()))?;
         let vocabulario = Vocabulario::ler(&tokens)?;
-        let ambiente = ort::init_from(pasta.join(ARQUIVO_ONNX_RUNTIME))
-            .map_err(ErroKokoro::SemOnnxRuntime)?
-            .with_name("folio")
-            .build()?;
+        let ambiente = super::ambiente_onnx(&pasta.join(ARQUIVO_ONNX_RUNTIME))?;
         // Metade dos núcleos, até 4: mais que isso quase não acelera e disputa a CPU com a
         // interface enquanto o livro é lido.
         let nucleos = std::thread::available_parallelism().map_or(2, |n| n.get());
-        let sessao = Session::builder(&ambiente)?
+        let sessao = Session::builder(ambiente)?
             .with_intra_threads((nucleos / 2).clamp(1, 4))
             .map_err(ort::Error::from)?
             .commit_from_memory(&ler(ARQUIVO_MODELO)?)?;
@@ -59,7 +54,6 @@ impl Kokoro {
             vozes,
             vocabulario,
             fonemizador,
-            _ambiente: ambiente,
         })
     }
 
@@ -107,7 +101,7 @@ impl Kokoro {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::kokoro::EspeakNg;
+    use crate::kokoro::{EspeakNg, wav_mono_16};
 
     /// Com o modelo baixado e o espeak-ng do sistema:
     /// `FOLIO_KOKORO=<pasta> cargo test -p folio-core -- --ignored kokoro_de_verdade`.
@@ -183,26 +177,5 @@ mod tests {
             segundos / gerar.as_secs_f32()
         );
         std::fs::write(wav, wav_mono_16(&audio, TAXA)).unwrap();
-    }
-
-    fn wav_mono_16(amostras: &[f32], taxa: u32) -> Vec<u8> {
-        let dados = (amostras.len() * 2) as u32;
-        let mut b = Vec::with_capacity(44 + dados as usize);
-        b.extend(b"RIFF");
-        b.extend((36 + dados).to_le_bytes());
-        b.extend(b"WAVEfmt ");
-        b.extend(16u32.to_le_bytes());
-        b.extend(1u16.to_le_bytes());
-        b.extend(1u16.to_le_bytes());
-        b.extend(taxa.to_le_bytes());
-        b.extend((taxa * 2).to_le_bytes());
-        b.extend(2u16.to_le_bytes());
-        b.extend(16u16.to_le_bytes());
-        b.extend(b"data");
-        b.extend(dados.to_le_bytes());
-        for a in amostras {
-            b.extend(((a.clamp(-1.0, 1.0) * 32767.0) as i16).to_le_bytes());
-        }
-        b
     }
 }

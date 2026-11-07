@@ -46,6 +46,71 @@ pub fn passa_baixa(amostras: &mut [f32], taxa: u32, corte: f32) {
     }
 }
 
+/// Muda a taxa de amostragem (o Piper gera a 22 050 Hz; a saída de som abre a 24 000 Hz, a do
+/// Kokoro). Interpolação por sinc com janela de Blackman, 16 amostras de cada lado: a interpolação
+/// linear deixaria réplicas nos agudos (a voz soava áspera quando o rodio convertia assim). Ao
+/// baixar a taxa, o corte desce junto (sem dobrar os agudos para baixo).
+pub fn reamostrar(amostras: &[f32], de: u32, para: u32) -> Vec<f32> {
+    if de == para || amostras.is_empty() {
+        return amostras.to_vec();
+    }
+    const MEIO: f64 = 16.0;
+    // As posições se repetem a cada `p` amostras de saída (22 050 → 24 000: 147/160): os pesos de
+    // cada uma das `p` fases são calculados uma vez só.
+    let g = mdc(de, para);
+    let (q, p) = (u64::from(de / g), u64::from(para / g));
+    let corte = (f64::from(para) / f64::from(de)).min(1.0);
+    let largura = MEIO / corte;
+    let alcance = largura.ceil() as i64;
+    let pesos: Vec<Vec<f32>> = (0..p)
+        .map(|fase| {
+            let frac = fase as f64 / p as f64;
+            (-alcance + 1..=alcance)
+                .map(|k| {
+                    let d = frac - k as f64;
+                    if d.abs() >= largura {
+                        return 0.0;
+                    }
+                    let janela = 0.42
+                        + 0.5 * (std::f64::consts::PI * d / largura).cos()
+                        + 0.08 * (2.0 * std::f64::consts::PI * d / largura).cos();
+                    (corte * sinc(corte * d) * janela) as f32
+                })
+                .collect()
+        })
+        .collect();
+    let n = amostras.len() as i64;
+    let saida = (amostras.len() as u64 * p).div_ceil(q);
+    (0..saida)
+        .map(|i| {
+            let base = (i * q / p) as i64;
+            let fase = (i * q % p) as usize;
+            pesos[fase]
+                .iter()
+                .zip(base - alcance + 1..)
+                .filter(|&(_, k)| (0..n).contains(&k))
+                .map(|(w, k)| w * amostras[k as usize])
+                .sum()
+        })
+        .collect()
+}
+
+fn mdc(mut a: u32, mut b: u32) -> u32 {
+    while b != 0 {
+        (a, b) = (b, a % b);
+    }
+    a
+}
+
+fn sinc(x: f64) -> f64 {
+    if x.abs() < 1e-9 {
+        1.0
+    } else {
+        let px = std::f64::consts::PI * x;
+        px.sin() / px
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,5 +137,27 @@ mod tests {
         assert!(pico(&apito) < 0.25, "{}", pico(&apito));
         let mut vazio: [f32; 0] = [];
         passa_baixa(&mut vazio, 24_000, 8000.0);
+    }
+
+    #[test]
+    fn reamostrar_um_seno_mantem_o_seno() {
+        let seno = |taxa: u32, n: usize| -> Vec<f32> {
+            (0..n)
+                .map(|i| (2.0 * std::f32::consts::PI * 1000.0 * i as f32 / taxa as f32).sin() * 0.5)
+                .collect()
+        };
+        let de = seno(22_050, 22_050);
+        let para = reamostrar(&de, 22_050, 24_000);
+        assert_eq!(para.len(), 24_000);
+        let ideal = seno(24_000, 24_000);
+        // Longe das pontas (onde falta vizinhança), o erro é pequeno.
+        let erro = para[100..23_900]
+            .iter()
+            .zip(&ideal[100..23_900])
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0, f32::max);
+        assert!(erro < 0.005, "erro {erro}");
+        assert_eq!(reamostrar(&de[..10], 24_000, 24_000), de[..10]);
+        assert!(reamostrar(&[], 22_050, 24_000).is_empty());
     }
 }

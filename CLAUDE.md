@@ -944,4 +944,30 @@ docs/decisions/  # ADRs
   `minmax(clamp(8.5rem, 10vw, 13rem), 1fr)` e espaço com `clamp`: duas colunas a 360 px, capas maiores numa tela de
   2560. Janela estreita (`main.estreita`): título e ações só com ícones numa linha, a busca inteira na de baixo.
 - **M28 concluído** (nov/2026; PRs #114–#117, revisado pelo Lucas no app).
-- Próximo passo: a combinar (M27e/Piper, Séries e Flatpak seguem em aberto no ROADMAP).
+- **M27e-1** (branch `feat/m27e-piper-core`): Piper no core (`core::piper`). Licenças levantadas voz a voz (o
+  `MODEL_CARD` de cada uma e o da voz de onde ela foi ajustada): **nenhuma do pt-BR é limpa** (faber, cadu e jeff vêm da
+  lessac, cuja licença Blizzard 2013 é só para pesquisa; edresson vem da ryan, CC BY-NC-SA), e no inglês só as treinadas
+  do zero com dados em domínio público (Kristin, LJSpeech, Norman, Cori; John vem da Kristin). Ouvidas pelo Lucas: entram
+  **Kristin, LJSpeech, Norman e John** (a Cori não). `ConfigPiper::ler` (o `.onnx.json`: taxa, voz do espeak-ng,
+  `phoneme_id_map`, escalas), `ids_dos_fonemas` (`^`, cada símbolo seguido de `_`, `$`; símbolo desconhecido é pulado),
+  `Piper::carregar(modelo, onnx_runtime, fonemizador)` e `sintetizar(frase, velocidade)` (entradas `input`,
+  `input_lengths`, `scales` = ruído, duração ÷ velocidade, ruído_w; 22 050 Hz). Fonemas: `fonemas_pontuados` (o de
+  antes, sem as trocas do Kokoro, que agora ficam só em `fonemas_com_pontuacao`). Medido aqui: ~32× o tempo real (o
+  Kokoro, ~3,4×). Ferramenta: `piper_gerar_wav` (ignorado; `FOLIO_PIPER`, `FOLIO_ONNX_RUNTIME`, `FOLIO_PIPER_WAV`).
+- **M27e-2** (mesma branch): as vozes do Piper no app. Catálogo: `Modelo.tipo` (`Tipo::Kokoro | Piper`), uma voz por
+  modelo (`voz_piper!`; `piper-en_US-<voz>-medium`, arquivos presos ao commit `e7229f7` do `rhasspy/piper-voices`:
+  `modelo.onnx`, `modelo.onnx.json`, `MODEL_CARD` e o ONNX Runtime em cada pasta). `ConfigNeural` troca `pasta` por
+  `pastas` (a de cada voz baixada; `pasta_da_voz`): o motor carrega o modelo da voz do trabalho e o troca quando outra
+  pede (a fábrica escolhe Piper se a pasta tem `modelo.onnx`). `Sintetizador for Piper` reamostra 22 050 → 24 000 Hz
+  (`kokoro::reamostrar`, sinc com janela de Blackman e pesos por fase). `catalogo_vozes::vozes_instaladas` e
+  `vozes_dos_idiomas` (puras): em cada idioma, a escolhida se baixada, senão a primeira baixada; `EstadoVoz::aplicar` as
+  usa. Aba Voz: "Livros em inglês/português" aparecem com qualquer voz baixada (rádios com as do Kokoro e do Piper; a do
+  Piper diz "leve"); "Voz natural" (o Kokoro) e "Vozes leves" (uma linha por voz: Baixar, ou Remover com confirmação);
+  um download por vez. `lib/vozNatural.svelte.ts`: `vozesInstaladas`, `idiomasInstalados`, `vozEscolhida(modelos, …)`
+  (a mesma regra do core), `textoDeInstalado`; paleta "Baixar/Remover a voz leve <nome>".
+  **Um ambiente do ONNX Runtime por processo** (`kokoro::ambiente_onnx`, `OnceLock`): ele recusa um segundo ("only one
+  environment is allowed per process") mesmo depois de o primeiro ser descartado. Cada modelo criava o seu: no teste do
+  Lucas, depois da amostra da Kristin (Piper), toda leitura dava "voz neural indisponível", até com o Kokoro; o mesmo
+  devia acontecer ao reabrir o Kokoro depois de 2 min parado. O aviso agora diz a causa (`erro`, `voz`). O
+  `piper_no_motor` (ignorado) abre o Piper, o Kokoro e o Piper de novo e lê com eles.
+- Próximo passo: o Lucas ouvir as vozes leves no app (baixar uma e ler um EPUB em inglês).

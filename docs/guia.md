@@ -75,6 +75,10 @@ Há duas vozes:
   e Alex), ouça a amostra e, se quiser, desligue "Usar a voz natural em livros em inglês" ou "… em português". "Remover a voz natural…" apaga o download. A primeira frase pode
   levar um segundo para começar ("Preparando a voz…"). Na paleta: "Baixar a voz natural", "Voz: Heart", "Ouvir amostra
   da voz".
+- **As vozes leves** (Piper), só em inglês: Kristin, LJSpeech (femininas), Norman e John (masculinos), americanos.
+  Cada uma é um download à parte (~74 MB), soa um pouco menos natural e gera a voz cerca de dez vezes mais rápido:
+  boas para computadores mais simples. Ficam em **Aparência → Voz**, em "Vozes leves"; baixada, a voz entra na escolha
+  dos livros em inglês (marcada como "leve"). Dá para ter só elas, sem a voz natural.
 - **A voz do sistema**, para os outros idiomas (e para o inglês, sem a voz natural). Requer o `speech-dispatcher`; a
   padrão (espeak-ng) soa robótica, e o speech-dispatcher pode usar outras vozes.
 

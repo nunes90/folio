@@ -36,6 +36,19 @@ pub fn fonemas_com_pontuacao(
     frase: &str,
     idioma: &str,
 ) -> Result<String, ErroKokoro> {
+    Ok(ajustar(
+        &fonemas_pontuados(fonemizador, frase, idioma)?,
+        idioma,
+    ))
+}
+
+/// Os fonemas do espeak-ng com a pontuação no lugar, sem as trocas do Kokoro (`ajustar`): o Piper
+/// foi treinado com os símbolos do espeak-ng como eles saem.
+pub fn fonemas_pontuados(
+    fonemizador: &dyn Fonemizador,
+    frase: &str,
+    idioma: &str,
+) -> Result<String, ErroKokoro> {
     let mut saida = String::new();
     let mut trecho = String::new();
     let mut letras = frase.chars().peekable();
@@ -54,7 +67,7 @@ pub fn fonemas_com_pontuacao(
         saida.push(' ');
     }
     acrescentar(&mut saida, fonemizador, &trecho, idioma)?;
-    Ok(ajustar(saida.trim(), idioma))
+    Ok(saida.trim().to_string())
 }
 
 fn acrescentar(

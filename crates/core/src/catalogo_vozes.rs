@@ -44,11 +44,22 @@ pub struct VozDoCatalogo {
     pub genero: Genero,
 }
 
+/// A família do modelo: diz como carregá-lo e como a aba Voz o mostra.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Tipo {
+    /// Um modelo com várias vozes numa pasta (inglês e português).
+    Kokoro,
+    /// Uma voz por modelo, mais leve e mais rápida (M27e).
+    Piper,
+}
+
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Modelo {
     pub id: &'static str,
     pub nome: &'static str,
+    pub tipo: Tipo,
     pub licenca: &'static str,
     pub arquivos: &'static [Arquivo],
     pub vozes: &'static [VozDoCatalogo],
@@ -168,6 +179,7 @@ const ONNX_RUNTIME: Arquivo = Arquivo {
 pub const KOKORO: Modelo = Modelo {
     id: "kokoro-v1.0-int8",
     nome: "Kokoro",
+    tipo: Tipo::Kokoro,
     licenca: "Apache-2.0",
     arquivos: &[
         Arquivo {
@@ -250,11 +262,163 @@ pub const KOKORO: Modelo = Modelo {
     ],
 };
 
+/// Os arquivos de uma voz do Piper, presos a um commit do `rhasspy/piper-voices`.
+macro_rules! hf_piper {
+    ($($parte:expr),+) => {
+        concat!(
+            "https://huggingface.co/rhasspy/piper-voices/resolve/",
+            "e7229f7d33a10e145e109b886d661984201ac3c4/en/en_US/",
+            $($parte),+
+        )
+    };
+}
+
+/// Uma voz do Piper: o modelo, a configuração, o cartão (a origem e a licença dos dados) e o ONNX
+/// Runtime (cada pasta funciona sozinha; são ~11 MB a mais por voz).
+macro_rules! voz_piper {
+    ($id:literal, $nome:literal, $genero:expr, $dir:literal,
+     $sha_onnx:literal, $sha_json:literal, $tam_json:literal, $sha_card:literal, $tam_card:literal) => {
+        Modelo {
+            id: concat!("piper-", $id),
+            nome: $nome,
+            tipo: Tipo::Piper,
+            licenca: "MIT (modelo); gravações em domínio público",
+            arquivos: &[
+                Arquivo {
+                    nome: crate::piper::ARQUIVO_MODELO,
+                    url: hf_piper!($dir, "/medium/", $id, ".onnx"),
+                    sha256: $sha_onnx,
+                    tamanho: 63_531_379,
+                    extrair: &[],
+                },
+                Arquivo {
+                    nome: crate::piper::ARQUIVO_CONFIG,
+                    url: hf_piper!($dir, "/medium/", $id, ".onnx.json"),
+                    sha256: $sha_json,
+                    tamanho: $tam_json,
+                    extrair: &[],
+                },
+                Arquivo {
+                    nome: "MODEL_CARD",
+                    url: hf_piper!($dir, "/medium/MODEL_CARD"),
+                    sha256: $sha_card,
+                    tamanho: $tam_card,
+                    extrair: &[],
+                },
+                ONNX_RUNTIME,
+            ],
+            vozes: &[VozDoCatalogo {
+                id: $id,
+                nome: $nome,
+                idioma: "en-US",
+                genero: $genero,
+            }],
+        }
+    };
+}
+
+// As vozes do Piper (M27e): só as treinadas do zero com gravações em domínio público, ou a partir
+// de outra assim (o John vem da Kristin). As outras do inglês e todas do português vêm de vozes com
+// licença só para pesquisa (lessac) ou não comercial (ryan), ou de origem desconhecida. Ouvidas
+// pelo Lucas (nov/2026): a Cori (britânica) ficou de fora.
+pub const PIPER_KRISTIN: Modelo = voz_piper!(
+    "en_US-kristin-medium",
+    "Kristin",
+    Genero::Feminina,
+    "kristin",
+    "5849957f929cbf720c258f8458692d6103fff2f0e3d3b19c8259474bb06a18d4",
+    "5681426d4aead22195de70531eeeeddb46493cfaffc5764b2ea3db73428b651c",
+    4968,
+    "8c181b1d5f7d8152b914faab941fcbe6b8f0495e63e5189d6f27b8c68c8393fc",
+    479
+);
+pub const PIPER_LJSPEECH: Modelo = voz_piper!(
+    "en_US-ljspeech-medium",
+    "LJSpeech",
+    Genero::Feminina,
+    "ljspeech",
+    "6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22",
+    "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860",
+    4972,
+    "fbee1529c89d36b3fe76d7e9f3f832dce17f44900a52d76a9bda735654766b4d",
+    517
+);
+pub const PIPER_NORMAN: Modelo = voz_piper!(
+    "en_US-norman-medium",
+    "Norman",
+    Genero::Masculina,
+    "norman",
+    "b9739443232a80a59c7d18810dd856899bf16a7964725f5ab81ea49b1351cb71",
+    "6c2db7f558a4a8deb9fe822583c1c5105f6c4e834dd0f9de8ad17a888ee9fe1d",
+    4968,
+    "60eaf4d10009d1bd4a1aa555d337dae00f60421d72fee415b9139a021e7cb5d0",
+    528
+);
+pub const PIPER_JOHN: Modelo = voz_piper!(
+    "en_US-john-medium",
+    "John",
+    Genero::Masculina,
+    "john",
+    "789c6c875726e627ddee93d51d8727859abe9c091c3d141591f4b83c2072e988",
+    "af60f177b6b550f3d7a302720c0fb89e7f94a82b5dca464775ef63b1c69ba09a",
+    4965,
+    "a056da65cd70dcbda96fc3420fe8d3442dbf3c8b75f49cdf800a715b42e299d1",
+    498
+);
+
 /// Os modelos que o app oferece.
-pub const MODELOS: &[Modelo] = &[KOKORO];
+pub const MODELOS: &[Modelo] = &[
+    KOKORO,
+    PIPER_KRISTIN,
+    PIPER_LJSPEECH,
+    PIPER_NORMAN,
+    PIPER_JOHN,
+];
 
 pub fn modelo(id: &str) -> Option<&'static Modelo> {
     MODELOS.iter().find(|m| m.id == id)
+}
+
+/// As vozes dos modelos instalados, com o modelo de cada uma, na ordem do catálogo.
+pub fn vozes_instaladas(
+    instalado: impl Fn(&Modelo) -> bool,
+) -> Vec<(&'static VozDoCatalogo, &'static Modelo)> {
+    MODELOS
+        .iter()
+        .filter(|m| instalado(m))
+        .flat_map(|m| m.vozes.iter().map(move |v| (v, m)))
+        .collect()
+}
+
+/// A voz de cada idioma (pela base: "en", "pt"): a escolhida, se estiver instalada; senão, a
+/// primeira instalada daquele idioma, na ordem do catálogo (o Kokoro primeiro). Idioma sem voz
+/// instalada fica de fora.
+pub fn vozes_dos_idiomas(
+    escolhas: &[(&str, &str)],
+    instaladas: &[(&'static VozDoCatalogo, &'static Modelo)],
+) -> Vec<(String, String)> {
+    let base = |v: &VozDoCatalogo| crate::voz_por_idioma::idioma_base(v.idioma);
+    let mut idiomas: Vec<String> = Vec::new();
+    for (v, _) in instaladas {
+        if !idiomas.contains(&base(v)) {
+            idiomas.push(base(v));
+        }
+    }
+    idiomas
+        .into_iter()
+        .filter_map(|idioma| {
+            let escolhida = escolhas
+                .iter()
+                .find(|(b, _)| *b == idioma)
+                .map(|(_, id)| *id);
+            let do_idioma = || instaladas.iter().find(|(v, _)| base(v) == idioma);
+            let voz = instaladas
+                .iter()
+                .find(|(v, _)| Some(v.id) == escolhida && base(v) == idioma)
+                .or_else(do_idioma)?;
+            Some((idioma, voz.0.id.to_string()))
+        })
+        .collect()
 }
 
 /// A voz com esse id e o modelo dela.
@@ -286,6 +450,25 @@ mod tests {
         for v in KOKORO.vozes {
             assert!(indice_da_voz(v.id).is_some(), "{}", v.id);
         }
+        // Cada voz do Piper no seu modelo, com o ONNX Runtime junto.
+        assert_eq!(
+            voz("en_US-norman-medium").map(|(m, v)| (m.id, v.nome, m.tipo)),
+            Some(("piper-en_US-norman-medium", "Norman", Tipo::Piper))
+        );
+        for m in MODELOS.iter().filter(|m| m.tipo == Tipo::Piper) {
+            assert_eq!(m.vozes.len(), 1);
+            assert!(
+                m.arquivos
+                    .iter()
+                    .any(|a| a.nome == crate::piper::ARQUIVO_MODELO)
+            );
+            assert!(m.arquivos.iter().any(|a| a.nome == ONNX_RUNTIME.nome));
+            assert!(
+                m.arquivos[0]
+                    .url
+                    .ends_with(&format!("{}.onnx", m.vozes[0].id))
+            );
+        }
         assert_eq!(KOKORO.voz_padrao().id, "af_heart");
         assert_eq!(KOKORO.voz("bm_george").map(|v| v.nome), Some("George"));
         assert!(KOKORO.voz("xx").is_none());
@@ -313,5 +496,41 @@ mod tests {
         assert!(KOKORO.instalado(dir.path()));
         KOKORO.remover(dir.path()).unwrap();
         assert!(!KOKORO.instalado(dir.path()));
+    }
+
+    #[test]
+    fn a_voz_de_cada_idioma_e_a_escolhida_se_estiver_baixada() {
+        let so = |ids: &'static [&'static str]| move |m: &Modelo| ids.contains(&m.id);
+        // Só o Norman (Piper): o inglês fala com ele, mesmo escolhida a Heart; sem português.
+        let instaladas = vozes_instaladas(so(&["piper-en_US-norman-medium"]));
+        assert_eq!(
+            vozes_dos_idiomas(&[("en", "af_heart")], &instaladas),
+            [("en".to_string(), "en_US-norman-medium".to_string())]
+        );
+        // Kokoro e o Norman: vale a escolha; sem escolha, a primeira do catálogo (a Heart).
+        let instaladas = vozes_instaladas(so(&["kokoro-v1.0-int8", "piper-en_US-norman-medium"]));
+        assert_eq!(
+            vozes_dos_idiomas(
+                &[("en", "en_US-norman-medium"), ("pt", "pm_alex")],
+                &instaladas
+            ),
+            [
+                ("en".to_string(), "en_US-norman-medium".to_string()),
+                ("pt".to_string(), "pm_alex".to_string())
+            ]
+        );
+        assert_eq!(
+            vozes_dos_idiomas(&[("en", ""), ("pt", "")], &instaladas),
+            [
+                ("en".to_string(), "af_heart".to_string()),
+                ("pt".to_string(), "pf_dora".to_string())
+            ]
+        );
+        // Uma escolha de outro idioma não vale.
+        assert_eq!(
+            vozes_dos_idiomas(&[("en", "pf_dora")], &instaladas)[0].1,
+            "af_heart"
+        );
+        assert!(vozes_dos_idiomas(&[], &vozes_instaladas(|_| false)).is_empty());
     }
 }

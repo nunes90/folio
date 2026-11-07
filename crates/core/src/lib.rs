@@ -11,6 +11,7 @@ pub mod livro;
 pub mod metadados;
 pub mod pastas;
 pub mod pdf;
+pub mod piper;
 pub mod preferencias;
 pub mod recuperacao;
 pub mod sessoes;
