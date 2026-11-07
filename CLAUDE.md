@@ -939,4 +939,8 @@ docs/decisions/  # ADRs
   páginas tem base de 15rem e cresce (o slider encolhe antes de quebrar): a 600 px, uma linha; a 360 px, duas (voz e
   páginas; zoom). Busca do PDF na janela estreita: lupa (`aria-expanded`) que abre o campo por cima do cabeçalho; Esc
   ou ✕ fecham e devolvem o foco à lupa (o Esc não segue para a moldura); Ctrl+F e a paleta chamam `abrir()`.
-- Próximo passo: M28d (a biblioteca em todos os tamanhos de tela).
+- **M28d** (branch `feat/m28d-biblioteca-tamanhos`): no card, só a estrela (favorito) e o ⋯; "Para ler", "Lido" e
+  "Coleções" ficam no menu (que já os tinha), e a situação diz "Para ler" num livro marcado e não começado. Grade com
+  `minmax(clamp(8.5rem, 10vw, 13rem), 1fr)` e espaço com `clamp`: duas colunas a 360 px, capas maiores numa tela de
+  2560. Janela estreita (`main.estreita`): título e ações só com ícones numa linha, a busca inteira na de baixo.
+- Próximo passo: fechar o M28 (ROADMAP, revisão com o Lucas no app).
