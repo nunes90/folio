@@ -66,7 +66,6 @@
 </script>
 
 <div class="painel" bind:this={painel}>
-  <h2>Voz</h2>
 
   <div class="velocidade">
     <label for="pref-velocidade-voz">Velocidade da leitura em voz alta</label>
@@ -234,11 +233,6 @@
     flex-direction: column;
     gap: 1rem;
     margin-block-end: 1rem;
-  }
-
-  h2 {
-    margin: 0;
-    font-size: 1.1rem;
   }
 
   .velocidade {

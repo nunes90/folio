@@ -925,4 +925,12 @@ docs/decisions/  # ADRs
   no alto contraste, borda forte. As 6 cópias locais do `.primario` saíram; "Continuar lendo" (cartão e meta) é primário.
   **`fieldset` sem caixa** (global): `legend` pequena, em `--suave`, e espaço, em vez de borda dentro do painel.
   Com `pointer: coarse`, alvos de 44 px. Regra: componente novo não inventa botão nem grupo; usa estes.
-- Próximo passo: M28b (Ajustes rápidos no lugar da Aparência; o resto num diálogo de Preferências com abas).
+- **M28b** (branch `feat/m28b-abas-aparencia`): a Aparência em **três abas** (`AbasAparencia`): Leitura (a página e,
+  no EPUB, o texto, tudo aberto: decisão do Lucas), Voz e Interface (cores, animações e as barras do modo foco, que
+  saíram da Página). Na biblioteca, só Voz e Interface (abre na Interface). A aba é lembrada enquanto o app está aberto
+  (`lib/aparencia.svelte.ts`; abrir na biblioteca não muda a escolha). Um diálogo de Preferências foi descartado: cobre
+  o livro e a prévia ao vivo é o que faz a Aparência útil. `Abas.svelte`: abas genéricas (ARIA, setas, Home/End; do
+  tamanho do nome). Escolhas compactas no `app.css`, com rádios de verdade: `.segmentado` (poucas opções curtas:
+  animações, virada, exibição do PDF, colunas, alinhamento) e `.amostras` (grade de cartões: cor da página e da
+  interface; a linha `.ajuda` embaixo diz o que a escolhida faz).
+- Próximo passo: M28c (o leitor em todos os tamanhos de tela).

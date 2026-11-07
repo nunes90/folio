@@ -365,4 +365,4 @@ export function comandosDaVozNaturalDoApp(
 
 /** O que dizer quando não há como ler em voz alta. */
 export const SEM_VOZ =
-  "Leitura em voz alta indisponível: instale o speech-dispatcher ou baixe a voz natural (Aparência, seção Voz).";
+  "Leitura em voz alta indisponível: instale o speech-dispatcher ou baixe a voz natural (Aparência, aba Voz).";

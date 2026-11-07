@@ -46,7 +46,7 @@ describe("PainelLeitura", () => {
 
   it("restaura o padrão", async () => {
     const { onRestaurar } = renderizar();
-    await fireEvent.click(screen.getByRole("button", { name: "Restaurar o padrão" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Restaurar o texto padrão" }));
     expect(onRestaurar).toHaveBeenCalledOnce();
   });
 

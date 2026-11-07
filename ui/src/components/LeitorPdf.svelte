@@ -82,6 +82,7 @@
   import MolduraLeitor from "./MolduraLeitor.svelte";
   import PainelPagina from "./PainelPagina.svelte";
   import PainelVoz from "./PainelVoz.svelte";
+  import AbasAparencia from "./AbasAparencia.svelte";
   import { avisar, dispensar } from "../lib/avisos.svelte";
   import {
     AvisoDePreparo,
@@ -1627,20 +1628,28 @@
   {/snippet}
 
   {#snippet aparencia()}
-    <PainelTema
-      {preferencias}
-      onMudar={atualizarPreferencias}
-      temaDoSistema={resolverTema("sistema", sistema)}
-    />
-    <PainelPagina
-      {preferencias}
-      onMudar={atualizarPreferencias}
-      formato="pdf"
-      interface={temaEfetivo()}
-    />
-    <!-- A seção Texto não existe no PDF (layout fixo): só a dica do zoom. -->
-    <p class="nota">Para ler maior, use o zoom (Ctrl + ou Ctrl −).</p>
-    <PainelVoz {preferencias} onMudar={atualizarPreferencias} />
+    <AbasAparencia prefixo="aparencia-pdf">
+      {#snippet leitura()}
+        <PainelPagina
+          {preferencias}
+          onMudar={atualizarPreferencias}
+          formato="pdf"
+          interface={temaEfetivo()}
+        />
+        <!-- O texto não muda no PDF (layout fixo): só a dica do zoom. -->
+        <p class="nota">Para ler maior, use o zoom (Ctrl + ou Ctrl −).</p>
+      {/snippet}
+      {#snippet voz()}
+        <PainelVoz {preferencias} onMudar={atualizarPreferencias} />
+      {/snippet}
+      {#snippet aparenciaDoApp()}
+        <PainelTema
+          {preferencias}
+          onMudar={atualizarPreferencias}
+          temaDoSistema={resolverTema("sistema", sistema)}
+        />
+      {/snippet}
+    </AbasAparencia>
   {/snippet}
 
   {#snippet rodape()}

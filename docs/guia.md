@@ -34,13 +34,17 @@ mostra as frases logo antes de onde você estava; `Esc` o fecha e o ponto pisca 
 
 ## Aparência
 
-O botão **Aparência** tem três partes, com prévia ao vivo:
+O botão **Aparência** abre um painel com três abas (a última usada volta a abrir); a página muda na hora, ao lado:
 
-- **Interface:** tema (sistema, claro, escuro, alto contraste) e animações.
-- **Página:** a cor da página (automática, original, creme, sépia, noite, nos dois formatos) e a virada de página.
-- **Texto** (só EPUB): fonte, tamanho, entrelinha, espaçamentos, caracteres por linha, colunas, alinhamento e hifenização.
-  Aumentar a letra alarga a coluna junto, e a linha continua com o mesmo tanto de caracteres.
+- **Leitura:** a página (cor: automática, original, creme, sépia, noite, nos dois formatos; a virada de página; no PDF,
+  página a página ou rolagem contínua) e, só no EPUB, o texto: fonte, tamanho, entrelinha, espaçamentos, caracteres por
+  linha, colunas, alinhamento e hifenização. Aumentar a letra alarga a coluna junto, e a linha continua com o mesmo
+  tanto de caracteres.
 - **Voz:** a velocidade da leitura em voz alta e a voz natural (ver "Ouvir").
+- **Interface:** as cores do app (sistema, claro, escuro, alto contraste), as animações e, no modo foco, mostrar as
+  barras só pelo teclado.
+
+Na biblioteca, só as abas Voz e Interface.
 
 ## Destacar
 
@@ -61,7 +65,7 @@ ou só os do motivo filtrado.
 "Ler em voz alta" fica no rodapé e na paleta. A frase lida fica realçada, e a leitura segue pelos parágrafos e
 capítulos. No PDF, só o texto principal é lido: margem, legendas e número da página ficam de fora. Listas e código
 são lidos mais devagar. "Ouvir", na barra de destaque, lê a partir daquele trecho. A velocidade fica na Aparência
-(seção Voz) e na paleta ("Voz mais rápida", "Voz mais lenta").
+(aba Voz) e na paleta ("Voz mais rápida", "Voz mais lenta").
 
 Há duas vozes:
 

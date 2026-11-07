@@ -4,8 +4,8 @@
   import type { TemaEfetivo } from "../lib/temas";
   import type { EstiloVirada } from "../lib/virada";
 
-  // Seção "Página" do painel Aparência, igual nos dois formatos: o papel (mesmos nomes e
-  // amostras; a implementação difere, ver lib/pagina.ts), a virada, o modo foco e, só no PDF, a
+  // A página, na aba Leitura do painel Aparência (M28b), igual nos dois formatos: o papel (mesmos
+  // nomes e amostras; a implementação difere, ver lib/pagina.ts), a virada e, só no PDF, a
   // exibição.
   let {
     preferencias,
@@ -23,16 +23,23 @@
   const agora = $derived(resolverPagina("automatica", interface_));
   const PAGINAS_FIXAS = Object.entries(PAGINAS) as [PaginaEfetiva, (typeof PAGINAS)[PaginaEfetiva]][];
 
+  /** A linha de ajuda sob as amostras: o que a escolhida faz. */
+  const ajuda = $derived(
+    preferencias.pagina === "automatica"
+      ? `Automática: segue a interface (agora, ${PAGINAS[agora].nome.toLowerCase()}).`
+      : `${PAGINAS[preferencias.pagina].nome}: ${PAGINAS[preferencias.pagina].descricao}.`,
+  );
+
   const VIRADAS: { valor: EstiloVirada; nome: string }[] = [
-    { valor: "nenhuma", nome: "Nenhuma (sugerido)" },
+    { valor: "nenhuma", nome: "Nenhuma" },
     { valor: "esmaecer", nome: "Esmaecer" },
     { valor: "deslizar", nome: "Deslizar" },
     { valor: "virar", nome: "Virar a folha" },
   ];
 
-  const MODOS: { valor: ModoPdf; nome: string; descricao: string }[] = [
-    { valor: "paginas", nome: "Página a página", descricao: "como um livro (sugerido)" },
-    { valor: "rolagem", nome: "Rolagem contínua", descricao: "todas as páginas em sequência" },
+  const MODOS: { valor: ModoPdf; nome: string }[] = [
+    { valor: "paginas", nome: "Página a página" },
+    { valor: "rolagem", nome: "Rolagem contínua" },
   ];
 
   function escolher(pagina: Pagina) {
@@ -50,152 +57,108 @@
   >
 {/snippet}
 
-<div class="painel">
-  <h2>Página</h2>
+<section class="painel" aria-labelledby="titulo-pagina">
+  <h3 id="titulo-pagina">Página</h3>
 
   <fieldset>
     <legend>Cor da página</legend>
-    <label class="opcao">
-      <input
-        type="radio"
-        name="pagina"
-        value="automatica"
-        checked={preferencias.pagina === "automatica"}
-        onchange={() => escolher("automatica")}
-      />
-      {@render amostra(agora)}
-      <span>
-        Automática
-        <span class="descricao">segue a interface (agora: {PAGINAS[agora].nome.toLowerCase()})</span>
-      </span>
-    </label>
-    {#each PAGINAS_FIXAS as [valor, estilo] (valor)}
-      <label class="opcao">
+    <div class="amostras">
+      <label>
         <input
           type="radio"
           name="pagina"
-          value={valor}
-          checked={preferencias.pagina === valor}
-          onchange={() => escolher(valor)}
+          value="automatica"
+          checked={preferencias.pagina === "automatica"}
+          onchange={() => escolher("automatica")}
         />
-        {@render amostra(valor)}
-        <span>
+        {@render amostra(agora)}
+        Automática
+      </label>
+      {#each PAGINAS_FIXAS as [valor, estilo] (valor)}
+        <label>
+          <input
+            type="radio"
+            name="pagina"
+            value={valor}
+            checked={preferencias.pagina === valor}
+            onchange={() => escolher(valor)}
+          />
+          {@render amostra(valor)}
           {estilo.nome}
-          <span class="descricao">{estilo.descricao}</span>
-        </span>
-      </label>
-    {/each}
-  </fieldset>
-
-  <p class="nota">
+        </label>
+      {/each}
+    </div>
+    <p class="ajuda">{ajuda}</p>
     {#if formato === "pdf"}
-      No PDF, a página é um desenho: as cores tingem ou invertem a página inteira, figuras
-      inclusive. No EPUB, o texto se adapta de verdade.
-    {:else}
-      No EPUB, o texto e o fundo mudam de verdade. No PDF, que é um desenho, as mesmas cores
-      tingem ou invertem a página.
+      <p class="ajuda">No PDF, a página é um desenho: as cores tingem ou invertem a página inteira.</p>
+    {:else if interface_ === "alto-contraste"}
+      <p class="ajuda">Com a interface em alto contraste, a página também fica em alto contraste.</p>
     {/if}
-  </p>
-  {#if formato === "epub" && interface_ === "alto-contraste"}
-    <p class="nota">
-      Com a interface em alto contraste, a página do EPUB também fica em alto contraste.
-    </p>
-  {/if}
-
-  <fieldset>
-    <legend>Virada de página</legend>
-    {#each VIRADAS as v (v.valor)}
-      <label class="opcao">
-        <input
-          type="radio"
-          name="virada"
-          value={v.valor}
-          checked={preferencias.virada === v.valor}
-          onchange={() => onMudar({ virada: v.valor })}
-        />
-        {v.nome}
-      </label>
-    {/each}
-  </fieldset>
-
-  <fieldset>
-    <legend>Modo foco</legend>
-    <label class="opcao">
-      <input
-        type="checkbox"
-        checked={preferencias.barrasSoPeloTeclado}
-        onchange={(e) => onMudar({ barrasSoPeloTeclado: e.currentTarget.checked })}
-      />
-      <span>
-        Mostrar as barras só pelo teclado
-        <span class="descricao">com Tab; o ponteiro nas bordas não as revela</span>
-      </span>
-    </label>
   </fieldset>
 
   {#if formato === "pdf"}
     <fieldset>
-      <legend>Exibição do PDF</legend>
-      {#each MODOS as modo (modo.valor)}
-        <label class="opcao">
-          <input
-            type="radio"
-            name="modo-pdf"
-            value={modo.valor}
-            checked={preferencias.modoPdf === modo.valor}
-            onchange={() => onMudar({ modoPdf: modo.valor })}
-          />
-          <span>
+      <legend>Exibição</legend>
+      <div class="segmentado">
+        {#each MODOS as modo (modo.valor)}
+          <label>
+            <input
+              type="radio"
+              name="modo-pdf"
+              value={modo.valor}
+              checked={preferencias.modoPdf === modo.valor}
+              onchange={() => onMudar({ modoPdf: modo.valor })}
+            />
             {modo.nome}
-            <span class="descricao">{modo.descricao}</span>
-          </span>
-        </label>
-      {/each}
+          </label>
+        {/each}
+      </div>
     </fieldset>
   {/if}
-</div>
+
+  <fieldset>
+    <legend>Virada de página</legend>
+    <div class="segmentado">
+      {#each VIRADAS as v (v.valor)}
+        <label>
+          <input
+            type="radio"
+            name="virada"
+            value={v.valor}
+            checked={preferencias.virada === v.valor}
+            onchange={() => onMudar({ virada: v.valor })}
+          />
+          {v.nome}
+        </label>
+      {/each}
+    </div>
+    {#if preferencias.virada !== "nenhuma"}
+      <p class="ajuda">A virada se repete centenas de vezes num livro: "Nenhuma" cansa menos.</p>
+    {/if}
+  </fieldset>
+</section>
 
 <style>
   .painel {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    margin-block-end: 1rem;
+    gap: 1.25rem;
+    margin-block-end: 1.5rem;
   }
 
-  h2 {
+  h3 {
     margin: 0;
-    font-size: 1.1rem;
-  }
-
-  .opcao {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 2.25rem;
+    font-size: 1rem;
   }
 
   .amostra {
     display: grid;
     place-items: center;
-    flex: none;
-    width: 2rem;
-    height: 2rem;
+    width: 100%;
+    height: 2.25rem;
     border: 1px solid var(--borda);
     border-radius: var(--raio-pequeno);
     font-family: Georgia, serif;
     font-weight: 600;
-  }
-
-  .descricao {
-    display: block;
-    color: var(--suave);
-    font-size: 0.875rem;
-  }
-
-  .nota {
-    margin: -0.25rem 0 0;
-    color: var(--suave);
-    font-size: 0.875rem;
   }
 </style>
