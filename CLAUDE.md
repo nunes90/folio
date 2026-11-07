@@ -943,4 +943,5 @@ docs/decisions/  # ADRs
   "Coleções" ficam no menu (que já os tinha), e a situação diz "Para ler" num livro marcado e não começado. Grade com
   `minmax(clamp(8.5rem, 10vw, 13rem), 1fr)` e espaço com `clamp`: duas colunas a 360 px, capas maiores numa tela de
   2560. Janela estreita (`main.estreita`): título e ações só com ícones numa linha, a busca inteira na de baixo.
-- Próximo passo: fechar o M28 (ROADMAP, revisão com o Lucas no app).
+- **M28 concluído** (nov/2026; PRs #114–#117, revisado pelo Lucas no app).
+- Próximo passo: a combinar (M27e/Piper, Séries e Flatpak seguem em aberto no ROADMAP).

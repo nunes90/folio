@@ -229,6 +229,13 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
 - [x] **Orca adiado** (nov/2026): o suporte específico ao leitor de tela sai até a interface estabilizar
   (`docs/leitor-de-tela.md`).
 
+- [x] **M28 — Clareza** (nov/2026): revisão de design, sem recursos novos.
+  - [x] M28a — botões em três variantes (padrão, primário, discreto) e grupos de opções sem caixa, comuns a tudo;
+    alvos de 44 px no toque; capturas das telas em seis larguras (`e2e/specs/capturas.e2e.js`)
+  - [x] M28b — Aparência em três abas (Leitura, Voz, Interface), com escolhas compactas (segmentado, amostras)
+  - [x] M28c — o leitor em todos os tamanhos (índice aberto só em janela larga, rodapé compacto, lupa no PDF)
+  - [x] M28d — a biblioteca em todos os tamanhos (grade que acompanha a janela, card só com a estrela e o ⋯)
+
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
   O código já trata o macOS em alguns pontos (diretório de logs, escala de texto) e deve continuar compilando.
