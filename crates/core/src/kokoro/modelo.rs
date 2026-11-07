@@ -24,8 +24,6 @@ pub struct Kokoro {
     vozes: Vozes,
     vocabulario: Vocabulario,
     fonemizador: Box<dyn Fonemizador>,
-    /// O ambiente do ONNX Runtime precisa viver enquanto a sessão existir.
-    _ambiente: ort::environment::Environment,
 }
 
 impl Kokoro {
@@ -43,14 +41,11 @@ impl Kokoro {
         let tokens = String::from_utf8(ler(ARQUIVO_TOKENS)?)
             .map_err(|_| ErroKokoro::ArquivoInvalido("tokens.txt não é UTF-8".into()))?;
         let vocabulario = Vocabulario::ler(&tokens)?;
-        let ambiente = ort::init_from(pasta.join(ARQUIVO_ONNX_RUNTIME))
-            .map_err(ErroKokoro::SemOnnxRuntime)?
-            .with_name("folio")
-            .build()?;
+        let ambiente = super::ambiente_onnx(&pasta.join(ARQUIVO_ONNX_RUNTIME))?;
         // Metade dos núcleos, até 4: mais que isso quase não acelera e disputa a CPU com a
         // interface enquanto o livro é lido.
         let nucleos = std::thread::available_parallelism().map_or(2, |n| n.get());
-        let sessao = Session::builder(&ambiente)?
+        let sessao = Session::builder(ambiente)?
             .with_intra_threads((nucleos / 2).clamp(1, 4))
             .map_err(ort::Error::from)?
             .commit_from_memory(&ler(ARQUIVO_MODELO)?)?;
@@ -59,7 +54,6 @@ impl Kokoro {
             vozes,
             vocabulario,
             fonemizador,
-            _ambiente: ambiente,
         })
     }
 

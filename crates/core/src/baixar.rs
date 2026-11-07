@@ -294,6 +294,7 @@ mod tests {
         let modelo = Modelo {
             id: "teste",
             nome: "Teste",
+            tipo: crate::catalogo_vozes::Tipo::Kokoro,
             licenca: "MIT",
             arquivos,
             vozes: VOZES,

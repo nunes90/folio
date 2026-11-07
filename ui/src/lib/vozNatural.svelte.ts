@@ -18,6 +18,8 @@ export interface VozDoCatalogo {
 export interface ModeloDeVoz {
   id: string;
   nome: string;
+  /** O Kokoro (várias vozes, inglês e português) ou uma voz leve do Piper (M27e). */
+  tipo: "kokoro" | "piper";
   licenca: string;
   /** Bytes a baixar. */
   tamanho: number;
@@ -43,9 +45,15 @@ const IDIOMAS: Record<string, string> = {
   "pt-BR": "português do Brasil",
 };
 
-/** "inglês americano, feminina". */
-export function descreverVoz(v: VozDoCatalogo): string {
-  return `${IDIOMAS[v.idioma] ?? v.idioma}, ${v.genero}`;
+/** Uma voz baixada, com o modelo de onde ela vem. */
+export interface VozInstalada extends VozDoCatalogo {
+  modelo: ModeloDeVoz;
+}
+
+/** "inglês americano, feminina" (e ", leve" numa voz do Piper). */
+export function descreverVoz(v: VozDoCatalogo & { modelo?: ModeloDeVoz }): string {
+  const leve = v.modelo?.tipo === "piper" ? ", leve" : "";
+  return `${IDIOMAS[v.idioma] ?? v.idioma}, ${v.genero}${leve}`;
 }
 
 /** "152 MB" (megabytes decimais, como os gerenciadores de arquivos). */
@@ -69,27 +77,39 @@ export type IdiomaDaVoz = (typeof IDIOMAS_DA_VOZ)[number];
 /** "pt-BR" → "pt". */
 const base = (idioma: string) => idioma.split(/[-_]/)[0].toLowerCase();
 
-export function vozesDoIdioma(modelo: ModeloDeVoz, idioma: string): VozDoCatalogo[] {
-  return modelo.vozes.filter((v) => base(v.idioma) === idioma);
+/** As vozes dos modelos baixados, na ordem do catálogo (o Kokoro primeiro). */
+export function vozesInstaladas(modelos: ModeloDeVoz[]): VozInstalada[] {
+  return modelos.filter((m) => m.instalado).flatMap((m) => m.vozes.map((v) => ({ ...v, modelo: m })));
 }
 
-/** Os idiomas que o modelo fala, com as vozes de cada um. */
-export function idiomasDoModelo(modelo: ModeloDeVoz) {
-  return IDIOMAS_DA_VOZ.map((i) => ({ ...i, vozes: vozesDoIdioma(modelo, i.base) })).filter(
-    (i) => i.vozes.length > 0,
+/** Os idiomas com alguma voz baixada, com as vozes de cada um. */
+export function idiomasInstalados(modelos: ModeloDeVoz[]) {
+  const vozes = vozesInstaladas(modelos);
+  return IDIOMAS_DA_VOZ.map((i) => ({
+    ...i,
+    vozes: vozes.filter((v) => base(v.idioma) === i.base),
+  })).filter((i) => i.vozes.length > 0);
+}
+
+/** Os idiomas que um modelo fala ("inglês e português"). */
+export function idiomasDoModelo(modelo: ModeloDeVoz): string[] {
+  return IDIOMAS_DA_VOZ.filter((i) => modelo.vozes.some((v) => base(v.idioma) === i.base)).map(
+    (i) => i.nome,
   );
 }
 
-/** A voz em uso num idioma: a escolhida, se for dele, ou a primeira (a padrão do core). */
+/**
+ * A voz em uso num idioma, como o core escolhe (`vozes_dos_idiomas`): a escolhida, se estiver
+ * baixada; senão, a primeira baixada do idioma. `undefined` se o idioma não tem voz baixada.
+ */
 export function vozEscolhida(
-  modelo: ModeloDeVoz,
+  modelos: ModeloDeVoz[],
   p: Preferencias,
   idioma = "en",
-): VozDoCatalogo {
-  const vozes = vozesDoIdioma(modelo, idioma);
+): VozInstalada | undefined {
+  const vozes = vozesInstaladas(modelos).filter((v) => base(v.idioma) === idioma);
   const chave = IDIOMAS_DA_VOZ.find((i) => i.base === idioma)?.escolha;
-  const escolhida = chave ? vozes.find((v) => v.id === p[chave]) : undefined;
-  return escolhida ?? vozes[0] ?? modelo.vozes[0];
+  return (chave ? vozes.find((v) => v.id === p[chave]) : undefined) ?? vozes[0];
 }
 
 class EstadoVozNatural {
@@ -109,9 +129,14 @@ class EstadoVozNatural {
   #ouvindo = false;
   #fimDaAmostra: ReturnType<typeof setTimeout> | undefined;
 
-  /** O modelo do catálogo (hoje só o Kokoro). */
-  get modelo(): ModeloDeVoz | undefined {
-    return this.modelos[0];
+  /** O Kokoro (o modelo de várias vozes). */
+  get kokoro(): ModeloDeVoz | undefined {
+    return this.modelos.find((m) => m.tipo === "kokoro");
+  }
+
+  /** As vozes leves (Piper), uma por modelo. */
+  get leves(): ModeloDeVoz[] {
+    return this.modelos.filter((m) => m.tipo === "piper");
   }
 
   async carregar(): Promise<void> {
@@ -196,13 +221,15 @@ class EstadoVozNatural {
       case "progresso":
         this.baixando = { modelo: a.modelo, baixado: a.baixado, total: a.total };
         return;
-      case "concluido":
+      case "concluido": {
         // Instalado já aqui: sem isso, o painel mostrava "Baixar" de novo até o catálogo voltar
         // (e o foco, que estava no "Cancelar", não tinha para onde ir).
         this.modelos = this.modelos.map((m) => (m.id === a.modelo ? { ...m, instalado: true } : m));
         this.baixando = null;
-        avisar("Voz natural instalada. Os livros em inglês e em português já podem usá-la.");
+        const m = this.modelos.find((x) => x.id === a.modelo);
+        avisar(m ? textoDeInstalado(m) : "Voz natural instalada.");
         break;
+      }
       case "cancelado":
         this.baixando = null;
         avisar("Download da voz natural cancelado.");
@@ -224,10 +251,22 @@ export function porcentagem(b: { baixado: number; total: number }): number {
   return b.total > 0 ? Math.min(100, Math.floor((b.baixado / b.total) * 100)) : 0;
 }
 
+/** O aviso de um download concluído. */
+export function textoDeInstalado(m: ModeloDeVoz): string {
+  const idiomas = idiomasDoModelo(m);
+  const quem = m.tipo === "piper" ? `Voz ${m.vozes[0]?.nome} instalada` : "Voz natural instalada";
+  return `${quem}. Os livros em ${idiomas.join(" e ")} já podem usá-la.`;
+}
+
+/** O nome de um modelo nos comandos: o Kokoro é "a voz natural"; cada Piper, "a voz leve X". */
+function nomeNaPaleta(m: ModeloDeVoz): string {
+  return m.tipo === "piper" ? `a voz leve ${m.vozes[0]?.nome ?? m.nome}` : "a voz natural";
+}
+
 /** A voz natural na paleta (grupo "Voz"), nos dois formatos. */
 export function comandosDaVozNatural(
   estado: {
-    modelo: ModeloDeVoz | undefined;
+    modelos: ModeloDeVoz[];
     baixando: EstadoVozNatural["baixando"];
     espeak: boolean;
   },
@@ -240,81 +279,83 @@ export function comandosDaVozNatural(
     amostra(voz: string): void;
   },
 ): Comando[] {
-  const m = estado.modelo;
-  if (!m) return [];
-  const palavras = "voz natural neural kokoro leitura em voz alta";
+  if (!estado.modelos.length) return [];
+  const palavras = "voz natural neural kokoro piper leve leitura em voz alta";
+  const lista: Comando[] = [];
   if (estado.baixando) {
-    return [
-      {
-        id: "voz-natural-cancelar",
-        titulo: "Cancelar o download da voz natural",
+    const m = estado.modelos.find((x) => x.id === estado.baixando?.modelo);
+    lista.push({
+      id: "voz-natural-cancelar",
+      titulo: `Cancelar o download d${m ? nomeNaPaleta(m) : "a voz natural"}`,
+      grupo: "Voz",
+      dica: `${porcentagem(estado.baixando)}%`,
+      palavras,
+      executar: () => acoes.cancelar(),
+    });
+  } else if (estado.espeak) {
+    for (const m of estado.modelos.filter((x) => !x.instalado)) {
+      const piper = m.tipo === "piper";
+      lista.push({
+        id: `voz-natural-baixar-${m.id}`,
+        titulo: `Baixar ${nomeNaPaleta(m)}`,
         grupo: "Voz",
-        dica: `${porcentagem(estado.baixando)}%`,
-        palavras,
-        executar: () => acoes.cancelar(),
-      },
-    ];
-  }
-  if (!m.instalado) {
-    if (!estado.espeak) return [];
-    return [
-      {
-        id: "voz-natural-baixar",
-        titulo: "Baixar a voz natural",
-        grupo: "Voz",
-        dica: `${m.nome}, ${megabytes(m.tamanho)}, ${idiomasDoModelo(m)
-          .map((i) => i.nome)
-          .join(" e ")}`,
+        dica: piper
+          ? `${megabytes(m.tamanho)}, ${descreverVoz(m.vozes[0])}`
+          : `${m.nome}, ${megabytes(m.tamanho)}, ${idiomasDoModelo(m).join(" e ")}`,
         palavras,
         executar: () => acoes.baixar(m.id),
-      },
-    ];
+      });
+    }
   }
-  const idiomas = idiomasDoModelo(m);
-  return [
-    ...idiomas.flatMap((i) => {
-      const atual = vozEscolhida(m, p, i.base);
-      const sufixo = i.base === "en" ? "" : ` em ${i.nome}`;
-      return [
-        // Escolher a voz, só onde há mais de uma.
-        ...(i.vozes.length > 1
-          ? i.vozes.map((v) => ({
-              id: `voz-natural-${v.id}`,
-              titulo: `Voz${sufixo}: ${v.nome}`,
-              grupo: "Voz",
-              dica: v.id === atual.id ? `atual · ${descreverVoz(v)}` : descreverVoz(v),
-              palavras,
-              executar: () => mudar({ [i.escolha]: v.id }),
-            }))
-          : []),
-        {
-          id: `voz-natural-amostra-${i.base}`,
-          titulo: `Ouvir amostra da voz${sufixo}`,
+  for (const i of idiomasInstalados(estado.modelos)) {
+    const atual = vozEscolhida(estado.modelos, p, i.base)!;
+    const sufixo = i.base === "en" ? "" : ` em ${i.nome}`;
+    // Escolher a voz, só onde há mais de uma.
+    if (i.vozes.length > 1) {
+      for (const v of i.vozes) {
+        lista.push({
+          id: `voz-natural-${v.id}`,
+          titulo: `Voz${sufixo}: ${v.nome}`,
           grupo: "Voz",
-          dica: atual.nome,
+          dica: v.id === atual.id ? `atual · ${descreverVoz(v)}` : descreverVoz(v),
           palavras,
-          executar: () => acoes.amostra(atual.id),
-        },
-        {
-          id: `voz-natural-em-${i.base}`,
-          titulo: p[i.pref]
-            ? `Não usar a voz natural em livros em ${i.nome}`
-            : `Usar a voz natural em livros em ${i.nome}`,
-          grupo: "Voz",
-          palavras,
-          executar: () => mudar({ [i.pref]: !p[i.pref] }),
-        },
-      ];
-    }),
-    {
-      id: "voz-natural-remover",
-      titulo: "Remover a voz natural",
-      grupo: "Voz",
-      dica: `libera ${megabytes(m.tamanho)}`,
-      palavras,
-      executar: () => acoes.remover(m.id),
-    },
-  ];
+          executar: () => mudar({ [i.escolha]: v.id }),
+        });
+      }
+    }
+    lista.push(
+      {
+        id: `voz-natural-amostra-${i.base}`,
+        titulo: `Ouvir amostra da voz${sufixo}`,
+        grupo: "Voz",
+        dica: atual.nome,
+        palavras,
+        executar: () => acoes.amostra(atual.id),
+      },
+      {
+        id: `voz-natural-em-${i.base}`,
+        titulo: p[i.pref]
+          ? `Não usar a voz natural em livros em ${i.nome}`
+          : `Usar a voz natural em livros em ${i.nome}`,
+        grupo: "Voz",
+        palavras,
+        executar: () => mudar({ [i.pref]: !p[i.pref] }),
+      },
+    );
+  }
+  if (!estado.baixando) {
+    for (const m of estado.modelos.filter((x) => x.instalado)) {
+      lista.push({
+        id: `voz-natural-remover-${m.id}`,
+        titulo: `Remover ${nomeNaPaleta(m)}`,
+        grupo: "Voz",
+        dica: `libera ${megabytes(m.tamanho)}`,
+        palavras,
+        executar: () => acoes.remover(m.id),
+      });
+    }
+  }
+  return lista;
 }
 
 /**

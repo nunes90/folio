@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/svelte";
 import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,6 +33,7 @@ function catalogo(
       {
         id: "kokoro",
         nome: "Kokoro",
+        tipo: "kokoro",
         licenca: "Apache-2.0",
         tamanho: 152_000_000,
         instalado,
@@ -276,6 +283,55 @@ describe("PainelVoz (seção Voz)", () => {
       (screen.getByRole("radio", { name: /Heart/ }) as HTMLInputElement)
         .checked,
     ).toBe(true);
+  });
+
+  it("vozes leves (Piper): cada uma com o seu download; a baixada lê o inglês e sai com Remover", async () => {
+    const leve = (id: string, nome: string, instalado: boolean) => ({
+      id: `piper-${id}`,
+      nome,
+      tipo: "piper",
+      licenca: "MIT",
+      tamanho: 74_000_000,
+      instalado,
+      vozes: [{ id, nome, idioma: "en-US", genero: "masculina" }],
+    });
+    estado = catalogo(false);
+    estado.modelos.push(
+      leve(
+        "en_US-norman-medium",
+        "Norman",
+        true,
+      ) as (typeof estado.modelos)[number],
+      leve(
+        "en_US-john-medium",
+        "John",
+        false,
+      ) as (typeof estado.modelos)[number],
+    );
+    renderizar();
+    // O inglês já tem voz (o Norman), mesmo sem o Kokoro.
+    const ingles = await screen.findByRole("group", {
+      name: "Livros em inglês",
+    });
+    expect(ingles.textContent).toContain("Voz: Norman");
+    expect(ingles.textContent).toContain("leve");
+    const leves = screen.getByRole("group", { name: "Vozes leves" });
+    await fireEvent.click(
+      within(leves).getByRole("button", { name: "Baixar (74 MB)" }),
+    );
+    expect(invoke).toHaveBeenCalledWith("baixar_voz_natural", {
+      modelo: "piper-en_US-john-medium",
+    });
+    // Remover pede confirmação, no lugar da voz.
+    await fireEvent.click(
+      within(leves).getByRole("button", { name: "Remover Norman…" }),
+    );
+    await fireEvent.click(
+      within(leves).getByRole("button", { name: "Remover (74 MB)" }),
+    );
+    expect(invoke).toHaveBeenCalledWith("remover_voz_natural", {
+      modelo: "piper-en_US-norman-medium",
+    });
   });
 
   it("sem o espeak-ng, diz o que instalar em vez de oferecer o download", async () => {

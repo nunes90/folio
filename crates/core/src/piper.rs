@@ -78,6 +78,10 @@ impl ConfigPiper {
     }
 }
 
+/// Os arquivos de uma voz na pasta dela (o download os renomeia).
+pub const ARQUIVO_MODELO: &str = "modelo.onnx";
+pub const ARQUIVO_CONFIG: &str = "modelo.onnx.json";
+
 const INICIO: char = '^';
 const FIM: char = '$';
 const SEPARADOR: char = '_';
@@ -102,8 +106,6 @@ pub struct Piper {
     sessao: Session,
     config: ConfigPiper,
     fonemizador: Box<dyn Fonemizador>,
-    /// O ambiente do ONNX Runtime precisa viver enquanto a sessão existir.
-    _ambiente: ort::environment::Environment,
 }
 
 impl Piper {
@@ -122,12 +124,9 @@ impl Piper {
         };
         let json = ler(&modelo.with_extension("onnx.json"))?;
         let config = ConfigPiper::ler(&String::from_utf8_lossy(&json))?;
-        let ambiente = ort::init_from(onnx_runtime)
-            .map_err(ErroKokoro::SemOnnxRuntime)?
-            .with_name("folio")
-            .build()?;
+        let ambiente = crate::kokoro::ambiente_onnx(onnx_runtime)?;
         let nucleos = std::thread::available_parallelism().map_or(2, |n| n.get());
-        let sessao = Session::builder(&ambiente)?
+        let sessao = Session::builder(ambiente)?
             .with_intra_threads((nucleos / 2).clamp(1, 4))
             .map_err(ort::Error::from)?
             .commit_from_memory(&ler(modelo)?)?;
@@ -135,7 +134,6 @@ impl Piper {
             sessao,
             config,
             fonemizador,
-            _ambiente: ambiente,
         })
     }
 

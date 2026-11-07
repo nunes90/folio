@@ -42,6 +42,16 @@ a usa. Foram testados no app real (out–nov/2026):
   falar.
 - **Catálogo**: cinco vozes em inglês (Heart, Bella e Michael, americanas; Isabella e George, britânicas), a Heart por
   padrão. O catálogo é uma lista de modelos, para outro motor (Piper) entrar como linhas novas.
+- **Piper, as vozes leves** (M27e, nov/2026): o mesmo espeak-ng e o mesmo ONNX Runtime, um modelo VITS por voz (~63 MB,
+  mais o ONNX Runtime em cada pasta, ~74 MB por download), ~32× o tempo real aqui (o Kokoro, ~3,4×). Cada voz é um
+  modelo do catálogo (`Tipo::Piper`); o motor acha a pasta de cada voz (`ConfigNeural.pastas`) e carrega o modelo
+  que a leitura pedir. O Piper gera a 22 050 Hz e a saída de som abre a 24 kHz: `reamostrar` (sinc com janela de
+  Blackman, pesos por fase) converte no core, porque a conversão linear deixava a voz áspera. Em cada idioma vale a voz
+  escolhida, se baixada; senão, a primeira baixada (`vozes_dos_idiomas`). **Licenças**: o repositório é MIT, mas cada
+  voz herda os termos das gravações e da voz de onde foi ajustada. Entram só as treinadas do zero com gravações em
+  domínio público (Kristin, LJSpeech, Norman; o John vem da Kristin); a Cori (britânica) foi ouvida e não entrou.
+  Ficam de fora as que vêm da lessac (licença Blizzard 2013, só pesquisa: joe, mike, sam, alba e todas do pt-BR
+  — faber, cadu, jeff), da ryan (CC BY-NC-SA: kathleen, edresson) e as de licença desconhecida ou não comercial.
 
 ## Consequências
 - Quem não baixa a voz natural não paga nada: o app não cresce, e sem o modelo, o espeak-ng ou o ONNX Runtime ele abre

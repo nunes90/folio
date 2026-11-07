@@ -23,6 +23,7 @@ mod normalizar_pt;
 mod tokens;
 mod vozes;
 
+pub use filtro::reamostrar;
 pub use fonemas::{EspeakNg, Fonemizador, fonemas_com_pontuacao, fonemas_pontuados};
 pub use modelo::{
     ARQUIVO_MODELO, ARQUIVO_ONNX_RUNTIME, ARQUIVO_TOKENS, ARQUIVO_VOZES, Kokoro, TAXA,
@@ -32,7 +33,31 @@ pub use normalizar_pt::normalizar_portugues;
 pub use tokens::{MAX_TOKENS, Vocabulario, dividir};
 pub use vozes::{VOZES, Vozes, corte_da_voz, idioma_da_voz, indice_da_voz};
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+
+/// O ambiente do ONNX Runtime, um só por processo: ele recusa um segundo ("only one environment
+/// is allowed per process"), mesmo depois de o primeiro ser descartado. Cada modelo criava o seu, e
+/// reabrir um modelo (outra voz, ou depois de 2 min parado) falhava até o app ser reiniciado.
+/// `runtime` é a `libonnxruntime.so` a carregar na primeira vez; depois, vale a já carregada.
+pub(crate) fn ambiente_onnx(
+    runtime: &Path,
+) -> Result<&'static ort::environment::Environment, ErroKokoro> {
+    static AMBIENTE: OnceLock<ort::environment::Environment> = OnceLock::new();
+    static CRIANDO: Mutex<()> = Mutex::new(());
+    if let Some(a) = AMBIENTE.get() {
+        return Ok(a);
+    }
+    let _vez = CRIANDO.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(a) = AMBIENTE.get() {
+        return Ok(a);
+    }
+    let ambiente = ort::init_from(runtime)
+        .map_err(ErroKokoro::SemOnnxRuntime)?
+        .with_name("folio")
+        .build()?;
+    Ok(AMBIENTE.get_or_init(|| ambiente))
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ErroKokoro {
