@@ -251,6 +251,33 @@ describe("PainelVoz (seção Voz)", () => {
     expect(invoke).toHaveBeenCalledWith("ouvir_amostra_voz", { id: "pf_dora" });
   });
 
+  it("português com duas vozes: rádios próprios, que mudam a voz do português", async () => {
+    estado = catalogo(true);
+    estado.modelos[0].vozes.push(
+      { id: "pf_dora", nome: "Dora", idioma: "pt-BR", genero: "feminina" },
+      { id: "pm_alex", nome: "Alex", idioma: "pt-BR", genero: "masculina" },
+    );
+    const { onMudar } = renderizar({ vozNaturalPortugues: "pm_alex" });
+    const grupo = await screen.findByRole("radiogroup", {
+      name: "Voz em português",
+    });
+    const alex = screen.getByRole("radio", {
+      name: /Alex/,
+    }) as HTMLInputElement;
+    expect(grupo.contains(alex)).toBe(true);
+    expect(alex.checked).toBe(true);
+    await fireEvent.click(screen.getByRole("radio", { name: /Dora/ }));
+    expect(onMudar).toHaveBeenCalledWith({ vozNaturalPortugues: "pf_dora" });
+    expect(
+      screen.getByRole("button", { name: "Ouvir amostra (Alex)" }),
+    ).toBeTruthy();
+    // A do inglês continua com a sua escolha.
+    expect(
+      (screen.getByRole("radio", { name: /Heart/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+  });
+
   it("sem o espeak-ng, diz o que instalar em vez de oferecer o download", async () => {
     estado = catalogo(false, false);
     renderizar();

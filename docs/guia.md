@@ -67,8 +67,8 @@ Há duas vozes:
 
 - **A voz natural**, para livros em inglês e em português: uma voz neural que roda no seu computador. Em **Aparência → Voz**, "Baixar
   a voz natural" baixa 152 MB uma vez (dá para cancelar; o resto do app continua funcionando). Depois, escolha a voz
-  do inglês (Heart, Bella e Michael, em inglês americano; Isabella e George, em inglês britânico; o português tem a
-  Dora), ouça a amostra e, se quiser, desligue "Usar a voz natural em livros em inglês" ou "… em português". "Remover a voz natural…" apaga o download. A primeira frase pode
+  de cada idioma (no inglês, Heart, Bella e Michael, americanos, e Isabella e George, britânicos; no português, Dora
+  e Alex), ouça a amostra e, se quiser, desligue "Usar a voz natural em livros em inglês" ou "… em português". "Remover a voz natural…" apaga o download. A primeira frase pode
   levar um segundo para começar ("Preparando a voz…"). Na paleta: "Baixar a voz natural", "Voz: Heart", "Ouvir amostra
   da voz".
 - **A voz do sistema**, para os outros idiomas (e para o inglês, sem a voz natural). Requer o `speech-dispatcher`; a

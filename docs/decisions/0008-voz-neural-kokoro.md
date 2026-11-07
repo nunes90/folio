@@ -48,9 +48,10 @@ a usa. Foram testados no app real (out–nov/2026):
   normalmente, com a voz do sistema.
 - A primeira fala depois de abrir (ou de 2 min parado) demora ~1 s para carregar o modelo; o app mostra
   "Preparando a voz…".
-- Inglês e português do Brasil. Das três vozes do Brasil, só a Dora (`pf_dora`) soou boa; no português, todo número
+- Inglês e português do Brasil. Das três vozes do Brasil, a Dora (`pf_dora`) e, depois de juntar as frases picadas,
+  o Alex (`pm_alex`) soaram bons, os dois com o passa-baixa em 8 kHz; o Santa, não; no português, todo número
   solto é escrito por extenso (`kokoro::normalizar_portugues`): o espeak-ng lia "1869" certo, mas numa palavra só nos
-  fonemas, e o modelo tropeçava. A voz do inglês tem escolha; a do português, por ora, não.
+  fonemas, e o modelo tropeçava. Cada idioma tem a sua escolha de voz (`vozNatural` e `vozNaturalPortugues`).
 - O Orca continua com a voz do sistema: a voz natural é só da leitura em voz alta.
 - O download é a única vez em que o Folio usa a internet, e só quando a pessoa pede.
 - Testes reais, fora da CI (precisam do modelo baixado): `FOLIO_KOKORO=<pasta> cargo test -p folio-core --release --

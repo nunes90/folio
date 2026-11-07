@@ -52,14 +52,16 @@ impl EstadoVoz {
     /// instalado.
     pub fn aplicar(&self, preferencias: &PreferenciasLeitura) {
         let modelo = &catalogo_vozes::KOKORO;
-        // A voz de cada idioma: no inglês, a escolhida; nos outros, a primeira do catálogo.
+        // A voz de cada idioma: a escolhida (inglês e português) ou a primeira do catálogo.
         let vozes: Vec<(String, String)> = modelo
             .idiomas()
             .into_iter()
             .filter_map(|base| {
-                let escolhida = (base == "en")
-                    .then(|| modelo.voz(&preferencias.voz_natural))
-                    .flatten();
+                let escolhida = match base.as_str() {
+                    "en" => modelo.voz(&preferencias.voz_natural),
+                    "pt" => modelo.voz(&preferencias.voz_natural_portugues),
+                    _ => None,
+                };
                 let voz = escolhida.or_else(|| modelo.voz_do_idioma(&base))?;
                 Some((base, voz.id.to_string()))
             })

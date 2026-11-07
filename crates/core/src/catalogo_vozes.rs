@@ -233,13 +233,19 @@ pub const KOKORO: Modelo = Modelo {
             idioma: "en-GB",
             genero: Genero::Masculina,
         },
-        // Das três vozes do Brasil, a que soou boa ouvindo um trecho de livro (nov/2026); o Alex e
-        // o Santa, não.
+        // Das três vozes do Brasil, a Dora e o Alex soaram bons num trecho de livro (nov/2026,
+        // depois de juntar as frases picadas); o Santa, não. A primeira é a padrão do idioma.
         VozDoCatalogo {
             id: "pf_dora",
             nome: "Dora",
             idioma: "pt-BR",
             genero: Genero::Feminina,
+        },
+        VozDoCatalogo {
+            id: "pm_alex",
+            nome: "Alex",
+            idioma: "pt-BR",
+            genero: Genero::Masculina,
         },
     ],
 };
@@ -292,6 +298,7 @@ mod tests {
         // Fora do catálogo (a preferência de quem a tinha volta à voz padrão).
         assert!(voz("bf_emma").is_none());
         assert_eq!(KOKORO.voz_do_idioma("pt").map(|v| v.id), Some("pf_dora"));
+        assert_eq!(KOKORO.voz("pm_alex").map(|v| v.nome), Some("Alex"));
         assert_eq!(KOKORO.voz_do_idioma("en").map(|v| v.id), Some("af_heart"));
         assert!(KOKORO.voz_do_idioma("es").is_none());
         assert_eq!(KOKORO.idiomas(), ["en", "pt"]);

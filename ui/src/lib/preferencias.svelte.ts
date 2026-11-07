@@ -30,6 +30,8 @@ export interface Preferencias {
   velocidadeVoz: number;
   /** Voz natural escolhida (id do catálogo); vazio = a padrão. */
   vozNatural: string;
+  /** A voz natural do português; vazio = a padrão (a Dora). */
+  vozNaturalPortugues: string;
   /** Ler livros em inglês com a voz natural, quando baixada. */
   vozNaturalEmIngles: boolean;
   vozNaturalEmPortugues: boolean;
@@ -58,6 +60,7 @@ export const PADRAO: Preferencias = {
   movimento: "sistema",
   velocidadeVoz: 0,
   vozNatural: "",
+  vozNaturalPortugues: "",
   vozNaturalEmIngles: true,
   vozNaturalEmPortugues: true,
   virada: "nenhuma",

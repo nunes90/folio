@@ -188,6 +188,46 @@ describe("comandosDaVozNatural", () => {
     expect(vozEscolhida(m, PADRAO, "pt").nome).toBe("Dora");
   });
 
+  it("português com duas vozes: escolher entre a Dora e o Alex, na preferência do português", () => {
+    const mudar = vi.fn();
+    const m = {
+      ...MODELO,
+      vozes: [
+        ...MODELO.vozes,
+        {
+          id: "pf_dora",
+          nome: "Dora",
+          idioma: "pt-BR",
+          genero: "feminina" as const,
+        },
+        {
+          id: "pm_alex",
+          nome: "Alex",
+          idioma: "pt-BR",
+          genero: "masculina" as const,
+        },
+      ],
+    };
+    const p = { ...PADRAO, vozNaturalPortugues: "pm_alex" };
+    const lista = comandosDaVozNatural(
+      { modelo: m, baixando: null, espeak: true },
+      p,
+      mudar,
+      acoes(),
+    );
+    const alex = lista.find((c) => c.titulo === "Voz em português: Alex")!;
+    expect(alex.dica).toMatch(/^atual/);
+    lista.find((c) => c.titulo === "Voz em português: Dora")!.executar();
+    expect(mudar).toHaveBeenCalledWith({ vozNaturalPortugues: "pf_dora" });
+    expect(vozEscolhida(m, p, "pt").nome).toBe("Alex");
+    // Cada idioma com a sua escolha.
+    expect(vozEscolhida(m, p, "en").nome).toBe("Heart");
+    expect(
+      vozEscolhida(m, { ...PADRAO, vozNaturalPortugues: "bm_george" }, "pt")
+        .nome,
+    ).toBe("Dora");
+  });
+
   it("sem catálogo: nada", () => {
     expect(
       comandosDaVozNatural(
