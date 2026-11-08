@@ -40,7 +40,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       # Guarda também o tauri-cli e o tauri-driver instalados (~/.cargo/bin) entre as execuções.
+      # Um cache por sistema: o cargo-tauri compilado no Ubuntu mais novo não roda no 22.04 (glibc).
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}
 
       - uses: actions/setup-node@v4
         with:
