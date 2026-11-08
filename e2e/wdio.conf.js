@@ -47,6 +47,7 @@ export const config = {
         sessao("specs/epub.e2e.js", "dom-casmurro.epub"),
         sessao("specs/pdf.e2e.js", "texto.pdf"),
         sessao("specs/senha.e2e.js", "quebrados/pdf-com-senha.pdf"),
+        sessao("specs/selecao.e2e.js", "dom-casmurro.epub"),
       ],
   reporters: ["spec"],
   framework: "mocha",
@@ -57,6 +58,8 @@ export const config = {
   beforeSession: () => {
     const dados = fs.mkdtempSync(path.join(os.tmpdir(), "folio-e2e-"));
     pastaDaSessao = dados;
+    // Para os testes que mexem nos dados da sessão (selecao.e2e.js envelhece a última leitura).
+    process.env.FOLIO_DADOS_TESTE = path.join(dados, "dados");
     const ambiente = {
       ...process.env,
       XDG_DATA_HOME: path.join(dados, "dados"),
