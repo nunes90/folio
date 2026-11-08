@@ -985,4 +985,8 @@ docs/decisions/  # ADRs
   voltar, funcionou. Não reproduz com o WebKitGTK 2.54 daqui. `specs/selecao.e2e.js` (a sessão envelhece a última leitura
   no banco, `FOLIO_DADOS_TESTE`, para o cartão aparecer) e o E2E também no Ubuntu 22.04, o WebKitGTK do AppImage
   (`webkit2gtk-driver`; um cache do Rust por sistema, senão o `cargo-tauri` do Ubuntu novo não roda lá).
+- Diagnóstico da seleção (PR #121): o log diz `seleção sem barra: …` (texto selecionado e a barra não abre) e `barra
+  de destaque fechada N ms depois de abrir: <origem>` (`ControleDestaques.esconder(origem)`), só no EPUB.
+- **v1.1.1** (nov/2026; branch `chore/v1.1.1`): "Ouvir" só o trecho (#122) e o diagnóstico e os E2E no WebKitGTK do
+  AppImage (#121). Versão nos 4 lugares; `THIRD-PARTY-NOTICES.md` sem mudança. Tag assinada e Release pelo Lucas.
 - Próximo passo: a combinar (Séries — a biblioteca daqui não tem livros com série — e Flatpak seguem em aberto).

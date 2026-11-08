@@ -241,6 +241,9 @@ o WebKitGTK ainda pode abortar a página (o Folio recarrega e avisa).
 entre parágrafos, slider de posição, M28 (clareza: componentes, Aparência em abas, todos os tamanhos de tela) e o
 Orca adiado. Tag `v1.1.0` e Release, com o AppImage da CI.
 
+**v1.1.1** (nov/2026): "Ouvir" lê só o trecho; o log diz por que a barra de destaque não abriu; E2E também no WebKitGTK do
+AppImage (Ubuntu 22.04). Tag `v1.1.1` e Release, com o AppImage da CI.
+
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
   O código já trata o macOS em alguns pontos (diretório de logs, escala de texto) e deve continuar compilando.
