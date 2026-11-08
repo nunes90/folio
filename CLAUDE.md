@@ -974,4 +974,15 @@ docs/decisions/  # ADRs
 - **v1.1.0** (nov/2026; branch `chore/v1.1.0`): versão nos 4 lugares (`Cargo.toml`, `tauri.conf.json`, `ui/package.json`
   e os lockfiles) e `THIRD-PARTY-NOTICES.md` gerado de novo (estava parado desde o M26e, sem as dependências da voz
   natural; o workflow do AppImage já o regerava ao empacotar). Tag assinada e Release pelo Lucas.
+- **"Ouvir" só o trecho** (branch `fix/ouvir-so-o-trecho`): pedido do Lucas testando a v1.1.0. O "Ouvir" da barra de
+  destaque lia a partir do trecho e seguia pelo livro; agora lê só ele (a seleção, a frase do modo frase ou o destaque) e
+  para, nos dois formatos; o livro inteiro é o "Ler em voz alta" (a barra não ganhou um "Ler daqui": decisão do Lucas).
+  `frasesDoTrecho` (`lib/frases.ts`): as frases que o trecho alcança, cortadas nas pontas. EPUB: `ouvirTrecho` /
+  `falarTrecho` e `trechoOuvido` (marca → realce; no fim, `pararLeitura`; pausar/continuar dentro do trecho). PDF:
+  `falarTrecho` e `leitura.soOTrecho`; num destaque, as frases cujas linhas caem nos retângulos dele.
+- **Seleção sem barra na v1.1.0** (branch `test/selecao-webkit-2.50`): o Lucas selecionou com o mouse (o texto marcou) e a
+  barra não apareceu, ao reabrir um EPUB pela biblioteca e fechar o cartão "Onde você parou"; depois de abrir um PDF e
+  voltar, funcionou. Não reproduz com o WebKitGTK 2.54 daqui. `specs/selecao.e2e.js` (a sessão envelhece a última leitura
+  no banco, `FOLIO_DADOS_TESTE`, para o cartão aparecer) e o E2E também no Ubuntu 22.04, o WebKitGTK do AppImage
+  (`webkit2gtk-driver`; um cache do Rust por sistema, senão o `cargo-tauri` do Ubuntu novo não roda lá).
 - Próximo passo: a combinar (Séries — a biblioteca daqui não tem livros com série — e Flatpak seguem em aberto).

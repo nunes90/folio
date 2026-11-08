@@ -169,6 +169,32 @@ export function indiceDaFraseEm(frases: Range[], ponto: Range): number {
 }
 
 /** Um intervalo do início da frase `de` ao fim da frase `ate` (inclusive). */
+/**
+ * As frases que o `trecho` alcança, cortadas nas pontas dele: o que o "Ouvir" da barra de destaque
+ * lê (a seleção, a frase do modo frase ou o destaque, e nada além). Sem nenhuma frase (um trecho
+ * fora dos blocos de texto), o próprio trecho.
+ */
+export function frasesDoTrecho(frases: Range[], trecho: Range): Range[] {
+  const dentro = frases
+    .filter(
+      (f) =>
+        f.compareBoundaryPoints(Range.START_TO_END, trecho) > 0 &&
+        f.compareBoundaryPoints(Range.END_TO_START, trecho) < 0,
+    )
+    .map((f) => {
+      const r = f.cloneRange();
+      if (r.compareBoundaryPoints(Range.START_TO_START, trecho) < 0) {
+        r.setStart(trecho.startContainer, trecho.startOffset);
+      }
+      if (r.compareBoundaryPoints(Range.END_TO_END, trecho) > 0) {
+        r.setEnd(trecho.endContainer, trecho.endOffset);
+      }
+      return r;
+    })
+    .filter((r) => r.toString().trim());
+  return dentro.length ? dentro : [trecho.cloneRange()];
+}
+
 export function unir(frases: Range[], de: number, ate: number): Range {
   const r = frases[de]!.cloneRange();
   r.setEnd(frases[ate]!.endContainer, frases[ate]!.endOffset);

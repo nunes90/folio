@@ -64,7 +64,8 @@ ou só os do motivo filtrado.
 
 "Ler em voz alta" fica no rodapé e na paleta. A frase lida fica realçada, e a leitura segue pelos parágrafos e
 capítulos. No PDF, só o texto principal é lido: margem, legendas e número da página ficam de fora. Listas e código
-são lidos mais devagar. "Ouvir", na barra de destaque, lê a partir daquele trecho. A velocidade fica na Aparência
+são lidos mais devagar. "Ouvir", na barra de destaque, lê só aquele trecho (a seleção, a frase ou o destaque) e para; para seguir lendo
+o livro, "Ler em voz alta". A velocidade fica na Aparência
 (aba Voz) e na paleta ("Voz mais rápida", "Voz mais lenta").
 
 Há duas vozes:
