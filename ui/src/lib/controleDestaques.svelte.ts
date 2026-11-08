@@ -78,6 +78,8 @@ export class ControleDestaques {
     this.#fixadosIds.flatMap((id) => this.lista.find((d) => d.id === id) ?? []),
   );
   #selecao: Selecao | null = null;
+  /** Quando a barra abriu (para o log de uma barra que fecha logo em seguida). */
+  #abertaEm = 0;
   #a: AdaptadorDestaques;
 
   constructor(adaptador: AdaptadorDestaques) {
@@ -101,19 +103,27 @@ export class ControleDestaques {
    * trecho está no lado novo (M25), onde a barra não oferece a voz, que é só do principal.
    */
   mostrarSelecao(selecao: Selecao, posicao: PosicaoBarra, focar: boolean, doLado = false): void {
+    this.#abertaEm = Date.now();
     this.#selecao = selecao;
     this.barra = { ...posicao, focar, destaque: null, doLado };
   }
 
   /** Abre a barra sobre um destaque (clicado). */
   mostrarDestaque(destaque: Destaque, posicao: PosicaoBarra, doLado = false): void {
+    this.#abertaEm = Date.now();
     this.#selecao = null;
     this.barra = { ...posicao, focar: false, destaque, doLado };
   }
 
-  /** Esconde a barra sem mexer no foco (ex.: virou a página, clicou fora). */
-  esconder(): void {
+  /**
+   * Esconde a barra sem mexer no foco (ex.: virou a página, clicou fora). `origem` vai ao log se a
+   * barra fechar logo depois de abrir: na v1.1.0, o texto marcava e a barra não aparecia, sem
+   * reproduzir aqui (ver CLAUDE.md, "Seleção sem barra").
+   */
+  esconder(origem = "?"): void {
     if (!this.barra) return;
+    const aberta = Date.now() - this.#abertaEm;
+    if (aberta < 1000) log.warn(`barra de destaque fechada ${aberta} ms depois de abrir: ${origem}`);
     this.barra = null;
     this.#a.aoFecharBarra?.();
   }
@@ -122,8 +132,8 @@ export class ControleDestaques {
    * Um lado mudou de zoom ou de página: esconde a barra só se ela for daquele lado. Ao abrir o lado
    * novo, o principal refaz o zoom, às vezes depois de a barra já estar aberta no lado.
    */
-  esconderDe(doLado: boolean): void {
-    if (this.barra?.doLado === doLado) this.esconder();
+  esconderDe(doLado: boolean, origem = "?"): void {
+    if (this.barra?.doLado === doLado) this.esconder(origem);
   }
 
   /** Fecha a barra; se ela tinha o foco (teclado), devolve-o ao texto. */

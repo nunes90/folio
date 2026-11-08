@@ -678,7 +678,7 @@
     });
     v.addEventListener("relocate", (e) => {
       // No modo frase, a página vira para acompanhar a frase: a barra vai junto.
-      if (!modoFrase) destaques.esconderDe(false);
+      if (!modoFrase) destaques.esconderDe(false, "a página mudou");
       const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;
       relocacoes++;
       progresso = fraction;
@@ -705,7 +705,7 @@
           if (!verSelecao(doc, index, false)) escolherIdeiaNoClique(doc);
         }),
       );
-      doc.addEventListener("pointerdown", () => destaques.esconder());
+      doc.addEventListener("pointerdown", () => destaques.esconder("clique no texto"));
       doc.addEventListener("keydown", (original) => {
         const copia = new KeyboardEvent("keydown", {
           key: original.key,
@@ -808,10 +808,18 @@
   /** Há texto selecionado em `doc`? Abre a barra sobre ele (com o CFI já calculado). */
   function verSelecao(doc: Document, indice: number, focar: boolean): boolean {
     const sel = doc.getSelection();
-    if (!view || !sel || sel.isCollapsed || !sel.rangeCount) return false;
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return false;
+    // Texto selecionado e nenhuma barra: o log diz por quê (ver CLAUDE.md, "Seleção sem barra").
+    if (!view) {
+      log.warn("seleção sem barra: o livro ainda não está pronto");
+      return false;
+    }
     const range = sel.getRangeAt(0);
     const selecao = selecaoNoEpub(view, indice, range);
-    if (!selecao) return false;
+    if (!selecao) {
+      log.warn(`seleção sem barra: o trecho não tem texto (seção ${indice})`);
+      return false;
+    }
     destaques.mostrarSelecao(selecao, posicaoNoIframe(range), focar);
     return true;
   }
@@ -925,7 +933,9 @@
   }
 
   function aoApontarFora(e: PointerEvent) {
-    if (!(e.target instanceof Element && e.target.closest(".barra-destaque"))) destaques.esconder();
+    if (!(e.target instanceof Element && e.target.closest(".barra-destaque"))) {
+      destaques.esconder("clique fora da barra");
+    }
   }
 
   async function irParaDestaque(destaque: Destaque) {
