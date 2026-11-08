@@ -52,7 +52,7 @@
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
   import { tirarEspacoAposUltimaQuebra } from "../lib/contornosWebkit";
   import { blocoInicial, primeiroBlocoDaSecaoSeguinte } from "../lib/vozNaSecao";
-  import { frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "../lib/frases";
+  import { frasesDoDocumento, frasesDoTrecho, indiceDaFraseEm, trechoSeguinte, unir } from "../lib/frases";
   import {
     blocoNaTela,
     blocosDoDocumento,
@@ -98,6 +98,7 @@
     type ComandosDoLeitor,
   } from "../lib/comandos";
   import {
+    blocoDasFrases,
     blocoParaFala,
     comandosDaVoz,
     falar,
@@ -244,6 +245,8 @@
   let retomarVozAoFechar = false;
   /** A frase que a voz está lendo (ou leu por último, na pausa) e o CFI do realce dela. */
   let fraseLida: Range | null = null;
+  /** O trecho que o "Ouvir" da barra está lendo (só ele; no fim, para) e a última frase marcada. */
+  let trechoOuvido: { frases: Range[]; marca: number } | null = null;
   let realceVoz: string | null = null;
 
   /** Onde a leitura está, para a meta: o capítulo (a seção) e quanto dele já passou. */
@@ -502,6 +505,7 @@
   /** Lê em voz alta a partir de `desde` (ou da página atual). Se já estiver lendo, recomeça dali. */
   async function lerEmVozAlta(desde?: Range) {
     if (!view) return;
+    trechoOuvido = null;
     if (!vozPossivel) {
       anuncio = SEM_VOZ;
       return;
@@ -591,7 +595,20 @@
 
   function aoEventoVoz(e: EventoVoz) {
     // Eventos atrasados depois de parar ou pausar (ou de outro livro) são ignorados.
-    if (voz !== "falando" || !view?.tts) return;
+    if (voz !== "falando") return;
+    // "Ouvir" da barra: só o trecho; no fim dele, a leitura para.
+    if (trechoOuvido) {
+      preparo.terminar();
+      if (e.tipo === "marca") {
+        trechoOuvido.marca = Number(e.marca);
+        const frase = trechoOuvido.frases[trechoOuvido.marca];
+        if (frase) mostrarFraseLida(frase);
+      } else {
+        void pararLeitura();
+      }
+      return;
+    }
+    if (!view?.tts) return;
     preparo.terminar();
     if (e.tipo === "marca") view.tts.setMark(e.marca);
     else if (e.tipo === "fim") seguirLendo(view.tts.next()).catch((erro) => log.warn(`${erro}`));
@@ -611,6 +628,10 @@
     } else if (voz === "pausado") {
       // Depois de uma pausa longa, a voz natural pode ter fechado o modelo (2 min).
       preparo.comecar();
+      if (trechoOuvido) {
+        await falarTrecho(trechoOuvido.frases, trechoOuvido.marca);
+        return;
+      }
       voz = "falando";
       await seguirLendo(view?.tts?.resume());
     }
@@ -619,6 +640,7 @@
   async function pararLeitura() {
     preparo.terminar();
     voz = "parado";
+    trechoOuvido = null;
     fraseLida = null;
     trocarRealce(null);
     await pararVoz();
@@ -929,7 +951,56 @@
     // A leitura recomeça no trecho: não retomar a pausada ao fechar a barra.
     retomarVozAoFechar = false;
     destaques.fecharBarra();
-    if (trecho) await lerEmVozAlta(trecho);
+    if (trecho) await ouvirTrecho(trecho);
+  }
+
+  /**
+   * "Ouvir" da barra: lê só o trecho (as frases que ele alcança, cortadas nas pontas) e para. A
+   * leitura do livro inteiro é o "Ler em voz alta".
+   */
+  async function ouvirTrecho(trecho: Range) {
+    if (!vozPossivel) {
+      anuncio = SEM_VOZ;
+      return;
+    }
+    if (voz !== "parado") await pararLeitura();
+    const doc = trecho.startContainer.ownerDocument;
+    if (!doc) return;
+    const doCapitulo = frasesPorCapitulo.get(doc) ?? frasesDoDocumento(doc, idiomaDoLivro);
+    frasesPorCapitulo.set(doc, doCapitulo);
+    preparo.comecar();
+    await falarTrecho(frasesDoTrecho(doCapitulo, trecho), 0);
+  }
+
+  /** Fala as `frases` do trecho a partir da `desde` (no começo, ou ao continuar da pausa). */
+  async function falarTrecho(frases: Range[], desde: number) {
+    const bloco = blocoDasFrases(
+      frases.slice(desde).map((f) => f.toString()),
+      desde,
+      idiomaDoLivro,
+    );
+    if (!bloco) {
+      preparo.terminar();
+      return;
+    }
+    trechoOuvido = { frases, marca: desde };
+    voz = "falando";
+    try {
+      await falar(bloco.ssml, {
+        idioma: idiomaDoLivro,
+        // Listas e código mais devagar, como na leitura do livro.
+        velocidade: velocidadeDoTrecho(
+          preferencias.velocidadeVoz,
+          tipoDoElemento(frases[desde]?.commonAncestorContainer),
+        ),
+      });
+    } catch (erro) {
+      log.warn(`ouvir o trecho: ${erro}`);
+      preparo.terminar();
+      voz = "parado";
+      trechoOuvido = null;
+      anuncio = textoDaFalhaDaVoz(erro);
+    }
   }
 
   function aoApontarFora(e: PointerEvent) {

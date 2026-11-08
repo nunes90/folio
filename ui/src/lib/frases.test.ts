@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { blocosDe, continua, frasesDe, frasesDoDocumento, indiceDaFraseEm, trechoSeguinte, unir } from "./frases";
+import {
+  blocosDe,
+  continua,
+  frasesDe,
+  frasesDoDocumento,
+  frasesDoTrecho,
+  indiceDaFraseEm,
+  trechoSeguinte,
+  unir,
+} from "./frases";
 
 function doc(html: string): Document {
   const d = document.implementation.createHTMLDocument("t");
@@ -11,12 +20,21 @@ const textos = (rs: Range[]) => rs.map((r) => r.toString());
 
 describe("blocosDe", () => {
   it("um bloco por parágrafo, título e item; sem os vazios", () => {
-    const d = doc("<h1>Título</h1><p>Um.</p><p>  </p><ul><li>Item</li></ul><p>Dois.</p>");
-    expect(textos(blocosDe(d)).map((t) => t.trim())).toEqual(["Título", "Um.", "Item", "Dois."]);
+    const d = doc(
+      "<h1>Título</h1><p>Um.</p><p>  </p><ul><li>Item</li></ul><p>Dois.</p>",
+    );
+    expect(textos(blocosDe(d)).map((t) => t.trim())).toEqual([
+      "Título",
+      "Um.",
+      "Item",
+      "Dois.",
+    ]);
   });
 
   it("texto solto, sem tag de bloco, vira um bloco só", () => {
-    expect(textos(blocosDe(doc("só texto <em>aqui</em>")))).toEqual(["só texto aqui"]);
+    expect(textos(blocosDe(doc("só texto <em>aqui</em>")))).toEqual([
+      "só texto aqui",
+    ]);
   });
 });
 
@@ -32,7 +50,9 @@ describe("frasesDe", () => {
   });
 
   it("quebra de linha no meio do parágrafo (XHTML) não corta a frase", () => {
-    const d = doc("<p>Fiquei tão alegre com esta ideia, que ainda\nme treme a pena na mão. Fim.</p>");
+    const d = doc(
+      "<p>Fiquei tão alegre com esta ideia, que ainda\nme treme a pena na mão. Fim.</p>",
+    );
     expect(textos(frasesDe(blocosDe(d)[0]!, "pt"))).toEqual([
       "Fiquei tão alegre com esta ideia, que ainda\nme treme a pena na mão.",
       "Fim.",
@@ -67,8 +87,13 @@ describe("frasesDe", () => {
   });
 
   it("frases que atravessam elementos (ênfase, links) continuam inteiras", () => {
-    const d = doc("<p>Era <em>tão</em> cedo. Mas <a href='#'>fui</a> mesmo assim.</p>");
-    expect(textos(frasesDe(blocosDe(d)[0]!, "pt"))).toEqual(["Era tão cedo.", "Mas fui mesmo assim."]);
+    const d = doc(
+      "<p>Era <em>tão</em> cedo. Mas <a href='#'>fui</a> mesmo assim.</p>",
+    );
+    expect(textos(frasesDe(blocosDe(d)[0]!, "pt"))).toEqual([
+      "Era tão cedo.",
+      "Mas fui mesmo assim.",
+    ]);
   });
 });
 
@@ -79,7 +104,12 @@ describe("frasesDoDocumento", () => {
   });
 
   it("todas as frases, bloco a bloco, na ordem do texto", () => {
-    expect(textos(frasesDoDocumento(d, "pt"))).toEqual(["II", "Primeira.", "Segunda.", "Terceira."]);
+    expect(textos(frasesDoDocumento(d, "pt"))).toEqual([
+      "II",
+      "Primeira.",
+      "Segunda.",
+      "Terceira.",
+    ]);
   });
 
   it("indiceDaFraseEm: a primeira frase que termina depois do ponto", () => {
@@ -93,7 +123,12 @@ describe("frasesDoDocumento", () => {
   });
 
   it("capítulo longo: tempo linear (o quadrático levava segundos)", () => {
-    const longo = doc(Array.from({ length: 2000 }, (_, i) => `<p>Frase ${i}. Outra ${i}.</p>`).join(""));
+    const longo = doc(
+      Array.from(
+        { length: 2000 },
+        (_, i) => `<p>Frase ${i}. Outra ${i}.</p>`,
+      ).join(""),
+    );
     const t0 = performance.now();
     const frases = frasesDoDocumento(longo, "pt");
     const ms = performance.now() - t0;
@@ -124,5 +159,25 @@ describe("trechoSeguinte (Alt+↑/↓ e Alt+Shift+↑/↓)", () => {
     expect(trechoSeguinte(5, 0, 0, "anterior")).toBeNull();
     expect(trechoSeguinte(5, 1, 4, "estender")).toBeNull();
     expect(trechoSeguinte(5, 2, 2, "encolher")).toBeNull();
+  });
+});
+
+describe("frasesDoTrecho", () => {
+  it("as frases que o trecho alcança, cortadas nas pontas dele", () => {
+    document.body.innerHTML =
+      "<p>Primeira frase. Segunda frase. Terceira frase.</p><p>Outro bloco.</p>";
+    const frases = frasesDoDocumento(document, "pt");
+    const texto = document.querySelector("p")!.firstChild!;
+    // Do meio da primeira ("frase.") ao meio da segunda ("Segunda").
+    const trecho = document.createRange();
+    trecho.setStart(texto, "Primeira ".length);
+    trecho.setEnd(texto, "Primeira frase. Segunda".length);
+    expect(
+      frasesDoTrecho(frases, trecho).map((r) => r.toString().trim()),
+    ).toEqual(["frase.", "Segunda"]);
+    // Uma frase inteira (o modo frase): só ela, nada do resto do parágrafo.
+    expect(
+      frasesDoTrecho(frases, frases[1]).map((r) => r.toString().trim()),
+    ).toEqual(["Segunda frase."]);
   });
 });

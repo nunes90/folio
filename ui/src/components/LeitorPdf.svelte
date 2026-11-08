@@ -36,7 +36,7 @@
   import ListaDestaques from "./ListaDestaques.svelte";
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
-  import { trechoSeguinte, unir } from "../lib/frases";
+  import { frasesDoTrecho, trechoSeguinte, unir } from "../lib/frases";
   import {
     frasesDaCamada,
     paragrafosDaCamada,
@@ -1044,7 +1044,14 @@
    * O que está sendo lido: a página, as frases dela, a última frase marcada e onde acaba o
    * trecho em fala (listas e código vão em mensagens próprias, mais devagar).
    */
-  let leitura: { pagina: number; frases: Range[]; marca: number; fim: number } | null = null;
+  /** `soOTrecho`: o "Ouvir" da barra (no fim do trecho, a leitura para). */
+  let leitura: {
+    pagina: number;
+    frases: Range[];
+    marca: number;
+    fim: number;
+    soOTrecho?: boolean;
+  } | null = null;
   /** A frase marcada pela voz e o realce dela, em frações da página (como os destaques). */
   let fraseLida: Range | null = null;
   let realceVoz: { pagina: number; retangulos: Retangulo[] } | null = null;
@@ -1140,8 +1147,9 @@
       if (leitura.pagina !== pagina) irPara(leitura.pagina);
       if (frase) mostrarFraseLida(leitura.pagina, frase);
     } else if (e.tipo === "fim") {
-      // O trecho seguinte da página (ou, no fim dela, a página seguinte).
-      void lerDesde(leitura.pagina, leitura.fim, false);
+      // "Ouvir": o trecho acabou. Senão, o trecho seguinte da página (ou a página seguinte).
+      if (leitura.soOTrecho) void pararLeitura();
+      else void lerDesde(leitura.pagina, leitura.fim, false);
     } else {
       voz = "parado";
     }
@@ -1156,7 +1164,8 @@
     } else if (voz === "pausado" && leitura) {
       // Depois de uma pausa longa, a voz natural pode ter fechado o modelo (2 min).
       preparo.comecar();
-      await lerDesde(leitura.pagina, leitura.marca);
+      if (leitura.soOTrecho) await falarTrecho(leitura.pagina, leitura.frases, leitura.marca);
+      else await lerDesde(leitura.pagina, leitura.marca);
     }
   }
 
@@ -1219,17 +1228,16 @@
   async function ouvirDaqui() {
     const barra = destaques.barra;
     let n = pagina;
-    let ponto: { x: number; y: number } | null = null;
     let trecho: Range | null = null;
+    let retangulos: Retangulo[] | null = null;
     if (modoFrase) {
       n = modoFrase.pagina;
-      trecho = modoFrase.frases[modoFrase.de] ?? null;
+      trecho = unir(modoFrase.frases, modoFrase.de, modoFrase.ate);
     } else if (barra?.destaque) {
       const local = lerLocalPdf(barra.destaque.local);
-      if (local?.retangulos[0]) {
+      if (local) {
         n = local.pagina;
-        const r = local.retangulos[0];
-        ponto = { x: r.x + r.l / 2, y: r.y + r.a / 2 };
+        retangulos = local.retangulos;
       }
     } else if (selecaoDaBarra) {
       n = selecaoDaBarra.pagina;
@@ -1238,25 +1246,61 @@
     retomarVozAoFechar = false;
     destaques.fecharBarra();
     const frases = await frasesDaPagina(n);
-    const caixa = paginaEl(n)?.getBoundingClientRect();
-    let i = -1;
+    let doTrecho: Range[] = [];
     if (trecho) {
-      const t = trecho;
-      // A frase em que a seleção começa; se ela começa entre duas frases (num espaço), a
-      // primeira frase que a seleção alcança.
-      i = frases.findIndex((f) => f.comparePoint(t.startContainer, t.startOffset) === 0);
-      if (i < 0) i = frases.findIndex((f) => cruza(f, t));
-    } else if (ponto && caixa) {
-      const p = ponto;
-      i = frases.findIndex((f) =>
-        [...f.getClientRects()].some((r) => {
-          const x = (r.left + r.width / 2 - caixa.left) / caixa.width;
-          const y = (r.top + r.height / 2 - caixa.top) / caixa.height;
-          return Math.abs(y - p.y) < 0.01 && Math.abs(x - p.x) < 0.5;
-        }),
-      );
+      doTrecho = frasesDoTrecho(frases, trecho);
+    } else if (retangulos) {
+      // Um destaque guarda retângulos (frações da página): as frases que caem dentro deles.
+      const caixa = paginaEl(n)?.getBoundingClientRect();
+      const dentro = (x: number, y: number) =>
+        retangulos!.some((r) => x >= r.x && x <= r.x + r.l && y >= r.y && y <= r.y + r.a);
+      if (caixa) {
+        doTrecho = frases.filter((f) =>
+          [...f.getClientRects()].some((r) =>
+            dentro(
+              (r.left + r.width / 2 - caixa.left) / caixa.width,
+              (r.top + r.height / 2 - caixa.top) / caixa.height,
+            ),
+          ),
+        );
+      }
     }
-    await lerEmVozAlta(n, Math.max(0, i));
+    if (!doTrecho.length) return;
+    if (!vozPossivel) {
+      anuncio = SEM_VOZ;
+      return;
+    }
+    if (voz !== "parado") await pararLeitura();
+    preparo.comecar();
+    await falarTrecho(n, doTrecho, 0);
+  }
+
+  /**
+   * "Ouvir" da barra: fala só as `frases` do trecho (a partir da `desde`) e, no fim, para. A
+   * leitura do documento inteiro é o "Ler em voz alta".
+   */
+  async function falarTrecho(n: number, frases: Range[], desde: number) {
+    const bloco = blocoDasFrases(frases.slice(desde).map(textoDoTrecho), desde);
+    if (!bloco) {
+      preparo.terminar();
+      return;
+    }
+    const minha = ++vez;
+    leitura = { pagina: n, frases, marca: desde, fim: frases.length, soOTrecho: true };
+    voz = "falando";
+    try {
+      await falar(bloco.ssml, {
+        idioma: idiomaDoPdf,
+        velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipoDaFrasePdf(frases[desde])),
+      });
+    } catch (erro) {
+      if (minha !== vez) return;
+      log.warn(`ouvir o trecho: ${erro}`);
+      preparo.terminar();
+      voz = "parado";
+      leitura = null;
+      anuncio = textoDaFalhaDaVoz(erro);
+    }
   }
 
   /**
