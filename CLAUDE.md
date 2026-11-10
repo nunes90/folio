@@ -1001,4 +1001,11 @@ docs/decisions/  # ADRs
   4 PDFs de 86 MB com um livro aberto): um comando leve esperava 443 ms (a importação inteira); agora, 23 ms no pior
   caso, mediana 2 ms. O `conferir_capas` ficou na abertura (um `stat` por capa; movê-lo deixaria a primeira lista com
   capas faltando).
+- **M30 — instância única** (branch `feat/m30-instancia-unica`): `tauri-plugin-single-instance` (o primeiro plugin; no
+  Linux, um nome no D-Bus da sessão). Um segundo "Abrir com" não inicia outro app: `crates/app/src/instancia.rs`
+  (`arquivo_pedido`: `argv[1]` a partir da pasta de quem chamou) traz a janela para a frente e emite `abrir-arquivo`; o
+  `App` (`ouvirAbrirArquivo`, `abrirPeloSistema`) importa e abre, um pedido por vez, fechando antes o livro aberto.
+  **Desligada nas compilações de depuração** (o `cargo tauri dev` abre ao lado do Folio instalado);
+  `FOLIO_INSTANCIA_UNICA=1` liga (só o `instancia.e2e.js`) e `=0` desliga. Fechar um PDF ainda carregando não é mais
+  registrado como erro.
 - Próximo passo: a combinar (Séries — a biblioteca daqui não tem livros com série — e Flatpak seguem em aberto).

@@ -17,6 +17,7 @@
     tamanhoDoLivro,
     trechoDoLivro,
     caminhoInicial,
+    ouvirAbrirArquivo,
     carregarLivro,
     definirCapa,
     escolherArquivos,
@@ -267,13 +268,33 @@
       return;
     }
     const caminho = await caminhoInicial();
-    if (caminho) {
-      // Aberto pelo sistema ("Abrir com"): abre o livro mesmo que já estivesse na biblioteca.
-      const r = await importar([caminho]);
-      const livro = r.importados[0] ?? r.jaExistentes[0] ?? r.restaurados[0];
-      if (livro) await abrir(livro);
-    }
+    if (caminho) await abrirPeloSistema(caminho);
   });
+
+  // Um segundo "Abrir com" com o app já aberto: o pedido chega aqui (instância única, M30).
+  onMount(() => {
+    if (!isTauri()) return;
+    let pararDeOuvir: (() => void) | undefined;
+    let pedidos = Promise.resolve();
+    ouvirAbrirArquivo((caminho) => {
+      if (!caminho) return;
+      // Um de cada vez: dois pedidos seguidos não abrem dois livros ao mesmo tempo.
+      pedidos = pedidos.then(() => abrirPeloSistema(caminho)).catch((e) => log.warn(`abrir pelo sistema: ${e}`));
+    })
+      .then((parar) => (pararDeOuvir = parar))
+      .catch((e) => log.warn(`pedidos de outra instância indisponíveis: ${e}`));
+    return () => pararDeOuvir?.();
+  });
+
+  /** Aberto pelo sistema ("Abrir com"): abre o livro mesmo que já estivesse na biblioteca. */
+  async function abrirPeloSistema(caminho: string) {
+    const r = await importar([caminho]);
+    const livro = r.importados[0] ?? r.jaExistentes[0] ?? r.restaurados[0];
+    if (!livro || aberto?.livro.id === livro.id) return;
+    // Com outro livro aberto, ele é fechado primeiro (a sessão dele se encerra).
+    if (aberto) await fechar();
+    await abrir(livro);
+  }
 
   async function recarregar() {
     try {
