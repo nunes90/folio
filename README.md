@@ -1,15 +1,13 @@
 # Folio
 
-Leitor de livros **EPUB e PDF** para Linux, feito para ser lido de qualquer jeito: com o teclado, com
-leitor de tela, em voz alta. Tudo fica no seu computador: sem conta, sem nuvem, sem telemetria.
+Leitor de livros **EPUB e PDF** para Linux, feito para ser lido do seu jeito: só com o teclado, em voz alta,
+com a letra e as cores que você escolher. Tudo fica no seu computador: sem conta, sem nuvem, sem telemetria.
 
-> **Estado:** em desenvolvimento, a caminho da 1.0. As versões atuais são pre-releases.
+> **Estado:** estável (1.1). O que mudou em cada versão está no [CHANGELOG](CHANGELOG.md).
 
 ## O que ele faz
 
 - **Leitura sem mouse.** Todo recurso tem atalho ou comando na paleta (`Ctrl+K`); `F1` lista os atalhos.
-  As animações respeitam a opção de reduzir movimento. (O suporte ao leitor de tela Orca está adiado: ver
-  `docs/leitor-de-tela.md`.)
 - **Aparência sua.** Temas de interface, cores de página (creme, sépia, noite, inclusive no PDF), fontes
   como Atkinson Hyperlegible, Lexend e OpenDyslexic, tamanho, entrelinha e caracteres por linha.
 - **Em voz alta**, nos dois formatos, com a frase lida realçada. Listas e código são lidos mais devagar.
@@ -22,6 +20,15 @@ leitor de tela, em voz alta. Tudo fica no seu computador: sem conta, sem nuvem, 
 - **Biblioteca.** Estantes, coleções, autores, busca e lixeira.
 
 O [guia de uso](docs/guia.md) mostra como usar cada um.
+
+## Acessibilidade: o que funciona hoje
+
+- **Funciona:** uso completo pelo teclado, foco sempre visível, contraste conferido (WCAG) em todos os temas,
+  tema de alto contraste, respeito à escala de texto e à opção de reduzir movimento do sistema, fontes para
+  baixa visão e dislexia, leitura em voz alta com a frase realçada.
+- **Ainda não:** o leitor de tela **Orca**. A interface tem nomes e papéis acessíveis, mas o WebKitGTK cai em
+  algumas telas quando um leitor de tela as percorre, e o suporte específico foi adiado até a interface
+  estabilizar. O que se sabe está em [`docs/leitor-de-tela.md`](docs/leitor-de-tela.md).
 
 ## Instalar
 
@@ -65,7 +72,8 @@ cargo test                  # o núcleo em Rust
 ```
 
 Os testes de ponta a ponta ficam em [`e2e/`](e2e/wdio.conf.js) e rodam o app compilado numa tela virtual.
-Os roteiros manuais estão em [`docs/testes/`](docs/testes/): leitor de tela e desempenho.
+O roteiro de desempenho está em [`docs/testes/`](docs/testes/). Para contribuir, veja o
+[CONTRIBUTING](CONTRIBUTING.md).
 
 ## Como é feito
 

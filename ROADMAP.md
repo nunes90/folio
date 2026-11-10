@@ -266,7 +266,7 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
   do foliate-js; ocorrências contornadas e a atual realçada, próxima/anterior, contagem, paleta, F1. Só no documento
   principal, como no PDF (a busca no lado fica para depois, nos dois formatos).
 - [ ] **M33 — Documentação e CI** (10)
-  - [ ] M33a — `CLAUDE.md` enxuto (visão, stack, arquitetura, convenções, "Armadilhas conhecidas", modo de trabalho
+  - [x] M33a — `CLAUDE.md` enxuto (visão, stack, arquitetura, convenções, "Armadilhas conhecidas", modo de trabalho
     real) e o histórico em `docs/historico.md`; `CHANGELOG.md` e `CONTRIBUTING.md`; README dizendo o que a
     acessibilidade cobre hoje
   - [ ] M33b — actions atualizadas e fixadas por SHA; `ubuntu-24.04` e `.nvmrc` no lugar de `latest`/`lts`;
