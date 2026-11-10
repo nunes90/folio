@@ -244,6 +244,80 @@ Orca adiado. Tag `v1.1.0` e Release, com o AppImage da CI.
 **v1.1.1** (nov/2026): "Ouvir" lê só o trecho; o log diz por que a barra de destaque não abriu; E2E também no WebKitGTK do
 AppImage (Ubuntu 22.04). Tag `v1.1.1` e Release, com o AppImage da CI.
 
+## Depois da análise (nov/2026)
+
+Plano para implementar o que a análise apontou (`docs/analise/2026-11-analise.md`; o número entre parênteses é a
+seção dela). Um PR por item, todos com base na `main`. Três versões: a primeira sem risco para os dados e quase sem
+interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento e produto.
+
+### v1.2 — base firme e busca
+
+- [ ] **M29 — Biblioteca sem travar a janela** (5.1–5.5)
+  - [ ] M29a — reproduzir e medir: importar vários PDFs grandes com um livro aberto e virar páginas (E2E de medição,
+    como o `medir-pdf`); o número de antes entra no PR
+  - [ ] M29b — `importar` e `ler` fazem disco e CPU sem a trava (travar só para "já existe?" e o `INSERT`);
+    importação atômica (sem arquivo órfão se o `INSERT` falhar)
+  - [ ] M29c — todo comando que toca o banco vira `async`; um auxiliar único para a trava (recupera de pânico:
+    `PoisonError::into_inner`) e o registro do erro, no lugar dos 41 `lock().unwrap()`
+  - [ ] M29d — SQLite: `busy_timeout`, `synchronous = NORMAL`, `journal_size_limit`, `prepare_cached` nas consultas
+    repetidas, checkpoint ao encerrar; `conferir_capas` numa thread depois de a janela abrir
+- [ ] **M30 — Instância única** (5.3): `tauri-plugin-single-instance`; o segundo "Abrir com" entrega o arquivo à
+  janela que já existe (e a traz para a frente). Conferir a licença no `cargo deny`
+- [ ] **M31 — E2E do EPUB hostil** (6): `hostil.epub` no `gerar.py` das fixtures e `specs/seguranca.e2e.js` (nenhum
+  script roda, o app não é alcançado, nenhum pedido sai); nota no `CLAUDE.md` de que a CSP não vale no `tauri dev`;
+  `npm audit --omit=dev` informativo na CI; conferir `enableScripting` do pdf.js
+- [ ] **M32 — Busca no EPUB** (4): Ctrl+F nos dois formatos com a mesma barra (a `BuscaPdf` vira `Busca`, com um
+  adaptador por formato); `search.js` do foliate-js; ocorrências realçadas, próxima/anterior, contagem, paleta, F1;
+  também no lado
+- [ ] **M33 — Documentação e CI** (10)
+  - [ ] M33a — `CLAUDE.md` enxuto (visão, stack, arquitetura, convenções, "Armadilhas conhecidas", modo de trabalho
+    real) e o histórico em `docs/historico.md`; `CHANGELOG.md` e `CONTRIBUTING.md`; README dizendo o que a
+    acessibilidade cobre hoje
+  - [ ] M33b — actions atualizadas e fixadas por SHA; `ubuntu-24.04` e `.nvmrc` no lugar de `latest`/`lts`;
+    Dependabot semanal agrupado; `SHA256SUMS` e atestação de proveniência na Release
+  - [ ] M33c — teste de migração com um banco de cada versão publicada (v0.1 a v1.1) nas fixtures
+
+### v1.3 — os leitores em ordem
+
+- [ ] **M34 — Controles comuns aos dois leitores** (7.1–7.3). Cada um nos moldes do `ControleDestaques` (classe com
+  runes + adaptador por formato), com testes de unidade com adaptador falso; sem mudança de comportamento (os E2E
+  são a rede)
+  - [ ] M34a — `ControleVoz` (estado, pausar/retomar, trecho ouvido, aviso de preparo, bloco seguinte, eventos)
+  - [ ] M34b — `ControleLado` (abrir, fechar, alternar, comandos)
+  - [ ] M34c — `ControleIdeia` e a continuação
+  - [ ] M34d — `App.svelte`: comandos por tela em `lib/` (puro) e o estado da tela num módulo de runes
+  - [ ] M34e — `MolduraLeitor`: `RodapeLeitor` e o modo foco em partes próprias; capturas do M28 como artefato da CI
+  - Meta: `Leitor.svelte` e `LeitorPdf.svelte` abaixo de ~700 linhas cada
+- [ ] **M35 — Links e notas** (4): pilha "de onde vim" nos dois formatos (Alt+←, aviso "Voltar para onde eu
+  estava", paleta); notas de rodapé em balão (`footnotes.js`); link externo com confirmação e
+  `tauri-plugin-opener` (só `http`/`https`)
+- [ ] **M36 — Biblioteca grande** (5.7, 7.4): miniatura da capa do EPUB ao importar (canvas, como no PDF; as já
+  gravadas são refeitas uma vez); `content-visibility` na grade, medido com 5.000 livros nos dois WebKitGTK
+- [ ] **M37 — Descoberta** (9): botão "Comandos (Ctrl+K)" nas duas barras e no menu ⋯; texto de primeiro uso na
+  biblioteca vazia; indicador da voz no modo foco
+- [ ] **M38 — Cópia de segurança** (4): "Exportar a biblioteca…" (banco e preferências, com ou sem os livros) e
+  "Restaurar…" com confirmação; formato versionado
+
+### v1.4 — acabamento e produto
+
+- [ ] **M39 — Memória do PDF** (8): achar os ~180 MB sem dono (inspetor do WebKit ou `heaptrack`); testar o cache de
+  páginas e `maxCanvasPixels`; orçamento de tempo de abertura na CI (`medir-pdf` num PDF fixo)
+- [ ] **M40 — Pacote e código** (5.8–5.12, 7.5, 7.6)
+  - [ ] M40a — erros tipados nos comandos (`{ tipo, mensagem }`) e o frontend sem comparar texto
+  - [ ] M40b — `[profile.release]` (LTO thin, `codegen-units = 1`, `strip`), medido; `commit_from_file` nos modelos;
+    `ort` estável quando sair; a feature `_ring` do `ureq`
+  - [ ] M40c — só as regras do `pdf_viewer.css` que o app usa; `@font-face` só com `.woff2` e `latin-ext`; módulos
+    do foliate-js sem uso fora do pacote (ou assumir MOBI/FB2: decidir)
+  - [ ] M40d — escala de `z-index` nomeada, tamanho mínimo da janela, revisão dos `svelte-ignore`, `exportar_destaques`
+    só para o caminho que o diálogo devolveu
+- [ ] **M41 — Rodapé e ícones** (9): estimativa e meta fora do rodapé (proposta com capturas antes); ícones com o
+  mesmo peso de traço
+- [ ] **M42 — Marcadores e destaques da biblioteca** (4, 9): marcador de página sem trecho (migração nova, os dois
+  formatos); vista "Todos os destaques" com busca e filtro por motivo
+- [ ] **M43 — Lixeira com prazo e aviso de versão** (4, 9): espaço ocupado e "esvaziar itens antigos"; consulta
+  opcional às Releases, desligável e descrita no guia
+- Em aberto, a decidir: tradução da interface, Séries, Flatpak, cortar recursos pouco usados (anotar o uso por um mês)
+
 ## Futuro
 - **macOS** (adiado, ADR 0006): voltar com o job na CI, `.dmg` no empacotamento e testes com o VoiceOver.
   O código já trata o macOS em alguns pontos (diretório de logs, escala de texto) e deve continuar compilando.
