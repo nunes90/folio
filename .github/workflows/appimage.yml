@@ -18,6 +18,9 @@ on:
 
 permissions:
   contents: write
+  # Para a atestação de proveniência do AppImage (quem o gerou, de qual commit).
+  id-token: write
+  attestations: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -29,7 +32,7 @@ jobs:
     # que foi feito, e uma glibc mais antiga roda em mais distribuições.
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.release.tag_name || github.ref }}
 
@@ -39,14 +42,14 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev libasound2-dev \
             patchelf libfuse2 file cmake
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
       # Guarda também o tauri-cli instalado (~/.cargo/bin) entre as execuções.
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: lts/*
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
@@ -96,7 +99,7 @@ jobs:
             --config "{\"bundle\":{\"linux\":{\"appimage\":{\"files\":{\"/usr/lib/folio/espeak-ng\":\"$ESPEAK_EMBUTIDO\"}}}}}" \
             -- --locked
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: appimage
           path: target/release/bundle/appimage/*.AppImage
@@ -109,7 +112,7 @@ jobs:
   testar:
     name: Testar em ${{ matrix.imagem }}
     needs: appimage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: ${{ matrix.imagem }}
     strategy:
       fail-fast: false
@@ -127,11 +130,11 @@ jobs:
       - name: Ferramentas do teste
         run: ${{ matrix.instalar }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.release.tag_name || github.ref }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: appimage
           path: appimage
@@ -148,9 +151,9 @@ jobs:
     name: Anexar à Release
     if: github.event_name == 'release'
     needs: testar
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: appimage
           path: appimage
@@ -158,4 +161,14 @@ jobs:
       - name: Anexar à Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" appimage/*.AppImage --clobber --repo "${{ github.repository }}"
+        run: |
+          # As somas ao lado do AppImage: `sha256sum -c SHA256SUMS` confere o que foi baixado.
+          (cd appimage && sha256sum *.AppImage > SHA256SUMS && cat SHA256SUMS)
+          gh release upload "${{ github.event.release.tag_name }}" appimage/*.AppImage appimage/SHA256SUMS --clobber --repo "${{ github.repository }}"
+
+      # Prova de que este AppImage saiu deste repositório e deste workflow (`gh attestation verify`).
+      # Não impede a Release se o serviço falhar: o AppImage e as somas já foram anexados.
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        continue-on-error: true
+        with:
+          subject-path: appimage/*.AppImage

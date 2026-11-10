@@ -1,0 +1,25 @@
+# Atualizações de dependências, uma vez por semana, num PR por ecossistema (agrupadas).
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      rust:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directories: [/ui, /e2e]
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+  # As actions são fixadas pelo SHA do commit (o comentário diz a versão): o Dependabot atualiza os dois.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
