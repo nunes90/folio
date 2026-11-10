@@ -110,6 +110,60 @@ describe("EPUB", () => {
     await ate(async () => !(await moldura("com-lado")), "o lado não fechou");
   });
 
+  it("Ctrl+F busca no texto: conta, anda pelas ocorrências, realça e limpa", async () => {
+    const resultado = () => texto('header form[role="search"] [role="status"]');
+    // As ocorrências contornadas e a atual realçada, no desenho por cima do texto (o SVG do foliate-js).
+    const desenhos = () =>
+      browser.execute(() => {
+        const doc = document.querySelector("foliate-view").renderer.getContents()[0].doc;
+        const svg = doc.defaultView.frameElement.parentElement.querySelector("svg");
+        // O contorno e o realce têm a cor de destaque da interface; os destaques do livro (feitos
+        // nos testes anteriores) têm as cores deles.
+        const cor = svg?.querySelector('g[fill="none"]')?.getAttribute("stroke") ?? window.__corDaBusca;
+        window.__corDaBusca = cor;
+        return {
+          contornos: svg?.querySelectorAll('g[fill="none"]').length ?? 0,
+          realces: cor ? (svg?.querySelectorAll(`g[fill="${cor}"]`).length ?? 0) : 0,
+        };
+      });
+    await browser.keys([Key.Ctrl, "f"]);
+    const campo = await $('header input[type="search"]');
+    await ate(() => campo.isFocused(), "Ctrl+F não levou o foco à busca");
+    // Sem acento e em minúsculas: acha "Capitú" do mesmo jeito.
+    await campo.setValue("capitu");
+    await browser.keys(Key.Enter);
+    await ate(async () => /^\d+ de \d+$/.test(await resultado()), "a busca não terminou");
+    const [, primeira, total] = (await resultado()).match(/^(\d+) de (\d+)$/).map(Number);
+    expect(total).toBeGreaterThan(100);
+    await ate(async () => (await desenhos()).contornos > 0, "as ocorrências não foram contornadas");
+    await ate(async () => (await desenhos()).realces > 0, "a ocorrência atual não foi realçada");
+
+    // Enter vai à seguinte; Shift+Enter volta. (O foliate-js ignora navegação logo depois de uma virada.)
+    await browser.pause(400);
+    await browser.keys(Key.Enter);
+    await ate(async () => (await resultado()) === `${(primeira % total) + 1} de ${total}`, "Enter não foi à seguinte");
+    await browser.pause(400);
+    await browser.keys([Key.Shift, Key.Enter]);
+    await ate(async () => (await resultado()) === `${primeira} de ${total}`, "Shift+Enter não voltou");
+
+    // O que não existe; e o campo vazio tira tudo do texto.
+    await campo.setValue("xyzzy");
+    await browser.keys(Key.Enter);
+    await ate(async () => (await resultado()) === "Nada encontrado", "devia dizer que não achou");
+    await campo.setValue("capitu");
+    await browser.keys(Key.Enter);
+    await ate(async () => /^\d+ de \d+$/.test(await resultado()), "a segunda busca não terminou");
+    await campo.clearValue();
+    // clearValue nem sempre dispara o evento de entrada no WebKitWebDriver.
+    await browser.execute((c) => c.dispatchEvent(new Event("input", { bubbles: true })), campo);
+    await ate(async () => (await resultado()) === "", "o resultado devia sumir");
+    await ate(async () => {
+      const d = await desenhos();
+      return d.contornos === 0 && d.realces === 0;
+    }, "as ocorrências deviam sair do texto");
+    await browser.execute(() => document.querySelector("foliate-view").renderer.focusView?.());
+  });
+
   it("volta à biblioteca, e o livro está lá", async () => {
     await botao("Voltar à biblioteca", "//header").click();
     await ate(

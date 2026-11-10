@@ -103,10 +103,35 @@ export interface FoliateView extends HTMLElement {
   /** Desenha (ou redesenha) a anotação, se a seção dela estiver carregada: dispara "draw-annotation". */
   addAnnotation(anotacao: Anotacao): Promise<unknown>;
   deleteAnnotation(anotacao: Anotacao): Promise<unknown>;
+  /**
+   * Procura `query` no livro inteiro, seção por seção, e contorna as ocorrências no texto (`draw`
+   * e `drawOptions` dizem como). Ver `PassoDaBusca` em lib/buscaEpub.ts.
+   */
+  search(opcoes: {
+    query: string;
+    draw?: Desenho;
+    drawOptions?: Record<string, unknown>;
+  }): AsyncGenerator<import("./buscaEpub").PassoDaBusca>;
+  /** Tira do texto as ocorrências da última busca. */
+  clearSearch(): void;
   goLeft(): Promise<void>;
   goRight(): Promise<void>;
   prev(): Promise<void>;
   next(): Promise<void>;
+}
+
+/** O contorno do foliate-js (`Overlayer.outline`): as ocorrências da busca. */
+export async function desenhoContorno(): Promise<Desenho> {
+  // @ts-expect-error -- o foliate-js não publica tipos.
+  const { Overlayer } = await import("../vendor/foliate-js/overlayer.js");
+  return Overlayer.outline as Desenho;
+}
+
+/** Compara dois CFIs pela ordem no livro (negativo: o primeiro vem antes). */
+export async function compararCfis(): Promise<(a: string, b: string) => number> {
+  // @ts-expect-error -- o foliate-js não publica tipos.
+  const { compare } = await import("../vendor/foliate-js/epubcfi.js");
+  return compare as (a: string, b: string) => number;
 }
 
 /** O marca-texto do foliate-js (`Overlayer.highlight`). */

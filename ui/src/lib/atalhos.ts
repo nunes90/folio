@@ -68,6 +68,20 @@ const POSICAO: Atalho = {
 };
 
 /** Destacar, igual nos dois formatos. */
+/** A busca no texto, igual nos dois formatos (M32). */
+const BUSCA: Atalho[] = [
+  {
+    teclas: [["Ctrl", "F"]],
+    acao: "Buscar no documento",
+    grupo: "Navegação",
+  },
+  {
+    teclas: [["Enter"], ["Shift", "Enter"]],
+    acao: "Na busca: próxima ou anterior ocorrência",
+    grupo: "Navegação",
+  },
+];
+
 const MARCAR: Atalho[] = [
   {
     teclas: [["Ctrl", "D"]],
@@ -162,6 +176,7 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
       grupo: "Navegação",
     },
     POSICAO,
+    ...BUSCA,
     ...LEITURA,
     ...MARCAR,
     ...COMPARAR,
@@ -184,16 +199,7 @@ export const ATALHOS: Record<Contexto, Atalho[]> = {
       grupo: "Navegação",
     },
     POSICAO,
-    {
-      teclas: [["Ctrl", "F"]],
-      acao: "Buscar no documento",
-      grupo: "Navegação",
-    },
-    {
-      teclas: [["Enter"], ["Shift", "Enter"]],
-      acao: "Na busca: próxima ou anterior ocorrência",
-      grupo: "Navegação",
-    },
+    ...BUSCA,
     {
       teclas: [
         ["Ctrl", "+"],

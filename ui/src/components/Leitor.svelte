@@ -27,8 +27,19 @@
     vozNatural,
   } from "../lib/vozNatural.svelte";
   import PainelTema from "./PainelTema.svelte";
+  import Busca from "./Busca.svelte";
   import {
+    mesmoTermo,
+    ocorrenciasDoPasso,
+    primeiraDesde,
+    textoDaBusca,
+    vizinha,
+    type Ocorrencia,
+  } from "../lib/buscaEpub";
+  import {
+    compararCfis,
     criarView,
+    desenhoContorno,
     desenhoMarcaTexto,
     textoLocalizado,
     type Desenho,
@@ -248,6 +259,98 @@
   /** O trecho que o "Ouvir" da barra está lendo (só ele; no fim, para) e a última frase marcada. */
   let trechoOuvido: { frases: Range[]; marca: number } | null = null;
   let realceVoz: string | null = null;
+
+  // Busca no texto (M32), como a do PDF: Ctrl+F, Enter e Shift+Enter andam pelas ocorrências, todas
+  // contornadas no texto (o foliate-js as desenha) e a atual realçada como a frase que a voz lê.
+  let busca = $state<ReturnType<typeof Busca>>();
+  let resultadoBusca = $state("");
+  let ocorrencias: Ocorrencia[] = [];
+  let ocorrenciaAtual = -1;
+  let termoBuscado = "";
+  let buscando = false;
+  /** Uma busca nova descarta a que ainda estava percorrendo o livro. */
+  let vezDaBusca = 0;
+  let realceBusca: string | null = null;
+
+  async function buscar(termo: string, anterior: boolean) {
+    if (!view) return;
+    if (termoBuscado && mesmoTermo(termo, termoBuscado)) {
+      // O mesmo termo de novo: a ocorrência seguinte (ou a anterior).
+      if (!buscando && ocorrencias.length)
+        await irParaOcorrencia(vizinha(ocorrenciaAtual, ocorrencias.length, anterior));
+      return;
+    }
+    limparBusca();
+    const vez = vezDaBusca;
+    termoBuscado = termo;
+    buscando = true;
+    resultadoBusca = textoDaBusca({ buscando, atual: -1, total: 0 });
+    const achadas: Ocorrencia[] = [];
+    try {
+      const [contorno, comparar] = await Promise.all([desenhoContorno(), compararCfis()]);
+      const passos = view.search({
+        query: termo.trim(),
+        draw: contorno,
+        drawOptions: { color: corDoRealce(), width: 2 },
+      });
+      for await (const passo of passos) {
+        // Sair do laço encerra o gerador: a busca antiga para de percorrer o livro.
+        if (vez !== vezDaBusca) return;
+        achadas.push(...ocorrenciasDoPasso(passo));
+      }
+      if (vez !== vezDaBusca) return;
+      buscando = false;
+      ocorrencias = achadas;
+      if (!achadas.length) {
+        resultadoBusca = textoDaBusca({ buscando, atual: -1, total: 0 });
+        return;
+      }
+      // Começa de onde se está lendo, não do começo do livro.
+      const primeira = primeiraDesde(achadas, cfiAtual, comparar);
+      await irParaOcorrencia(anterior ? vizinha(primeira, achadas.length, true) : primeira);
+    } catch (e) {
+      if (vez !== vezDaBusca) return;
+      buscando = false;
+      resultadoBusca = "A busca falhou";
+      log.warn(`a busca no livro falhou: ${e}`);
+    }
+  }
+
+  async function irParaOcorrencia(indice: number) {
+    const ocorrencia = ocorrencias[indice];
+    if (!view || !ocorrencia) return;
+    ocorrenciaAtual = indice;
+    resultadoBusca = textoDaBusca({ buscando: false, atual: indice, total: ocorrencias.length });
+    destaques.esconder("busca");
+    await view.goTo(ocorrencia.cfi);
+    trocarRealceBusca(ocorrencia.cfi);
+  }
+
+  /** Tira as ocorrências do texto (o campo ficou vazio, a busca fechou, outra busca começou). */
+  function limparBusca() {
+    vezDaBusca++;
+    buscando = false;
+    termoBuscado = "";
+    ocorrencias = [];
+    ocorrenciaAtual = -1;
+    resultadoBusca = "";
+    trocarRealceBusca(null);
+    view?.clearSearch();
+  }
+
+  /** O realce da ocorrência atual: uma anotação a mais, como a da frase lida (`trocarRealce`). */
+  function trocarRealceBusca(cfi: string | null) {
+    const antes = realceBusca;
+    realceBusca = cfi;
+    if (!view) return;
+    if (antes && antes !== cfi && antes !== realceVoz) {
+      void view
+        .deleteAnnotation({ value: antes })
+        .then(() => destaques.porLocal(antes) && view?.addAnnotation({ value: antes }));
+    }
+    // De novo mesmo se for o mesmo: a seção pode ter acabado de carregar.
+    if (cfi) void view.addAnnotation({ value: cfi });
+  }
 
   /** Onde a leitura está, para a meta: o capítulo (a seção) e quanto dele já passou. */
   function moverMeta(fracao: number, secao: string | undefined) {
@@ -682,6 +785,8 @@
     // ali (addAnnotation só desenha os da seção carregada) e redesenhados ao repaginar.
     v.addEventListener("create-overlay", () => {
       for (const d of destaques.lista) v.addAnnotation({ value: d.local });
+      // A seção acabou de carregar: a ocorrência atual da busca, se estiver nela.
+      if (realceBusca) void v.addAnnotation({ value: realceBusca });
     });
     v.addEventListener("draw-annotation", (e) => {
       const { draw, annotation } = (e as CustomEvent<{
@@ -689,7 +794,8 @@
         annotation: { value: string };
       }>).detail;
       const d = destaques.porLocal(annotation.value);
-      const cor = annotation.value === realceVoz ? corDoRealce() : hexDaCor(d?.cor ?? "amarelo");
+      const realce = annotation.value === realceVoz || annotation.value === realceBusca;
+      const cor = realce ? corDoRealce() : hexDaCor(d?.cor ?? "amarelo");
       if (marcaTexto) draw(marcaTexto, { color: cor });
     });
     // Clique num destaque: a barra dele (cor, nota, copiar, apagar).
@@ -1046,6 +1152,13 @@
         executar: () => void anterior(),
       },
       {
+        id: "buscar",
+        titulo: "Buscar no documento",
+        grupo: "Leitura",
+        teclas: [["Ctrl", "F"]],
+        executar: () => void busca?.abrir(),
+      },
+      {
         id: "modo-foco",
         titulo: modoFoco ? "Sair do modo foco" : "Entrar no modo foco",
         grupo: "Leitura",
@@ -1237,6 +1350,12 @@
       alternarLado();
       return;
     }
+    // Sem Shift: Ctrl+Shift+F é o modo foco (da moldura).
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f" && !e.defaultPrevented) {
+      e.preventDefault();
+      void busca?.abrir();
+      return;
+    }
     // Setas dentro de controles (ex.: deslizantes do painel) são do controle, não do livro.
     if (e.target instanceof HTMLInputElement) return;
     if (!view || e.defaultPrevented) return;
@@ -1349,6 +1468,10 @@
   {progresso}
   {onFechar}
 >
+  {#snippet acoes()}
+    <Busca bind:this={busca} resultado={resultadoBusca} onBuscar={buscar} onLimpar={limparBusca} />
+  {/snippet}
+
   {#snippet indice()}
     <AbasIndice bind:this={abas} bind:aba={abaIndice} quantidade={destaques.lista.length}>
       {#snippet conteudoIndice()}
