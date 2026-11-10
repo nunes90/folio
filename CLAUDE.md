@@ -989,4 +989,41 @@ docs/decisions/  # ADRs
   de destaque fechada N ms depois de abrir: <origem>` (`ControleDestaques.esconder(origem)`), só no EPUB.
 - **v1.1.1** (nov/2026; branch `chore/v1.1.1`): "Ouvir" só o trecho (#122) e o diagnóstico e os E2E no WebKitGTK do
   AppImage (#121). Versão nos 4 lugares; `THIRD-PARTY-NOTICES.md` sem mudança. Tag assinada e Release pelo Lucas.
+- **Análise e plano** (nov/2026): `docs/analise/2026-11-analise.md` e, no ROADMAP, "Depois da análise" (M29–M43).
+- **M29 — biblioteca sem travar a janela** (branch `perf/m29-biblioteca-sem-travar`): a trava da biblioteca só pode ser
+  segurada pelo tempo de uma consulta, porque um comando sem `async` que a espere para a thread principal (a janela).
+  `biblioteca::importar_sem_segurar` e `ler_sem_segurar` (para o `Mutex`): ler, SHA-256, metadados e cópia com a
+  biblioteca solta; trava só para "já existe?" e o registro (`INSERT OR IGNORE`: o mesmo livro pode chegar duas vezes;
+  se o registro falhar, a cópia e a capa são apagadas). `biblioteca::travar` recupera a trava envenenada por um pânico
+  (no lugar dos `lock().unwrap()`). SQLite: `synchronous = NORMAL`, `journal_size_limit` de 1 MB, `busy_timeout` de 5 s.
+  **Os comandos curtos continuam sem `async` de propósito**: na thread principal rodam na ordem das chamadas (o
+  progresso de duas páginas seguidas não troca de lugar). Medido (`FOLIO_MEDIR_IMPORTAR=<pasta> ./virtual.sh npm test`,
+  4 PDFs de 86 MB com um livro aberto): um comando leve esperava 443 ms (a importação inteira); agora, 23 ms no pior
+  caso, mediana 2 ms. O `conferir_capas` ficou na abertura (um `stat` por capa; movê-lo deixaria a primeira lista com
+  capas faltando).
+- **M30 — instância única** (branch `feat/m30-instancia-unica`): `tauri-plugin-single-instance` (o primeiro plugin; no
+  Linux, um nome no D-Bus da sessão). Um segundo "Abrir com" não inicia outro app: `crates/app/src/instancia.rs`
+  (`arquivo_pedido`: `argv[1]` a partir da pasta de quem chamou) traz a janela para a frente e emite `abrir-arquivo`; o
+  `App` (`ouvirAbrirArquivo`, `abrirPeloSistema`) importa e abre, um pedido por vez, fechando antes o livro aberto.
+  **Desligada nas compilações de depuração** (o `cargo tauri dev` abre ao lado do Folio instalado);
+  `FOLIO_INSTANCIA_UNICA=1` liga (só o `instancia.e2e.js`) e `=0` desliga. Fechar um PDF ainda carregando não é mais
+  registrado como erro.
+- **M31 — o livro não roda código** (branch `test/m31-epub-hostil`): o iframe do foliate-js tem `allow-same-origin
+  allow-scripts`, então **a única barreira entre um script de EPUB e os comandos do app é a CSP** do `tauri.conf.json`
+  (`script-src` sem `blob:` nem `'unsafe-inline'`; `img-src`, `frame-src` etc. sem `http:`). `hostil.epub`
+  (`gerar.py`: `<script>` embutido e de arquivo, `onerror`, `javascript:`, imagem, CSS, fonte, iframe, objeto e áudio
+  remotos) e `e2e/specs/seguranca.e2e.js` (sobe um servidor em 127.0.0.1:47811 e confere que nada roda e nenhum
+  pedido chega). Conferido que o teste falha com a CSP afrouxada (`blob:` em `script-src`: o script do livro roda).
+  **No `cargo tauri dev` a CSP não vale** (a página vem do Vite): não abrir livro de origem duvidosa no modo de
+  desenvolvimento. Links externos de um livro não fazem nada (o `window.open` é ignorado) até o M35. pdf.js com
+  `isEvalSupported: false`; sem `scriptingManager`, o JavaScript de um PDF não roda. `npm audit` informativo na CI.
+- **M32 — busca no EPUB** (branch `feat/m32-busca-epub`): Ctrl+F igual nos dois formatos, com a mesma barra
+  (`Busca.svelte`, antes `BuscaPdf`; `onLimpar` quando o campo fica vazio ou a busca fecha). No `Leitor`: `view.search`
+  do foliate-js (o livro inteiro, sem diferenciar maiúsculas nem acentos; as ocorrências são contornadas por ele, com
+  `Overlayer.outline` na cor de destaque da interface) e a ocorrência atual realçada por uma anotação a mais
+  (`realceBusca`, como o `realceVoz`; refeita no `create-overlay`, porque a seção pode carregar depois do `goTo`).
+  `lib/buscaEpub.ts` (puro): `ocorrenciasDoPasso`, `primeiraDesde` (começa de onde se está lendo, pelo `compare` dos
+  CFIs), `vizinha` (dá a volta), `mesmoTermo`, `textoDaBusca`. Uma busca nova descarta a anterior (`vezDaBusca`; sair
+  do `for await` encerra o gerador). Só no documento principal, como no PDF. No E2E, os destaques do livro também são
+  `<g>` com `fill` no SVG do foliate-js: distinguir pela cor.
 - Próximo passo: a combinar (Séries — a biblioteca daqui não tem livros com série — e Flatpak seguem em aberto).

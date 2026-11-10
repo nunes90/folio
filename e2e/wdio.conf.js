@@ -41,6 +41,8 @@ export const config = {
   // o importa e abre). Pastas de dados novas a cada sessão.
   capabilities: process.env.FOLIO_MEDIR
     ? [sessao("specs/medir-pdf.e2e.js", path.resolve(process.env.FOLIO_MEDIR))]
+    : process.env.FOLIO_MEDIR_IMPORTAR
+    ? [sessao("specs/medir-importar.e2e.js", "dom-casmurro.epub")]
     : process.env.FOLIO_CAPTURAS
     ? [sessao("specs/capturas.e2e.js", "dom-casmurro.epub")]
     : [
@@ -48,14 +50,16 @@ export const config = {
         sessao("specs/pdf.e2e.js", "texto.pdf"),
         sessao("specs/senha.e2e.js", "quebrados/pdf-com-senha.pdf"),
         sessao("specs/selecao.e2e.js", "dom-casmurro.epub"),
+        sessao("specs/instancia.e2e.js", "dom-casmurro.epub"),
+        sessao("specs/seguranca.e2e.js", "hostil.epub"),
       ],
   reporters: ["spec"],
   framework: "mocha",
-  mochaOpts: { ui: "bdd", timeout: process.env.FOLIO_MEDIR || process.env.FOLIO_CAPTURAS ? 240000 : 60000 },
+  mochaOpts: { ui: "bdd", timeout: process.env.FOLIO_MEDIR || process.env.FOLIO_MEDIR_IMPORTAR || process.env.FOLIO_CAPTURAS ? 240000 : 60000 },
   waitforTimeout: 10000,
 
   // Pastas novas a cada sessão (o app herda o ambiente do tauri-driver).
-  beforeSession: () => {
+  beforeSession: (_config, _capacidades, specs) => {
     const dados = fs.mkdtempSync(path.join(os.tmpdir(), "folio-e2e-"));
     pastaDaSessao = dados;
     // Para os testes que mexem nos dados da sessão (selecao.e2e.js envelhece a última leitura).
@@ -72,6 +76,9 @@ export const config = {
       GSETTINGS_BACKEND: "memory",
     };
     delete ambiente.WAYLAND_DISPLAY;
+    // A instância única fica desligada nas compilações de depuração; só o teste dela a liga (nas
+    // outras sessões, um app ainda saindo receberia o pedido do seguinte).
+    if (specs.some((s) => s.includes("instancia"))) ambiente.FOLIO_INSTANCIA_UNICA = "1";
     // Sem as escalas do ambiente: o mesmo tamanho de janela daqui e da CI.
     delete ambiente.GDK_SCALE;
     delete ambiente.GDK_DPI_SCALE;

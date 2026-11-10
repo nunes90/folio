@@ -86,6 +86,9 @@ const RECURSOS_DO_PDF = {
   cMapPacked: true,
   standardFontDataUrl: `${RECURSOS}standard_fonts/`,
   iccUrl: `${RECURSOS}iccs/`,
+  // Nada de `new Function` para as fontes e funções do PDF: a CSP do app o recusaria de qualquer
+  // jeito (sem 'unsafe-eval'), e assim o pdf.js nem tenta.
+  isEvalSupported: false,
 };
 
 /** Tamanho dos trechos pedidos: cada pedido é uma ida e volta ao Rust. */

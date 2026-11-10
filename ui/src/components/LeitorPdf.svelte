@@ -355,9 +355,11 @@
     moldura.focarTitulo();
     window.addEventListener("keydown", aoTeclar);
     window.addEventListener("pointerdown", aoApontar);
+    let fechado = false;
     abrir().catch((e) => {
-      // Cancelar a senha também rejeita a abertura (o pdf.js desiste com o último motivo).
-      if (senhaCancelada) return;
+      // Cancelar a senha também rejeita a abertura (o pdf.js desiste com o último motivo), e
+      // fechar o livro ainda carregando também ("Loading aborted"): nenhum dos dois é erro.
+      if (senhaCancelada || fechado) return;
       // Uma frase sobre o que houve (M26b); o erro técnico vai para o log.
       erro = mensagemAoAbrir(e, "pdf");
       log.error(`não foi possível abrir o PDF: ${e}`);
@@ -388,6 +390,7 @@
       window.removeEventListener("pointerdown", aoApontar);
       observador?.disconnect();
       cancelAnimationFrame(quadro);
+      fechado = true;
       tarefa?.destroy();
     };
   });

@@ -8,6 +8,7 @@
 | `capa-epub2.epub` | capa por `<meta name="cover">` (estilo EPUB 2) |
 | `ingles.epub` | começo de *Pride and Prejudice* (Jane Austen), `en`, domínio público (voz por idioma) |
 | `espanhol.epub` | começo de *Don Quijote* (Cervantes), `es`, domínio público (voz do sistema para o espanhol) |
+| `hostil.epub` | tenta rodar scripts e sair para a rede (`<script>`, `onerror`, `javascript:`, imagem, CSS, fonte, iframe, objeto e áudio remotos): o teste E2E de segurança confere que nada disso acontece |
 | `minimo.pdf` | PDF de uma página em branco, sem metadados |
 | `metadados-utf16.pdf` | 2 páginas; título e autores em UTF-16BE (`Memórias Póstumas`, dois autores separados por `;`) |
 | `metadados-pdfdoc.pdf` | 2 páginas; título em PDFDocEncoding com escapes octais e parênteses; autor só com espaços |

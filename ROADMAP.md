@@ -252,23 +252,19 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
 
 ### v1.2 — base firme e busca
 
-- [ ] **M29 — Biblioteca sem travar a janela** (5.1–5.5)
-  - [ ] M29a — reproduzir e medir: importar vários PDFs grandes com um livro aberto e virar páginas (E2E de medição,
-    como o `medir-pdf`); o número de antes entra no PR
-  - [ ] M29b — `importar` e `ler` fazem disco e CPU sem a trava (travar só para "já existe?" e o `INSERT`);
-    importação atômica (sem arquivo órfão se o `INSERT` falhar)
-  - [ ] M29c — todo comando que toca o banco vira `async`; um auxiliar único para a trava (recupera de pânico:
-    `PoisonError::into_inner`) e o registro do erro, no lugar dos 41 `lock().unwrap()`
-  - [ ] M29d — SQLite: `busy_timeout`, `synchronous = NORMAL`, `journal_size_limit`, `prepare_cached` nas consultas
-    repetidas, checkpoint ao encerrar; `conferir_capas` numa thread depois de a janela abrir
-- [ ] **M30 — Instância única** (5.3): `tauri-plugin-single-instance`; o segundo "Abrir com" entrega o arquivo à
-  janela que já existe (e a traz para a frente). Conferir a licença no `cargo deny`
-- [ ] **M31 — E2E do EPUB hostil** (6): `hostil.epub` no `gerar.py` das fixtures e `specs/seguranca.e2e.js` (nenhum
-  script roda, o app não é alcançado, nenhum pedido sai); nota no `CLAUDE.md` de que a CSP não vale no `tauri dev`;
-  `npm audit --omit=dev` informativo na CI; conferir `enableScripting` do pdf.js
-- [ ] **M32 — Busca no EPUB** (4): Ctrl+F nos dois formatos com a mesma barra (a `BuscaPdf` vira `Busca`, com um
-  adaptador por formato); `search.js` do foliate-js; ocorrências realçadas, próxima/anterior, contagem, paleta, F1;
-  também no lado
+- [x] **M29 — Biblioteca sem travar a janela** (5.1–5.5): medido (um comando leve esperava 443 ms durante a importação
+  de 4 PDFs de 86 MB; agora, 23 ms no pior caso); importar e abrir fazem disco e CPU sem a trava, e a importação não
+  deixa arquivo órfão; `travar` recupera a trava de um pânico; SQLite com `busy_timeout`, `synchronous = NORMAL` e
+  `journal_size_limit`. Os comandos curtos seguem sem `async` (rodam na ordem das chamadas) e o `conferir_capas`
+  ficou na abertura.
+- [x] **M30 — Instância única** (5.3): `tauri-plugin-single-instance`; o segundo "Abrir com" entrega o arquivo à
+  janela que já existe (e a traz para a frente). Desligada nas compilações de depuração.
+- [x] **M31 — E2E do EPUB hostil** (6): `hostil.epub` e `specs/seguranca.e2e.js` (nenhum script roda, o app não é
+  alcançado, nenhum pedido sai; conferido que falha com a CSP afrouxada); a CSP não vale no `tauri dev`; `npm audit`
+  informativo na CI; pdf.js com `isEvalSupported: false`.
+- [x] **M32 — Busca no EPUB** (4): Ctrl+F nos dois formatos com a mesma barra (`BuscaPdf` virou `Busca`); `search.js`
+  do foliate-js; ocorrências contornadas e a atual realçada, próxima/anterior, contagem, paleta, F1. Só no documento
+  principal, como no PDF (a busca no lado fica para depois, nos dois formatos).
 - [ ] **M33 — Documentação e CI** (10)
   - [ ] M33a — `CLAUDE.md` enxuto (visão, stack, arquitetura, convenções, "Armadilhas conhecidas", modo de trabalho
     real) e o histórico em `docs/historico.md`; `CHANGELOG.md` e `CONTRIBUTING.md`; README dizendo o que a
