@@ -334,3 +334,12 @@ export function urlDaCapa(livro: Livro): string | null {
 export function caminhoInicial(): Promise<string | null> {
   return invoke<string | null>("caminho_inicial");
 }
+
+/**
+ * Outra instância do app foi chamada (um segundo "Abrir com") e entregou o pedido a esta: `tratar`
+ * recebe o caminho do livro, ou `null` se o app só foi chamado de novo. Devolve como parar de ouvir.
+ */
+export async function ouvirAbrirArquivo(tratar: (caminho: string | null) => void): Promise<() => void> {
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<string | null>("abrir-arquivo", (evento) => tratar(evento.payload));
+}

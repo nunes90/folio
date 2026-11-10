@@ -990,6 +990,24 @@ docs/decisions/  # ADRs
 - **v1.1.1** (nov/2026; branch `chore/v1.1.1`): "Ouvir" só o trecho (#122) e o diagnóstico e os E2E no WebKitGTK do
   AppImage (#121). Versão nos 4 lugares; `THIRD-PARTY-NOTICES.md` sem mudança. Tag assinada e Release pelo Lucas.
 - **Análise e plano** (nov/2026): `docs/analise/2026-11-analise.md` e, no ROADMAP, "Depois da análise" (M29–M43).
+- **M29 — biblioteca sem travar a janela** (branch `perf/m29-biblioteca-sem-travar`): a trava da biblioteca só pode ser
+  segurada pelo tempo de uma consulta, porque um comando sem `async` que a espere para a thread principal (a janela).
+  `biblioteca::importar_sem_segurar` e `ler_sem_segurar` (para o `Mutex`): ler, SHA-256, metadados e cópia com a
+  biblioteca solta; trava só para "já existe?" e o registro (`INSERT OR IGNORE`: o mesmo livro pode chegar duas vezes;
+  se o registro falhar, a cópia e a capa são apagadas). `biblioteca::travar` recupera a trava envenenada por um pânico
+  (no lugar dos `lock().unwrap()`). SQLite: `synchronous = NORMAL`, `journal_size_limit` de 1 MB, `busy_timeout` de 5 s.
+  **Os comandos curtos continuam sem `async` de propósito**: na thread principal rodam na ordem das chamadas (o
+  progresso de duas páginas seguidas não troca de lugar). Medido (`FOLIO_MEDIR_IMPORTAR=<pasta> ./virtual.sh npm test`,
+  4 PDFs de 86 MB com um livro aberto): um comando leve esperava 443 ms (a importação inteira); agora, 23 ms no pior
+  caso, mediana 2 ms. O `conferir_capas` ficou na abertura (um `stat` por capa; movê-lo deixaria a primeira lista com
+  capas faltando).
+- **M30 — instância única** (branch `feat/m30-instancia-unica`): `tauri-plugin-single-instance` (o primeiro plugin; no
+  Linux, um nome no D-Bus da sessão). Um segundo "Abrir com" não inicia outro app: `crates/app/src/instancia.rs`
+  (`arquivo_pedido`: `argv[1]` a partir da pasta de quem chamou) traz a janela para a frente e emite `abrir-arquivo`; o
+  `App` (`ouvirAbrirArquivo`, `abrirPeloSistema`) importa e abre, um pedido por vez, fechando antes o livro aberto.
+  **Desligada nas compilações de depuração** (o `cargo tauri dev` abre ao lado do Folio instalado);
+  `FOLIO_INSTANCIA_UNICA=1` liga (só o `instancia.e2e.js`) e `=0` desliga. Fechar um PDF ainda carregando não é mais
+  registrado como erro.
 - **M31 — o livro não roda código** (branch `test/m31-epub-hostil`): o iframe do foliate-js tem `allow-same-origin
   allow-scripts`, então **a única barreira entre um script de EPUB e os comandos do app é a CSP** do `tauri.conf.json`
   (`script-src` sem `blob:` nem `'unsafe-inline'`; `img-src`, `frame-src` etc. sem `http:`). `hostil.epub`

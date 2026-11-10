@@ -3,6 +3,7 @@
 
 mod comandos;
 mod escala;
+mod instancia;
 mod logging;
 mod processo;
 mod voz_natural;
@@ -50,7 +51,14 @@ fn main() -> anyhow::Result<()> {
         tracing::info!("NVIDIA detectada: WEBKIT_DISABLE_DMABUF_RENDERER=1");
     }
 
-    tauri::Builder::default()
+    let mut construtor = tauri::Builder::default();
+    if instancia::ligada() {
+        // O primeiro plugin, como o Tauri pede: a segunda instância sai antes de montar o resto.
+        construtor = construtor.plugin(tauri_plugin_single_instance::init(|app, argv, pasta| {
+            instancia::ao_chamar_de_novo(app, argv, pasta)
+        }));
+    }
+    construtor
         // skip_logger: o plugin não instala logger próprio. Os logs do frontend
         // chegam pelo crate `log` e o tracing-log os encaminha ao mesmo arquivo.
         .plugin(tauri_plugin_log::Builder::new().skip_logger().build())

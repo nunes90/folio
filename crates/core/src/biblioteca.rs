@@ -7,7 +7,8 @@
 use std::fs;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rusqlite::{Connection, OptionalExtension, Row, params};
 use serde::Serialize;
@@ -324,6 +325,13 @@ impl Biblioteca {
         let mut conexao = Connection::open(dados.join(ARQUIVO_BANCO))?;
         conexao.pragma_update(None, "foreign_keys", true)?;
         conexao.pragma_update(None, "journal_mode", "WAL")?;
+        // Em WAL, NORMAL não corrompe o banco numa queda de energia (no máximo, as últimas
+        // gravações se perdem) e poupa um fsync por gravação: o progresso é gravado a cada página.
+        conexao.pragma_update(None, "synchronous", "NORMAL")?;
+        // O arquivo -wal não fica maior que isto depois de incorporado ao banco.
+        conexao.pragma_update(None, "journal_size_limit", 1024 * 1024)?;
+        // Outro processo do app com o banco aberto (dois "Abrir com"): esperar em vez de falhar.
+        conexao.busy_timeout(Duration::from_secs(5))?;
         migrar(&mut conexao)?;
         let biblioteca = Self {
             conexao,
@@ -387,55 +395,83 @@ impl Biblioteca {
 
     /// Importa um livro. Se ele já estiver na biblioteca, devolve o existente como
     /// [`Importado::JaExistia`].
+    ///
+    /// Segura a biblioteca do começo ao fim: com ela atrás de um `Mutex`, use
+    /// [`importar_sem_segurar`], que só a trava para consultar e registrar.
     #[instrument(skip(self), fields(origem = %origem.display()))]
     pub fn importar(&self, origem: &Path) -> Resultado<Importado> {
-        let livro = livro::abrir(origem)?;
-        let id = hash(&livro.bytes);
-        if let Some(existente) = self.obter(&id)? {
-            if existente.removido_em.is_some() {
-                self.restaurar(&id)?;
-                tracing::info!(%id, "livro restaurado da lixeira ao importar");
-                let restaurado = self.obter(&id)?.ok_or(ErroBiblioteca::NaoEncontrado(id))?;
-                return Ok(Importado::Restaurado(restaurado));
-            }
-            tracing::info!(%id, "livro já estava na biblioteca");
-            return Ok(Importado::JaExistia(existente));
+        let lido = ler_para_importar(origem)?;
+        if let Some(existente) = self.ja_importado(&lido.id)? {
+            return Ok(existente);
         }
+        let copiado = copiar(&self.pastas(), lido)?;
+        self.registrar(&copiado)
+    }
 
-        // PDFs chegam sem capa: o frontend a gera com o pdf.js e chama `definir_capa`.
-        let (m, capa) = match livro.formato {
-            Formato::Epub => {
-                let epub = epub::ler(&livro.bytes)?;
-                (epub.metadados, epub.capa)
-            }
-            Formato::Pdf => (pdf::ler(&livro.bytes)?, None),
+    /// As pastas dos livros e das capas: para gravar nelas sem segurar a biblioteca.
+    pub fn pastas(&self) -> Pastas {
+        Pastas {
+            livros: self.dir_livros.clone(),
+            capas: self.dir_capas.clone(),
+        }
+    }
+
+    /// O livro `id`, se já está na biblioteca (da lixeira, ele volta).
+    fn ja_importado(&self, id: &str) -> Resultado<Option<Importado>> {
+        let Some(existente) = self.obter(id)? else {
+            return Ok(None);
         };
-        let arquivo = format!("{id}.{}", livro.formato.como_texto());
-        gravar(&self.dir_livros.join(&arquivo), &livro.bytes)?;
-        let capa = capa.map(|c| self.gravar_capa(&id, &c)).transpose()?;
+        if existente.removido_em.is_some() {
+            self.restaurar(id)?;
+            tracing::info!(%id, "livro restaurado da lixeira ao importar");
+            let restaurado = self
+                .obter(id)?
+                .ok_or_else(|| ErroBiblioteca::NaoEncontrado(id.to_owned()))?;
+            return Ok(Some(Importado::Restaurado(restaurado)));
+        }
+        tracing::info!(%id, "livro já estava na biblioteca");
+        Ok(Some(Importado::JaExistia(existente)))
+    }
 
-        // Sem título nos metadados, usa o nome do arquivo.
-        let titulo = m.titulo.unwrap_or_else(|| {
-            origem
-                .file_stem()
-                .map_or_else(|| id.clone(), |s| s.to_string_lossy().into_owned())
-        });
-        self.conexao.execute(
-            "INSERT INTO livros (id, formato, titulo, autores, idioma, arquivo, capa, adicionado_em)
+    /// Registra um livro já copiado. Se o registro falhar, os arquivos copiados são apagados:
+    /// não sobra livro órfão na pasta.
+    fn registrar(&self, c: &Copiado) -> Resultado<Importado> {
+        // OR IGNORE: entre a consulta e o registro, a biblioteca esteve solta, e o mesmo livro
+        // pode ter sido importado por outra chamada.
+        let inserido = self.conexao.execute(
+            "INSERT OR IGNORE INTO livros
+                 (id, formato, titulo, autores, idioma, arquivo, capa, adicionado_em)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
-                id,
-                livro.formato.como_texto(),
-                titulo,
-                m.autores.join("\n"),
-                m.idioma,
-                arquivo,
-                capa,
+                c.id,
+                c.formato.como_texto(),
+                c.titulo,
+                c.autores.join("\n"),
+                c.idioma,
+                c.arquivo,
+                c.capa,
                 (self.relogio)(),
             ],
-        )?;
-        tracing::info!(%id, %titulo, "livro importado");
-        let novo = self.obter(&id)?.ok_or(ErroBiblioteca::NaoEncontrado(id))?;
+        );
+        let inserido = match inserido {
+            Ok(n) => n,
+            Err(erro) => {
+                let _ = fs::remove_file(self.dir_livros.join(&c.arquivo));
+                if let Some(capa) = &c.capa {
+                    let _ = fs::remove_file(self.dir_capas.join(capa));
+                }
+                return Err(erro.into());
+            }
+        };
+        if inserido == 0 {
+            return self
+                .ja_importado(&c.id)?
+                .ok_or_else(|| ErroBiblioteca::NaoEncontrado(c.id.clone()));
+        }
+        tracing::info!(id = %c.id, titulo = %c.titulo, "livro importado");
+        let novo = self
+            .obter(&c.id)?
+            .ok_or_else(|| ErroBiblioteca::NaoEncontrado(c.id.clone()))?;
         Ok(Importado::Novo(novo))
     }
 
@@ -512,6 +548,14 @@ impl Biblioteca {
         Ok(bytes)
     }
 
+    /// Registra a abertura e diz onde está a cópia do livro, para lê-la sem segurar a
+    /// biblioteca (ver [`ler_sem_segurar`]).
+    pub fn abrir_para_ler(&self, id: &str) -> Resultado<PathBuf> {
+        let caminho = self.caminho_do_arquivo(id)?;
+        self.marcar_aberto(id)?;
+        Ok(caminho)
+    }
+
     /// Guarda uma capa gerada fora do core (a primeira página de um PDF, renderizada pelo pdf.js).
     #[instrument(skip(self, capa), fields(tipo = %capa.tipo_midia, tamanho = capa.bytes.len()))]
     pub fn definir_capa(&self, id: &str, capa: &Capa) -> Resultado<LivroNaBiblioteca> {
@@ -528,9 +572,7 @@ impl Biblioteca {
     }
 
     fn gravar_capa(&self, id: &str, capa: &Capa) -> Resultado<String> {
-        let nome = format!("{id}.{}", extensao(&capa.tipo_midia));
-        gravar(&self.dir_capas.join(&nome), &capa.bytes)?;
-        Ok(nome)
+        gravar_capa(&self.dir_capas, id, capa)
     }
 
     /// Apaga o livro de vez: o registro, o progresso (`ON DELETE CASCADE`), a cópia do
@@ -914,6 +956,114 @@ fn criar_dir(dir: &Path) -> Resultado<()> {
 }
 
 /// Grava num arquivo temporário e renomeia: quem lê nunca vê um arquivo pela metade.
+/// As pastas onde a biblioteca guarda as cópias dos livros e as capas.
+#[derive(Debug, Clone)]
+pub struct Pastas {
+    livros: PathBuf,
+    capas: PathBuf,
+}
+
+/// Um livro lido do disco e identificado, ainda fora da biblioteca.
+struct Lido {
+    origem: PathBuf,
+    livro: livro::Livro,
+    id: String,
+}
+
+/// Um livro com a cópia e a capa já gravadas, pronto para o registro.
+struct Copiado {
+    id: String,
+    formato: Formato,
+    titulo: String,
+    autores: Vec<String>,
+    idioma: Option<String>,
+    arquivo: String,
+    capa: Option<String>,
+}
+
+/// Lê o arquivo e calcula a identidade dele (o SHA-256). Não toca na biblioteca.
+fn ler_para_importar(origem: &Path) -> Resultado<Lido> {
+    let livro = livro::abrir(origem)?;
+    let id = hash(&livro.bytes);
+    Ok(Lido {
+        origem: origem.to_path_buf(),
+        livro,
+        id,
+    })
+}
+
+/// Lê os metadados e grava a cópia do livro e a capa. Não toca na biblioteca.
+fn copiar(pastas: &Pastas, lido: Lido) -> Resultado<Copiado> {
+    let Lido { origem, livro, id } = lido;
+    // PDFs chegam sem capa: o frontend a gera com o pdf.js e chama `definir_capa`.
+    let (m, capa) = match livro.formato {
+        Formato::Epub => {
+            let epub = epub::ler(&livro.bytes)?;
+            (epub.metadados, epub.capa)
+        }
+        Formato::Pdf => (pdf::ler(&livro.bytes)?, None),
+    };
+    let arquivo = format!("{id}.{}", livro.formato.como_texto());
+    gravar(&pastas.livros.join(&arquivo), &livro.bytes)?;
+    let capa = capa
+        .map(|c| gravar_capa(&pastas.capas, &id, &c))
+        .transpose()?;
+    // Sem título nos metadados, usa o nome do arquivo.
+    let titulo = m.titulo.unwrap_or_else(|| {
+        origem
+            .file_stem()
+            .map_or_else(|| id.clone(), |s| s.to_string_lossy().into_owned())
+    });
+    Ok(Copiado {
+        id,
+        formato: livro.formato,
+        titulo,
+        autores: m.autores,
+        idioma: m.idioma,
+        arquivo,
+        capa,
+    })
+}
+
+fn gravar_capa(dir_capas: &Path, id: &str, capa: &Capa) -> Resultado<String> {
+    let nome = format!("{id}.{}", extensao(&capa.tipo_midia));
+    gravar(&dir_capas.join(&nome), &capa.bytes)?;
+    Ok(nome)
+}
+
+/// A biblioteca atrás do `Mutex`. Se uma thread entrou em pânico segurando a trava, ela é
+/// recuperada: o SQLite desfaz sozinho o que ficou pela metade, e sem isso todo comando
+/// seguinte entraria em pânico também (o app aberto e nada funcionando).
+pub fn travar(biblioteca: &Mutex<Biblioteca>) -> MutexGuard<'_, Biblioteca> {
+    biblioteca.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// [`Biblioteca::importar`] para a biblioteca atrás de um `Mutex`: ela só fica travada para
+/// consultar se o livro já existe e para registrá-lo. Ler o arquivo, calcular o SHA-256, ler
+/// os metadados e gravar a cópia (o demorado, num livro grande) acontecem com ela solta, e
+/// os outros comandos não esperam.
+#[instrument(skip(biblioteca), fields(origem = %origem.display()))]
+pub fn importar_sem_segurar(biblioteca: &Mutex<Biblioteca>, origem: &Path) -> Resultado<Importado> {
+    let lido = ler_para_importar(origem)?;
+    let pastas = {
+        let bib = travar(biblioteca);
+        if let Some(existente) = bib.ja_importado(&lido.id)? {
+            return Ok(existente);
+        }
+        bib.pastas()
+    };
+    let copiado = copiar(&pastas, lido)?;
+    travar(biblioteca).registrar(&copiado)
+}
+
+/// [`Biblioteca::ler`] para a biblioteca atrás de um `Mutex`: travada só para achar o arquivo
+/// e registrar a abertura, não durante a leitura.
+#[instrument(skip(biblioteca))]
+pub fn ler_sem_segurar(biblioteca: &Mutex<Biblioteca>, id: &str) -> Resultado<Vec<u8>> {
+    let caminho = travar(biblioteca).abrir_para_ler(id)?;
+    Ok(livro::abrir(&caminho)?.bytes)
+}
+
 pub(crate) fn gravar(destino: &Path, bytes: &[u8]) -> Resultado<()> {
     let temporario = destino.with_extension("parcial");
     std::fs::write(&temporario, bytes)
@@ -956,6 +1106,88 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let bib = Biblioteca::abrir(&dir.path().join("dados"), &dir.path().join("capas")).unwrap();
         (dir, bib)
+    }
+
+    #[test]
+    fn importa_sem_segurar_a_biblioteca() {
+        let (_dir, bib) = nova();
+        let bib = Mutex::new(bib);
+        let origem = fixture("capa-epub3.epub");
+
+        let novo = importar_sem_segurar(&bib, &origem).unwrap();
+        assert!(matches!(novo, Importado::Novo(_)), "{novo:?}");
+        let livro = novo.into_livro();
+        assert!(livro.arquivo.exists());
+        assert!(livro.capa.is_some());
+
+        let de_novo = importar_sem_segurar(&bib, &origem).unwrap();
+        assert!(matches!(de_novo, Importado::JaExistia(_)), "{de_novo:?}");
+
+        travar(&bib).mover_para_lixeira(&livro.id).unwrap();
+        let voltou = importar_sem_segurar(&bib, &origem).unwrap();
+        assert!(matches!(voltou, Importado::Restaurado(_)), "{voltou:?}");
+
+        assert_eq!(
+            ler_sem_segurar(&bib, &livro.id).unwrap(),
+            fs::read(&origem).unwrap()
+        );
+        assert!(
+            travar(&bib)
+                .obter(&livro.id)
+                .unwrap()
+                .unwrap()
+                .aberto_em
+                .is_some()
+        );
+    }
+
+    /// Com a biblioteca solta durante a cópia, duas importações do mesmo livro podem chegar
+    /// juntas ao registro: a segunda acha o livro lá, sem erro e sem duplicar.
+    #[test]
+    fn o_mesmo_livro_registrado_duas_vezes_nao_duplica() {
+        let (_dir, bib) = nova();
+        let origem = fixture("minimo.epub");
+        let um = copiar(&bib.pastas(), ler_para_importar(&origem).unwrap()).unwrap();
+        let outro = copiar(&bib.pastas(), ler_para_importar(&origem).unwrap()).unwrap();
+
+        assert!(matches!(bib.registrar(&um).unwrap(), Importado::Novo(_)));
+        assert!(matches!(
+            bib.registrar(&outro).unwrap(),
+            Importado::JaExistia(_)
+        ));
+        assert_eq!(bib.listar().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn registro_que_falha_nao_deixa_arquivos() {
+        let (_dir, bib) = nova();
+        bib.conexao
+            .execute_batch(
+                "CREATE TRIGGER recusar BEFORE INSERT ON livros
+                 BEGIN SELECT RAISE(ABORT, 'recusado'); END",
+            )
+            .unwrap();
+
+        assert!(bib.importar(&fixture("capa-epub3.epub")).is_err());
+
+        let sobras = |pasta: &Path| fs::read_dir(pasta).unwrap().count();
+        assert_eq!(sobras(&bib.dir_livros), 0);
+        assert_eq!(sobras(&bib.dir_capas), 0);
+    }
+
+    #[test]
+    fn a_trava_se_recupera_de_um_panico() {
+        let (_dir, bib) = nova();
+        let bib = std::sync::Arc::new(Mutex::new(bib));
+        let outra = std::sync::Arc::clone(&bib);
+        let _ = std::thread::spawn(move || {
+            let _guarda = outra.lock().unwrap();
+            panic!("pânico com a trava");
+        })
+        .join();
+
+        assert!(bib.is_poisoned());
+        assert!(travar(&bib).listar().unwrap().is_empty());
     }
 
     #[test]
