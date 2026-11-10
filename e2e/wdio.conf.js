@@ -51,6 +51,7 @@ export const config = {
         sessao("specs/senha.e2e.js", "quebrados/pdf-com-senha.pdf"),
         sessao("specs/selecao.e2e.js", "dom-casmurro.epub"),
         sessao("specs/instancia.e2e.js", "dom-casmurro.epub"),
+        sessao("specs/seguranca.e2e.js", "hostil.epub"),
       ],
   reporters: ["spec"],
   framework: "mocha",

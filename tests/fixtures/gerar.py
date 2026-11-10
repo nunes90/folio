@@ -201,6 +201,82 @@ def livros_em_outros_idiomas() -> None:
     epub_no_idioma(AQUI / "espanhol.epub", "es", "Don Quijote", "Miguel de Cervantes", EM_ESPANHOL)
 
 
+# O servidor que o teste de segurança (e2e/specs/seguranca.e2e.js) sobe: o livro hostil aponta
+# para ele, e o teste confere que nenhum pedido chega.
+SERVIDOR_HOSTIL = "http://127.0.0.1:47811"
+
+
+def epub_hostil(caminho: Path) -> None:
+    """Um EPUB que tenta rodar código e sair para a rede, de todos os jeitos comuns. Um script que
+    rodasse marcaria o próprio documento (`data-*`) e o do app (`data-invadido`)."""
+    b = SERVIDOR_HOSTIL
+    marcar = "document.documentElement.setAttribute"
+    xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><title>Hostil</title>
+<link rel="stylesheet" href="estilo.css"/>
+<script>
+{marcar}('data-embutido', 'rodou');
+try {{
+  {marcar}('data-tauri', typeof parent.__TAURI_INTERNALS__);
+  parent.document.documentElement.setAttribute('data-invadido', 'sim');
+  fetch('{b}/fetch');
+}} catch (e) {{ {marcar}('data-erro', String(e)); }}
+</script>
+<script src="script.js"></script>
+</head><body>
+<h1>Capítulo hostil</h1>
+<p>Uma imagem que falha <img src="nao-existe.png" alt="" onerror="{marcar}('data-onerror', 'rodou')"/> no meio do texto.</p>
+<p><img src="{b}/imagem.png" alt=""/></p>
+<p><a id="js" href="javascript:{marcar}('data-javascript', 'rodou')">javascript</a>
+<a id="fora" href="{b}/link">fora</a></p>
+<iframe src="{b}/iframe.html"></iframe>
+<object data="{b}/object.html"></object>
+<audio src="{b}/audio.mp3" autoplay="autoplay"></audio>
+<p>Mais um parágrafo, para a página ter texto de verdade.</p>
+</body></html>
+"""
+    css = f"""@import url("{b}/import.css");
+@font-face {{ font-family: fora; src: url("{b}/fonte.woff2"); }}
+body {{ background-image: url("{b}/fundo.png"); }}
+p {{ font-family: fora, serif; }}
+"""
+    nav = (
+        '<?xml version="1.0" encoding="utf-8"?>\n<html xmlns="http://www.w3.org/1999/xhtml" '
+        'xmlns:epub="http://www.idpf.org/2007/ops" lang="pt"><head><title>Hostil</title></head>'
+        '<body><nav epub:type="toc"><ol><li><a href="cap1.xhtml">Capítulo hostil</a></li></ol>'
+        "</nav></body></html>"
+    )
+    opf = """<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="id">folio-teste-hostil</dc:identifier>
+    <dc:title>Hostil</dc:title>
+    <dc:language>pt</dc:language>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="c1" href="cap1.xhtml" media-type="application/xhtml+xml" properties="scripted"/>
+    <item id="js" href="script.js" media-type="application/javascript"/>
+    <item id="css" href="estilo.css" media-type="text/css"/>
+  </manifest>
+  <spine><itemref idref="c1"/></spine>
+</package>
+"""
+    with zipfile.ZipFile(caminho, "w") as z:
+        z.writestr(zipfile.ZipInfo("mimetype", (2026, 1, 1, 0, 0, 0)), b"application/epub+zip")
+        for nome, conteudo in {
+            "META-INF/container.xml": CONTAINER,
+            "OEBPS/content.opf": opf,
+            "OEBPS/nav.xhtml": nav,
+            "OEBPS/cap1.xhtml": xhtml,
+            "OEBPS/script.js": f"{marcar}('data-arquivo', 'rodou');",
+            "OEBPS/estilo.css": css,
+        }.items():
+            info = zipfile.ZipInfo(nome, (2026, 1, 1, 0, 0, 0))
+            z.writestr(info, conteudo, compress_type=zipfile.ZIP_DEFLATED)
+
+
 PDF_MINIMO = b"""%PDF-1.4
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
 2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
@@ -301,6 +377,7 @@ def utf16(texto: str) -> bytes:
 
 if __name__ == "__main__":
     livros_em_outros_idiomas()
+    epub_hostil(AQUI / "hostil.epub")
     epub(AQUI / "minimo.epub", b"application/epub+zip")
     epub(
         AQUI / "capa-epub3.epub",

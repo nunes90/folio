@@ -1008,4 +1008,13 @@ docs/decisions/  # ADRs
   **Desligada nas compilações de depuração** (o `cargo tauri dev` abre ao lado do Folio instalado);
   `FOLIO_INSTANCIA_UNICA=1` liga (só o `instancia.e2e.js`) e `=0` desliga. Fechar um PDF ainda carregando não é mais
   registrado como erro.
+- **M31 — o livro não roda código** (branch `test/m31-epub-hostil`): o iframe do foliate-js tem `allow-same-origin
+  allow-scripts`, então **a única barreira entre um script de EPUB e os comandos do app é a CSP** do `tauri.conf.json`
+  (`script-src` sem `blob:` nem `'unsafe-inline'`; `img-src`, `frame-src` etc. sem `http:`). `hostil.epub`
+  (`gerar.py`: `<script>` embutido e de arquivo, `onerror`, `javascript:`, imagem, CSS, fonte, iframe, objeto e áudio
+  remotos) e `e2e/specs/seguranca.e2e.js` (sobe um servidor em 127.0.0.1:47811 e confere que nada roda e nenhum
+  pedido chega). Conferido que o teste falha com a CSP afrouxada (`blob:` em `script-src`: o script do livro roda).
+  **No `cargo tauri dev` a CSP não vale** (a página vem do Vite): não abrir livro de origem duvidosa no modo de
+  desenvolvimento. Links externos de um livro não fazem nada (o `window.open` é ignorado) até o M35. pdf.js com
+  `isEvalSupported: false`; sem `scriptingManager`, o JavaScript de um PDF não roda. `npm audit` informativo na CI.
 - Próximo passo: a combinar (Séries — a biblioteca daqui não tem livros com série — e Flatpak seguem em aberto).
