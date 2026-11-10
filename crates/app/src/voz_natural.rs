@@ -84,12 +84,10 @@ impl EstadoVoz {
 
 /// Lê as preferências gravadas e as aplica (depois de baixar ou remover um modelo).
 fn reaplicar(app: &AppHandle) {
-    let preferencias = app
-        .state::<crate::comandos::EstadoBiblioteca>()
-        .lock()
-        .unwrap()
-        .preferencias_leitura()
-        .unwrap_or_default();
+    let preferencias =
+        folio_core::biblioteca::travar(&app.state::<crate::comandos::EstadoBiblioteca>())
+            .preferencias_leitura()
+            .unwrap_or_default();
     app.state::<EstadoVoz>().aplicar(&preferencias);
 }
 

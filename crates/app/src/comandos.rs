@@ -3,7 +3,10 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use folio_core::biblioteca::{Biblioteca, Colecao, Importado, LivroNaBiblioteca, Progresso};
+use folio_core::biblioteca::{
+    Biblioteca, Colecao, Importado, LivroNaBiblioteca, Progresso, importar_sem_segurar,
+    ler_sem_segurar, travar,
+};
 use folio_core::destaques::{Cor, Destaque, Motivo, NovoDestaque};
 use folio_core::epub::Capa;
 use folio_core::preferencias::PreferenciasLeitura;
@@ -21,6 +24,12 @@ use tauri::ipc::{InvokeBody, Request, Response};
 /// Comandos sem `async` rodam na thread principal, a mesma que desenha a janela. Os que
 /// leem ou copiam o livro inteiro (dezenas de MB) são `#[tauri::command(async)]`: rodam
 /// numa thread do runtime e a interface não congela enquanto isso.
+///
+/// A trava só pode ser segurada pelo tempo de uma consulta: um comando da thread principal que
+/// a espere para a janela. Trabalho de disco ou de CPU fica fora dela (`importar_sem_segurar`,
+/// `ler_sem_segurar`, `trecho_livro`). Os comandos curtos continuam sem `async` de propósito:
+/// na thread principal eles rodam na ordem em que a página os chamou (o progresso de duas
+/// páginas viradas em seguida não troca de lugar).
 pub type EstadoBiblioteca = Mutex<Biblioteca>;
 
 /// A página acabou de recarregar porque o processo dela caiu?
@@ -31,7 +40,7 @@ pub fn processo_recuperado(estado: State<'_, crate::processo::ProcessoRecuperado
 
 #[tauri::command]
 pub fn listar_livros(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<LivroNaBiblioteca>, String> {
-    bib.lock().unwrap().listar().map_err(|e| registrar(&e))
+    travar(&bib).listar().map_err(|e| registrar(&e))
 }
 
 #[derive(Serialize)]
@@ -54,7 +63,6 @@ pub struct Importacao {
 /// Importa vários arquivos; um que falhe não impede os outros.
 #[tauri::command(async)]
 pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>) -> Importacao {
-    let bib = bib.lock().unwrap();
     let mut resultado = Importacao {
         importados: Vec::new(),
         ja_existentes: Vec::new(),
@@ -62,7 +70,7 @@ pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>)
         falhas: Vec::new(),
     };
     for caminho in caminhos {
-        match bib.importar(&caminho) {
+        match importar_sem_segurar(&bib, &caminho) {
             Ok(Importado::Novo(livro)) => resultado.importados.push(livro),
             Ok(Importado::JaExistia(livro)) => resultado.ja_existentes.push(livro),
             Ok(Importado::Restaurado(livro)) => resultado.restaurados.push(livro),
@@ -79,15 +87,14 @@ pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>)
 /// números); o frontend recebe um ArrayBuffer.
 #[tauri::command(async)]
 pub fn abrir_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Response, String> {
-    let bytes = bib.lock().unwrap().ler(&id).map_err(|e| registrar(&e))?;
+    let bytes = ler_sem_segurar(&bib, &id).map_err(|e| registrar(&e))?;
     Ok(Response::new(bytes))
 }
 
 /// Registra a abertura de um PDF e devolve o tamanho dele: o pdf.js pede os trechos que precisar.
 #[tauri::command(async)]
 pub fn abrir_por_trechos(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<u64, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .abrir_por_trechos(&id)
         .map_err(|e| registrar(&e))
 }
@@ -100,9 +107,7 @@ pub fn trecho_livro(
     inicio: u64,
     tamanho: u64,
 ) -> Result<Response, String> {
-    let caminho = bib
-        .lock()
-        .unwrap()
+    let caminho = travar(&bib)
         .caminho_do_arquivo(&id)
         .map_err(|e| registrar(&e))?;
     let bytes =
@@ -112,19 +117,13 @@ pub fn trecho_livro(
 
 #[tauri::command]
 pub fn listar_colecoes(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<Colecao>, String> {
-    bib.lock()
-        .unwrap()
-        .listar_colecoes()
-        .map_err(|e| registrar(&e))
+    travar(&bib).listar_colecoes().map_err(|e| registrar(&e))
 }
 
 /// Nome vazio ou repetido volta como erro com a mensagem para o usuário.
 #[tauri::command]
 pub fn criar_colecao(bib: State<'_, EstadoBiblioteca>, nome: String) -> Result<Colecao, String> {
-    bib.lock()
-        .unwrap()
-        .criar_colecao(&nome)
-        .map_err(|e| registrar(&e))
+    travar(&bib).criar_colecao(&nome).map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
@@ -133,8 +132,7 @@ pub fn renomear_colecao(
     id: i64,
     nome: String,
 ) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .renomear_colecao(id, &nome)
         .map_err(|e| registrar(&e))
 }
@@ -142,10 +140,7 @@ pub fn renomear_colecao(
 /// Os livros continuam na biblioteca.
 #[tauri::command]
 pub fn apagar_colecao(bib: State<'_, EstadoBiblioteca>, id: i64) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
-        .apagar_colecao(id)
-        .map_err(|e| registrar(&e))
+    travar(&bib).apagar_colecao(id).map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
@@ -154,8 +149,7 @@ pub fn adicionar_a_colecao(
     colecao: i64,
     livro: String,
 ) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .adicionar_a_colecao(colecao, &livro)
         .map_err(|e| registrar(&e))
 }
@@ -166,8 +160,7 @@ pub fn remover_da_colecao(
     colecao: i64,
     livro: String,
 ) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .remover_da_colecao(colecao, &livro)
         .map_err(|e| registrar(&e))
 }
@@ -178,8 +171,7 @@ pub fn listar_destaques(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
 ) -> Result<Vec<Destaque>, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .listar_destaques(&livro)
         .map_err(|e| registrar(&e))
 }
@@ -190,8 +182,7 @@ pub fn criar_destaque(
     livro: String,
     novo: NovoDestaque,
 ) -> Result<Destaque, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .criar_destaque(&livro, novo)
         .map_err(|e| registrar(&e))
 }
@@ -202,8 +193,7 @@ pub fn definir_cor_destaque(
     id: i64,
     cor: Cor,
 ) -> Result<Destaque, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .definir_cor_do_destaque(id, cor)
         .map_err(|e| registrar(&e))
 }
@@ -215,8 +205,7 @@ pub fn definir_motivo_destaque(
     id: i64,
     motivo: Option<Motivo>,
 ) -> Result<Destaque, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .definir_motivo_do_destaque(id, motivo)
         .map_err(|e| registrar(&e))
 }
@@ -228,8 +217,7 @@ pub fn definir_nota_destaque(
     id: i64,
     nota: Option<String>,
 ) -> Result<Destaque, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .definir_nota_do_destaque(id, nota.as_deref())
         .map_err(|e| registrar(&e))
 }
@@ -237,10 +225,7 @@ pub fn definir_nota_destaque(
 /// Devolve o destaque apagado, para o "Desfazer" (`restaurar_destaque`).
 #[tauri::command]
 pub fn apagar_destaque(bib: State<'_, EstadoBiblioteca>, id: i64) -> Result<Destaque, String> {
-    bib.lock()
-        .unwrap()
-        .apagar_destaque(id)
-        .map_err(|e| registrar(&e))
+    travar(&bib).apagar_destaque(id).map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
@@ -248,8 +233,7 @@ pub fn restaurar_destaque(
     bib: State<'_, EstadoBiblioteca>,
     destaque: Destaque,
 ) -> Result<Destaque, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .restaurar_destaque(&destaque)
         .map_err(|e| registrar(&e))
 }
@@ -263,8 +247,7 @@ pub fn exportar_destaques(
     caminho: PathBuf,
     motivo: Option<Motivo>,
 ) -> Result<usize, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .exportar_destaques(&livro, &caminho, motivo)
         .map_err(|e| registrar(&e))
 }
@@ -272,10 +255,7 @@ pub fn exportar_destaques(
 /// Livros na lixeira, o removido por último primeiro.
 #[tauri::command]
 pub fn listar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<LivroNaBiblioteca>, String> {
-    bib.lock()
-        .unwrap()
-        .listar_lixeira()
-        .map_err(|e| registrar(&e))
+    travar(&bib).listar_lixeira().map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
@@ -284,8 +264,7 @@ pub fn definir_favorito(
     id: String,
     favorito: bool,
 ) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .definir_favorito(&id, favorito)
         .map_err(|e| registrar(&e))
 }
@@ -296,8 +275,7 @@ pub fn definir_para_ler(
     id: String,
     para_ler: bool,
 ) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .definir_para_ler(&id, para_ler)
         .map_err(|e| registrar(&e))
 }
@@ -308,8 +286,7 @@ pub fn definir_lido(
     id: String,
     lido: bool,
 ) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .definir_lido(&id, lido)
         .map_err(|e| registrar(&e))
 }
@@ -317,43 +294,32 @@ pub fn definir_lido(
 /// Reversível: a cópia, a capa e o progresso ficam até restaurar ou esvaziar a lixeira.
 #[tauri::command]
 pub fn mover_para_lixeira(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .mover_para_lixeira(&id)
         .map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
 pub fn restaurar_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
-        .restaurar(&id)
-        .map_err(|e| registrar(&e))
+    travar(&bib).restaurar(&id).map_err(|e| registrar(&e))
 }
 
 /// Apaga de vez (a cópia do app; o arquivo original não é tocado).
 #[tauri::command(async)]
 pub fn apagar_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
-        .apagar_de_vez(&id)
-        .map_err(|e| registrar(&e))
+    travar(&bib).apagar_de_vez(&id).map_err(|e| registrar(&e))
 }
 
 /// Apaga de vez tudo o que está na lixeira; devolve quantos livros foram.
 #[tauri::command(async)]
 pub fn esvaziar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<usize, String> {
-    bib.lock()
-        .unwrap()
-        .esvaziar_lixeira()
-        .map_err(|e| registrar(&e))
+    travar(&bib).esvaziar_lixeira().map_err(|e| registrar(&e))
 }
 
 /// Tamanho do livro, sem marcá-lo como aberto (para gerar a capa de PDFs, por trechos).
 #[tauri::command(async)]
 pub fn tamanho_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<u64, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .tamanho_do_arquivo(&id)
         .map_err(|e| registrar(&e))
 }
@@ -381,8 +347,7 @@ pub fn definir_capa(
         tipo_midia: cabecalho("tipo").unwrap_or_else(|| "image/jpeg".into()),
         bytes: bytes.clone(),
     };
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .definir_capa(&id, &capa)
         .map_err(|e| registrar(&e))
 }
@@ -392,10 +357,7 @@ pub fn progresso_livro(
     bib: State<'_, EstadoBiblioteca>,
     id: String,
 ) -> Result<Option<Progresso>, String> {
-    bib.lock()
-        .unwrap()
-        .progresso(&id)
-        .map_err(|e| registrar(&e))
+    travar(&bib).progresso(&id).map_err(|e| registrar(&e))
 }
 
 /// Começa uma sessão de leitura (M20) ao abrir o livro, no ponto em que ele abriu.
@@ -405,8 +367,7 @@ pub fn iniciar_sessao(
     livro: String,
     onde: Progresso,
 ) -> Result<Sessao, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .iniciar_sessao(&livro, &onde)
         .map_err(|e| registrar(&e))
 }
@@ -418,8 +379,7 @@ pub fn registrar_sessao(
     id: i64,
     onde: Option<Progresso>,
 ) -> Result<Sessao, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .registrar_na_sessao(id, onde.as_ref())
         .map_err(|e| registrar(&e))
 }
@@ -431,8 +391,7 @@ pub fn encerrar_sessao(
     id: i64,
     onde: Option<Progresso>,
 ) -> Result<Option<Sessao>, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .encerrar_sessao(id, onde.as_ref())
         .map_err(|e| registrar(&e))
 }
@@ -443,8 +402,7 @@ pub fn ritmo_de_leitura(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
 ) -> Result<Option<f64>, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .ritmo_de_leitura(&livro)
         .map_err(|e| registrar(&e))
 }
@@ -456,8 +414,7 @@ pub fn visitar_trecho(
     livro: String,
     trecho: Trecho,
 ) -> Result<Visita, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .visitar_trecho(&livro, &trecho)
         .map_err(|e| registrar(&e))
 }
@@ -469,8 +426,7 @@ pub fn trechos_revisitados(
     livro: String,
     minimo: i64,
 ) -> Result<Vec<Visita>, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .trechos_revisitados(&livro, minimo)
         .map_err(|e| registrar(&e))
 }
@@ -481,8 +437,7 @@ pub fn listar_sessoes(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
 ) -> Result<Vec<Sessao>, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .listar_sessoes(&livro)
         .map_err(|e| registrar(&e))
 }
@@ -493,8 +448,7 @@ pub fn salvar_progresso(
     id: String,
     progresso: Progresso,
 ) -> Result<(), String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .salvar_progresso(&id, &progresso)
         .map_err(|e| registrar(&e))
 }
@@ -503,8 +457,7 @@ pub fn salvar_progresso(
 pub fn preferencias_leitura(
     bib: State<'_, EstadoBiblioteca>,
 ) -> Result<PreferenciasLeitura, String> {
-    bib.lock()
-        .unwrap()
+    travar(&bib)
         .preferencias_leitura()
         .map_err(|e| registrar(&e))
 }
@@ -517,9 +470,7 @@ pub fn salvar_preferencias_leitura(
     voz: State<'_, EstadoVoz>,
     preferencias: PreferenciasLeitura,
 ) -> Result<PreferenciasLeitura, String> {
-    let salvas = bib
-        .lock()
-        .unwrap()
+    let salvas = travar(&bib)
         .salvar_preferencias_leitura(preferencias)
         .map_err(|e| registrar(&e))?;
     voz.aplicar(&salvas);

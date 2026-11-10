@@ -989,4 +989,16 @@ docs/decisions/  # ADRs
   de destaque fechada N ms depois de abrir: <origem>` (`ControleDestaques.esconder(origem)`), só no EPUB.
 - **v1.1.1** (nov/2026; branch `chore/v1.1.1`): "Ouvir" só o trecho (#122) e o diagnóstico e os E2E no WebKitGTK do
   AppImage (#121). Versão nos 4 lugares; `THIRD-PARTY-NOTICES.md` sem mudança. Tag assinada e Release pelo Lucas.
+- **Análise e plano** (nov/2026): `docs/analise/2026-11-analise.md` e, no ROADMAP, "Depois da análise" (M29–M43).
+- **M29 — biblioteca sem travar a janela** (branch `perf/m29-biblioteca-sem-travar`): a trava da biblioteca só pode ser
+  segurada pelo tempo de uma consulta, porque um comando sem `async` que a espere para a thread principal (a janela).
+  `biblioteca::importar_sem_segurar` e `ler_sem_segurar` (para o `Mutex`): ler, SHA-256, metadados e cópia com a
+  biblioteca solta; trava só para "já existe?" e o registro (`INSERT OR IGNORE`: o mesmo livro pode chegar duas vezes;
+  se o registro falhar, a cópia e a capa são apagadas). `biblioteca::travar` recupera a trava envenenada por um pânico
+  (no lugar dos `lock().unwrap()`). SQLite: `synchronous = NORMAL`, `journal_size_limit` de 1 MB, `busy_timeout` de 5 s.
+  **Os comandos curtos continuam sem `async` de propósito**: na thread principal rodam na ordem das chamadas (o
+  progresso de duas páginas seguidas não troca de lugar). Medido (`FOLIO_MEDIR_IMPORTAR=<pasta> ./virtual.sh npm test`,
+  4 PDFs de 86 MB com um livro aberto): um comando leve esperava 443 ms (a importação inteira); agora, 23 ms no pior
+  caso, mediana 2 ms. O `conferir_capas` ficou na abertura (um `stat` por capa; movê-lo deixaria a primeira lista com
+  capas faltando).
 - Próximo passo: a combinar (Séries — a biblioteca daqui não tem livros com série — e Flatpak seguem em aberto).
