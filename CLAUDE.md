@@ -15,6 +15,7 @@ Prioridades: **acessibilidade ampla** e **animações fluidas**. Linguagem princ
   `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test` (e, no frontend, `npm run check` e `npm test`);
   commit; entrada nova no fim de `docs/historico.md`, marco marcado no `ROADMAP.md` e, se nasceu uma regra, ela
   entra aqui.
+- CI: actions fixadas pelo SHA (o Dependabot as atualiza), `ubuntu-24.04` e Node do `.nvmrc`.
 - Git: uma branch por funcionalidade, PRs pequenos com base na `main`, Conventional Commits (`feat:`, `fix:`,
   `test:`, `refactor:`, `perf:`, `docs:`, `chore:`). Tags e Releases são do Lucas.
 - Versão em 4 lugares: `Cargo.toml` (workspace), `crates/app/tauri.conf.json`, `ui/package.json` e os lockfiles.
@@ -108,7 +109,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **Um ambiente do ONNX Runtime por processo** (`kokoro::ambiente_onnx`); o espeak-ng tem estado global (um
   `Arc` só, atrás de um `Mutex`).
 - A instância única fica desligada nas compilações de depuração (`FOLIO_INSTANCIA_UNICA=1` liga).
-- Migrações do banco: nunca editar uma já publicada; acrescentar outra. O `serde` não lê um float num `u32`
+- Migrações do banco: nunca editar uma já publicada; acrescentar outra (o `tests/migracoes.rs` abre um banco de
+  cada versão publicada; ao publicar um esquema novo, acrescentar a tag em `tests/fixtures/bancos/gerar.py`). O `serde` não lê um float num `u32`
   (uma preferência inválida faz o JSON inteiro virar o padrão: migrar antes de ler).
 - `to_lowercase` no Rust para comparar nomes: o `NOCASE` do SQLite só cobre ASCII.
 
@@ -134,7 +136,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 ## Estado atual
 - **v1.1.1** publicada (nov/2026). Em andamento: o plano "Depois da análise" do `ROADMAP.md`
   (`docs/analise/2026-11-analise.md`), versões 1.2 a 1.4, marcos M29–M43.
-- Feitos da v1.2: M29 (biblioteca sem travar a janela), M30 (instância única), M31 (E2E do EPUB hostil), M32
-  (busca no EPUB), M33a (este arquivo enxuto, `docs/historico.md`, `CHANGELOG.md`, `CONTRIBUTING.md`).
-- Próximo passo: M33b (CI atualizada e fixada) e M33c (teste de migração com um banco de cada versão).
+- **v1.2 completa, sem tag ainda**: M29 (biblioteca sem travar a janela), M30 (instância única), M31 (E2E do EPUB
+  hostil), M32 (busca no EPUB), M33 (este arquivo enxuto e o histórico separado; CI fixada pelo SHA, Dependabot,
+  `SHA256SUMS` e atestação na Release; teste de migração com um banco de cada versão publicada).
+- Próximo passo: a Release da v1.2 (do Lucas) e a v1.3, começando pelo M34a (`ControleVoz`).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.
