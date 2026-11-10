@@ -262,9 +262,9 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
 - [x] **M31 — E2E do EPUB hostil** (6): `hostil.epub` e `specs/seguranca.e2e.js` (nenhum script roda, o app não é
   alcançado, nenhum pedido sai; conferido que falha com a CSP afrouxada); a CSP não vale no `tauri dev`; `npm audit`
   informativo na CI; pdf.js com `isEvalSupported: false`.
-- [ ] **M32 — Busca no EPUB** (4): Ctrl+F nos dois formatos com a mesma barra (a `BuscaPdf` vira `Busca`, com um
-  adaptador por formato); `search.js` do foliate-js; ocorrências realçadas, próxima/anterior, contagem, paleta, F1;
-  também no lado
+- [x] **M32 — Busca no EPUB** (4): Ctrl+F nos dois formatos com a mesma barra (`BuscaPdf` virou `Busca`); `search.js`
+  do foliate-js; ocorrências contornadas e a atual realçada, próxima/anterior, contagem, paleta, F1. Só no documento
+  principal, como no PDF (a busca no lado fica para depois, nos dois formatos).
 - [ ] **M33 — Documentação e CI** (10)
   - [ ] M33a — `CLAUDE.md` enxuto (visão, stack, arquitetura, convenções, "Armadilhas conhecidas", modo de trabalho
     real) e o histórico em `docs/historico.md`; `CHANGELOG.md` e `CONTRIBUTING.md`; README dizendo o que a

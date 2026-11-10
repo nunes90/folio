@@ -1,5 +1,5 @@
 <script lang="ts">
-  // A busca do PDF, no cabeçalho. Em janela estreita (M28c), o campo fixo empurrava os botões para
+  // A busca no texto do livro, no cabeçalho, igual nos dois formatos (M32; antes, só do PDF). Em janela estreita (M28c), o campo fixo empurrava os botões para
   // fora da barra: vira um botão de lupa que abre a busca por cima do cabeçalho (Esc ou ✕ fecham e
   // devolvem o foco à lupa).
   import { tick } from "svelte";
@@ -9,12 +9,15 @@
   let {
     resultado = "",
     onBuscar,
+    onLimpar,
     campo = $bindable(),
   }: {
     /** Texto do resultado ("3 de 12", "Nada encontrado"), anunciado por leitores de tela. */
     resultado?: string;
     /** `anterior` busca para trás; com o mesmo termo, avança para a próxima ocorrência. */
     onBuscar: (termo: string, anterior: boolean) => void;
+    /** O campo ficou vazio ou a busca foi fechada: as ocorrências realçadas saem do texto. */
+    onLimpar?: () => void;
     /** O campo de texto, para o pai dar foco (Ctrl+F). */
     campo?: HTMLInputElement;
   } = $props();
@@ -34,6 +37,7 @@
 
   async function fechar() {
     aberta = false;
+    onLimpar?.();
     await tick();
     lupa?.focus();
   }
@@ -78,6 +82,7 @@
     placeholder="Buscar…"
     bind:value={termo}
     bind:this={campo}
+    oninput={() => termo.trim() || onLimpar?.()}
     onkeydown={aoTeclar}
   />
   <button type="button" onclick={() => termo.trim() && onBuscar(termo, true)}>

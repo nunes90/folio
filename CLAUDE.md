@@ -1017,4 +1017,13 @@ docs/decisions/  # ADRs
   **No `cargo tauri dev` a CSP não vale** (a página vem do Vite): não abrir livro de origem duvidosa no modo de
   desenvolvimento. Links externos de um livro não fazem nada (o `window.open` é ignorado) até o M35. pdf.js com
   `isEvalSupported: false`; sem `scriptingManager`, o JavaScript de um PDF não roda. `npm audit` informativo na CI.
+- **M32 — busca no EPUB** (branch `feat/m32-busca-epub`): Ctrl+F igual nos dois formatos, com a mesma barra
+  (`Busca.svelte`, antes `BuscaPdf`; `onLimpar` quando o campo fica vazio ou a busca fecha). No `Leitor`: `view.search`
+  do foliate-js (o livro inteiro, sem diferenciar maiúsculas nem acentos; as ocorrências são contornadas por ele, com
+  `Overlayer.outline` na cor de destaque da interface) e a ocorrência atual realçada por uma anotação a mais
+  (`realceBusca`, como o `realceVoz`; refeita no `create-overlay`, porque a seção pode carregar depois do `goTo`).
+  `lib/buscaEpub.ts` (puro): `ocorrenciasDoPasso`, `primeiraDesde` (começa de onde se está lendo, pelo `compare` dos
+  CFIs), `vizinha` (dá a volta), `mesmoTermo`, `textoDaBusca`. Uma busca nova descarta a anterior (`vezDaBusca`; sair
+  do `for await` encerra o gerador). Só no documento principal, como no PDF. No E2E, os destaques do livro também são
+  `<g>` com `fill` no SVG do foliate-js: distinguir pela cor.
 - Próximo passo: a combinar (Séries — a biblioteca daqui não tem livros com série — e Flatpak seguem em aberto).

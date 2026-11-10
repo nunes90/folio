@@ -3,12 +3,12 @@ import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { tick } from "svelte";
 import { sistema } from "../lib/ambiente.svelte";
-import BuscaPdf from "./BuscaPdf.svelte";
+import Busca from "./Busca.svelte";
 
-describe("BuscaPdf", () => {
+describe("Busca", () => {
   it("busca para frente ao enviar e para trás com Shift+Enter", async () => {
     const onBuscar = vi.fn();
-    render(BuscaPdf, { onBuscar });
+    render(Busca, { onBuscar });
     const campo = screen.getByRole("searchbox", {
       name: "Buscar no documento",
     });
@@ -21,21 +21,31 @@ describe("BuscaPdf", () => {
     ]);
   });
 
+  it("avisa quando o campo fica vazio", async () => {
+    const onLimpar = vi.fn();
+    render(Busca, { onBuscar: vi.fn(), onLimpar });
+    const campo = screen.getByRole("searchbox");
+    await fireEvent.input(campo, { target: { value: "Capitu" } });
+    expect(onLimpar).not.toHaveBeenCalled();
+    await fireEvent.input(campo, { target: { value: "" } });
+    expect(onLimpar).toHaveBeenCalledTimes(1);
+  });
+
   it("ignora termo vazio", async () => {
     const onBuscar = vi.fn();
-    render(BuscaPdf, { onBuscar });
+    render(Busca, { onBuscar });
     await fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
     await fireEvent.click(screen.getByRole("button", { name: "Anterior" }));
     expect(onBuscar).not.toHaveBeenCalled();
   });
 
   it("anuncia o resultado", () => {
-    render(BuscaPdf, { onBuscar: () => {}, resultado: "3 de 12" });
+    render(Busca, { onBuscar: () => {}, resultado: "3 de 12" });
     expect(screen.getByRole("status").textContent).toBe("3 de 12");
   });
 
   it("não tem violações de acessibilidade (axe)", async () => {
-    const { container } = render(BuscaPdf, {
+    const { container } = render(Busca, {
       onBuscar: () => {},
       resultado: "1 de 2",
     });
@@ -51,7 +61,7 @@ describe("BuscaPdf", () => {
     it("vira uma lupa que abre a busca por cima do cabeçalho; Esc fecha e devolve o foco à lupa", async () => {
       sistema.estreita = true;
       const onBuscar = vi.fn();
-      render(BuscaPdf, { onBuscar });
+      render(Busca, { onBuscar });
       expect(screen.queryByRole("searchbox")).toBeNull();
       const lupa = screen.getByRole("button", { name: "Buscar no documento" });
       expect(lupa.getAttribute("aria-expanded")).toBe("false");

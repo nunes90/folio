@@ -24,7 +24,7 @@
     type EventoVoz,
   } from "../lib/voz";
   import { corDoRealce } from "../lib/realce";
-  import BuscaPdf from "./BuscaPdf.svelte";
+  import Busca from "./Busca.svelte";
   import Indice from "./Indice.svelte";
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
   import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
@@ -139,7 +139,7 @@
 
   let moldura: MolduraLeitor;
   let conteiner: HTMLDivElement;
-  let busca = $state<ReturnType<typeof BuscaPdf>>();
+  let busca = $state<ReturnType<typeof Busca>>();
   let visor: PDFViewer | undefined;
   /** Modos de rolagem do pdf.js (ScrollMode), disponíveis depois de carregar o visor. */
   let modosDeRolagem: { PAGE: number; VERTICAL: number } | undefined;
@@ -1647,7 +1647,7 @@
   {onFechar}
 >
   {#snippet acoes()}
-    <BuscaPdf bind:this={busca} resultado={resultadoBusca} onBuscar={buscar} />
+    <Busca bind:this={busca} resultado={resultadoBusca} onBuscar={buscar} />
   {/snippet}
 
   {#snippet indice()}
