@@ -989,4 +989,14 @@ docs/decisions/  # ADRs
   de destaque fechada N ms depois de abrir: <origem>` (`ControleDestaques.esconder(origem)`), só no EPUB.
 - **v1.1.1** (nov/2026; branch `chore/v1.1.1`): "Ouvir" só o trecho (#122) e o diagnóstico e os E2E no WebKitGTK do
   AppImage (#121). Versão nos 4 lugares; `THIRD-PARTY-NOTICES.md` sem mudança. Tag assinada e Release pelo Lucas.
+- **Análise e plano** (nov/2026): `docs/analise/2026-11-analise.md` e, no ROADMAP, "Depois da análise" (M29–M43).
+- **M31 — o livro não roda código** (branch `test/m31-epub-hostil`): o iframe do foliate-js tem `allow-same-origin
+  allow-scripts`, então **a única barreira entre um script de EPUB e os comandos do app é a CSP** do `tauri.conf.json`
+  (`script-src` sem `blob:` nem `'unsafe-inline'`; `img-src`, `frame-src` etc. sem `http:`). `hostil.epub`
+  (`gerar.py`: `<script>` embutido e de arquivo, `onerror`, `javascript:`, imagem, CSS, fonte, iframe, objeto e áudio
+  remotos) e `e2e/specs/seguranca.e2e.js` (sobe um servidor em 127.0.0.1:47811 e confere que nada roda e nenhum
+  pedido chega). Conferido que o teste falha com a CSP afrouxada (`blob:` em `script-src`: o script do livro roda).
+  **No `cargo tauri dev` a CSP não vale** (a página vem do Vite): não abrir livro de origem duvidosa no modo de
+  desenvolvimento. Links externos de um livro não fazem nada (o `window.open` é ignorado) até o M35. pdf.js com
+  `isEvalSupported: false`; sem `scriptingManager`, o JavaScript de um PDF não roda. `npm audit` informativo na CI.
 - Próximo passo: a combinar (Séries — a biblioteca daqui não tem livros com série — e Flatpak seguem em aberto).
