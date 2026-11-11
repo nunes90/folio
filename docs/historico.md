@@ -963,7 +963,7 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   aqui. `CHANGELOG.md` (para quem usa o app), `CONTRIBUTING.md`, e o README diz que a 1.1 é estável e o que a
   acessibilidade cobre hoje (teclado, contraste, fontes, voz; o Orca ainda não).
 - **M33b — CI fixada** (branch `ci/m33b-ci-fixada`): as actions nas versões atuais e **fixadas pelo SHA do commit** (o
-  comentário ao lado diz a versão; as `@v4` rodavam em Node 20, em fim de vida); `ubuntu-24.04` no lugar de
+  comentário ao lado diz a versão; as `@v4` rodavam em Node 20, em fim de vida); `ubuntu-26.04` no lugar de
   `ubuntu-latest` e o Node pelo `.nvmrc` (26) no lugar de `lts/*`: a troca de versão passa a ser uma decisão.
   `.github/dependabot.yml`: cargo, npm (`ui` e `e2e`) e actions, uma vez por semana, um PR agrupado por ecossistema.
   Na Release, o workflow do AppImage anexa também o `SHA256SUMS` e gera a atestação de proveniência

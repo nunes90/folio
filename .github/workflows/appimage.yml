@@ -112,7 +112,7 @@ jobs:
   testar:
     name: Testar em ${{ matrix.imagem }}
     needs: appimage
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container: ${{ matrix.imagem }}
     strategy:
       fail-fast: false
@@ -151,7 +151,7 @@ jobs:
     name: Anexar à Release
     if: github.event_name == 'release'
     needs: testar
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:

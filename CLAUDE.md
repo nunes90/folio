@@ -15,7 +15,7 @@ Prioridades: **acessibilidade ampla** e **animações fluidas**. Linguagem princ
   `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test` (e, no frontend, `npm run check` e `npm test`);
   commit; entrada nova no fim de `docs/historico.md`, marco marcado no `ROADMAP.md` e, se nasceu uma regra, ela
   entra aqui.
-- CI: actions fixadas pelo SHA (o Dependabot as atualiza), `ubuntu-24.04` e Node do `.nvmrc`.
+- CI: actions fixadas pelo SHA (o Dependabot as atualiza), `ubuntu-26.04` e Node do `.nvmrc`.
 - Git: uma branch por funcionalidade, PRs pequenos com base na `main`, Conventional Commits (`feat:`, `fix:`,
   `test:`, `refactor:`, `perf:`, `docs:`, `chore:`). Tags e Releases são do Lucas.
 - Versão em 4 lugares: `Cargo.toml` (workspace), `crates/app/tauri.conf.json`, `ui/package.json` e os lockfiles.

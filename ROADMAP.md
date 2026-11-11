@@ -269,7 +269,7 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
   - [x] M33a — `CLAUDE.md` enxuto (visão, stack, arquitetura, convenções, "Armadilhas conhecidas", modo de trabalho
     real) e o histórico em `docs/historico.md`; `CHANGELOG.md` e `CONTRIBUTING.md`; README dizendo o que a
     acessibilidade cobre hoje
-  - [x] M33b — actions atualizadas e fixadas por SHA; `ubuntu-24.04` e `.nvmrc` no lugar de `latest`/`lts`;
+  - [x] M33b — actions atualizadas e fixadas por SHA; `ubuntu-26.04` e `.nvmrc` no lugar de `latest`/`lts`;
     Dependabot semanal agrupado; `SHA256SUMS` e atestação de proveniência na Release
   - [x] M33c — teste de migração com um banco de cada versão publicada (v0.1 a v1.1) nas fixtures
 
