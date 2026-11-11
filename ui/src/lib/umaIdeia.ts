@@ -20,7 +20,11 @@ export interface Bloco {
 export function blocosDoDocumento(doc: Document): Bloco[] {
   return blocosDe(doc).map((r) => {
     const inicio = r.startContainer;
-    const elemento = inicio instanceof Element ? inicio : (inicio.parentElement ?? doc.body);
+    // Pelo nodeType, e não por `instanceof Element`: os nós do livro são do iframe, outra janela,
+    // e para eles o `instanceof` daqui dá falso (o bloco virava o pai do parágrafo, e só o que
+    // vinha depois dele esmaecia).
+    const elemento =
+      inicio.nodeType === Node.ELEMENT_NODE ? (inicio as Element) : (inicio.parentElement ?? doc.body);
     return { trecho: aparar(r), elemento };
   });
 }

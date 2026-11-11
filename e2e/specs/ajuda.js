@@ -1,5 +1,7 @@
 // O que os testes têm em comum. Os elementos são procurados de novo a cada tentativa: a tela
 // troca (biblioteca, leitor) e uma referência guardada fica velha.
+import { execFileSync } from "node:child_process";
+import path from "node:path";
 import { Key } from "webdriverio";
 
 export { Key };
@@ -46,3 +48,21 @@ export async function destacar(cor = "Amarelo") {
   await botao(cor, '//*[contains(@class,"barra-destaque")]').click();
   await barra.waitForDisplayed({ reverse: true });
 }
+
+/**
+ * Faz a última leitura ter sido há duas horas (mexendo no banco da sessão de teste): ao reabrir
+ * o livro, o cartão "Onde você parou" aparece.
+ */
+export function envelhecerUltimaLeitura() {
+  const banco = path.join(process.env.FOLIO_DADOS_TESTE, "io.github.nunes90.folio", "biblioteca.sqlite3");
+  execFileSync("python3", [
+    "-c",
+    "import sqlite3, sys; c = sqlite3.connect(sys.argv[1]); " +
+      "c.execute('update sessoes set inicio = inicio - 7200, fim = fim - 7200'); c.commit()",
+    banco,
+  ]);
+}
+
+/** O cartão "Onde você parou": o texto dele, ou "" se não está na tela. */
+export const cartaoOndeParou = () =>
+  browser.execute(() => document.querySelector(".area-continuacao")?.textContent?.replace(/\s+/g, " ").trim() ?? "");
