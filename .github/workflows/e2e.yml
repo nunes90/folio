@@ -20,13 +20,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             driver: webkitgtk-webdriver
           - os: ubuntu-22.04
             driver: webkit2gtk-driver
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # webkitgtk-webdriver é o WebKitWebDriver (o guia do Tauri ainda o chama de webkit2gtk-driver,
       # o nome antigo); xvfb, a tela virtual; dbus-x11 para a sessão
@@ -37,17 +37,17 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev libasound2-dev \
             ${{ matrix.driver }} xvfb dbus-x11
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
       # Guarda também o tauri-cli e o tauri-driver instalados (~/.cargo/bin) entre as execuções.
       # Um cache por sistema: o cargo-tauri compilado no Ubuntu mais novo não roda no 22.04 (glibc).
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: ${{ matrix.os }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: lts/*
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: |
             ui/package-lock.json
@@ -74,7 +74,7 @@ jobs:
         run: xvfb-run --auto-servernum dbus-run-session -- npm test
 
       # As capturas de tela dos testes que falharam (e2e/wdio.conf.js, afterTest).
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: e2e-falhas-${{ matrix.os }}

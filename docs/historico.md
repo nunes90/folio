@@ -962,3 +962,16 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   e testar, **"Armadilhas conhecidas"** reunidas dos marcos, e um "Estado atual" de poucas linhas), e o histórico vive
   aqui. `CHANGELOG.md` (para quem usa o app), `CONTRIBUTING.md`, e o README diz que a 1.1 é estável e o que a
   acessibilidade cobre hoje (teclado, contraste, fontes, voz; o Orca ainda não).
+- **M33b — CI fixada** (branch `ci/m33b-ci-fixada`): as actions nas versões atuais e **fixadas pelo SHA do commit** (o
+  comentário ao lado diz a versão; as `@v4` rodavam em Node 20, em fim de vida); `ubuntu-26.04` no lugar de
+  `ubuntu-latest` e o Node pelo `.nvmrc` (26) no lugar de `lts/*`: a troca de versão passa a ser uma decisão.
+  `.github/dependabot.yml`: cargo, npm (`ui` e `e2e`) e actions, uma vez por semana, um PR agrupado por ecossistema.
+  Na Release, o workflow do AppImage anexa também o `SHA256SUMS` e gera a atestação de proveniência
+  (`gh attestation verify`; não impede a Release se o serviço falhar).
+- **M33c — teste de migração** (mesma branch): `tests/fixtures/bancos/<versão>.sql`, um banco com o esquema de cada
+  versão publicada (2, 5, 6, 7 e 11 migrações: v0.1.0, v0.3.0, v0.6.0, v0.7.0, v0.8.0), gerado pelo `gerar.py` de lá
+  com as migrações **do código de cada tag** e alguns dados. `crates/core/tests/migracoes.rs`: cada um abre na
+  versão de hoje, fica com o mesmo esquema de um banco novo (colunas, índices, `user_version`) e não perde livros,
+  progresso, coleções, destaques, sessões, visitas nem preferências (as antigas: tema sépia, `paginaPdf`,
+  `larguraMaxima`). Conferido que falha se uma migração publicada for editada. O `rusqlite` embutido liga as chaves
+  estrangeiras por padrão: o `.sql` começa com `PRAGMA foreign_keys = OFF` (as tabelas saem em ordem alfabética).

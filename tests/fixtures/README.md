@@ -30,3 +30,8 @@
 
 Os arquivos pequenos são gerados por `gerar.py` (rodar da raiz: `python3 tests/fixtures/gerar.py`). Os PDFs
 criptografados precisam do `qpdf` e mudam a cada geração (a criptografia usa valores aleatórios).
+
+## Bancos de versões antigas
+
+`bancos/<versão>.sql`: um banco com o esquema de cada versão publicada e alguns dados, para o teste de migração
+(`crates/core/tests/migracoes.rs`). Gerados por `bancos/gerar.py` a partir do código de cada tag.
