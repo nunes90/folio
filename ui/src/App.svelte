@@ -52,10 +52,8 @@
   import { aplicarTema, resolverTema } from "./lib/temas";
   import { aplicarAnimacao } from "./lib/animacao";
   import { transicionar } from "./lib/transicao";
-  import type { Comando, ComandosDoLeitor } from "./lib/comandos";
-  import type { Filtro } from "./lib/filtro";
-  import type { TemaEscolhido } from "./lib/temas";
-  import type { Movimento } from "./lib/preferencias.svelte";
+  import type { ComandosDoLeitor } from "./lib/comandos";
+  import { comandosDoApp } from "./lib/comandosDoApp";
   import { SessaoDeLeitura } from "./lib/sessao.svelte";
 
 
@@ -110,127 +108,32 @@
     }
   }
 
-  const NOMES_TEMA: [TemaEscolhido, string][] = [
-    ["sistema", "do sistema"],
-    ["claro", "claro"],
-    ["escuro", "escuro"],
-    ["alto-contraste", "alto contraste"],
-  ];
-  const NOMES_MOVIMENTO: [Movimento, string][] = [
-    ["sistema", "seguir o sistema"],
-    ["reduzido", "sempre reduzir"],
-  ];
-  const ESTANTES: [Filtro, string][] = [
-    ["todos", "Todos"],
-    ["favoritos", "Favoritos"],
-    ["lendo", "Lendo"],
-    ["para-ler", "Para ler"],
-    ["lidos", "Lidos"],
-    ["autores", "Autores"],
-    ["lixeira", "Lixeira"],
-  ];
-
   /** O que a paleta oferece agora: depende da tela (biblioteca ou leitor). */
-  const comandos = $derived.by((): Comando[] => {
-    const lista: Comando[] = [];
-    const naBiblioteca = !aberto;
-    if (naBiblioteca) {
-      if (!importando)
-        lista.push({
-          id: "importar",
-          titulo: "Importar livros…",
-          grupo: "Biblioteca",
-          teclas: [["Ctrl", "O"]],
-          executar: escolherEImportar,
-        });
-      lista.push({
-        id: "buscar",
-        titulo: "Buscar na biblioteca",
-        grupo: "Biblioteca",
-        teclas: [["Ctrl", "F"]],
-        executar: () => biblioteca?.buscar(),
-      });
-      for (const [filtro, nome] of ESTANTES)
-        lista.push({
-          id: `estante-${filtro}`,
-          titulo: `Estante: ${nome}`,
-          grupo: "Estantes",
-          executar: () => void biblioteca?.mostrar(filtro),
-        });
-      for (const colecao of colecoes)
-        lista.push({
-          id: `colecao-${colecao.id}`,
-          titulo: `Coleção: ${colecao.nome}`,
-          grupo: "Coleções",
-          executar: () => void biblioteca?.mostrar(`colecao:${colecao.id}`),
-        });
-      lista.push({
-        id: "nova-colecao",
-        titulo: "Nova coleção…",
-        grupo: "Coleções",
-        executar: () => (pedirNome = { colecao: null, erro: null }),
-      });
-      if (lixeira.length)
-        lista.push({
-          id: "esvaziar",
-          titulo: "Esvaziar lixeira…",
-          grupo: "Lixeira",
-          executar: () => (confirmar = { tipo: "esvaziar" }),
-        });
-    } else {
-      lista.push({
-        id: "voltar",
-        titulo: "Voltar à biblioteca",
-        grupo: "Leitura",
-        executar: () => void fechar(),
-      });
-      lista.push(...doLeitor.comandos);
-    }
-    for (const [tema, nome] of NOMES_TEMA)
-      lista.push({
-        id: `tema-${tema}`,
-        titulo: `Interface: ${nome}`,
-        grupo: "Aparência",
-        dica: preferencias.tema === tema ? "atual" : undefined,
-        palavras: "tema cores",
-        executar: () => atualizarPreferencias({ tema }),
-      });
-    for (const [movimento, nome] of NOMES_MOVIMENTO)
-      lista.push({
-        id: `movimento-${movimento}`,
-        titulo: `Animações: ${nome}`,
-        grupo: "Aparência",
-        dica: preferencias.movimento === movimento ? "atual" : undefined,
-        palavras: "movimento reduzir",
-        executar: () => atualizarPreferencias({ movimento }),
-      });
-    lista.push({
-      id: "atalhos",
-      titulo: "Mostrar atalhos de teclado",
-      grupo: "Ajuda",
-      teclas: [["F1"]],
-      executar: () => (ajudaAberta = true),
-    });
-    lista.push({
-      id: "sobre",
-      titulo: "Sobre o Folio",
-      grupo: "Ajuda",
-      palavras: "versão licença",
-      executar: () => (sobreAberto = true),
-    });
-    // Livros por último: são muitos, e o nome do comando costuma ser o que se procura.
-    if (naBiblioteca)
-      for (const livro of livros)
-        lista.push({
-          id: `livro-${livro.id}`,
-          titulo: `Abrir ${livro.titulo}`,
-          grupo: livro.formato.toUpperCase(),
-          dica: livro.autores.join(", ") || undefined,
-          executar: () => void abrir(livro),
-        });
-    return lista;
-  });
-
+  const comandos = $derived(
+    comandosDoApp(
+      {
+        lendo: !!aberto,
+        importando,
+        livros,
+        colecoes,
+        lixeiraComLivros: lixeira.length > 0,
+        preferencias,
+        doLeitor: doLeitor.comandos,
+      },
+      {
+        importar: () => void escolherEImportar(),
+        buscarNaBiblioteca: () => biblioteca?.buscar(),
+        mostrar: (filtro) => void biblioteca?.mostrar(filtro),
+        novaColecao: () => (pedirNome = { colecao: null, erro: null }),
+        esvaziarLixeira: () => (confirmar = { tipo: "esvaziar" }),
+        voltarABiblioteca: () => void fechar(),
+        mudarPreferencias: atualizarPreferencias,
+        mostrarAtalhos: () => (ajudaAberta = true),
+        mostrarSobre: () => (sobreAberto = true),
+        abrir: (livro) => void abrir(livro),
+      },
+    ),
+  );
 
   // Tema e movimento da interface: reagem às preferências e às mudanças do sistema.
   $effect(() => {

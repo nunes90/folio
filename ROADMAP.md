@@ -279,11 +279,17 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
   runes + adaptador por formato), com testes de unidade com adaptador falso; sem mudança de comportamento (os E2E
   são a rede)
   - [x] M34a — `ControleVoz` (estado, pausar/retomar, trecho ouvido, aviso de preparo, bloco seguinte, eventos)
-  - [ ] M34b — `ControleLado` (abrir, fechar, alternar, comandos)
-  - [ ] M34c — `ControleIdeia` e a continuação
-  - [ ] M34d — `App.svelte`: comandos por tela em `lib/` (puro) e o estado da tela num módulo de runes
+  - [~] M34b — `ControleLado`: **não feito, de propósito.** Olhando o código, o que os dois leitores têm em comum no
+    lado a lado são quatro funções curtas (~30 linhas em cada); o resto é do formato (o EPUB espera os dois lados
+    assentarem e acerta o CFI; o PDF guarda o zoom). Um controle com adaptador ficaria maior do que o que substitui.
+  - [~] M34c — `ControleIdeia` e a continuação: **não feito, pelo mesmo motivo.** As funções têm o mesmo nome, mas o
+    corpo é de cada formato (o EPUB esmaece nós do documento e rola o foliate-js; o PDF move um véu sobre a página); o
+    que era comum já está em `lib/umaIdeia.ts`, `lib/continuacao.ts` e `lib/piscar.ts`.
+  - [x] M34d — `App.svelte`: os comandos da paleta por tela em `lib/comandosDoApp.ts` (puro, com testes); 733 → 657
+    linhas. O estado da tela ficou no `App` (um módulo de runes só mudaria as variáveis de lugar).
   - [ ] M34e — `MolduraLeitor`: `RodapeLeitor` e o modo foco em partes próprias; capturas do M28 como artefato da CI
-  - Meta: `Leitor.svelte` e `LeitorPdf.svelte` abaixo de ~700 linhas cada
+  - A meta de ~700 linhas por leitor não se sustenta: a análise contou 31 funções de mesmo nome como duplicação, e só
+    as da voz eram. Os leitores ficam em ~1.470 e ~1.735 linhas; o ganho que resta é testá-los, não encolhê-los.
 - [ ] **M35 — Links e notas** (4): pilha "de onde vim" nos dois formatos (Alt+←, aviso "Voltar para onde eu
   estava", paleta); notas de rodapé em balão (`footnotes.js`); link externo com confirmação e
   `tauri-plugin-opener` (só `http`/`https`)

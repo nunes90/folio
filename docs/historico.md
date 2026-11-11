@@ -987,3 +987,8 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   Sem mudança de comportamento pretendida; uma diferença: ao chegar ao fim do livro, o realce da última frase sai.
   `Leitor.svelte` 1.590 → 1.469 linhas; `LeitorPdf.svelte` 1.834 → 1.735. **A voz não tem teste E2E** (tocaria som):
   conferir à mão ler, pausar, retomar, parar, "Ouvir" e Ctrl+D lendo, nos dois formatos.
+- **M34d — comandos do app** (branch `refactor/m34d-comandos-do-app`): `lib/comandosDoApp.ts` (`comandosDoApp(estado,
+  acoes)`, puro, com testes) monta a lista da paleta por tela; o `App.svelte` só passa o estado e liga as ações (733 →
+  657 linhas). **M34b e M34c não foram feitos**: no lado a lado e na uma ideia por vez, os dois leitores têm funções de
+  mesmo nome, mas o corpo é de cada formato, e o que era comum já estava em `lib/`. A análise contou nomes iguais como
+  duplicação; só a voz era (M34a).
