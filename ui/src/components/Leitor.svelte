@@ -19,15 +19,14 @@
   import PainelPagina from "./PainelPagina.svelte";
   import PainelVoz from "./PainelVoz.svelte";
   import AbasAparencia from "./AbasAparencia.svelte";
-  import { avisar, dispensar } from "../lib/avisos.svelte";
+  import { avisar } from "../lib/avisos.svelte";
   import {
-    AvisoDePreparo,
-    SEM_VOZ,
     comandosDaVozNaturalDoApp,
     vozNatural,
   } from "../lib/vozNatural.svelte";
   import PainelTema from "./PainelTema.svelte";
   import Busca from "./Busca.svelte";
+  import { ControleVoz } from "../lib/controleVoz.svelte";
   import {
     mesmoTermo,
     ocorrenciasDoPasso,
@@ -111,17 +110,9 @@
   import {
     blocoDasFrases,
     blocoParaFala,
-    comandosDaVoz,
-    falar,
     prepararVoz,
-    textoDaFalhaDaVoz,
-    ouvirVoz,
-    pararVoz,
     tipoDoElemento,
     velocidadeDoTrecho,
-    vozDisponivel,
-    type EstadoVoz,
-    type EventoVoz,
   } from "../lib/voz";
   import { corDoRealce } from "../lib/realce";
 
@@ -238,11 +229,8 @@
       lado?.sairDoModoFrase();
       // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou, e a
       // frase volta a ser só o realce.
-      if (retomarVozAoFechar) {
-        retomarVozAoFechar = false;
-        fraseLida?.startContainer.ownerDocument?.getSelection()?.removeAllRanges();
-        if (voz === "pausado") void pausarOuRetomar();
-      }
+      const frase = voz.fraseLida;
+      if (voz.retomarDepoisDaBarra()) frase?.startContainer.ownerDocument?.getSelection()?.removeAllRanges();
     },
   });
 
@@ -252,12 +240,7 @@
   // a prévia, e o resto (barra, destaque, copiar, ouvir) é o mesmo da seleção com o mouse.
   let modoFrase: { doc: Document; indice: number; frases: Range[]; de: number; ate: number } | null =
     null;
-  /** Ctrl+D pausou a voz para destacar a frase lida: retomar quando a barra fechar. */
-  let retomarVozAoFechar = false;
-  /** A frase que a voz está lendo (ou leu por último, na pausa) e o CFI do realce dela. */
-  let fraseLida: Range | null = null;
-  /** O trecho que o "Ouvir" da barra está lendo (só ele; no fim, para) e a última frase marcada. */
-  let trechoOuvido: { frases: Range[]; marca: number } | null = null;
+  /** O CFI do realce da frase que a voz está lendo (ou leu por último, na pausa). */
   let realceVoz: string | null = null;
 
   // Busca no texto (M32), como a do PDF: Ctrl+F, Enter e Shift+Enter andam pelas ocorrências, todas
@@ -478,17 +461,48 @@
     if (pronto && view) aplicarMarcaTexto(view, e);
   });
 
-  // Leitura em voz alta: um bloco (parágrafo) por vez; ao terminar, o próximo.
-  let voz = $state<EstadoVoz>("parado");
-  let vozPossivel = $state(false);
-  /** "Preparando a voz…" se a primeira frase demorar (a voz natural carrega o modelo). */
-  const preparo = new AvisoDePreparo((t) => avisar(t, "progresso"), dispensar);
+  // Leitura em voz alta: um bloco (parágrafo) por vez; ao terminar, o próximo. O estado, a pausa,
+  // o "Ouvir" e os eventos são do ControleVoz (igual no PDF); aqui fica o que é do EPUB.
+  const voz = new ControleVoz<Range>({
+    comecar: async (desde) => {
+      if (!view) return;
+      await view.initTTS("sentence", mostrarFraseLida);
+      if (!view.tts) return;
+      // Começa na página atual (ou no trecho pedido), não no início do capítulo.
+      await seguirLendo(blocoInicial(view.tts, desde ?? view.lastLocation?.range));
+    },
+    aoMarcar: (marca) => view?.tts?.setMark(marca),
+    seguir: () => seguirLendo(view?.tts?.next()),
+    // O `resume()` do tts.js começa na última marca.
+    retomar: () => seguirLendo(view?.tts?.resume()),
+    aoParar: () => trocarRealce(null),
+    mostrarFrase: mostrarFraseLida,
+    blocoDoTrecho: (frases, desde) => {
+      const bloco = blocoDasFrases(
+        frases.slice(desde).map((f) => f.toString()),
+        desde,
+        idiomaDoLivro,
+      );
+      return (
+        bloco && {
+          ssml: bloco.ssml,
+          config: {
+            idioma: idiomaDoLivro,
+            // Listas e código mais devagar, como na leitura do livro.
+            velocidade: velocidadeDoTrecho(
+              preferencias.velocidadeVoz,
+              tipoDoElemento(frases[desde]?.commonAncestorContainer),
+            ),
+          },
+        }
+      );
+    },
+    anunciar: (texto) => (anuncio = texto),
+  });
   // Pergunta de novo quando a voz natural é baixada ou removida.
   $effect(() => {
     void vozNatural.mudancas;
-    vozDisponivel()
-      .then((d) => (vozPossivel = d))
-      .catch(() => {});
+    voz.conferir();
   });
   let idiomaDoLivro: string | null = null;
 
@@ -520,18 +534,13 @@
       erro = mensagemAoAbrir(e, "epub");
       log.error(`não foi possível abrir o livro: ${e}`);
     });
-    let pararDeOuvir: (() => void) | undefined;
     vozNatural.carregar().catch(() => {});
-    ouvirVoz(aoEventoVoz)
-      .then((f) => (pararDeOuvir = f))
-      .catch(() => {});
+    const desligarVoz = voz.ligar();
     return () => {
       window.removeEventListener("keydown", aoTeclar);
       window.removeEventListener("pointerdown", aoApontarFora);
       // Fechar o livro encerra a leitura em voz alta.
-      preparo.terminar();
-      if (voz !== "parado") pararVoz().catch(() => {});
-      pararDeOuvir?.();
+      desligarVoz();
       view?.close();
       view?.remove();
     };
@@ -605,30 +614,6 @@
     return moldura.virarPagina(ladoDaAnterior(), () => view?.prev());
   }
 
-  /** Lê em voz alta a partir de `desde` (ou da página atual). Se já estiver lendo, recomeça dali. */
-  async function lerEmVozAlta(desde?: Range) {
-    if (!view) return;
-    trechoOuvido = null;
-    if (!vozPossivel) {
-      anuncio = SEM_VOZ;
-      return;
-    }
-    preparo.comecar();
-    try {
-      if (voz !== "parado") await pararLeitura();
-      await view.initTTS("sentence", mostrarFraseLida);
-      if (!view.tts) return;
-      // Começa na página atual (ou no trecho pedido), não no início do capítulo.
-      await seguirLendo(blocoInicial(view.tts, desde ?? view.lastLocation?.range));
-    } catch (erro) {
-      // Sem isto, um erro deixava "Preparando a voz…" na tela e a leitura parada, sem aviso.
-      log.warn(`ler em voz alta: ${erro}`);
-      preparo.terminar();
-      voz = "parado";
-      anuncio = textoDaFalhaDaVoz(erro);
-    }
-  }
-
   /** Fala o bloco dado ou, se não houver o que falar, procura o próximo (inclusive em outros capítulos). */
   async function seguirLendo(ssml: string | undefined) {
     if (!view?.tts) return;
@@ -636,8 +621,7 @@
       if (ssml === undefined) {
         const proxima = await proximaSecao();
         if (proxima === null) {
-          voz = "parado";
-          anuncio = "Fim do livro.";
+          voz.acabou("Fim do livro.");
           return;
         }
         ssml = proxima;
@@ -645,10 +629,9 @@
       }
       const bloco = blocoParaFala(ssml);
       if (bloco) {
-        voz = "falando";
         // Listas e código mais devagar (M23b): cada bloco do tts.js é uma mensagem.
         const tipo = tipoDoElemento(view.tts.block?.commonAncestorContainer);
-        await falar(bloco.ssml, {
+        await voz.falar(bloco.ssml, {
           idioma: bloco.idioma ?? idiomaDoLivro,
           velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
         });
@@ -675,7 +658,7 @@
         () => null,
       );
       // Enquanto carregava, a leitura parou ou passou de bloco: o preparo já não serve.
-      if (voz !== "falando" || view?.tts?.block !== atual) return;
+      if (voz.estado !== "falando" || view?.tts?.block !== atual) return;
     }
     const bloco = seguinte && blocoParaFala(seguinte.ssml);
     if (!seguinte || !bloco) return;
@@ -696,59 +679,6 @@
     return view.tts?.start();
   }
 
-  function aoEventoVoz(e: EventoVoz) {
-    // Eventos atrasados depois de parar ou pausar (ou de outro livro) são ignorados.
-    if (voz !== "falando") return;
-    // "Ouvir" da barra: só o trecho; no fim dele, a leitura para.
-    if (trechoOuvido) {
-      preparo.terminar();
-      if (e.tipo === "marca") {
-        trechoOuvido.marca = Number(e.marca);
-        const frase = trechoOuvido.frases[trechoOuvido.marca];
-        if (frase) mostrarFraseLida(frase);
-      } else {
-        void pararLeitura();
-      }
-      return;
-    }
-    if (!view?.tts) return;
-    preparo.terminar();
-    if (e.tipo === "marca") view.tts.setMark(e.marca);
-    else if (e.tipo === "fim") seguirLendo(view.tts.next()).catch((erro) => log.warn(`${erro}`));
-    else voz = "parado";
-  }
-
-  /**
-   * Pausar cancela a fala; retomar fala de novo a partir da frase em que parou (o `resume()`
-   * do tts.js começa na última marca). A pausa do speech-dispatcher não servia: ele só pausa
-   * na marca seguinte e, ao retomar, dava o bloco por terminado, pulando o resto dele.
-   */
-  async function pausarOuRetomar() {
-    if (voz === "falando") {
-      voz = "pausado";
-      preparo.terminar();
-      await pararVoz();
-    } else if (voz === "pausado") {
-      // Depois de uma pausa longa, a voz natural pode ter fechado o modelo (2 min).
-      preparo.comecar();
-      if (trechoOuvido) {
-        await falarTrecho(trechoOuvido.frases, trechoOuvido.marca);
-        return;
-      }
-      voz = "falando";
-      await seguirLendo(view?.tts?.resume());
-    }
-  }
-
-  async function pararLeitura() {
-    preparo.terminar();
-    voz = "parado";
-    trechoOuvido = null;
-    fraseLida = null;
-    trocarRealce(null);
-    await pararVoz();
-  }
-
   /**
    * A frase marcada pela voz (M23b), realçada como um destaque (uma anotação a mais do
    * foliate-js, com a cor da interface): não usa a seleção (um clique não a desfaz e ela fica
@@ -756,7 +686,7 @@
    */
   function mostrarFraseLida(frase: Range) {
     if (!view) return;
-    fraseLida = frase;
+    voz.fraseLida = frase;
     void view.renderer.scrollToAnchor(frase);
     const doc = frase.startContainer.ownerDocument;
     const indice = view.renderer.getContents().find((c) => c.doc === doc)?.index;
@@ -959,25 +889,19 @@
    */
   async function destacarSelecao() {
     if (!view) return;
-    if (voz === "falando") {
-      await pausarOuRetomar();
-      retomarVozAoFechar = true;
-      // A frase lida está só realçada: vira a seleção, para a barra abrir sobre ela.
-      if (fraseLida?.startContainer.isConnected) {
-        const sel = fraseLida.startContainer.ownerDocument?.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(fraseLida);
-      }
+    // A frase lida está só realçada: vira a seleção, para a barra abrir sobre ela.
+    const lida = await voz.pausarParaDestacar();
+    if (lida) {
+      const sel = lida.startContainer.ownerDocument?.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(lida);
     }
     const comSelecao = view.renderer
       .getContents()
       .some(({ doc, index }) => verSelecao(doc, index, true));
     if (!comSelecao) await iniciarModoFrase();
     // Nada para destacar (a barra não abriu): a voz continua na hora.
-    if (!destaques.barra && retomarVozAoFechar) {
-      retomarVozAoFechar = false;
-      if (voz === "pausado") await pausarOuRetomar();
-    }
+    if (!destaques.barra) voz.retomarDepoisDaBarra();
   }
 
   /** O capítulo visível: o documento e o índice da seção. */
@@ -1055,58 +979,18 @@
       }
     }
     // A leitura recomeça no trecho: não retomar a pausada ao fechar a barra.
-    retomarVozAoFechar = false;
+    voz.naoRetomar();
     destaques.fecharBarra();
-    if (trecho) await ouvirTrecho(trecho);
+    if (trecho) await voz.ouvirTrecho(frasesDoTrechoNoCapitulo(trecho));
   }
 
-  /**
-   * "Ouvir" da barra: lê só o trecho (as frases que ele alcança, cortadas nas pontas) e para. A
-   * leitura do livro inteiro é o "Ler em voz alta".
-   */
-  async function ouvirTrecho(trecho: Range) {
-    if (!vozPossivel) {
-      anuncio = SEM_VOZ;
-      return;
-    }
-    if (voz !== "parado") await pararLeitura();
+  /** As frases que o trecho alcança, cortadas nas pontas (o "Ouvir" da barra lê só elas). */
+  function frasesDoTrechoNoCapitulo(trecho: Range): Range[] {
     const doc = trecho.startContainer.ownerDocument;
-    if (!doc) return;
+    if (!doc) return [];
     const doCapitulo = frasesPorCapitulo.get(doc) ?? frasesDoDocumento(doc, idiomaDoLivro);
     frasesPorCapitulo.set(doc, doCapitulo);
-    preparo.comecar();
-    await falarTrecho(frasesDoTrecho(doCapitulo, trecho), 0);
-  }
-
-  /** Fala as `frases` do trecho a partir da `desde` (no começo, ou ao continuar da pausa). */
-  async function falarTrecho(frases: Range[], desde: number) {
-    const bloco = blocoDasFrases(
-      frases.slice(desde).map((f) => f.toString()),
-      desde,
-      idiomaDoLivro,
-    );
-    if (!bloco) {
-      preparo.terminar();
-      return;
-    }
-    trechoOuvido = { frases, marca: desde };
-    voz = "falando";
-    try {
-      await falar(bloco.ssml, {
-        idioma: idiomaDoLivro,
-        // Listas e código mais devagar, como na leitura do livro.
-        velocidade: velocidadeDoTrecho(
-          preferencias.velocidadeVoz,
-          tipoDoElemento(frases[desde]?.commonAncestorContainer),
-        ),
-      });
-    } catch (erro) {
-      log.warn(`ouvir o trecho: ${erro}`);
-      preparo.terminar();
-      voz = "parado";
-      trechoOuvido = null;
-      anuncio = textoDaFalhaDaVoz(erro);
-    }
+    return frasesDoTrecho(doCapitulo, trecho);
   }
 
   function aoApontarFora(e: PointerEvent) {
@@ -1220,12 +1104,7 @@
         },
       );
     lista.push(
-      ...comandosDaVoz(
-        voz,
-        () => void lerEmVozAlta(),
-        () => void pausarOuRetomar(),
-        () => void pararLeitura(),
-      ),
+      ...voz.comandos(),
     );
     lista.push(...comandosDaVelocidade(preferencias, atualizarPreferencias));
     lista.push(...comandosDaVozNaturalDoApp(preferencias, atualizarPreferencias));
@@ -1523,12 +1402,12 @@
   {#snippet rodape()}
     <!-- Com o lado aberto, o rodapé dos dois fica igual: "Ler em voz alta" sai (continua na
          paleta); lendo ou pausada, os controles da voz ficam. -->
-    {#if !ladoAlvo || voz !== "parado"}
+    {#if !ladoAlvo || voz.estado !== "parado"}
       <ControlesVoz
-        estado={voz}
-        onLer={() => void lerEmVozAlta()}
-        onPausarOuRetomar={() => void pausarOuRetomar()}
-        onParar={() => void pararLeitura()}
+        estado={voz.estado}
+        onLer={() => void voz.ler()}
+        onPausarOuRetomar={() => void voz.pausarOuRetomar()}
+        onParar={() => void voz.parar()}
       />
     {/if}
     <div class="grupo-barra">
@@ -1557,7 +1436,7 @@
 
   <DestaquesDoLeitor
     controle={destaques}
-    onOuvir={vozPossivel ? () => void ouvirDaqui() : undefined}
+    onOuvir={voz.possivel ? () => void ouvirDaqui() : undefined}
     onTrecho={(m) => (lado?.temModoFrase() ? lado.mudarTrecho(m) : mudarTrecho(m))}
   />
 

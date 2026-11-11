@@ -278,7 +278,7 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
 - [ ] **M34 — Controles comuns aos dois leitores** (7.1–7.3). Cada um nos moldes do `ControleDestaques` (classe com
   runes + adaptador por formato), com testes de unidade com adaptador falso; sem mudança de comportamento (os E2E
   são a rede)
-  - [ ] M34a — `ControleVoz` (estado, pausar/retomar, trecho ouvido, aviso de preparo, bloco seguinte, eventos)
+  - [x] M34a — `ControleVoz` (estado, pausar/retomar, trecho ouvido, aviso de preparo, bloco seguinte, eventos)
   - [ ] M34b — `ControleLado` (abrir, fechar, alternar, comandos)
   - [ ] M34c — `ControleIdeia` e a continuação
   - [ ] M34d — `App.svelte`: comandos por tela em `lib/` (puro) e o estado da tela num módulo de runes
