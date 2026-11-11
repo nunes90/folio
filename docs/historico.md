@@ -975,3 +975,15 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   progresso, coleções, destaques, sessões, visitas nem preferências (as antigas: tema sépia, `paginaPdf`,
   `larguraMaxima`). Conferido que falha se uma migração publicada for editada. O `rusqlite` embutido liga as chaves
   estrangeiras por padrão: o `.sql` começa com `PRAGMA foreign_keys = OFF` (as tabelas saem em ordem alfabética).
+- **M34a — `ControleVoz`** (branch `refactor/m34a-controle-voz`): a leitura em voz alta estava escrita duas vezes, uma em
+  cada leitor. `lib/controleVoz.svelte.ts` (classe com runes, como o `ControleDestaques`): o estado, `possivel`, o aviso
+  de preparo, `ler(desde)`, `falar` (para o adaptador), `acabou(anúncio)`, `ouvirTrecho(frases)` (o "Ouvir" da barra),
+  `aoEvento`, `pausarOuRetomar`, `parar`, a pausa do Ctrl+D (`pausarParaDestacar`, `retomarDepoisDaBarra`,
+  `naoRetomar`), `comandos()` e `vez`/`novaVez` (quem acorda de um `await` com a vez antiga desiste). O
+  `AdaptadorVoz<D>` de cada formato: `comecar`, `aoMarcar`, `seguir`, `retomar`, `aoParar`, `mostrarFrase`,
+  `blocoDoTrecho`, `anunciar`. EPUB: `D` = um trecho (`Range`), sobre o `tts.js`. PDF: `D` = página e frase; o
+  `leitura` dele guarda só a leitura do documento (o trecho do "Ouvir" é do controle, e a página da frase vem do DOM:
+  `paginaDaFrase`). O motor é trocável (`MotorDoControle`): 16 testes de unidade com um motor e um livro de mentira.
+  Sem mudança de comportamento pretendida; uma diferença: ao chegar ao fim do livro, o realce da última frase sai.
+  `Leitor.svelte` 1.590 → 1.469 linhas; `LeitorPdf.svelte` 1.834 → 1.735. **A voz não tem teste E2E** (tocaria som):
+  conferir à mão ler, pausar, retomar, parar, "Ouvir" e Ctrl+D lendo, nos dois formatos.

@@ -10,21 +10,14 @@
   import { idiomaDoTexto } from "../lib/idioma";
   import {
     blocoDasFrases,
-    comandosDaVoz,
-    falar,
     prepararVoz,
-    textoDaFalhaDaVoz,
     idiomaValido,
-    ouvirVoz,
-    pararVoz,
     trechoDeFala,
     velocidadeDoTrecho,
-    vozDisponivel,
-    type EstadoVoz,
-    type EventoVoz,
   } from "../lib/voz";
   import { corDoRealce } from "../lib/realce";
   import Busca from "./Busca.svelte";
+  import { ControleVoz } from "../lib/controleVoz.svelte";
   import Indice from "./Indice.svelte";
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
   import DestaquesDoLeitor from "./DestaquesDoLeitor.svelte";
@@ -83,10 +76,8 @@
   import PainelPagina from "./PainelPagina.svelte";
   import PainelVoz from "./PainelVoz.svelte";
   import AbasAparencia from "./AbasAparencia.svelte";
-  import { avisar, dispensar } from "../lib/avisos.svelte";
+  import { avisar } from "../lib/avisos.svelte";
   import {
-    AvisoDePreparo,
-    SEM_VOZ,
     comandosDaVozNaturalDoApp,
     vozNatural,
   } from "../lib/vozNatural.svelte";
@@ -234,11 +225,7 @@
       selecaoDaBarra = null;
       // A barra foi aberta com a voz lendo (Ctrl+D): a leitura continua de onde parou, e a
       // frase volta a ser só o realce.
-      if (retomarVozAoFechar) {
-        retomarVozAoFechar = false;
-        window.getSelection()?.removeAllRanges();
-        if (voz === "pausado") void pausarOuRetomar();
-      }
+      if (voz.retomarDepoisDaBarra()) window.getSelection()?.removeAllRanges();
     },
   });
 
@@ -338,16 +325,11 @@
   const BUSCA = { ENCONTRADO: 0, NADA: 1, VOLTOU_AO_INICIO: 2, PENDENTE: 3 };
 
   onMount(() => {
-    let pararDeOuvir: (() => void) | undefined;
     vozNatural.carregar().catch(() => {});
-    ouvirVoz(aoEventoVoz)
-      .then((f) => (pararDeOuvir = f))
-      .catch(() => {});
+    const desligarVoz = voz.ligar();
     return () => {
       // Fechar o documento encerra a leitura em voz alta.
-      preparo.terminar();
-      if (voz !== "parado") pararVoz().catch(() => {});
-      pararDeOuvir?.();
+      desligarVoz();
     };
   });
 
@@ -784,12 +766,7 @@
         executar: () => atualizarPreferencias({ modoPdf }),
       })),
       ...destaques.comandos(destacarSelecao),
-      ...comandosDaVoz(
-        voz,
-        () => void lerEmVozAlta(),
-        () => void pausarOuRetomar(),
-        () => void pararLeitura(),
-      ),
+      ...voz.comandos(),
       ...comandosDaVelocidade(preferencias, atualizarPreferencias),
       ...comandosDaVozNaturalDoApp(preferencias, atualizarPreferencias),
       comandoQuantoFalta(estimativa, "pdf", (texto) => (anuncio = texto)),
@@ -1032,58 +1009,70 @@
   // M17b, na ordem de leitura); a frase lida fica realçada na camada de texto e, no fim da
   // página, a leitura passa à seguinte. Pausar cancela a fala; retomar
   // fala de novo a partir da frase marcada (a pausa do speech-dispatcher pulava o resto).
-  let voz = $state<EstadoVoz>("parado");
-  let vozPossivel = $state(false);
-  /** "Preparando a voz…" se a primeira frase demorar (a voz natural carrega o modelo). */
-  const preparo = new AvisoDePreparo((t) => avisar(t, "progresso"), dispensar);
+  // O estado, a pausa, o "Ouvir" e os eventos são do ControleVoz (igual no EPUB); aqui fica o
+  // que é do PDF.
+  const voz = new ControleVoz<{ pagina: number; frase: number }>({
+    comecar: (desde) => lerDesde(desde?.pagina ?? pagina, desde?.frase ?? 0),
+    aoMarcar: (marca) => {
+      if (!leitura) return;
+      leitura.marca = Number(marca);
+      const frase = leitura.frases[leitura.marca];
+      // A frase lida fica realçada (o mesmo do EPUB); se a página mudou à mão, volta.
+      if (leitura.pagina !== pagina) irPara(leitura.pagina);
+      if (frase) mostrarFraseLida(leitura.pagina, frase);
+    },
+    // O trecho seguinte da página (ou a página seguinte).
+    seguir: async () => {
+      if (leitura) await lerDesde(leitura.pagina, leitura.fim, false);
+    },
+    retomar: async () => {
+      if (leitura) await lerDesde(leitura.pagina, leitura.marca);
+    },
+    aoParar: () => {
+      leitura = null;
+      trocarRealce(null);
+    },
+    mostrarFrase: (frase) => {
+      const n = paginaDaFrase(frase);
+      if (n !== pagina) irPara(n);
+      mostrarFraseLida(n, frase);
+    },
+    blocoDoTrecho: (frases, desde) => {
+      const bloco = blocoDasFrases(frases.slice(desde).map(textoDoTrecho), desde);
+      return (
+        bloco && {
+          ssml: bloco.ssml,
+          config: {
+            idioma: idiomaDoPdf,
+            velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipoDaFrasePdf(frases[desde])),
+          },
+        }
+      );
+    },
+    anunciar: (texto) => (anuncio = texto),
+  });
   // Pergunta de novo quando a voz natural é baixada ou removida.
   $effect(() => {
     void vozNatural.mudancas;
-    vozDisponivel()
-      .then((d) => (vozPossivel = d))
-      .catch(() => {});
+    voz.conferir();
   });
+
+  /** A página em que a frase está (a atual, se a camada de texto dela já saiu da tela). */
+  function paginaDaFrase(frase: Range): number {
+    const no = frase.startContainer;
+    const el = no instanceof Element ? no : no.parentElement;
+    return Number(el?.closest<HTMLElement>(".page")?.dataset.pageNumber) || pagina;
+  }
+
   /**
    * O que está sendo lido: a página, as frases dela, a última frase marcada e onde acaba o
    * trecho em fala (listas e código vão em mensagens próprias, mais devagar).
    */
-  /** `soOTrecho`: o "Ouvir" da barra (no fim do trecho, a leitura para). */
-  let leitura: {
-    pagina: number;
-    frases: Range[];
-    marca: number;
-    fim: number;
-    soOTrecho?: boolean;
-  } | null = null;
-  /** A frase marcada pela voz e o realce dela, em frações da página (como os destaques). */
-  let fraseLida: Range | null = null;
+  let leitura: { pagina: number; frases: Range[]; marca: number; fim: number } | null = null;
+  /** O realce da frase marcada pela voz, em frações da página (como os destaques). */
   let realceVoz: { pagina: number; retangulos: Retangulo[] } | null = null;
-  /** Muda a cada leitura nova ou parada: uma leitura antiga que acorda depois de um `await` desiste. */
-  let vez = 0;
-  /** Ctrl+D pausou a voz para destacar a frase lida: retomar quando a barra fechar. */
-  let retomarVozAoFechar = false;
   /** A seleção sobre a qual a barra abriu (ver `verSelecao`). */
   let selecaoDaBarra: { pagina: number; trecho: Range } | null = null;
-
-  /** Lê a partir da frase `frase` da página `n` (ou do início da página atual). */
-  async function lerEmVozAlta(n = pagina, frase = 0) {
-    if (!vozPossivel) {
-      anuncio = SEM_VOZ;
-      return;
-    }
-    preparo.comecar();
-    try {
-      if (voz !== "parado") await pararLeitura();
-      await lerDesde(n, frase);
-    } catch (erro) {
-      // Sem isto, um erro deixava "Preparando a voz…" na tela e a leitura parada, sem aviso.
-      log.warn(`ler em voz alta: ${erro}`);
-      preparo.terminar();
-      voz = "parado";
-      leitura = null;
-      anuncio = textoDaFalhaDaVoz(erro);
-    }
-  }
 
   /**
    * Fala, a partir da frase `inicio` da página `n`, o trecho seguinte de frases do mesmo tipo
@@ -1091,29 +1080,26 @@
    * lida mesmo fora do texto principal (é de onde se pediu para ouvir).
    */
   async function lerDesde(n: number, inicio: number, lerAPrimeira = true) {
-    const minha = ++vez;
+    const minha = voz.novaVez();
     for (let p = n, de = inicio, forcar = lerAPrimeira; p <= total; p++, de = 0, forcar = false) {
       if (p !== pagina) irPara(p);
       const frases = await frasesDaPagina(p);
       // Só o texto principal: a margem, as legendas e o número da página não são lidos.
       const principais = (await ideiasDaPagina(p)).flat();
-      if (minha !== vez) return;
+      if (minha !== voz.vez) return;
       const textos = frasesParaFalar(frases, de, principais, forcar);
       const { ate, tipo } = trechoDeFala(frases.slice(de).map(tipoDaFrasePdf), textos);
       const bloco = blocoDasFrases(textos.slice(0, ate), de);
       if (!bloco) continue;
       leitura = { pagina: p, frases, marca: de, fim: de + ate };
-      voz = "falando";
-      await falar(bloco.ssml, {
+      await voz.falar(bloco.ssml, {
         idioma: idiomaDoPdf,
         velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipo),
       });
       void prepararSeguinte(minha, p, frases, de + ate);
       return;
     }
-    voz = "parado";
-    leitura = null;
-    anuncio = "Fim do documento.";
+    voz.acabou("Fim do documento.");
   }
 
   /**
@@ -1127,7 +1113,7 @@
       [pagina, lista, de] = [p + 1, await frasesDaPagina(p + 1), 0];
     }
     const principais = (await ideiasDaPagina(pagina)).flat();
-    if (minha !== vez) return;
+    if (minha !== voz.vez) return;
     const textos = frasesParaFalar(lista, de, principais, false);
     const { ate, tipo } = trechoDeFala(lista.slice(de).map(tipoDaFrasePdf), textos);
     const bloco = blocoDasFrases(textos.slice(0, ate), de);
@@ -1138,56 +1124,12 @@
     }).catch((erro) => log.warn(`${erro}`));
   }
 
-  function aoEventoVoz(e: EventoVoz) {
-    // Eventos atrasados depois de parar ou pausar são ignorados.
-    if (voz !== "falando" || !leitura) return;
-    preparo.terminar();
-    if (e.tipo === "marca") {
-      const i = Number(e.marca);
-      const frase = leitura.frases[i];
-      leitura.marca = i;
-      // A frase lida fica realçada (o mesmo do EPUB); se a página mudou à mão, volta.
-      if (leitura.pagina !== pagina) irPara(leitura.pagina);
-      if (frase) mostrarFraseLida(leitura.pagina, frase);
-    } else if (e.tipo === "fim") {
-      // "Ouvir": o trecho acabou. Senão, o trecho seguinte da página (ou a página seguinte).
-      if (leitura.soOTrecho) void pararLeitura();
-      else void lerDesde(leitura.pagina, leitura.fim, false);
-    } else {
-      voz = "parado";
-    }
-  }
-
-  async function pausarOuRetomar() {
-    if (voz === "falando") {
-      voz = "pausado";
-      vez++;
-      preparo.terminar();
-      await pararVoz();
-    } else if (voz === "pausado" && leitura) {
-      // Depois de uma pausa longa, a voz natural pode ter fechado o modelo (2 min).
-      preparo.comecar();
-      if (leitura.soOTrecho) await falarTrecho(leitura.pagina, leitura.frases, leitura.marca);
-      else await lerDesde(leitura.pagina, leitura.marca);
-    }
-  }
-
-  async function pararLeitura() {
-    preparo.terminar();
-    voz = "parado";
-    vez++;
-    leitura = null;
-    fraseLida = null;
-    trocarRealce(null);
-    await pararVoz();
-  }
-
   /**
    * A frase marcada pela voz (M23b), realçada numa camada como a dos destaques: não usa a
    * seleção (um clique não a desfaz e ela fica na pausa) e segue as linhas do texto.
    */
   function mostrarFraseLida(n: number, frase: Range) {
-    fraseLida = frase;
+    voz.fraseLida = frase;
     const caixa = paginaEl(n)?.getBoundingClientRect();
     const retangulos = caixa ? retangulosNaPagina([...frase.getClientRects()], caixa) : [];
     trocarRealce({ pagina: n, retangulos });
@@ -1246,7 +1188,7 @@
       n = selecaoDaBarra.pagina;
       trecho = selecaoDaBarra.trecho;
     }
-    retomarVozAoFechar = false;
+    voz.naoRetomar();
     destaques.fecharBarra();
     const frases = await frasesDaPagina(n);
     let doTrecho: Range[] = [];
@@ -1268,42 +1210,7 @@
         );
       }
     }
-    if (!doTrecho.length) return;
-    if (!vozPossivel) {
-      anuncio = SEM_VOZ;
-      return;
-    }
-    if (voz !== "parado") await pararLeitura();
-    preparo.comecar();
-    await falarTrecho(n, doTrecho, 0);
-  }
-
-  /**
-   * "Ouvir" da barra: fala só as `frases` do trecho (a partir da `desde`) e, no fim, para. A
-   * leitura do documento inteiro é o "Ler em voz alta".
-   */
-  async function falarTrecho(n: number, frases: Range[], desde: number) {
-    const bloco = blocoDasFrases(frases.slice(desde).map(textoDoTrecho), desde);
-    if (!bloco) {
-      preparo.terminar();
-      return;
-    }
-    const minha = ++vez;
-    leitura = { pagina: n, frases, marca: desde, fim: frases.length, soOTrecho: true };
-    voz = "falando";
-    try {
-      await falar(bloco.ssml, {
-        idioma: idiomaDoPdf,
-        velocidade: velocidadeDoTrecho(preferencias.velocidadeVoz, tipoDaFrasePdf(frases[desde])),
-      });
-    } catch (erro) {
-      if (minha !== vez) return;
-      log.warn(`ouvir o trecho: ${erro}`);
-      preparo.terminar();
-      voz = "parado";
-      leitura = null;
-      anuncio = textoDaFalhaDaVoz(erro);
-    }
+    await voz.ouvirTrecho(doTrecho);
   }
 
   /**
@@ -1312,22 +1219,16 @@
    * vira no meio da escolha e a barra fecha) e continua quando ela fecha.
    */
   async function destacarSelecao() {
-    if (voz === "falando") {
-      await pausarOuRetomar();
-      retomarVozAoFechar = true;
-      // A frase lida está só realçada: vira a seleção, para a barra abrir sobre ela.
-      if (fraseLida?.startContainer.isConnected) {
-        const sel = window.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(fraseLida);
-      }
+    // A frase lida está só realçada: vira a seleção, para a barra abrir sobre ela.
+    const lida = await voz.pausarParaDestacar();
+    if (lida) {
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(lida);
     }
     if (!verSelecao(true)) await iniciarModoFrase(pagina, "inicio");
     // Nada para destacar (a barra não abriu): a voz continua na hora.
-    if (!destaques.barra && retomarVozAoFechar) {
-      retomarVozAoFechar = false;
-      if (voz === "pausado") await pausarOuRetomar();
-    }
+    if (!destaques.barra) voz.retomarDepoisDaBarra();
   }
 
   /** A camada de texto da página `n`, esperando o pdf.js terminar de montá-la. */
@@ -1702,12 +1603,12 @@
   {#snippet rodape()}
     <!-- Com o lado aberto, o rodapé dos dois fica igual: "Ler em voz alta" sai (continua na
          paleta); lendo ou pausada, os controles da voz ficam. -->
-    {#if ladoInicio === null || voz !== "parado"}
+    {#if ladoInicio === null || voz.estado !== "parado"}
       <ControlesVoz
-        estado={voz}
-        onLer={() => void lerEmVozAlta()}
-        onPausarOuRetomar={() => void pausarOuRetomar()}
-        onParar={() => void pararLeitura()}
+        estado={voz.estado}
+        onLer={() => void voz.ler()}
+        onPausarOuRetomar={() => void voz.pausarOuRetomar()}
+        onParar={() => void voz.parar()}
       />
     {/if}
     <BarraPdf
@@ -1771,7 +1672,7 @@
   </div>
   <DestaquesDoLeitor
     controle={destaques}
-    onOuvir={vozPossivel ? () => void ouvirDaqui() : undefined}
+    onOuvir={voz.possivel ? () => void ouvirDaqui() : undefined}
     onTrecho={(m) => (lado?.temModoFrase() ? void lado.mudarTrecho(m) : void mudarTrecho(m))}
   />
 </MolduraLeitor>

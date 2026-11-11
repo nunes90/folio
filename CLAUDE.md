@@ -47,7 +47,7 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 
 ## Convenções
 - **EPUB e PDF iguais**: todo recurso, animação e padrão visual vale para os dois formatos. O que é comum fica
-  num controle com um adaptador por formato (`ControleDestaques` é o modelo).
+  num controle com um adaptador por formato (`ControleDestaques` e `ControleVoz` são o modelo).
 - **Atalhos como linguagem**: a leitura inteira deve ser operável sem o mouse. Todo recurso novo ganha atalho
   (sem letra sozinha, WCAG 2.1.4) ou comando na paleta (Ctrl+K), e entra no F1 (`lib/atalhos.ts`).
 - **Componentes**: contraste WCAG testado, tudo em `rem`, foco visível, nada só no hover, ícones SVG
@@ -139,5 +139,6 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **v1.2 completa, sem tag ainda**: M29 (biblioteca sem travar a janela), M30 (instância única), M31 (E2E do EPUB
   hostil), M32 (busca no EPUB), M33 (este arquivo enxuto e o histórico separado; CI fixada pelo SHA, Dependabot,
   `SHA256SUMS` e atestação na Release; teste de migração com um banco de cada versão publicada).
-- Próximo passo: a Release da v1.2 (do Lucas) e a v1.3, começando pelo M34a (`ControleVoz`).
+- v1.3 em andamento: M34a feito (`ControleVoz`, comum aos dois leitores).
+- Próximo passo: a Release da v1.2 (do Lucas) e o M34b (`ControleLado`).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.
