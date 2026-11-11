@@ -52,6 +52,7 @@ export const config = {
         sessao("specs/selecao.e2e.js", "dom-casmurro.epub"),
         sessao("specs/instancia.e2e.js", "dom-casmurro.epub"),
         sessao("specs/seguranca.e2e.js", "hostil.epub"),
+        sessao("specs/notas.e2e.js", "notas.epub"),
       ],
   reporters: ["spec"],
   framework: "mocha",
