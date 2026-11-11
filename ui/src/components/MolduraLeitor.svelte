@@ -6,6 +6,7 @@
   import { medirRotulos, type EstadoRotulos } from "../lib/densidade";
   import { escala } from "../lib/escala.svelte";
   import Icone from "./Icone.svelte";
+  import InfoDoRodape from "./InfoDoRodape.svelte";
   import PainelLateral from "./PainelLateral.svelte";
   import MenuLeitor, { type ItemMenuLeitor } from "./MenuLeitor.svelte";
   import ResumoDaMeta from "./ResumoDaMeta.svelte";
@@ -656,26 +657,7 @@
     <!-- Sem o lado, só agrupa (display: contents); com ele, fica embaixo do livro principal. -->
     <div class="rodape-principal">
       {@render rodape()}
-      <!-- À direita, numa coluna própria: o texto que muda de tamanho não move os controles. -->
-      {#if estimativa || meta?.meta}
-        <div class="rodape-info">
-      {#if estimativa}
-        <span class="estimativa">{estimativa}</span>
-      {/if}
-      {#if meta?.meta}
-        <div class="meta" role="group" aria-label="Meta da sessão">
-          <span class="texto-meta">Meta: {meta.texto}</span>
-          <!-- Decorativa: o texto ao lado diz o mesmo. -->
-          <span class="barra-meta" aria-hidden="true">
-            <span style:transform="scaleX({meta.progresso})"></span>
-          </span>
-          <button type="button" class="tirar-meta" aria-label="Tirar a meta da sessão" onclick={() => meta.definir(null)}>
-            <Icone nome="fechar" />
-          </button>
-        </div>
-      {/if}
-        </div>
-      {/if}
+      <InfoDoRodape {estimativa} {meta} />
     </div>
     {#if lado && rodapeLado && !modoFoco}
       <div class="rodape-lado" role="group" aria-label="Ao lado">{@render rodapeLado()}</div>
@@ -1005,42 +987,6 @@
     opacity: 0;
   }
 
-  .estimativa {
-    color: var(--suave);
-    font-size: 0.875rem;
-  }
-
-  .meta {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--suave);
-    font-size: 0.875rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .barra-meta {
-    width: 4rem;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--divisoria);
-    overflow: hidden;
-  }
-
-  .barra-meta span {
-    display: block;
-    height: 100%;
-    background: var(--destaque);
-    transform-origin: left;
-    transition: transform var(--duracao-media) var(--curva);
-  }
-
-  footer .tirar-meta {
-    min-width: 1.75rem;
-    min-height: 1.75rem;
-    padding: 0.2rem;
-  }
-
   /* Três colunas (M26a-2): a voz à esquerda, encostada; os controles de página e zoom no centro
      exato; a estimativa e a meta à direita. O que muda de tamanho dos lados não move o centro.
      Não caber aparece como transbordar, e o rodapé passa a só ícones (medirBarras); só então,
@@ -1068,29 +1014,9 @@
     justify-self: end;
   }
 
-  .rodape-principal > .rodape-info {
+  .rodape-principal > :global(.rodape-info) {
     grid-column: 3;
     justify-self: start;
-  }
-
-  /* Cortada com "…" se faltar espaço: é informação (a paleta tem "Quanto falta?"). */
-  .rodape-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    min-width: 0;
-    max-width: 100%;
-    overflow: hidden;
-  }
-
-  .rodape-info > * {
-    min-width: 0;
-  }
-
-  .rodape-info .estimativa {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   /* Compacto (M28c): os grupos quebram de linha um a um (a barra do PDF se desfaz em grupos), e o
@@ -1147,7 +1073,7 @@
     padding-inline: 0.75rem;
   }
 
-  .com-lado .rodape-principal > .rodape-info {
+  .com-lado .rodape-principal > :global(.rodape-info) {
     order: 1;
   }
 

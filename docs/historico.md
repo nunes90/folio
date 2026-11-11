@@ -999,3 +999,8 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   bloco virava o pai do parágrafo e, num capítulo de parágrafos soltos no `body` (o Dom Casmurro), só o que vinha
   **depois** do bloco atual esmaecia. Agora pelo `nodeType`. Os testes de unidade não pegavam: no jsdom tudo era da
   mesma janela (há um teste novo com um `iframe`).
+- **M34e — moldura** (branch `refactor/m34e-moldura`): `InfoDoRodape.svelte` (a estimativa e a meta da sessão, com o
+  CSS delas; a moldura só posiciona, com `:global(.rodape-info)`). O texto da meta não quebra mais em duas linhas a
+  1000 px: quem cede espaço é a barrinha decorativa. `.github/workflows/capturas.yml`: nos PRs que mexem em arquivos de
+  layout (e à mão), roda o `capturas.e2e.js` e guarda as telas em seis larguras como artefato. O rodapé inteiro e o
+  modo foco não saíram da moldura (o CSS deles depende das classes de estado dela). **M34 concluído.**

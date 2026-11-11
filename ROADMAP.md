@@ -275,7 +275,7 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
 
 ### v1.3 — os leitores em ordem
 
-- [ ] **M34 — Controles comuns aos dois leitores** (7.1–7.3). Cada um nos moldes do `ControleDestaques` (classe com
+- [x] **M34 — Controles comuns aos dois leitores** (7.1–7.3). Cada um nos moldes do `ControleDestaques` (classe com
   runes + adaptador por formato), com testes de unidade com adaptador falso; sem mudança de comportamento (os E2E
   são a rede)
   - [x] M34a — `ControleVoz` (estado, pausar/retomar, trecho ouvido, aviso de preparo, bloco seguinte, eventos)
@@ -287,7 +287,10 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
     que era comum já está em `lib/umaIdeia.ts`, `lib/continuacao.ts` e `lib/piscar.ts`.
   - [x] M34d — `App.svelte`: os comandos da paleta por tela em `lib/comandosDoApp.ts` (puro, com testes); 733 → 657
     linhas. O estado da tela ficou no `App` (um módulo de runes só mudaria as variáveis de lugar).
-  - [ ] M34e — `MolduraLeitor`: `RodapeLeitor` e o modo foco em partes próprias; capturas do M28 como artefato da CI
+  - [x] M34e — `MolduraLeitor`: a estimativa e a meta do rodapé num componente próprio (`InfoDoRodape`; 1.168 → 1.094
+    linhas); as capturas do M28 como artefato da CI nos PRs de layout (`capturas.yml`). O rodapé inteiro e o modo foco
+    ficaram na moldura: o CSS deles depende do estado dela (foco, lado, compacto), e separá-los só trocaria regras
+    locais por `:global`.
   - A meta de ~700 linhas por leitor não se sustenta: a análise contou 31 funções de mesmo nome como duplicação, e só
     as da voz eram. Os leitores ficam em ~1.470 e ~1.735 linhas; o ganho que resta é testá-los, não encolhê-los.
 - [ ] **M35 — Links e notas** (4): pilha "de onde vim" nos dois formatos (Alt+←, aviso "Voltar para onde eu
