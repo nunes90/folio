@@ -49,6 +49,22 @@ describe("blocosDoDocumento", () => {
   });
 });
 
+describe("num documento de outra janela (o iframe do EPUB)", () => {
+  it("o bloco é o parágrafo, e tudo em volta dele esmaece: antes e depois", () => {
+    const quadro = document.createElement("iframe");
+    document.body.append(quadro);
+    const d = quadro.contentDocument!;
+    d.body.innerHTML = '<p id="a">Um.</p><p id="b">Dois.</p><p id="c">Três.</p>';
+    // É este o caso: para os nós do iframe, o `instanceof` desta janela dá falso.
+    expect(d.getElementById("b") instanceof Element).toBe(false);
+
+    const [, b] = blocosDoDocumento(d);
+    expect(b!.elemento.id).toBe("b");
+    expect(emVolta(b!).map((e) => e.id)).toEqual(["a", "c"]);
+    quadro.remove();
+  });
+});
+
 describe("emVolta", () => {
   it("os irmãos do bloco e os de cada ancestral até o body", () => {
     const d = doc(

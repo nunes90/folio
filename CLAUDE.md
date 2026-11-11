@@ -121,6 +121,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **O paginador do foliate-js ignora, sem erro, um `goTo` nos 100 ms seguintes a uma virada** (`#locked`):
   conferir pelo `relocate` e tentar de novo (`irParaFracao`); nos testes, esperar.
 - O foliate-js só desenha as anotações da seção carregada: refazer no `create-overlay`.
+- **Os nós do livro são de outra janela** (o iframe do EPUB): `no instanceof Element` dá falso para eles. Usar
+  `nodeType` (ou `ownerDocument.defaultView`). Nos testes de unidade, montar o caso num `iframe`.
 - O pdf.js tira nós desconhecidos da página no `reset()`: camadas próprias (destaques, voz) são refeitas a cada
   `pagerendered`. O texto vem na ordem do arquivo, não na de leitura (`ordemDeLeitura` em `lib/frasesPdf.ts`).
 - O `Intl.Segmenter` corta frases onde não deve (diálogos, abreviações) e trata quebra de linha como fim de

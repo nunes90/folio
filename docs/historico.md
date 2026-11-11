@@ -992,3 +992,10 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   657 linhas). **M34b e M34c não foram feitos**: no lado a lado e na uma ideia por vez, os dois leitores têm funções de
   mesmo nome, mas o corpo é de cada formato, e o que era comum já estava em `lib/`. A análise contou nomes iguais como
   duplicação; só a voz era (M34a).
+- **E2E da uma ideia por vez e do "onde você parou"** (mesma branch do M34d): no lugar dos controles M34b/M34c, testes
+  de ponta a ponta nos dois formatos (`epub.e2e.js`, `pdf.e2e.js`; o cartão do EPUB conferido em `selecao.e2e.js`;
+  `envelhecerUltimaLeitura` e `cartaoOndeParou` em `specs/ajuda.js`). **Acharam um defeito que vinha do M19**: em
+  `blocosDoDocumento`, `inicio instanceof Element` dava falso para os nós do livro (são do iframe, outra janela), o
+  bloco virava o pai do parágrafo e, num capítulo de parágrafos soltos no `body` (o Dom Casmurro), só o que vinha
+  **depois** do bloco atual esmaecia. Agora pelo `nodeType`. Os testes de unidade não pegavam: no jsdom tudo era da
+  mesma janela (há um teste novo com um `iframe`).

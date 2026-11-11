@@ -164,6 +164,43 @@ describe("EPUB", () => {
     await browser.execute(() => document.querySelector("foliate-view").renderer.focusView?.());
   });
 
+  it("Ctrl+Shift+B: uma ideia por vez; ↓ e ↑ trocam de bloco; Esc sai", async () => {
+    // O bloco em evidência é o que não está esmaecido (os outros ganham data-folio-fora).
+    const estado = () =>
+      browser.execute(() => {
+        const v = document.querySelector("foliate-view");
+        const doc = v.renderer.getContents()[0].doc;
+        const emEvidencia = [...doc.querySelectorAll("p, h1, h2, h3, h4, li, pre")].filter(
+          (el) => !el.closest("[data-folio-fora]"),
+        );
+        return {
+          fluxo: v.renderer.getAttribute("flow"),
+          esmaecidos: doc.querySelectorAll("[data-folio-fora]").length,
+          blocos: emEvidencia.length,
+          texto: emEvidencia[0]?.textContent?.trim().slice(0, 40) ?? "",
+        };
+      });
+    await paleta("30%");
+    await browser.pause(800);
+    await browser.keys([Key.Ctrl, Key.Shift, "b"]);
+    await ate(async () => (await estado()).esmaecidos > 0, "a uma ideia por vez não ligou");
+    const primeiro = await estado();
+    // O livro passa a rolar, e só um bloco fica em evidência.
+    expect(primeiro.fluxo).toBe("scrolled");
+    expect(primeiro.blocos).toBe(1);
+    expect(primeiro.texto).not.toBe("");
+
+    await browser.keys(Key.ArrowDown);
+    await ate(async () => (await estado()).texto !== primeiro.texto, "↓ não passou ao bloco seguinte");
+    expect((await estado()).blocos).toBe(1);
+    await browser.keys(Key.ArrowUp);
+    await ate(async () => (await estado()).texto === primeiro.texto, "↑ não voltou ao bloco anterior");
+
+    await browser.keys(Key.Escape);
+    await ate(async () => (await estado()).esmaecidos === 0, "Esc não desligou a uma ideia por vez");
+    expect((await estado()).fluxo).toBe("paginated");
+  });
+
   it("volta à biblioteca, e o livro está lá", async () => {
     await botao("Voltar à biblioteca", "//header").click();
     await ate(

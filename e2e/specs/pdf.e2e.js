@@ -1,5 +1,15 @@
 // O caminho principal num PDF: abrir, virar, destacar e a página ao lado.
-import { Key, ate, botao, destacar, esperarLivro, moldura, paleta } from "./ajuda.js";
+import {
+  Key,
+  ate,
+  botao,
+  cartaoOndeParou,
+  destacar,
+  envelhecerUltimaLeitura,
+  esperarLivro,
+  moldura,
+  paleta,
+} from "./ajuda.js";
 
 const paginaEm = (onde) =>
   browser.execute((o) => document.querySelector(`${o} input[type=number]`)?.value ?? "", onde);
@@ -109,5 +119,49 @@ describe("PDF", () => {
     expect(caixas).toMatchObject({ principalDentro: true, ladoDentro: true, naJanela: true });
     // Duas linhas, no máximo: mais que isso rouba a altura do livro.
     expect(caixas.altura).toBeLessThan(100);
+  });
+
+  it("Ctrl+Shift+B: uma ideia por vez; ↓ move o furo ao bloco seguinte; Esc sai", async () => {
+    await browser.keys([Key.Ctrl, Key.Shift, "l"]);
+    await ate(async () => !(await moldura("com-lado")), "o lado não fechou");
+    await paleta("página 1");
+    await browser.pause(600);
+    // Um véu sobre a página, com um furo no bloco atual: o furo anda só por transform.
+    const furo = () =>
+      browser.execute(() => {
+        const camada = document.querySelector('.page[data-page-number="1"] .camada-ideia:not(.sem-furo)');
+        return camada ? (camada.firstElementChild?.style.transform ?? "") : null;
+      });
+    await browser.keys([Key.Ctrl, Key.Shift, "b"]);
+    await ate(async () => !!(await furo()), "a uma ideia por vez não ligou");
+    const primeiro = await furo();
+    await browser.keys(Key.ArrowDown);
+    await ate(async () => (await furo()) !== primeiro, "↓ não passou ao bloco seguinte");
+    await browser.keys(Key.ArrowUp);
+    await ate(async () => (await furo()) === primeiro, "↑ não voltou ao bloco anterior");
+    await browser.keys(Key.Escape);
+    await ate(
+      () => browser.execute(() => !document.querySelector(".camada-ideia")),
+      "Esc não desligou a uma ideia por vez",
+    );
+  });
+
+  it("ao reabrir depois de um tempo, o cartão “Onde você parou” diz a página; Esc o fecha", async () => {
+    await paleta("página 2");
+    await ate(async () => (await paginaEm("footer")) === "2", "não foi à página 2");
+    await botao("Voltar à biblioteca", "//header").click();
+    await browser.pause(1500);
+    envelhecerUltimaLeitura();
+    await paleta("abrir documento");
+    await esperarLivro("Documento de Teste");
+    await ate(async () => (await cartaoOndeParou()) !== "", "o cartão não apareceu");
+    const cartao = await cartaoOndeParou();
+    expect(cartao).toContain("Onde você parou");
+    expect(cartao).toContain("na página 2");
+    // As últimas frases da página anterior.
+    expect(cartao).toContain("Mais um paragrafo curto.");
+    await browser.keys(Key.Escape);
+    await ate(async () => (await cartaoOndeParou()) === "", "Esc não fechou o cartão");
+    expect(await paginaEm("footer")).toBe("2");
   });
 });
