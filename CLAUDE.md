@@ -122,6 +122,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **O paginador do foliate-js ignora, sem erro, um `goTo` nos 100 ms seguintes a uma virada** (`#locked`):
   conferir pelo `relocate` e tentar de novo (`irParaFracao`); nos testes, esperar.
 - O foliate-js só desenha as anotações da seção carregada: refazer no `create-overlay`.
+- O foliate-js rola a página quando a seleção muda com uma tecla apertada **no livro**: seleção posta pelo app
+  logo depois de um atalho pode gerar `relocate` (ver a alteração do `isKeyboardSelecting` no `PATCHES.md`).
 - **Os nós do livro são de outra janela** (o iframe do EPUB): `no instanceof Element` dá falso para eles. Usar
   `nodeType` (ou `ownerDocument.defaultView`). Nos testes de unidade, montar o caso num `iframe`.
 - O pdf.js tira nós desconhecidos da página no `reset()`: camadas próprias (destaques, voz) são refeitas a cada

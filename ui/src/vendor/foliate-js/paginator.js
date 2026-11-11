@@ -602,6 +602,10 @@ export class Paginator extends HTMLElement {
             let isKeyboardSelecting = false
             doc.addEventListener('keydown', () => isKeyboardSelecting = true)
             doc.addEventListener('keyup', () => isKeyboardSelecting = false)
+            // LEITOR: se o foco sai do livro com a tecla ainda apertada (o Ctrl+D leva o foco à barra
+            // de destaque), o keyup não chega aqui e isto ficava ligado para sempre: dali em diante,
+            // toda seleção feita pelo app rolava a página (e a barra de destaque fechava na hora).
+            doc.defaultView.addEventListener('blur', () => isKeyboardSelecting = false)
             doc.addEventListener('selectionchange', () => {
                 if (this.scrolled) return
                 const range = this.#lastVisibleRange

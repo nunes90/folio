@@ -1004,3 +1004,13 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   1000 px: quem cede espaço é a barrinha decorativa. `.github/workflows/capturas.yml`: nos PRs que mexem em arquivos de
   layout (e à mão), roda o `capturas.e2e.js` e guarda as telas em seis larguras como artefato. O rodapé inteiro e o
   modo foco não saíram da moldura (o CSS deles depende das classes de estado dela). **M34 concluído.**
+- **Ctrl+D com a voz lendo fechava a barra** (branch `refactor/m34e-moldura`): achado pelo Lucas ao testar o
+  `ControleVoz`, mas não era dele. O foliate-js marca `isKeyboardSelecting` no `keydown` do livro e desmarca no
+  `keyup`; o Ctrl+D leva o foco à barra de destaque com a tecla ainda apertada, o `keyup` não chega ao livro e a marca
+  ficava ligada para sempre. Do segundo Ctrl+D em diante, a seleção da frase lida (posta pelo app) rolava a página, e
+  o `relocate` fechava a barra em ~15 ms ("a página mudou" no log). Alteração local no `paginator.js`: a marca cai
+  quando a janela do livro perde o foco (`PATCHES.md`). Teste E2E sem voz (uma seleção por código depois de um Ctrl+D
+  não gera `relocate`). **Como testar a voz sem som**: uma saída virtual do PipeWire (`pactl load-module
+  module-null-sink sink_name=folio_teste`), `PIPEWIRE_NODE=folio_teste` no ambiente do app e as vozes já baixadas
+  ligadas por um link na pasta de dados do teste; toca em tempo real, em silêncio (o `type null` do ALSA consome o
+  áudio rápido demais). O WebDriver solta as teclas na hora: para imitar a mão, `action("key")` com pausa.
