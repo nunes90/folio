@@ -17,6 +17,7 @@
   } from "../lib/voz";
   import { corDoRealce } from "../lib/realce";
   import Busca from "./Busca.svelte";
+  import { Caminho, ehVoltar } from "../lib/caminho.svelte";
   import { ControleVoz } from "../lib/controleVoz.svelte";
   import Indice from "./Indice.svelte";
   import AbasIndice, { type Aba } from "./AbasIndice.svelte";
@@ -385,6 +386,22 @@
     modosDeRolagem = ScrollMode;
     const eventos = new EventBus();
     const l = new PDFLinkService({ eventBus: eventos });
+    // Todo salto para um destino do documento passa por aqui: os links das páginas (sumário
+    // impresso, referências, notas) e o nosso índice. Antes de ir, guarda-se de onde.
+    const irAoDestino = l.goToDestination.bind(l);
+    l.goToDestination = async (destino) => {
+      const de = pagina;
+      const guardado = caminho.sair(de);
+      const pelosLinks = !saltoPeloIndice;
+      await irAoDestino(destino);
+      // O destino era na própria página: não houve salto.
+      if (pagina === de && guardado) caminho.voltar();
+      if (pelosLinks && pagina !== de)
+        avisar("Você seguiu um link do documento.", "sucesso", {
+          rotulo: "Voltar (Alt+←)",
+          executar: voltarAoPonto,
+        });
+    };
     const busca = new PDFFindController({ eventBus: eventos, linkService: l });
     const v = new PDFViewer({ container: conteiner, eventBus: eventos, linkService: l, findController: busca });
     l.setViewer(v);
@@ -589,10 +606,37 @@
     paginasDoIndice = paginas;
   }
 
+  // "De onde vim" (M35a), como no EPUB: os saltos (link do documento, índice, destaque, o campo da
+  // página, o slider) guardam a página de partida; Alt+← volta a ela. Virar páginas não entra.
+  const caminho = new Caminho<number>();
+
+  /** Vai à página `n`; se não for a vizinha, é um salto: dá para voltar. */
+  function saltarPara(n: number) {
+    if (Math.abs(n - pagina) > 1) caminho.sair(pagina);
+    irPara(n);
+  }
+
+  function voltarAoPonto() {
+    const n = caminho.voltar();
+    if (n === null) return;
+    destaques.esconder();
+    irPara(n);
+    conteiner.focus({ preventScroll: true });
+    anuncio = `De volta à página ${n}.`;
+  }
+
+  /** O índice não avisa (a pessoa acabou de escolher a seção); um link do documento, sim. */
+  let saltoPeloIndice = false;
+
   async function irParaSecao(href: string) {
     const destino = destinos.get(href);
     if (!links || destino === undefined) return;
-    await links.goToDestination(destino);
+    saltoPeloIndice = true;
+    try {
+      await links.goToDestination(destino);
+    } finally {
+      saltoPeloIndice = false;
+    }
     // Leva o foco ao documento: o leitor de tela continua a leitura dali.
     conteiner.focus();
   }
@@ -658,14 +702,14 @@
         titulo: "Ir para a primeira página",
         grupo: "Leitura",
         palavras: "início",
-        executar: () => irPara(1),
+        executar: () => saltarPara(1),
       },
       {
         id: "ultima",
         titulo: "Ir para a última página",
         grupo: "Leitura",
         palavras: "fim",
-        executar: () => irPara(total),
+        executar: () => saltarPara(total),
       },
       {
         id: "buscar-pdf",
@@ -766,6 +810,7 @@
         executar: () => atualizarPreferencias({ modoPdf }),
       })),
       ...destaques.comandos(destacarSelecao),
+      ...caminho.comandos(voltarAoPonto),
       ...voz.comandos(),
       ...comandosDaVelocidade(preferencias, atualizarPreferencias),
       ...comandosDaVozNaturalDoApp(preferencias, atualizarPreferencias),
@@ -794,7 +839,7 @@
       comandos: lista,
       porTermo: (termo) => [
         ...ladoPorTermo(termo, n, aberto, (p) => void abrirAoLado(p)),
-        ...irParaPagina(termo, n, irPara),
+        ...irParaPagina(termo, n, saltarPara),
         ...metaPorTermo(termo, meta, "pdf"),
       ],
     });
@@ -1345,7 +1390,7 @@
   async function irParaDestaque(destaque: Destaque) {
     const local = lerLocalPdf(destaque.local);
     if (!local) return;
-    irPara(local.pagina);
+    saltarPara(local.pagina);
     conteiner.focus({ preventScroll: true });
   }
 
@@ -1416,6 +1461,12 @@
     if (e.target instanceof Element && e.target.closest("dialog")) return;
     // Já tratada (ex.: o lado virou a própria página).
     if (e.defaultPrevented) return;
+    if (ehVoltar(e) && !(e.target instanceof HTMLInputElement)) {
+      // Sempre: na webview, Alt+← sozinho voltaria na navegação da página.
+      e.preventDefault();
+      voltarAoPonto();
+      return;
+    }
     if (e.key === "F6" && ladoInicio !== null && !e.ctrlKey && !e.altKey && !e.metaKey) {
       e.preventDefault();
       alternarLado();
@@ -1615,7 +1666,7 @@
       {pagina}
       {total}
       {zoom}
-      onIrPara={irPara}
+      onIrPara={saltarPara}
       onZoomMenos={() => visor?.decreaseScale()}
       onZoomMais={() => visor?.increaseScale()}
       onAjustarLargura={() => visor && (visor.currentScaleValue = "page-width")}

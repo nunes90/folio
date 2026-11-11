@@ -68,8 +68,13 @@ const POSICAO: Atalho = {
 };
 
 /** Destacar, igual nos dois formatos. */
-/** A busca no texto, igual nos dois formatos (M32). */
+/** A busca no texto e a volta de um salto, iguais nos dois formatos (M32, M35a). */
 const BUSCA: Atalho[] = [
+  {
+    teclas: [["Alt", "←"]],
+    acao: "Voltar para onde eu estava (depois de um link, do índice, de um destaque ou da busca)",
+    grupo: "Navegação",
+  },
   {
     teclas: [["Ctrl", "F"]],
     acao: "Buscar no documento",
