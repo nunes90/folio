@@ -54,6 +54,7 @@
   import { transicionar } from "./lib/transicao";
   import type { ComandosDoLeitor } from "./lib/comandos";
   import { comandosDoApp } from "./lib/comandosDoApp";
+  import { abrirLinkConfirmado, cancelarLink, confirmacaoDeLink } from "./lib/linkExterno.svelte";
   import { SessaoDeLeitura } from "./lib/sessao.svelte";
 
 
@@ -558,6 +559,18 @@
   }}
 />
 <Avisos />
+
+<!-- Um link do livro para fora dele (M35c): o leitor pede, aqui se confirma. -->
+<Confirmacao
+  aberto={confirmacaoDeLink.pedido !== null}
+  titulo={`Abrir ${confirmacaoDeLink.pedido?.host ?? ""} no navegador?`}
+  rotuloConfirmar="Abrir no navegador"
+  onConfirmar={() => void abrirLinkConfirmado()}
+  onCancelar={cancelarLink}
+>
+  <p>Este link do livro leva para fora dele, a um endereço da web:</p>
+  <p class="endereco-do-link">{confirmacaoDeLink.pedido?.url ?? ""}</p>
+</Confirmacao>
 
 <Confirmacao
   aberto={confirmar !== null}

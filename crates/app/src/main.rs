@@ -63,6 +63,28 @@ fn main() -> anyhow::Result<()> {
         // chegam pelo crate `log` e o tracing-log os encaminha ao mesmo arquivo.
         .plugin(tauri_plugin_log::Builder::new().skip_logger().build())
         .plugin(tauri_plugin_dialog::init())
+        // A janela nunca sai do app (M35c): qualquer navegação para fora (um link de PDF, um
+        // redirecionamento) é barrada aqui, venha de onde vier. Os links para a web passam pela
+        // confirmação e abrem no navegador.
+        .plugin(
+            tauri::plugin::Builder::<tauri::Wry>::new("navegacao")
+                .on_navigation(|_webview, url| {
+                    let pode = folio_core::links::navegacao_do_app(url);
+                    if !pode {
+                        tracing::warn!(%url, "navegação para fora do app barrada");
+                    }
+                    pode
+                })
+                .build(),
+        )
+        // Só pelo Rust (abrir_no_navegador): a página não tem permissão para chamá-lo direto, e o
+        // script que ele injetaria para abrir sozinho os links `target="_blank"` fica desligado (os
+        // links do livro passam pela confirmação).
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         // `move`: o setup leva as pastas consigo (roda uma vez, depois que o main já seguiu).
         .setup(move |app| {
             escala::configurar(app.handle())?;
@@ -167,6 +189,7 @@ fn main() -> anyhow::Result<()> {
             voz_natural::remover_voz_natural,
             voz_natural::ouvir_amostra_voz,
             comandos::caminho_inicial,
+            comandos::abrir_no_navegador,
             comandos::escala_texto
         ])
         .run(tauri::generate_context!())

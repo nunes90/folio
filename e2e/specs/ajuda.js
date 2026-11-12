@@ -66,3 +66,18 @@ export function envelhecerUltimaLeitura() {
 /** O cartão "Onde você parou": o texto dele, ou "" se não está na tela. */
 export const cartaoOndeParou = () =>
   browser.execute(() => document.querySelector(".area-continuacao")?.textContent?.replace(/\s+/g, " ").trim() ?? "");
+
+/** O diálogo de confirmação aberto: o título e o texto ("" e "" se não há). */
+export const confirmacao = () =>
+  browser.execute(() => {
+    const d = document.querySelector("dialog[open]");
+    const limpo = (el) => el?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    return { titulo: limpo(d?.querySelector("h2")), texto: limpo(d) };
+  });
+
+/** Clica num botão do diálogo aberto, pelo nome. */
+export const noDialogo = (nome) =>
+  browser.execute(
+    (n) => [...document.querySelectorAll("dialog[open] button")].find((b) => b.textContent.trim() === n)?.click(),
+    nome,
+  );

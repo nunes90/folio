@@ -26,6 +26,7 @@
   } from "../lib/vozNatural.svelte";
   import PainelTema from "./PainelTema.svelte";
   import Busca from "./Busca.svelte";
+  import { pedirParaAbrir } from "../lib/linkExterno.svelte";
   import BalaoNota from "./BalaoNota.svelte";
   import { chamadaDeNota, notaDoLink, type Nota } from "../lib/notas";
   import { Caminho, ehVoltar } from "../lib/caminho.svelte";
@@ -743,6 +744,12 @@
     // Um link dentro do livro. Uma nota de rodapé abre num balão, sem sair da página (M35b); os
     // outros (referência cruzada, sumário impresso) o foliate-js segue, e antes guarda-se de onde,
     // com um aviso que oferece a volta.
+    // Um link para fora do livro: só com confirmação, no navegador (M35c). Impedido aqui, o
+    // foliate-js não chama o window.open (que o Tauri ignorava: o clique não fazia nada).
+    v.addEventListener("external-link", (e) => {
+      e.preventDefault();
+      pedirParaAbrir((e as CustomEvent<{ href_: string }>).detail.href_);
+    });
     v.addEventListener("link", (e) => {
       const { a, href } = (e as CustomEvent<{ a: Element; href: string }>).detail;
       const chance = chamadaDeNota(a);

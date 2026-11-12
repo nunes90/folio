@@ -24,7 +24,9 @@ describe("Confirmacao", () => {
   it("mostra título e explicação, com o foco em Cancelar", () => {
     renderizar();
     const dialogo = screen.getByRole("dialog", { name: "Remover Dom Casmurro?" });
-    expect(dialogo.getAttribute("aria-describedby")).toBe("texto-confirmacao");
+    // A explicação descreve o diálogo (o id é único por confirmação).
+    const descricao = document.getElementById(dialogo.getAttribute("aria-describedby")!);
+    expect(descricao?.textContent).toContain("O arquivo original não é afetado.");
     expect(screen.getByText("O arquivo original não é afetado.")).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancelar" }));
   });

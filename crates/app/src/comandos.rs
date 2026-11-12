@@ -531,3 +531,21 @@ pub fn retomar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
 pub fn parar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
     voz.motor()?.parar().map_err(|e| registrar(&e))
 }
+
+/// Abre no navegador um link que sai do livro (M35c), depois de o usuário confirmar. O endereço vem
+/// do livro: o core decide se ele pode ser aberto (só http e https, sem usuário e senha).
+#[tauri::command]
+pub fn abrir_no_navegador(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let Some(externo) = folio_core::links::externo(&url) else {
+        tracing::warn!(%url, "link recusado: não é http nem https");
+        return Err("Este link não pode ser aberto pelo Folio.".into());
+    };
+    tracing::info!(host = %externo.host, "abrindo link no navegador");
+    app.opener()
+        .open_url(externo.url, None::<&str>)
+        .map_err(|e| {
+            tracing::warn!(%e, "o navegador não abriu");
+            "Não foi possível abrir o navegador.".to_string()
+        })
+}

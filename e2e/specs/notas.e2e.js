@@ -1,5 +1,5 @@
 // Notas de rodapé num balão (M35b), e os links do livro que não são notas (M35a).
-import { Key, ate, esperarLivro, texto } from "./ajuda.js";
+import { Key, ate, confirmacao, esperarLivro, noDialogo, texto } from "./ajuda.js";
 
 /** O índice da seção à vista e o texto do balão da nota ("" se fechado). */
 const estado = () =>
@@ -63,5 +63,28 @@ describe("Notas de rodapé", () => {
     await browser.pause(400);
     await browser.keys([Key.Alt, Key.ArrowLeft]);
     await ate(async () => (await estado()).secao === 0, "Alt+← não voltou");
+  });
+
+  it("um link para a web pede confirmação antes de abrir no navegador; Cancelar não abre nada", async () => {
+    await browser.pause(400);
+    await clicarNoLink("fora");
+    await ate(async () => (await confirmacao()).titulo !== "", "a confirmação não apareceu");
+    const c = await confirmacao();
+    expect(c.titulo).toBe("Abrir example.org no navegador?");
+    expect(c.texto).toContain("https://example.org/folio");
+    // O foco fica em Cancelar: um Enter distraído não abre o navegador.
+    expect(await browser.execute(() => document.activeElement?.textContent?.trim())).toBe("Cancelar");
+    await noDialogo("Cancelar");
+    await ate(async () => (await confirmacao()).titulo === "", "a confirmação não fechou");
+    expect((await estado()).secao).toBe(0);
+  });
+
+  it("um link que não é da web (mailto) não abre, e um aviso diz por quê", async () => {
+    await clicarNoLink("correio");
+    await ate(
+      async () => (await texto(".avisos")).includes("só endereços da web"),
+      "o aviso do link recusado não apareceu",
+    );
+    expect((await confirmacao()).titulo).toBe("");
   });
 });
