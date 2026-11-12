@@ -1,4 +1,6 @@
-# Atualizações de dependências, uma vez por semana, num PR por ecossistema (agrupadas).
+# Atualizações de dependências, uma vez por semana. As menores (minor e patch) vêm agrupadas, um PR por
+# ecossistema; as maiores (ex.: TypeScript 7, WebdriverIO 10), uma por PR: costumam quebrar algo e
+# merecem um PR só delas (num grupo, travavam o resto).
 version: 2
 updates:
   - package-ecosystem: cargo
@@ -8,6 +10,10 @@ updates:
     groups:
       rust:
         patterns: ["*"]
+        update-types: [minor, patch]
+        # O lopdf 0.47 passou a aceitar PDFs cortados que o pdf.js não abre (o teste
+        # importar_arquivos_problematicos falha): fica num PR próprio até decidirmos.
+        exclude-patterns: [lopdf]
   - package-ecosystem: npm
     directories: [/ui, /e2e]
     schedule:
@@ -15,6 +21,7 @@ updates:
     groups:
       npm:
         patterns: ["*"]
+        update-types: [minor, patch]
   # As actions são fixadas pelo SHA do commit (o comentário diz a versão): o Dependabot atualiza os dois.
   - package-ecosystem: github-actions
     directory: /
@@ -23,3 +30,4 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: [minor, patch]

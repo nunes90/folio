@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
 
+# Um push novo no mesmo PR cancela a execução anterior (os runners ficavam presos em commits que
+# já não interessam). Na main, não: cada merge roda até o fim.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
