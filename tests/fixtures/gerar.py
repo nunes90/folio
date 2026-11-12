@@ -201,6 +201,70 @@ def livros_em_outros_idiomas() -> None:
     epub_no_idioma(AQUI / "espanhol.epub", "es", "Don Quijote", "Miguel de Cervantes", EM_ESPANHOL)
 
 
+def epub_com_notas(caminho: Path) -> None:
+    """Notas de rodapé dos jeitos comuns (M35b): marcada pelo livro (`epub:type="noteref"`, nota
+    num `aside` no mesmo capítulo), só um número em sobrescrito (nota de fim noutro arquivo, com o
+    número de volta) e um link comum, para outro capítulo."""
+    texto = "Um parágrafo de texto corrido, para a página ter o que ler em volta das notas. " * 6
+    cap1 = f"""<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="pt">
+<head><title>Capítulo um</title></head><body>
+<h1>Capítulo um</h1>
+<p>{texto}Aqui há uma nota marcada<a id="r1" epub:type="noteref" href="#n1"><sup>1</sup></a> e uma
+nota de fim<a id="r2" href="notas.xhtml#n2"><sup>2</sup></a>. E um link para o
+<a id="comum" href="cap2.xhtml">capítulo dois</a>.</p>
+<p>{texto}</p>
+<aside id="n1" epub:type="footnote"><p><a href="#r1">1</a> Texto da nota um, no mesmo capítulo.</p></aside>
+</body></html>
+"""
+    cap2 = f"""<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><title>Capítulo dois</title></head>
+<body><h1>Capítulo dois</h1><p>{texto}</p></body></html>
+"""
+    notas = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><title>Notas</title></head>
+<body><h1>Notas</h1>
+<p id="n2"><a href="cap1.xhtml#r2">2</a> Texto da nota dois, no fim do livro.</p>
+</body></html>
+"""
+    nav = (
+        '<?xml version="1.0" encoding="utf-8"?>\n<html xmlns="http://www.w3.org/1999/xhtml" '
+        'xmlns:epub="http://www.idpf.org/2007/ops" lang="pt"><head><title>Notas</title></head>'
+        '<body><nav epub:type="toc"><ol><li><a href="cap1.xhtml">Capítulo um</a></li>'
+        '<li><a href="cap2.xhtml">Capítulo dois</a></li><li><a href="notas.xhtml">Notas</a></li>'
+        "</ol></nav></body></html>"
+    )
+    opf = """<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="id">folio-teste-notas</dc:identifier>
+    <dc:title>Livro com notas</dc:title>
+    <dc:language>pt</dc:language>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="c1" href="cap1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="c2" href="cap2.xhtml" media-type="application/xhtml+xml"/>
+    <item id="notas" href="notas.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine><itemref idref="c1"/><itemref idref="c2"/><itemref idref="notas"/></spine>
+</package>
+"""
+    with zipfile.ZipFile(caminho, "w") as z:
+        z.writestr(zipfile.ZipInfo("mimetype", (2026, 1, 1, 0, 0, 0)), b"application/epub+zip")
+        for nome, conteudo in {
+            "META-INF/container.xml": CONTAINER,
+            "OEBPS/content.opf": opf,
+            "OEBPS/nav.xhtml": nav,
+            "OEBPS/cap1.xhtml": cap1,
+            "OEBPS/cap2.xhtml": cap2,
+            "OEBPS/notas.xhtml": notas,
+        }.items():
+            info = zipfile.ZipInfo(nome, (2026, 1, 1, 0, 0, 0))
+            z.writestr(info, conteudo, compress_type=zipfile.ZIP_DEFLATED)
+
+
 # O servidor que o teste de segurança (e2e/specs/seguranca.e2e.js) sobe: o livro hostil aponta
 # para ele, e o teste confere que nenhum pedido chega.
 SERVIDOR_HOSTIL = "http://127.0.0.1:47811"
@@ -378,6 +442,7 @@ def utf16(texto: str) -> bytes:
 if __name__ == "__main__":
     livros_em_outros_idiomas()
     epub_hostil(AQUI / "hostil.epub")
+    epub_com_notas(AQUI / "notas.epub")
     epub(AQUI / "minimo.epub", b"application/epub+zip")
     epub(
         AQUI / "capa-epub3.epub",

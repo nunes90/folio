@@ -27,6 +27,7 @@ Um PDF com senha entra na biblioteca e pede a senha ao abrir, sem guardá-la.
 | Ir a uma porcentagem (EPUB) | digite na paleta: `37%` |
 | Buscar no texto do livro (EPUB e PDF) | `Ctrl+F`; `Enter` e `Shift+Enter` andam pelas ocorrências |
 | Voltar para onde você estava, depois de um link, do índice, de um destaque ou da busca | `Alt+←` |
+| Ler uma nota de rodapé sem sair da página (EPUB) | clique no número da nota: ela abre num balão; `Esc` fecha, "Ir até a nota" leva a ela |
 | Zoom (PDF) | `Ctrl++`, `Ctrl+−`, `Ctrl+0` (ajustar à largura) |
 | Voltar à biblioteca | o botão ‹ no cabeçalho, ou a paleta |
 

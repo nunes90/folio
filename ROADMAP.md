@@ -296,7 +296,8 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
 - [ ] **M35 — Links e notas** (4)
   - [x] M35a — "de onde vim" nos dois formatos: os saltos (link, índice, destaque, slider, campo da página, busca)
     guardam o ponto de partida; Alt+← volta, e depois de um link um aviso oferece "Voltar"; paleta e F1
-  - [ ] M35b — notas de rodapé em balão no EPUB (`footnotes.js` do foliate-js), sem sair da página
+  - [x] M35b — notas de rodapé em balão no EPUB, sem sair da página (as regras do `footnotes.js`; o balão é nosso);
+    "Ir até a nota" com Alt+← de volta. Só no documento principal, não no lado
   - [ ] M35c — link externo com confirmação e `tauri-plugin-opener` (só `http`/`https`)
 - [ ] **M36 — Biblioteca grande** (5.7, 7.4): miniatura da capa do EPUB ao importar (canvas, como no PDF; as já
   gravadas são refeitas uma vez); `content-visibility` na grade, medido com 5.000 livros nos dois WebKitGTK

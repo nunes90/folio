@@ -6,6 +6,7 @@ estão na [página de versões](https://github.com/nunes90/folio/releases); os d
 
 ## Em desenvolvimento (1.3)
 
+- **Notas de rodapé num balão** (EPUB): clicar no número da nota a mostra sem sair da página.
 - **Voltar para onde você estava** (Alt+←) depois de seguir um link, ir pelo índice, a um destaque ou pela busca.
 - Na "uma ideia por vez" do EPUB, o que vem antes do bloco atual também esmaece (em alguns livros, não esmaecia).
 - Ctrl+D com a voz lendo: a barra de destaque não fecha mais sozinha a partir do segundo uso.

@@ -1022,3 +1022,14 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   página vizinha) e o `goToDestination` do `PDFLinkService` embrulhado (links das páginas e o nosso índice; o aviso só
   para os links). O Alt+← é sempre consumido no leitor (na webview, voltaria na navegação da página). F1 e E2E nos
   dois formatos.
+- **M35b — notas de rodapé** (branch `feat/m35b-notas`): `lib/notas.ts` (as regras do `footnotes.js` do foliate-js,
+  MIT, sem `instanceof`: `chamadaDeNota` = sim (`noteref`, `doc-noteref`…) | talvez (número em sobrescrito) | não;
+  `tipoDaNota`, `elementoDaNota` (do alvo inline sobe ao bloco), `paragrafosDaNota` (tira os links de volta, inclusive o
+  número que aponta para o `id` da chamada), `notaDoLink`: `null` sem texto ou, no "talvez", acima de 1.500
+  caracteres). O balão do foliate-js abriria uma segunda `<foliate-view>` por nota; o nosso (`BalaoNota.svelte`,
+  `role="dialog"` não modal, posição como a da barra de destaque) mostra o texto: no `link` do foliate-js, uma chamada
+  de nota é impedida (`preventDefault`, síncrono) e a nota é achada no documento da seção de destino
+  (`book.resolveHref` + `createDocument`); se não der, o link segue como link (com o aviso do M35a). O foco vai ao
+  balão; Esc, "Fechar", clique fora (também no iframe: um `pointerdown` no documento do livro) ou virar a página
+  fecham. "Ir até a nota" salta com Alt+← de volta. Fixture `notas.epub` e `notas.e2e.js` (a nota marcada, a de fim,
+  o link comum).

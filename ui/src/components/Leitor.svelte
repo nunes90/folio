@@ -26,6 +26,8 @@
   } from "../lib/vozNatural.svelte";
   import PainelTema from "./PainelTema.svelte";
   import Busca from "./Busca.svelte";
+  import BalaoNota from "./BalaoNota.svelte";
+  import { chamadaDeNota, notaDoLink, type Nota } from "../lib/notas";
   import { Caminho, ehVoltar } from "../lib/caminho.svelte";
   import { ControleVoz } from "../lib/controleVoz.svelte";
   import {
@@ -738,18 +740,25 @@
       const d = destaques.porLocal(value);
       if (d) destaques.mostrarDestaque(d, posicaoNoIframe(range));
     });
-    // Um link dentro do livro (nota de rodapé, referência cruzada): o foliate-js vai até lá; antes,
-    // guarda-se de onde, e um aviso oferece a volta.
-    v.addEventListener("link", () => {
-      vouSaltar();
-      avisar("Você seguiu um link do livro.", "sucesso", {
-        rotulo: "Voltar (Alt+←)",
-        executar: () => void voltarAoPonto(),
-      });
+    // Um link dentro do livro. Uma nota de rodapé abre num balão, sem sair da página (M35b); os
+    // outros (referência cruzada, sumário impresso) o foliate-js segue, e antes guarda-se de onde,
+    // com um aviso que oferece a volta.
+    v.addEventListener("link", (e) => {
+      const { a, href } = (e as CustomEvent<{ a: Element; href: string }>).detail;
+      const chance = chamadaDeNota(a);
+      if (chance !== "nao") {
+        // Síncrono: o foliate-js só segue o link se ninguém o impedir.
+        e.preventDefault();
+        void mostrarNota(a, href, chance);
+        return;
+      }
+      seguiuUmLink();
     });
     v.addEventListener("relocate", (e) => {
       // No modo frase, a página vira para acompanhar a frase: a barra vai junto.
       if (!modoFrase) destaques.esconderDe(false, "a página mudou");
+      // A página virou: o balão da nota ficaria sobre outro texto.
+      fecharNota(false);
       const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;
       relocacoes++;
       progresso = fraction;
@@ -770,6 +779,8 @@
     v.addEventListener("load", (e) => {
       const { doc, index } = (e as CustomEvent<{ doc: Document; index: number }>).detail;
       tirarEspacoAposUltimaQuebra(doc);
+      // Um clique no texto fecha o balão da nota (os cliques no iframe não chegam à janela).
+      doc.addEventListener("pointerdown", () => fecharNota(false));
       // Seleção com o mouse: a barra aparece ao soltar (sem tirar o foco do texto).
       doc.addEventListener("pointerup", () =>
         setTimeout(() => {
@@ -874,6 +885,66 @@
     await view.goTo(ponto);
     view.renderer.focusView();
     anuncio = "De volta para onde você estava.";
+  }
+
+  function seguiuUmLink() {
+    vouSaltar();
+    avisar("Você seguiu um link do livro.", "sucesso", {
+      rotulo: "Voltar (Alt+←)",
+      executar: () => void voltarAoPonto(),
+    });
+  }
+
+  // Nota de rodapé num balão (M35b).
+  let nota = $state<{ nota: Nota; href: string; x: number; y: number; abaixo: boolean } | null>(
+    null,
+  );
+
+  /** A nota que o link `a` chama, num balão; se não der para mostrar, o link segue como link. */
+  async function mostrarNota(a: Element, href: string, chance: "sim" | "talvez") {
+    if (!view) return;
+    const doc = a.ownerDocument;
+    const chamada = doc.createRange();
+    chamada.selectNodeContents(a);
+    const posicao = posicaoNoIframe(chamada);
+    let achada: Nota | null = null;
+    try {
+      const destino = view.book.resolveHref?.(href);
+      const secao = destino ? view.book.sections?.[destino.index] : undefined;
+      const docDaNota = await secao?.createDocument?.();
+      const alvo = docDaNota && destino?.anchor(docDaNota);
+      // Nós de outro documento: pelo nodeType, não por instanceof (CLAUDE.md).
+      if (alvo && (alvo as Node).nodeType === Node.ELEMENT_NODE)
+        achada = notaDoLink(a, chance, alvo as Element);
+    } catch (erro) {
+      log.warn(`nota de rodapé: ${erro}`);
+    }
+    if (!achada) {
+      // Não era uma nota que caiba num balão: segue o link, como os outros.
+      seguiuUmLink();
+      await view.goTo(href);
+      return;
+    }
+    destaques.esconder("nota de rodapé");
+    nota = { nota: achada, href, ...posicao };
+  }
+
+  /** Fecha o balão; `focarTexto`: o foco volta ao livro (Esc, "Fechar"). */
+  function fecharNota(focarTexto = true) {
+    if (!nota) return;
+    nota = null;
+    if (focarTexto) view?.renderer.focusView();
+  }
+
+  /** "Ir até a nota": o lugar dela no livro; Alt+← volta à chamada. */
+  async function irAteANota() {
+    if (!view || !nota) return;
+    const { href } = nota;
+    nota = null;
+    vouSaltar();
+    await view.goTo(href);
+    view.renderer.focusView();
+    anuncio = "Na nota. Alt+← volta ao texto.";
   }
 
   async function irParaTrecho(local: string) {
@@ -1026,6 +1097,7 @@
     if (!(e.target instanceof Element && e.target.closest(".barra-destaque"))) {
       destaques.esconder("clique fora da barra");
     }
+    if (!(e.target instanceof Element && e.target.closest(".balao-nota"))) fecharNota(false);
   }
 
   async function irParaDestaque(destaque: Destaque) {
@@ -1470,6 +1542,17 @@
       </div>
     </div>
   {/snippet}
+
+  {#if nota}
+    <BalaoNota
+      nota={nota.nota}
+      x={nota.x}
+      y={nota.y}
+      abaixo={nota.abaixo}
+      onIr={() => void irAteANota()}
+      onFechar={() => fecharNota()}
+    />
+  {/if}
 
   <DestaquesDoLeitor
     controle={destaques}

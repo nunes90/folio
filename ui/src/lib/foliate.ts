@@ -23,6 +23,8 @@ export interface Livro {
   dir?: string;
   toc?: ItemIndice[];
   sections?: SecaoDoLivro[];
+  /** A seção de um href do livro (já resolvido) e como achar o `#fragmento` no documento dela. */
+  resolveHref?(href: string): { index: number; anchor(doc: Document): unknown } | null;
 }
 
 export interface DetalheRelocate {
