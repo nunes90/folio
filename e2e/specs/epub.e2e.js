@@ -240,6 +240,19 @@ describe("EPUB", () => {
     expect((await estado()).fluxo).toBe("paginated");
   });
 
+  it("Alt+← volta para onde eu estava depois de um salto pelo índice", async () => {
+    const porcento = () => texto("footer .porcento");
+    await paleta("12%");
+    await ate(async () => (await porcento()) === "12%", "não foi a 12%");
+    await browser.pause(400);
+    // Um salto: uma seção do índice, pela paleta.
+    await paleta("Ir para: Capitú reflectindo");
+    await ate(async () => (await porcento()) !== "12%", "o índice não levou a outro ponto");
+    await browser.pause(400);
+    await browser.keys([Key.Alt, Key.ArrowLeft]);
+    await ate(async () => (await porcento()) === "12%", "Alt+← não voltou ao ponto de partida");
+  });
+
   it("volta à biblioteca, e o livro está lá", async () => {
     await botao("Voltar à biblioteca", "//header").click();
     await ate(

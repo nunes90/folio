@@ -25,7 +25,8 @@ Um PDF com senha entra na biblioteca e pede a senha ao abrir, sem guardá-la.
 | Ir a qualquer ponto do livro | o slider no rodapé: arraste (o balão diz o capítulo) ou, com o foco nele, `←` `→` (um passo), `Page Up` `Page Down` (um décimo), `Home` `End` |
 | Ir a uma página (PDF) | digite o número na paleta: `42` |
 | Ir a uma porcentagem (EPUB) | digite na paleta: `37%` |
-| Buscar no documento (PDF) | `Ctrl+F` |
+| Buscar no texto do livro (EPUB e PDF) | `Ctrl+F`; `Enter` e `Shift+Enter` andam pelas ocorrências |
+| Voltar para onde você estava, depois de um link, do índice, de um destaque ou da busca | `Alt+←` |
 | Zoom (PDF) | `Ctrl++`, `Ctrl+−`, `Ctrl+0` (ajustar à largura) |
 | Voltar à biblioteca | o botão ‹ no cabeçalho, ou a paleta |
 

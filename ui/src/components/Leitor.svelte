@@ -26,6 +26,7 @@
   } from "../lib/vozNatural.svelte";
   import PainelTema from "./PainelTema.svelte";
   import Busca from "./Busca.svelte";
+  import { Caminho, ehVoltar } from "../lib/caminho.svelte";
   import { ControleVoz } from "../lib/controleVoz.svelte";
   import {
     mesmoTermo,
@@ -290,6 +291,8 @@
       }
       // Começa de onde se está lendo, não do começo do livro.
       const primeira = primeiraDesde(achadas, cfiAtual, comparar);
+      // A busca leva para longe: Alt+← volta ao ponto em que ela começou.
+      vouSaltar();
       await irParaOcorrencia(anterior ? vizinha(primeira, achadas.length, true) : primeira);
     } catch (e) {
       if (vez !== vezDaBusca) return;
@@ -595,6 +598,7 @@
   }
   async function irParaPonto(v: number) {
     destaques.esconder();
+    vouSaltar();
     try {
       await irParaFracao(view, v / MIL, () => relocacoes);
     } catch (e) {
@@ -734,6 +738,15 @@
       const d = destaques.porLocal(value);
       if (d) destaques.mostrarDestaque(d, posicaoNoIframe(range));
     });
+    // Um link dentro do livro (nota de rodapé, referência cruzada): o foliate-js vai até lá; antes,
+    // guarda-se de onde, e um aviso oferece a volta.
+    v.addEventListener("link", () => {
+      vouSaltar();
+      avisar("Você seguiu um link do livro.", "sucesso", {
+        rotulo: "Voltar (Alt+←)",
+        executar: () => void voltarAoPonto(),
+      });
+    });
     v.addEventListener("relocate", (e) => {
       // No modo frase, a página vira para acompanhar a frase: a barra vai junto.
       if (!modoFrase) destaques.esconderDe(false, "a página mudou");
@@ -849,15 +862,31 @@
   }
 
   /** Um trecho revisitado ("secao:3"): vai ao início da seção, com o foco no texto. */
+  // "De onde vim" (M35a): os saltos (link, índice, destaque, slider, busca) guardam o ponto de
+  // partida; Alt+← volta a ele. Virar páginas não entra.
+  const caminho = new Caminho<string>();
+  const vouSaltar = () => caminho.sair(cfiAtual);
+
+  async function voltarAoPonto() {
+    const ponto = caminho.voltar();
+    if (!view || !ponto) return;
+    destaques.esconder("voltar");
+    await view.goTo(ponto);
+    view.renderer.focusView();
+    anuncio = "De volta para onde você estava.";
+  }
+
   async function irParaTrecho(local: string) {
     const indice = Number(local.match(/^secao:(\d+)$/)?.[1]);
     if (!view || !Number.isInteger(indice)) return;
+    vouSaltar();
     await view.goTo(indice);
     view.renderer.focusView();
   }
 
   async function irParaSecao(href: string) {
     if (!view) return;
+    vouSaltar();
     await view.goTo(href);
     // Leva o foco ao texto: o leitor de tela continua a leitura dali.
     view.renderer.focusView();
@@ -1001,6 +1030,7 @@
 
   async function irParaDestaque(destaque: Destaque) {
     if (!view) return;
+    vouSaltar();
     await view.goTo(destaque.local);
     view.renderer.focusView();
   }
@@ -1104,6 +1134,7 @@
         },
       );
     lista.push(
+      ...caminho.comandos(() => void voltarAoPonto()),
       ...voz.comandos(),
     );
     lista.push(...comandosDaVelocidade(preferencias, atualizarPreferencias));
@@ -1227,6 +1258,12 @@
     if (e.key === "F6" && ladoAlvo && !e.ctrlKey && !e.altKey && !e.metaKey) {
       e.preventDefault();
       alternarLado();
+      return;
+    }
+    if (ehVoltar(e) && !e.defaultPrevented && !(e.target instanceof HTMLInputElement)) {
+      // Sempre: na webview, Alt+← sozinho voltaria na navegação da página.
+      e.preventDefault();
+      void voltarAoPonto();
       return;
     }
     // Sem Shift: Ctrl+Shift+F é o modo foco (da moldura).

@@ -1014,3 +1014,11 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   module-null-sink sink_name=folio_teste`), `PIPEWIRE_NODE=folio_teste` no ambiente do app e as vozes já baixadas
   ligadas por um link na pasta de dados do teste; toca em tempo real, em silêncio (o `type null` do ALSA consome o
   áudio rápido demais). O WebDriver solta as teclas na hora: para imitar a mão, `action("key")` com pausa.
+- **M35a — de onde vim** (branch `feat/m35a-voltar`): `lib/caminho.svelte.ts` (`Caminho<P>`: pilha de até 30 pontos,
+  `sair(ponto)` devolve se entrou, `voltar()`, `quantos` reativo, `comandos()` da paleta; `ehVoltar` = Alt+←). EPUB
+  (`P` = CFI): `vouSaltar()` antes do índice, de um destaque, de um trecho revisitado, do slider e da porcentagem, da
+  primeira ocorrência de uma busca, e no evento `link` do foliate-js (link do livro: aviso com "Voltar (Alt+←)"). PDF
+  (`P` = página): `saltarPara(n)` (campo da página, slider, primeira/última, paleta, destaque; só conta se não for a
+  página vizinha) e o `goToDestination` do `PDFLinkService` embrulhado (links das páginas e o nosso índice; o aviso só
+  para os links). O Alt+← é sempre consumido no leitor (na webview, voltaria na navegação da página). F1 e E2E nos
+  dois formatos.

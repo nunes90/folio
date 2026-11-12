@@ -293,9 +293,11 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
     locais por `:global`.
   - A meta de ~700 linhas por leitor não se sustenta: a análise contou 31 funções de mesmo nome como duplicação, e só
     as da voz eram. Os leitores ficam em ~1.470 e ~1.735 linhas; o ganho que resta é testá-los, não encolhê-los.
-- [ ] **M35 — Links e notas** (4): pilha "de onde vim" nos dois formatos (Alt+←, aviso "Voltar para onde eu
-  estava", paleta); notas de rodapé em balão (`footnotes.js`); link externo com confirmação e
-  `tauri-plugin-opener` (só `http`/`https`)
+- [ ] **M35 — Links e notas** (4)
+  - [x] M35a — "de onde vim" nos dois formatos: os saltos (link, índice, destaque, slider, campo da página, busca)
+    guardam o ponto de partida; Alt+← volta, e depois de um link um aviso oferece "Voltar"; paleta e F1
+  - [ ] M35b — notas de rodapé em balão no EPUB (`footnotes.js` do foliate-js), sem sair da página
+  - [ ] M35c — link externo com confirmação e `tauri-plugin-opener` (só `http`/`https`)
 - [ ] **M36 — Biblioteca grande** (5.7, 7.4): miniatura da capa do EPUB ao importar (canvas, como no PDF; as já
   gravadas são refeitas uma vez); `content-visibility` na grade, medido com 5.000 livros nos dois WebKitGTK
 - [ ] **M37 — Descoberta** (9): botão "Comandos (Ctrl+K)" nas duas barras e no menu ⋯; texto de primeiro uso na

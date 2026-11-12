@@ -146,5 +146,6 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
   `SHA256SUMS` e atestação na Release; teste de migração com um banco de cada versão publicada).
 - v1.3 em andamento: M34 feito (`ControleVoz` comum aos dois leitores, comandos da paleta em
   `lib/comandosDoApp.ts`, `InfoDoRodape`, capturas na CI; M34b e M34c descartados, ver o ROADMAP).
-- Próximo passo: a Release da v1.2 (do Lucas) e o M35 (voltar depois de um link, notas de rodapé, links externos).
+- M35a feito (Alt+← volta para onde se estava depois de um salto, nos dois formatos).
+- Próximo passo: a Release da v1.2 (do Lucas), M35b (notas de rodapé em balão) e M35c (links externos).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.

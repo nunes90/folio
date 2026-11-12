@@ -146,6 +146,15 @@ describe("PDF", () => {
     );
   });
 
+  it("Alt+← volta à página de onde se saltou", async () => {
+    await paleta("página 1");
+    await ate(async () => (await paginaEm("footer")) === "1", "não foi à página 1");
+    await paleta("última página");
+    await ate(async () => (await paginaEm("footer")) === "3", "não foi à última página");
+    await browser.keys([Key.Alt, Key.ArrowLeft]);
+    await ate(async () => (await paginaEm("footer")) === "1", "Alt+← não voltou à página 1");
+  });
+
   it("ao reabrir depois de um tempo, o cartão “Onde você parou” diz a página; Esc o fecha", async () => {
     await paleta("página 2");
     await ate(async () => (await paginaEm("footer")) === "2", "não foi à página 2");
