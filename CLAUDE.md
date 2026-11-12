@@ -72,7 +72,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
   `cd crates/app && CARGO_TARGET_DIR=<raiz>/target/e2e cargo tauri build --debug --no-bundle` (caminho absoluto),
   depois, em `e2e/`, `FOLIO_APP=<raiz>/target/e2e/debug/folio ./virtual.sh npm test`.
 - Medições (não são testes): `FOLIO_MEDIR=<pdf>` (abrir e virar) e `FOLIO_MEDIR_IMPORTAR=<pasta>` (janela parada
-  durante a importação). Capturas em seis larguras: `FOLIO_CAPTURAS=<pasta>` (com `FOLIO_TELA=2600x1600`).
+  durante a importação). Capturas em seis larguras: `FOLIO_CAPTURAS=<pasta>` (com `FOLIO_TELA=2600x1600`); na CI,
+  o workflow Capturas as guarda como artefato nos PRs de layout.
 - Memória: PSS/anon de `/proc/<pid>/smaps_rollup`, não a soma do RSS (`scripts/memoria.sh`).
 
 ## Armadilhas conhecidas
@@ -121,6 +122,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **O paginador do foliate-js ignora, sem erro, um `goTo` nos 100 ms seguintes a uma virada** (`#locked`):
   conferir pelo `relocate` e tentar de novo (`irParaFracao`); nos testes, esperar.
 - O foliate-js só desenha as anotações da seção carregada: refazer no `create-overlay`.
+- O foliate-js rola a página quando a seleção muda com uma tecla apertada **no livro**: seleção posta pelo app
+  logo depois de um atalho pode gerar `relocate` (ver a alteração do `isKeyboardSelecting` no `PATCHES.md`).
 - **Os nós do livro são de outra janela** (o iframe do EPUB): `no instanceof Element` dá falso para eles. Usar
   `nodeType` (ou `ownerDocument.defaultView`). Nos testes de unidade, montar o caso num `iframe`.
 - O pdf.js tira nós desconhecidos da página no `reset()`: camadas próprias (destaques, voz) são refeitas a cada
@@ -141,7 +144,7 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **v1.2 completa, sem tag ainda**: M29 (biblioteca sem travar a janela), M30 (instância única), M31 (E2E do EPUB
   hostil), M32 (busca no EPUB), M33 (este arquivo enxuto e o histórico separado; CI fixada pelo SHA, Dependabot,
   `SHA256SUMS` e atestação na Release; teste de migração com um banco de cada versão publicada).
-- v1.3 em andamento: M34a (`ControleVoz`, comum aos dois leitores) e M34d (comandos da paleta em
-  `lib/comandosDoApp.ts`) feitos; M34b e M34c descartados (ver o ROADMAP).
-- Próximo passo: a Release da v1.2 (do Lucas), o M34e (`MolduraLeitor` em partes) e o M35 (links e notas).
+- v1.3 em andamento: M34 feito (`ControleVoz` comum aos dois leitores, comandos da paleta em
+  `lib/comandosDoApp.ts`, `InfoDoRodape`, capturas na CI; M34b e M34c descartados, ver o ROADMAP).
+- Próximo passo: a Release da v1.2 (do Lucas) e o M35 (voltar depois de um link, notas de rodapé, links externos).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.

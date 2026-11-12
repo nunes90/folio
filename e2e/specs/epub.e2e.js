@@ -84,6 +84,45 @@ describe("EPUB", () => {
     expect(await texto("#aba-destaques")).toContain("1");
   });
 
+  it("depois de um Ctrl+D com o foco no livro, uma seleção feita pelo app não rola a página", async () => {
+    // O Ctrl+D leva o foco à barra com a tecla ainda apertada: o keyup não chega ao livro, e o
+    // foliate-js ficava achando que a seleção vinha do teclado, rolando a página a cada seleção
+    // (com a voz lendo, a barra da frase lida fechava na hora: "a página mudou").
+    await browser.execute(() => {
+      const doc = document.querySelector("foliate-view").renderer.getContents()[0].doc;
+      doc.defaultView.focus();
+    });
+    const meio = await browser.execute(() => {
+      const r = document.querySelector(".conteudo").getBoundingClientRect();
+      return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height - 30) };
+    });
+    await browser.action("pointer").move(meio).down().up().perform();
+    await browser.action("key").down(Key.Ctrl).down("d").pause(120).up("d").up(Key.Ctrl).perform();
+    await (await $(".barra-destaque")).waitForDisplayed();
+    await browser.keys(Key.Escape);
+    await browser.pause(300);
+    const mudancas = await browser.executeAsync((feito) => {
+      const v = document.querySelector("foliate-view");
+      const doc = v.renderer.getContents()[0].doc;
+      let n = 0;
+      const contar = () => n++;
+      v.addEventListener("relocate", contar);
+      // Como o app faz com a frase lida: uma seleção posta por código.
+      const p = [...doc.querySelectorAll("p")].find((el) => v.lastLocation.range.intersectsNode(el));
+      const trecho = doc.createRange();
+      trecho.selectNodeContents(p);
+      const sel = doc.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(trecho);
+      setTimeout(() => {
+        v.removeEventListener("relocate", contar);
+        sel.removeAllRanges();
+        feito(n);
+      }, 500);
+    });
+    expect(mudancas).toBe(0);
+  });
+
   it("pela paleta, abre o mesmo ponto ao lado; F6 alterna; no lado, Ctrl+D destaca sem o mouse; Ctrl+Shift+L fecha", async () => {
     await browser.keys(Key.Escape);
     await paleta("abrir este ponto ao lado");

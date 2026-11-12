@@ -1,0 +1,83 @@
+name: Capturas
+
+# As telas do app em seis larguras (e2e/specs/capturas.e2e.js), como artefato, nos PRs que mexem no
+# layout: para ver o antes e o depois sem rodar nada (M34e). Não confere nada: só guarda as imagens.
+# Também roda à mão (aba Actions → Capturas → Run workflow).
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ui/src/app.css
+      - ui/src/components/MolduraLeitor.svelte
+      - ui/src/components/InfoDoRodape.svelte
+      - ui/src/components/Biblioteca.svelte
+      - ui/src/components/Estantes.svelte
+      - ui/src/components/BarraPdf.svelte
+      - ui/src/components/Busca.svelte
+      - ui/src/components/Posicao.svelte
+      - ui/src/components/PainelLateral.svelte
+      - ui/src/components/AbasAparencia.svelte
+      - ui/src/components/Painel*.svelte
+      - ui/src/components/Controles*.svelte
+      - e2e/specs/capturas.e2e.js
+      - .github/workflows/capturas.yml
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  capturas:
+    name: Capturas das telas
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Dependências do Tauri e do WebDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev libasound2-dev \
+            webkitgtk-webdriver xvfb dbus-x11
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+
+      # O mesmo cache do E2E neste sistema (tauri-cli e tauri-driver já compilados).
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: ubuntu-26.04
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            ui/package-lock.json
+            e2e/package-lock.json
+
+      - name: Dependências do frontend
+        working-directory: ui
+        run: npm ci
+
+      - name: tauri-cli e tauri-driver
+        run: |
+          cargo install tauri-cli --version "^2" --locked
+          cargo install tauri-driver --locked
+
+      - name: Compilar o app (debug, com o frontend embutido)
+        run: cargo tauri build --debug --no-bundle -- --locked
+
+      - name: Dependências dos testes
+        working-directory: e2e
+        run: npm ci
+
+      # A tela virtual maior que a maior captura (2560 px).
+      - name: Capturas
+        working-directory: e2e
+        run: |
+          FOLIO_CAPTURAS="$PWD/capturas" xvfb-run --auto-servernum -s "-screen 0 2600x1600x24" \
+            dbus-run-session -- npm test
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: capturas
+          path: e2e/capturas/
+          if-no-files-found: error
