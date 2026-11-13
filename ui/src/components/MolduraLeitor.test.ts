@@ -9,6 +9,7 @@ import axe from "axe-core";
 import { createRawSnippet, tick } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sistema } from "../lib/ambiente.svelte";
+import { paleta } from "../lib/paleta.svelte";
 import { MetaDaSessao } from "../lib/meta.svelte";
 import {
   atualizarPreferencias,
@@ -717,5 +718,26 @@ describe("MolduraLeitor", () => {
     const { container } = renderizar({ aparenciaAberta: true });
     const { violations } = await axe.run(container);
     expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  });
+
+  describe("descoberta (M37)", () => {
+    it("Mais opções tem a porta da paleta: Todos os comandos…", async () => {
+      renderizar();
+      paleta.aberta = false;
+      await fireEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+      await fireEvent.click(screen.getByRole("menuitem", { name: /Todos os comandos…/ }));
+      expect(paleta.aberta).toBe(true);
+      paleta.aberta = false;
+    });
+
+    it("no modo foco, o canto diz se a voz está lendo ou pausada", async () => {
+      const { rerender, container } = renderizar({ modoFoco: true, voz: "falando" });
+      const canto = () => container.querySelector(".progresso-canto")?.textContent ?? "";
+      expect(canto()).toContain("lendo em voz alta");
+      await rerender({ voz: "pausado" });
+      expect(canto()).toContain("voz pausada");
+      await rerender({ voz: "parado" });
+      expect(canto()).not.toMatch(/voz/);
+    });
   });
 });

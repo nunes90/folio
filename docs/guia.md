@@ -1,7 +1,8 @@
 # Guia de uso do Folio
 
 Duas teclas valem em qualquer tela: **`Ctrl+K`** abre a paleta de comandos (digite o que quer fazer) e **`F1`**
-mostra os atalhos daquela tela. Todo recurso abaixo pode ser usado só com o teclado.
+mostra os atalhos daquela tela. A paleta também abre pelo botão "Comandos" da biblioteca e por "Todos os comandos…"
+no menu ⋯ do leitor. Todo recurso abaixo pode ser usado só com o teclado.
 
 ## Biblioteca
 

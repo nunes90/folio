@@ -151,6 +151,7 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
   `lib/comandosDoApp.ts`, `InfoDoRodape`, capturas na CI; M34b e M34c descartados, ver o ROADMAP).
 - M35 feito: Alt+← volta de um salto (os dois formatos), notas de rodapé num balão (EPUB), links externos só com
   confirmação e só `http`/`https` (`core::links`; os dois formatos).
-- M36 feito: capas em miniatura (`core::miniatura`) e a grade da biblioteca em lotes (`lib/lotes.ts`).
-- Próximo passo: a Release (do Lucas) e o M37 (botão da paleta, texto de primeiro uso, indicador da voz no foco).
+- M36 e M37 feitos: capas em miniatura (`core::miniatura`), a grade da biblioteca em lotes (`lib/lotes.ts`), a
+  paleta com porta visível (`lib/paleta.svelte.ts`), dica de primeiro uso e a voz no canto do modo foco.
+- Próximo passo: a Release (do Lucas) e o M38 (cópia de segurança da biblioteca), o último da v1.3.
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.
