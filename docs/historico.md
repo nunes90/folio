@@ -1074,3 +1074,21 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   vazia: "Ctrl+K abre a lista de comandos e F1 mostra os atalhos de cada tela". Modo foco: a `MolduraLeitor` recebe
   `voz` (o estado do `ControleVoz`) e o canto decorativo mostra "lendo em voz alta" ou "voz pausada" ao lado da
   porcentagem (com as barras escondidas, não havia como saber).
+- **M38 — cópia de segurança** (branch `feat/m38-copia-de-seguranca`). Decidido com o Lucas: os dados sempre e os
+  arquivos dos livros por opção; restaurar **substitui**, guardando a biblioteca de antes; um ZIP com extensão
+  própria. `core::copia`: `.folio-backup` = `manifesto.json` (`formato` 1, versão do app, `esquema` = `user_version`,
+  data, livros, arquivos), `biblioteca.sqlite3` e `livros/<id>.epub|pdf` (guardados sem comprimir, `large_file`). As
+  capas não vão (são refeitas) nem as vozes. `exportar`: trava só para o `VACUUM INTO` (fotografia consistente do
+  banco com o app em uso) e a lista de arquivos; escreve `.parcial` e renomeia. `restaurar`: tudo o que pode falhar
+  vem antes de mexer na biblioteca (extrai para `restaurar.parcial/`, `integrity_check` e versão do banco extraído,
+  exporta a atual para `copias/antes-de-restaurar-<hora>.folio-backup`); só então, travada, os livros entram na pasta
+  (`rename`; um id que já existe é o mesmo livro) e `Biblioteca::trocar_banco` troca o arquivo e reabre a conexão (se
+  o novo não abrir, o anterior volta). Recusa: o que não é cópia, formato ou esquema mais novos, banco danificado; e
+  só extrai entradas `livros/<64 hex>.(epub|pdf)` (um ZIP malicioso não escreve fora da pasta). Os arquivos dos livros
+  que saem da lista ficam no disco (a cópia "de antes" só leva os dados e precisa deles para desfazer). Restaurada só
+  com os dados, a biblioteca mostra os livros sem arquivo; importar o arquivo de novo o repõe (`repor_arquivo`, no
+  caminho do "já existia"). Comandos `exportar_copia`, `ler_copia`, `restaurar_copia` (async; a voz é reconfigurada).
+  Frontend: `lib/copia.ts` (diálogos e textos) e três comandos na paleta (exportar nas duas telas; restaurar só na biblioteca: o Lucas procurou "exportar" com um
+  livro aberto e não achou); a `Confirmacao` mostra a
+  data e o conteúdo da cópia. `copia.e2e.js` exporta, apaga o livro, restaura **com o app aberto** e reabre o livro
+  no ponto em que estava. **v1.3 completa.**

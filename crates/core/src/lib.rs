@@ -3,6 +3,7 @@
 pub mod baixar;
 pub mod biblioteca;
 pub mod catalogo_vozes;
+pub mod copia;
 pub mod destaques;
 pub mod epub;
 pub mod formato;

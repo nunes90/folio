@@ -116,6 +116,9 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - Migrações do banco: nunca editar uma já publicada; acrescentar outra (o `tests/migracoes.rs` abre um banco de
   cada versão publicada; ao publicar um esquema novo, acrescentar a tag em `tests/fixtures/bancos/gerar.py`). O `serde` não lê um float num `u32`
   (uma preferência inválida faz o JSON inteiro virar o padrão: migrar antes de ler).
+- **Trocar o banco com o app aberto** só por `Biblioteca::trocar_banco` (fecha a conexão, troca o arquivo, reabre e
+  devolve o anterior se falhar). O formato da cópia de segurança é versionado (`copia::FORMATO`): mudou o que vai
+  dentro, aumenta o número.
 - `to_lowercase` no Rust para comparar nomes: o `NOCASE` do SQLite só cobre ASCII.
 
 ### Svelte, foliate-js e pdf.js
@@ -147,11 +150,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **v1.2 completa, sem tag ainda**: M29 (biblioteca sem travar a janela), M30 (instância única), M31 (E2E do EPUB
   hostil), M32 (busca no EPUB), M33 (este arquivo enxuto e o histórico separado; CI fixada pelo SHA, Dependabot,
   `SHA256SUMS` e atestação na Release; teste de migração com um banco de cada versão publicada).
-- v1.3 em andamento: M34 feito (`ControleVoz` comum aos dois leitores, comandos da paleta em
-  `lib/comandosDoApp.ts`, `InfoDoRodape`, capturas na CI; M34b e M34c descartados, ver o ROADMAP).
-- M35 feito: Alt+← volta de um salto (os dois formatos), notas de rodapé num balão (EPUB), links externos só com
-  confirmação e só `http`/`https` (`core::links`; os dois formatos).
-- M36 e M37 feitos: capas em miniatura (`core::miniatura`), a grade da biblioteca em lotes (`lib/lotes.ts`), a
-  paleta com porta visível (`lib/paleta.svelte.ts`), dica de primeiro uso e a voz no canto do modo foco.
-- Próximo passo: a Release (do Lucas) e o M38 (cópia de segurança da biblioteca), o último da v1.3.
+- **v1.3 completa, sem tag ainda** (M34–M38): `ControleVoz` comum aos dois leitores; Alt+← volta de um salto, notas
+  de rodapé num balão, links externos só com confirmação (e a janela nunca sai do app); capas em miniatura e a grade
+  em lotes; a paleta com porta visível; cópia de segurança (`core::copia`, `.folio-backup`).
+- Próximo passo: a Release (do Lucas) e a v1.4, começando pelo M39 (a memória do PDF).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.
