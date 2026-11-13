@@ -313,6 +313,9 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
 
 **v1.3 completa** (M34–M38).
 
+**v1.3.0** (nov/2026): a 1.2 e a 1.3 numa versão só (a 1.2 não foi publicada). Tag `v1.3.0` e Release, com o
+AppImage da CI, o `SHA256SUMS` e a atestação.
+
 ### v1.4 — acabamento e produto
 
 - [ ] **M39 — Memória do PDF** (8): achar os ~180 MB sem dono (inspetor do WebKit ou `heaptrack`); testar o cache de

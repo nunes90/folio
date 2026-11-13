@@ -145,13 +145,7 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - O WebDriver do sistema não dirige o WebKitGTK de outra versão (o do AppImage é testado na CI, no Ubuntu 22.04).
 
 ## Estado atual
-- **v1.1.1** publicada (nov/2026). Em andamento: o plano "Depois da análise" do `ROADMAP.md`
-  (`docs/analise/2026-11-analise.md`), versões 1.2 a 1.4, marcos M29–M43.
-- **v1.2 completa, sem tag ainda**: M29 (biblioteca sem travar a janela), M30 (instância única), M31 (E2E do EPUB
-  hostil), M32 (busca no EPUB), M33 (este arquivo enxuto e o histórico separado; CI fixada pelo SHA, Dependabot,
-  `SHA256SUMS` e atestação na Release; teste de migração com um banco de cada versão publicada).
-- **v1.3 completa, sem tag ainda** (M34–M38): `ControleVoz` comum aos dois leitores; Alt+← volta de um salto, notas
-  de rodapé num balão, links externos só com confirmação (e a janela nunca sai do app); capas em miniatura e a grade
-  em lotes; a paleta com porta visível; cópia de segurança (`core::copia`, `.folio-backup`).
-- Próximo passo: a Release (do Lucas) e a v1.4, começando pelo M39 (a memória do PDF).
+- **v1.3.0** (nov/2026): a 1.2 (M29–M33) e a 1.3 (M34–M38) do plano "Depois da análise" do `ROADMAP.md`
+  (`docs/analise/2026-11-analise.md`), numa versão só; a 1.2 não foi publicada. Tag e Release são do Lucas.
+- Próximo passo: a v1.4 (M39–M43), começando pelo M39 (a memória do PDF).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.

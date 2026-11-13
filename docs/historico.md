@@ -1092,3 +1092,8 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   livro aberto e não achou); a `Confirmacao` mostra a
   data e o conteúdo da cópia. `copia.e2e.js` exporta, apaga o livro, restaura **com o app aberto** e reabre o livro
   no ponto em que estava. **v1.3 completa.**
+- **v1.3.0** (nov/2026; branch `chore/v1.3.0`): M29–M38 numa versão (a 1.2 não foi publicada). Versão nos 4 lugares,
+  `THIRD-PARTY-NOTICES.md` gerado de novo (entraram `image`, `url`, `tauri-plugin-opener`,
+  `tauri-plugin-single-instance` e as dependências deles) e o CHANGELOG com a seção da 1.3.0. O esquema do banco não
+  mudou desde a v0.8.0 (11 migrações): as fixtures de `tests/fixtures/bancos` seguem valendo. Primeira Release com o
+  `SHA256SUMS` e a atestação de proveniência (M33b).
