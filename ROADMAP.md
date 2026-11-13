@@ -328,8 +328,10 @@ AppImage da CI, o `SHA256SUMS` e a atestação.
   - [x] M40b — `[profile.release]` com LTO `thin`, `codegen-units = 1` e `strip`: o binário foi de 34,6 para 22,9 MB
     (−34%); a compilação de release, de ~2 para ~3 min. Ficam para quando houver motivo: `commit_from_file` nos
     modelos de voz, a `ort` estável (ainda não saiu) e a feature `_ring` do `ureq`
-  - [ ] M40c — só as regras do `pdf_viewer.css` que o app usa; `@font-face` só com `.woff2` e `latin-ext`; módulos
-    do foliate-js sem uso fora do pacote (ou assumir MOBI/FB2: decidir)
+  - [x] M40c — fontes só em `.woff2` (saíram 4 `.woff`, 192 KB) e com `latin-ext` (14 arquivos a mais, ~190 KB):
+    polonês, tcheco, turco… na fonte escolhida. **Não feito, de propósito**: cortar o `pdf_viewer.css` à mão (233 KB
+    que só carregam ao abrir um PDF; a cada atualização do pdf.js o recorte ficaria para trás) e tirar os módulos do
+    foliate-js sem uso (~38 KB, carregados só sob demanda; exigiria mais alterações locais no vendor)
   - [ ] M40d — escala de `z-index` nomeada, tamanho mínimo da janela, revisão dos `svelte-ignore`, `exportar_destaques`
     só para o caminho que o diálogo devolveu
 - [ ] **M41 — Rodapé e ícones** (9): estimativa e meta fora do rodapé (proposta com capturas antes); ícones com o
