@@ -343,3 +343,9 @@ export async function ouvirAbrirArquivo(tratar: (caminho: string | null) => void
   const { listen } = await import("@tauri-apps/api/event");
   return listen<string | null>("abrir-arquivo", (evento) => tratar(evento.payload));
 }
+
+/** As capas grandes foram reduzidas depois de o app abrir (M36): a lista tem nomes de arquivo novos. */
+export async function ouvirCapasAtualizadas(tratar: () => void): Promise<() => void> {
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen("capas-atualizadas", () => tratar());
+}

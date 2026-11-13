@@ -133,6 +133,20 @@ fn main() -> anyhow::Result<()> {
             }
             app.manage(comandos::EstadoBiblioteca::new(biblioteca));
             app.manage(voz);
+            // As capas grandes de antes do M36 viram miniaturas, uma vez, fora da thread principal
+            // (dezenas de ms por capa); se alguma mudou, a página recarrega a lista.
+            let para_capas = app.handle().clone();
+            std::thread::Builder::new()
+                .name("capas".into())
+                .spawn(move || {
+                    let biblioteca = para_capas.state::<comandos::EstadoBiblioteca>();
+                    if folio_core::biblioteca::reduzir_capas_sem_segurar(&biblioteca) > 0
+                        && let Err(erro) = para_capas.emit("capas-atualizadas", ())
+                    {
+                        tracing::warn!(%erro, "falha ao avisar das capas reduzidas");
+                    }
+                })
+                .context("thread das capas")?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

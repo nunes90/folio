@@ -1050,3 +1050,19 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   (`core::links::navegacao_do_app`: `tauri:`, `asset:`, `blob:`, `about:`, `data:` e `http(s)` só em `localhost`, para
   o `cargo tauri dev`); o E2E manda `location.href` para um site e confere que a janela fica. **Abrir o
   navegador de verdade não tem teste** (abriria um na máquina): conferir à mão. **M35 concluído.**
+- **M36 — biblioteca grande** (branch `perf/m36-capas-e-grade`). **Miniaturas**: `core::miniatura::reduzir` (crate
+  `image`, só JPEG/PNG/GIF/WebP; limites de 12.000 px de lado e 256 MB na decodificação; `proptest`): uma capa com mais
+  de 480 px de largura vira um JPEG de 480 px (qualidade 85, transparência sobre branco); estreita, SVG ou ilegível
+  fica como está. Toda gravação passa por ela (`gravar_capa`: importar, refazer a capa, `definir_capa`).
+  `reduzir_capas_sem_segurar` reduz as que já estavam no cache (arquivos acima de 150 KB), numa thread depois de o app
+  abrir, com a trava só para listar e trocar o nome; se alguma mudou, o evento `capas-atualizadas` faz a página
+  recarregar a lista. A decisão da análise era reduzir no frontend, com canvas; no core ficou mais simples (sem estado
+  de "capa já reduzida" nem ida e volta de bytes) e testável. `image` e os decodificadores com `opt-level = 3` no
+  perfil dev. **Grade em lotes** (`lib/lotes.ts`): a `Biblioteca` desenha `visiveis.slice(0, limite)`; o limite
+  começa no lote do livro de onde se voltou (a transição da capa e o foco precisam do cartão), volta ao primeiro lote
+  quando a busca ou a estante mudam, e cresce com um `IntersectionObserver` (margem de 1.500 px, refeito a cada lote)
+  sobre o botão "Mostrar mais livros (N restantes)", que fica para o teclado e o leitor de tela; `focar(i)` além do
+  limite desenha até lá (End, ↓). Medido (`FOLIO_MEDIR_BIBLIOTECA=5000 ./virtual.sh npm test`, tela virtual): voltar
+  do leitor à biblioteca 3.487 → 552 ms; refazer o layout 1.424 → 32 ms; End (a grade inteira) 2 s.
+  `content-visibility: auto` nos cartões: layout 1.424 → 740 ms, rolagem quase igual, e a contenção cortaria o menu,
+  o contorno de foco e a sombra que saem do cartão: descartado.

@@ -300,8 +300,10 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
     "Ir até a nota" com Alt+← de volta. Só no documento principal, não no lado
   - [x] M35c — link externo com confirmação, nos dois formatos, aberto no navegador pelo `tauri-plugin-opener` (só
     `http`/`https`, decidido no core); os outros esquemas não abrem, com aviso
-- [ ] **M36 — Biblioteca grande** (5.7, 7.4): miniatura da capa do EPUB ao importar (canvas, como no PDF; as já
-  gravadas são refeitas uma vez); `content-visibility` na grade, medido com 5.000 livros nos dois WebKitGTK
+- [x] **M36 — Biblioteca grande** (5.7, 7.4): toda capa gravada vira uma miniatura (JPEG de até 480 px, no core, com o
+  crate `image`), e as grandes que já estavam no cache são reduzidas uma vez, em segundo plano. A grade é desenhada
+  em lotes de 120 cartões, conforme a rolagem. Medido com 5.000 livros: voltar do leitor à biblioteca, de 3,5 s para
+  0,55 s. O `content-visibility` foi medido e descartado (só reduzia o layout pela metade, e corta o que sai do cartão).
 - [ ] **M37 — Descoberta** (9): botão "Comandos (Ctrl+K)" nas duas barras e no menu ⋯; texto de primeiro uso na
   biblioteca vazia; indicador da voz no modo foco
 - [ ] **M38 — Cópia de segurança** (4): "Exportar a biblioteca…" (banco e preferências, com ou sem os livros) e

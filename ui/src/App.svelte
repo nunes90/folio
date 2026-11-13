@@ -18,6 +18,7 @@
     trechoDoLivro,
     caminhoInicial,
     ouvirAbrirArquivo,
+    ouvirCapasAtualizadas,
     carregarLivro,
     definirCapa,
     escolherArquivos,
@@ -187,6 +188,16 @@
     })
       .then((parar) => (pararDeOuvir = parar))
       .catch((e) => log.warn(`pedidos de outra instância indisponíveis: ${e}`));
+    return () => pararDeOuvir?.();
+  });
+
+  // As capas grandes viraram miniaturas (uma vez, depois de o app abrir): a lista é recarregada.
+  onMount(() => {
+    if (!isTauri()) return;
+    let pararDeOuvir: (() => void) | undefined;
+    ouvirCapasAtualizadas(() => void recarregar())
+      .then((parar) => (pararDeOuvir = parar))
+      .catch((e) => log.warn(`aviso das capas indisponível: ${e}`));
     return () => pararDeOuvir?.();
   });
 

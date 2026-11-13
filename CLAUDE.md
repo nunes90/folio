@@ -72,7 +72,7 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
   `cd crates/app && CARGO_TARGET_DIR=<raiz>/target/e2e cargo tauri build --debug --no-bundle` (caminho absoluto),
   depois, em `e2e/`, `FOLIO_APP=<raiz>/target/e2e/debug/folio ./virtual.sh npm test`.
 - Medições (não são testes): `FOLIO_MEDIR=<pdf>` (abrir e virar) e `FOLIO_MEDIR_IMPORTAR=<pasta>` (janela parada
-  durante a importação). Capturas em seis larguras: `FOLIO_CAPTURAS=<pasta>` (com `FOLIO_TELA=2600x1600`); na CI,
+  durante a importação) e `FOLIO_MEDIR_BIBLIOTECA=5000` (a grade com muitos livros). Capturas em seis larguras: `FOLIO_CAPTURAS=<pasta>` (com `FOLIO_TELA=2600x1600`); na CI,
   o workflow Capturas as guarda como artefato nos PRs de layout.
 - Memória: PSS/anon de `/proc/<pid>/smaps_rollup`, não a soma do RSS (`scripts/memoria.sh`).
 
@@ -151,5 +151,6 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
   `lib/comandosDoApp.ts`, `InfoDoRodape`, capturas na CI; M34b e M34c descartados, ver o ROADMAP).
 - M35 feito: Alt+← volta de um salto (os dois formatos), notas de rodapé num balão (EPUB), links externos só com
   confirmação e só `http`/`https` (`core::links`; os dois formatos).
-- Próximo passo: a Release da v1.2 (do Lucas) e o M36 (miniaturas das capas, grade para bibliotecas grandes).
+- M36 feito: capas em miniatura (`core::miniatura`) e a grade da biblioteca em lotes (`lib/lotes.ts`).
+- Próximo passo: a Release (do Lucas) e o M37 (botão da paleta, texto de primeiro uso, indicador da voz no foco).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.
