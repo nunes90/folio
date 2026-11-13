@@ -39,7 +39,9 @@ export const config = {
   maxInstances: 1,
   // Uma sessão do app por arquivo de teste: o livro chega como no "Abrir com" do sistema (o app
   // o importa e abre). Pastas de dados novas a cada sessão.
-  capabilities: process.env.FOLIO_MEDIR
+  capabilities: process.env.FOLIO_MEDIR_MEMORIA
+    ? [sessao("specs/medir-memoria.e2e.js", "dom-casmurro.epub")]
+    : process.env.FOLIO_MEDIR
     ? [sessao("specs/medir-pdf.e2e.js", path.resolve(process.env.FOLIO_MEDIR))]
     : process.env.FOLIO_MEDIR_BIBLIOTECA
     ? [sessao("specs/medir-biblioteca.e2e.js", "dom-casmurro.epub")]
@@ -60,7 +62,7 @@ export const config = {
       ],
   reporters: ["spec"],
   framework: "mocha",
-  mochaOpts: { ui: "bdd", timeout: process.env.FOLIO_MEDIR || process.env.FOLIO_MEDIR_IMPORTAR || process.env.FOLIO_MEDIR_BIBLIOTECA || process.env.FOLIO_CAPTURAS ? 240000 : 60000 },
+  mochaOpts: { ui: "bdd", timeout: process.env.FOLIO_MEDIR || process.env.FOLIO_MEDIR_MEMORIA || process.env.FOLIO_MEDIR_IMPORTAR || process.env.FOLIO_MEDIR_BIBLIOTECA || process.env.FOLIO_CAPTURAS ? 240000 : 60000 },
   waitforTimeout: 10000,
 
   // Pastas novas a cada sessão (o app herda o ambiente do tauri-driver).

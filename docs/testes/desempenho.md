@@ -18,6 +18,40 @@ Para comparar antes e depois sem abrir janelas: `FOLIO_MEDIR=<pdf> ./virtual.sh 
 como nos testes E2E). Abrir, virar 20 páginas no original e na noite, lado a lado e memória: linhas `[medida]` na saída.
 É uma tela virtual, sem placa de vídeo: vale para comparar duas versões, não como número absoluto.
 
+## De onde vem a memória de um PDF (M39)
+`FOLIO_MEDIR_MEMORIA=<pdf> ./virtual.sh npm test`, em `e2e/`: a sessão começa com um EPUB (o processo da página ainda sem
+o pdf.js), importa o PDF, abre-o na página `FOLIO_MEDIR_PAGINA` e mede a **memória anônima** do processo da página.
+`FOLIO_MEDIR_SEM="sem-sumario sem-idioma"` desliga partes da abertura; `area=16` e `trecho=64` experimentam opções do
+pdf.js. Sem `FOLIO_MEDIR_CURTO=1`, segue virando 30 páginas e soltando uma coisa de cada vez.
+
+Medido na v1.3.0 com um PDF de 86 MB, 742 páginas e 508 entradas no sumário (tela virtual). **Entre duas rodadas iguais
+a diferença chega a 40 MB** (o coletor de lixo e o alocador do WebKit rodam quando querem): só vale o que se repete.
+
+| O quê | Memória a mais | Como se sabe |
+|---|---|---|
+| O pdf.js em si (PDF de 3 páginas) | ~30 MB | abrir o `texto.pdf` |
+| Um documento grande, numa página de texto, sem sumário nem idioma | ~90 MB | página 300, `sem-sumario sem-idioma` |
+| O sumário (a página de cada uma das 508 entradas) | ~65 MB | com e sem `sem-sumario` |
+| A detecção de idioma pelo texto (até 6 páginas) | ~10 MB | com e sem `sem-idioma` |
+| A página da capa (uma imagem de 4 a 8 megapixels) | até ~80 MB, que somem no total | ver abaixo |
+| **Total, abrindo na capa** | **+180 a +265 MB** | 6 rodadas |
+| **Total, abrindo numa página de texto** | **+155 a +170 MB** | 3 rodadas |
+| Virar 30 páginas | +14 MB | |
+| Depois de fechar o livro | ~95 MB não voltam | o alocador não devolve ao sistema |
+
+O que **não** é: as páginas guardadas pelo visor nem os canvas (na exibição página a página há um canvas de 1 MB na
+tela); nem o arquivo (só 10 MB dele são lidos; o tamanho dos trechos não muda nada). Soltar as fontes e imagens do
+documento (`cleanup`) devolve 5 MB.
+
+**O limite de tamanho das imagens (`canvasMaxAreaInBytes`) foi testado e descartado.** Com o sumário desligado, limitar
+a 16 MB (4 megapixels) tira 80 MB da abertura na capa, de forma repetível. Com tudo ligado, o ganho some no ruído
+(+242 a +255 com o limite; +181 a +266 sem): a memória que a decodificação da capa libera é a que o sumário ocupa em
+seguida. Em troca, PDFs escaneados ficariam menos nítidos com zoom.
+
+**O que reduziria de verdade**: resolver só as entradas do sumário que são necessárias (busca binária pela página
+atual), ~65 MB em PDFs de sumário enorme. Adiado: mexe em tudo o que usa a seção atual e depende de o sumário estar em
+ordem de página.
+
 ## Cenários
 | # | Cenário | O que medir | Aceitável |
 |---|---|---|---|

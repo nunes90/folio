@@ -173,4 +173,24 @@ describe("PDF", () => {
     await ate(async () => (await cartaoOndeParou()) === "", "Esc não fechou o cartão");
     expect(await paginaEm("footer")).toBe("2");
   });
+
+  it("reabrir o documento leva menos de 5 s (orçamento folgado: pega regressões grosseiras)", async () => {
+    // Aqui, numa tela virtual, leva uns 300 ms. O limite não mede desempenho fino (para isso há o
+    // FOLIO_MEDIR): só falha se abrir um PDF pequeno passar a demorar uma ordem de grandeza a mais.
+    await botao("Voltar à biblioteca", "//header").click();
+    await $("nav[aria-label='Estantes']").waitForDisplayed();
+    await browser.pause(800);
+    const ms = await browser.executeAsync((feito) => {
+      const t0 = performance.now();
+      const botoes = [...document.querySelectorAll('ul[aria-label="Livros"] button.livro')];
+      botoes.find((b) => b.textContent.includes("Documento de Teste")).click();
+      const conferir = () => {
+        if (document.querySelector('.page[data-loaded="true"] canvas')) feito(Math.round(performance.now() - t0));
+        else setTimeout(conferir, 10);
+      };
+      conferir();
+    });
+    console.log(`[medida] reabrir o PDF de teste: ${ms} ms`);
+    expect(ms).toBeLessThan(5000);
+  });
 });

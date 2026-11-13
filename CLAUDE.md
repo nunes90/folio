@@ -72,7 +72,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
   `cd crates/app && CARGO_TARGET_DIR=<raiz>/target/e2e cargo tauri build --debug --no-bundle` (caminho absoluto),
   depois, em `e2e/`, `FOLIO_APP=<raiz>/target/e2e/debug/folio ./virtual.sh npm test`.
 - Medições (não são testes): `FOLIO_MEDIR=<pdf>` (abrir e virar) e `FOLIO_MEDIR_IMPORTAR=<pasta>` (janela parada
-  durante a importação) e `FOLIO_MEDIR_BIBLIOTECA=5000` (a grade com muitos livros). Capturas em seis larguras: `FOLIO_CAPTURAS=<pasta>` (com `FOLIO_TELA=2600x1600`); na CI,
+  durante a importação), `FOLIO_MEDIR_BIBLIOTECA=5000` (a grade com muitos livros) e `FOLIO_MEDIR_MEMORIA=<pdf>` (de onde
+  vem a memória de um PDF; o ruído entre rodadas iguais chega a 40 MB: só vale o que se repete). Capturas em seis larguras: `FOLIO_CAPTURAS=<pasta>` (com `FOLIO_TELA=2600x1600`); na CI,
   o workflow Capturas as guarda como artefato nos PRs de layout.
 - Memória: PSS/anon de `/proc/<pid>/smaps_rollup`, não a soma do RSS (`scripts/memoria.sh`).
 
@@ -147,5 +148,6 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 ## Estado atual
 - **v1.3.0** (nov/2026): a 1.2 (M29–M33) e a 1.3 (M34–M38) do plano "Depois da análise" do `ROADMAP.md`
   (`docs/analise/2026-11-analise.md`), numa versão só; a 1.2 não foi publicada. Tag e Release são do Lucas.
-- Próximo passo: a v1.4 (M39–M43), começando pelo M39 (a memória do PDF).
+- v1.4 em andamento: M39 feito (a memória do PDF explicada e medida; tabela em `docs/testes/desempenho.md`).
+- Próximo passo: M40 (erros tipados, perfil de release, pacote mais enxuto, detalhes de CSS).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.
