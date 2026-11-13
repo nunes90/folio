@@ -1111,3 +1111,10 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   desligado; com tudo ligado o ganho some, e escaneados perderiam nitidez), trechos menores (nada), `cleanup` depois do
   sumário (nada). Adiado, por decisão do Lucas: o sumário sob demanda. Orçamento na CI: `pdf.e2e.js` reabre o PDF de
   teste e falha acima de 5 s (~330 ms aqui): pega regressões grosseiras, não mede desempenho fino.
+- **M40b — perfil de release** (branch `perf/m40b-perfil-de-release`): `[profile.release]` com `lto = "thin"`,
+  `codegen-units = 1` e `strip = true`. Medido aqui: `target/release/folio` de 34.556.896 para 22.932.712 bytes
+  (−34%); a compilação de release, de 126 s para uns 3 min. Sem `panic = "abort"` (um pânico numa thread derrubaria o
+  app inteiro). Os 49 E2E passam no binário novo. Nota: os E2E nunca tinham rodado num binário de release; rodam, com
+  `FOLIO_INSTANCIA_UNICA=0` (em release a instância única fica ligada, e as sessões seguidas se atropelam). Com a
+  máquina ocupada (o Steam compilando shaders, carga 21), um teste do lado a lado falhou por tempo no binário antigo:
+  medições e E2E só valem com a máquina quieta.

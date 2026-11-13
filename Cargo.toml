@@ -18,6 +18,14 @@ tracing = "0.1"
 # No `cargo tauri dev` o Rust vem sem otimização, e o SHA-256 de um livro grande, a leitura
 # de PDF (lopdf) e a descompressão do EPUB ficam várias vezes mais lentos. Só estas
 # dependências são otimizadas no perfil dev (compilam uma vez; o resto continua rápido de compilar).
+# A versão publicada (M40b): otimização entre crates e sem símbolos. `thin` e não `fat`: quase o
+# mesmo ganho, com uma fração do tempo de compilação. Sem `panic = "abort"`: com ele, um pânico em
+# qualquer thread (um comando, a síntese de voz) derrubaria o app em vez de falhar só ali.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
 [profile.dev.package.sha2]
 opt-level = 3
 
