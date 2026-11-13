@@ -18,6 +18,8 @@
     children: Snippet;
   } = $props();
 
+  // Ids únicos: o App tem mais de uma confirmação no DOM (a da biblioteca e a do link externo).
+  const id = $props.id();
   let dialogo: HTMLDialogElement;
   let cancelar: HTMLButtonElement;
   /** Evita chamar onCancelar quando o fechamento veio do botão de confirmar. */
@@ -56,12 +58,12 @@
 <dialog
   class="modal"
   bind:this={dialogo}
-  aria-labelledby="titulo-confirmacao"
-  aria-describedby="texto-confirmacao"
+  aria-labelledby="{id}-titulo"
+  aria-describedby="{id}-texto"
   onclose={() => !confirmado && onCancelar()}
 >
-  <h2 id="titulo-confirmacao">{titulo}</h2>
-  <div id="texto-confirmacao">{@render children()}</div>
+  <h2 id="{id}-titulo">{titulo}</h2>
+  <div id="{id}-texto">{@render children()}</div>
   <div class="botoes">
     <button type="button" bind:this={cancelar} onclick={fechar}>Cancelar</button>
     <button type="button" class="perigo" onclick={confirmar}>{rotuloConfirmar}</button>

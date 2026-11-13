@@ -6,7 +6,7 @@
 // O hostil.epub (tests/fixtures/gerar.py) tenta de todos os jeitos comuns e aponta para o
 // servidor que este teste sobe: nenhum pedido pode chegar.
 import http from "node:http";
-import { ate, texto } from "./ajuda.js";
+import { ate, confirmacao, noDialogo, texto } from "./ajuda.js";
 
 const PORTA = 47811;
 const pedidos = [];
@@ -61,7 +61,7 @@ describe("Um EPUB hostil", () => {
     expect(e.invadido).toBe(null);
   });
 
-  it("o link javascript: não roda e o link externo não leva a lugar nenhum", async () => {
+  it("o link javascript: não roda e o link externo não abre sem confirmação", async () => {
     await clicarNoLivro("js");
     await clicarNoLivro("fora");
     await browser.pause(1000);
@@ -69,6 +69,9 @@ describe("Um EPUB hostil", () => {
     expect(e.marcas).toEqual([]);
     expect(e.endereco).toBe("tauri://localhost");
     expect((await browser.getWindowHandles()).length).toBe(1);
+    // O link externo só pede confirmação (M35c); sem ela, nada abre.
+    expect((await confirmacao()).titulo).toBe("Abrir 127.0.0.1 no navegador?");
+    await noDialogo("Cancelar");
   });
 
   it("nada sai para a rede", async () => {

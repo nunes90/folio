@@ -17,6 +17,7 @@
   } from "../lib/voz";
   import { corDoRealce } from "../lib/realce";
   import Busca from "./Busca.svelte";
+  import { pedirParaAbrir } from "../lib/linkExterno.svelte";
   import { Caminho, ehVoltar } from "../lib/caminho.svelte";
   import { ControleVoz } from "../lib/controleVoz.svelte";
   import Indice from "./Indice.svelte";
@@ -338,6 +339,8 @@
     moldura.focarTitulo();
     window.addEventListener("keydown", aoTeclar);
     window.addEventListener("pointerdown", aoApontar);
+    // Na captura: antes de o link do pdf.js agir (ele navegaria a própria janela do app).
+    conteiner.addEventListener("click", aoClicarEmLink, true);
     let fechado = false;
     abrir().catch((e) => {
       // Cancelar a senha também rejeita a abertura (o pdf.js desiste com o último motivo), e
@@ -371,6 +374,7 @@
     return () => {
       window.removeEventListener("keydown", aoTeclar);
       window.removeEventListener("pointerdown", aoApontar);
+      conteiner?.removeEventListener("click", aoClicarEmLink, true);
       observador?.disconnect();
       cancelAnimationFrame(quadro);
       fechado = true;
@@ -1381,6 +1385,19 @@
       }
       void escolherIdeiaEm(n, x, y);
     });
+  }
+
+  /**
+   * Um link da página para fora do documento (M35c): só com confirmação, no navegador. Os links
+   * internos ("#…": sumário impresso, referências) são do pdf.js, que vai ao destino.
+   */
+  function aoClicarEmLink(e: MouseEvent) {
+    const a = e.target instanceof Element ? e.target.closest(".annotationLayer a[href]") : null;
+    const href = a?.getAttribute("href") ?? "";
+    if (!href || href.startsWith("#")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    pedirParaAbrir(href);
   }
 
   function aoApontar(e: PointerEvent) {

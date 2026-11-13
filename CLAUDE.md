@@ -109,6 +109,9 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
   duvidosa no modo de desenvolvimento.
 - **Um ambiente do ONNX Runtime por processo** (`kokoro::ambiente_onnx`); o espeak-ng tem estado global (um
   `Arc` só, atrás de um `Mutex`).
+- **Um endereço que vem do livro só abre depois de `core::links::externo`** (só `http`/`https`) e da confirmação do
+  usuário; o `tauri-plugin-opener` é usado só do Rust, sem permissão para a página. **A janela nunca navega para fora do
+  app**: o plugin `navegacao` (`on_navigation`) barra, por `core::links::navegacao_do_app`.
 - A instância única fica desligada nas compilações de depuração (`FOLIO_INSTANCIA_UNICA=1` liga).
 - Migrações do banco: nunca editar uma já publicada; acrescentar outra (o `tests/migracoes.rs` abre um banco de
   cada versão publicada; ao publicar um esquema novo, acrescentar a tag em `tests/fixtures/bancos/gerar.py`). O `serde` não lê um float num `u32`
@@ -146,6 +149,7 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
   `SHA256SUMS` e atestação na Release; teste de migração com um banco de cada versão publicada).
 - v1.3 em andamento: M34 feito (`ControleVoz` comum aos dois leitores, comandos da paleta em
   `lib/comandosDoApp.ts`, `InfoDoRodape`, capturas na CI; M34b e M34c descartados, ver o ROADMAP).
-- M35a e M35b feitos (Alt+← volta de um salto, nos dois formatos; notas de rodapé num balão, no EPUB).
-- Próximo passo: a Release da v1.2 (do Lucas) e o M35c (links externos com confirmação).
+- M35 feito: Alt+← volta de um salto (os dois formatos), notas de rodapé num balão (EPUB), links externos só com
+  confirmação e só `http`/`https` (`core::links`; os dois formatos).
+- Próximo passo: a Release da v1.2 (do Lucas) e o M36 (miniaturas das capas, grade para bibliotecas grandes).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.

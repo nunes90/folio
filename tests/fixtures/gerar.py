@@ -212,7 +212,8 @@ def epub_com_notas(caminho: Path) -> None:
 <h1>Capítulo um</h1>
 <p>{texto}Aqui há uma nota marcada<a id="r1" epub:type="noteref" href="#n1"><sup>1</sup></a> e uma
 nota de fim<a id="r2" href="notas.xhtml#n2"><sup>2</sup></a>. E um link para o
-<a id="comum" href="cap2.xhtml">capítulo dois</a>.</p>
+<a id="comum" href="cap2.xhtml">capítulo dois</a>, um para <a id="fora" href="https://example.org/folio">a
+web</a> e um de <a id="correio" href="mailto:alguem@example.org">correio</a>.</p>
 <p>{texto}</p>
 <aside id="n1" epub:type="footnote"><p><a href="#r1">1</a> Texto da nota um, no mesmo capítulo.</p></aside>
 </body></html>
@@ -374,9 +375,17 @@ def pdf_com_info(info: bytes) -> bytes:
     return bytes(saida)
 
 
-def pdf_com_texto(titulo: bytes, paginas: list[list[bytes]]) -> bytes:
-    """PDF com texto de verdade (Helvetica), uma lista de linhas por página (testes E2E, M26c)."""
+def pdf_com_texto(
+    titulo: bytes, paginas: list[list[bytes]], links: dict[int, list[tuple[bytes, bytes]]] | None = None
+) -> bytes:
+    """PDF com texto de verdade (Helvetica), uma lista de linhas por página (testes E2E, M26c).
+    `links`: por página (a partir de 0), anotações de link `(retângulo, ação)`, ex.:
+    `(b"72 700 300 722", b"/S /URI /URI (https://example.org/)")` (M35c)."""
+    links = links or {}
     n = len(paginas)
+    # As anotações vêm depois dos objetos das páginas (5 + 2i e 6 + 2i).
+    proxima_anotacao = 5 + 2 * n
+    anotacoes: list[bytes] = []
     filhos = b" ".join(b"%d 0 R" % (5 + 2 * i) for i in range(n))
     objetos = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
@@ -386,11 +395,23 @@ def pdf_com_texto(titulo: bytes, paginas: list[list[bytes]]) -> bytes:
     ]
     for i, linhas in enumerate(paginas):
         corpo = b"BT /F1 14 Tf 18 TL 72 720 Td " + b" ".join(b"(" + l + b") Tj T*" for l in linhas) + b" ET"
+        da_pagina = b""
+        if i in links:
+            numeros = []
+            for retangulo, acao in links[i]:
+                numeros.append(b"%d 0 R" % (proxima_anotacao + len(anotacoes)))
+                anotacoes.append(
+                    b"<< /Type /Annot /Subtype /Link /Rect [" + retangulo + b"] /Border [0 0 0] /A << " + acao + b" >> >>"
+                )
+            da_pagina = b" /Annots [" + b" ".join(numeros) + b"]"
         objetos.append(
             b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents %d 0 R "
-            b"/Resources << /Font << /F1 3 0 R >> >> >>" % (6 + 2 * i)
+            b"/Resources << /Font << /F1 3 0 R >> >>" % (6 + 2 * i)
+            + da_pagina
+            + b" >>"
         )
         objetos.append(b"<< /Length %d >>\nstream\n" % len(corpo) + corpo + b"\nendstream")
+    objetos += anotacoes
     saida = bytearray(b"%PDF-1.7\n")
     posicoes = []
     for numero, corpo in enumerate(objetos, start=1):
@@ -481,6 +502,23 @@ if __name__ == "__main__":
                 [b"Segunda pagina do documento. Outra frase para destacar.", b"", b"Fim da pagina dois."],
                 [b"Terceira pagina do documento. Ultima frase do arquivo."],
             ],
+        )
+    )
+    # Links numa página (M35c): um para fora do documento, um mailto e um para a página 2.
+    (AQUI / "links.pdf").write_bytes(
+        pdf_com_texto(
+            b"Documento com links",
+            [
+                [b"Um link para a web.", b"", b"Um link de correio.", b"", b"Um link para a pagina dois."],
+                [b"Segunda pagina."],
+            ],
+            {
+                0: [
+                    (b"72 716 300 736", b"/S /URI /URI (https://example.org/folio)"),
+                    (b"72 680 300 700", b"/S /URI /URI (mailto:alguem@example.org)"),
+                    (b"72 644 300 664", b"/S /GoTo /D [7 0 R /Fit]"),
+                ]
+            },
         )
     )
     pdfs_problematicos()

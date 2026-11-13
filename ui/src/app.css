@@ -338,3 +338,11 @@ textarea {
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+/* O endereço inteiro na confirmação de um link externo (M35c): quebra em qualquer ponto, para um
+   endereço longo não alargar o diálogo. */
+.endereco-do-link {
+  overflow-wrap: anywhere;
+  color: var(--suave);
+  font-size: 0.875rem;
+}

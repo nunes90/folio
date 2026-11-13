@@ -1033,3 +1033,20 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   balão; Esc, "Fechar", clique fora (também no iframe: um `pointerdown` no documento do livro) ou virar a página
   fecham. "Ir até a nota" salta com Alt+← de volta. Fixture `notas.epub` e `notas.e2e.js` (a nota marcada, a de fim,
   o link comum).
+- **M35c — links externos** (branch `feat/m35c-links-externos`): um link do livro para a web era um clique morto (o
+  `window.open` do foliate-js é ignorado pelo Tauri). `core::links::externo(href)` decide o que pode abrir: só
+  `http`/`https`, com host, sem usuário e senha (`https://banco.com@golpe.example/` mostraria um host enganoso), sem
+  caracteres de controle, até 2.048 caracteres (`url`; `proptest`). Comando `abrir_no_navegador` (confere de novo e
+  abre pelo `tauri-plugin-opener`, usado só do Rust: a página não tem permissão para ele, e o script que abriria
+  sozinho os `target="_blank"` fica desligado). Frontend: `lib/linkExterno.svelte.ts` (`pedirParaAbrir`, o estado da
+  confirmação, `abrirLinkConfirmado`); o `App` mostra a `Confirmacao` ("Abrir example.org no navegador?", o endereço
+  inteiro, foco em Cancelar). EPUB: evento `external-link` do foliate-js, impedido. PDF: clique, na captura, num
+  `.annotationLayer a[href]` que não começa com `#` (sem isso o pdf.js navegaria a janela do app). Outros esquemas
+  (`mailto:`…) não abrem, com aviso. A `Confirmacao` ganhou ids únicos (`$props.id()`: há duas no DOM). Fixtures:
+  `links.pdf` (o `pdf_com_texto` aceita anotações de link) e os links novos do `notas.epub`. E2E: `links.e2e.js`,
+  `notas.e2e.js`, e o `seguranca.e2e.js` confere que o link externo do livro hostil só pede confirmação. **Num PDF era pior do que um clique morto**: o link levava a
+  janela inteira para o site, sem caminho de volta (o Lucas caiu nisso testando a `main`; vale para a v1.1.1). Segunda
+  barreira, no Rust: um plugin `navegacao` com `on_navigation` barra qualquer navegação da janela para fora do app
+  (`core::links::navegacao_do_app`: `tauri:`, `asset:`, `blob:`, `about:`, `data:` e `http(s)` só em `localhost`, para
+  o `cargo tauri dev`); o E2E manda `location.href` para um site e confere que a janela fica. **Abrir o
+  navegador de verdade não tem teste** (abriria um na máquina): conferir à mão. **M35 concluído.**

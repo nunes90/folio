@@ -28,6 +28,7 @@ Um PDF com senha entra na biblioteca e pede a senha ao abrir, sem guardá-la.
 | Buscar no texto do livro (EPUB e PDF) | `Ctrl+F`; `Enter` e `Shift+Enter` andam pelas ocorrências |
 | Voltar para onde você estava, depois de um link, do índice, de um destaque ou da busca | `Alt+←` |
 | Ler uma nota de rodapé sem sair da página (EPUB) | clique no número da nota: ela abre num balão; `Esc` fecha, "Ir até a nota" leva a ela |
+| Abrir um link do livro para a web | clique no link: o Folio mostra o endereço e pede confirmação antes de abrir o navegador |
 | Zoom (PDF) | `Ctrl++`, `Ctrl+−`, `Ctrl+0` (ajustar à largura) |
 | Voltar à biblioteca | o botão ‹ no cabeçalho, ou a paleta |
 
@@ -122,4 +123,4 @@ principal); voz, meta e progresso ficam só no principal.
 | Voz natural (o download) | `~/.local/share/io.github.nunes90.folio/vozes` |
 | Registros (logs) | `~/.local/state/folio/logs` |
 
-Nada sai do seu computador. A internet só é usada quando você baixa a voz natural. Para fazer uma cópia de segurança, copie a primeira pasta com o Folio fechado.
+Nada sai do seu computador. A internet só é usada quando você baixa a voz natural; um link do livro para a web abre no seu navegador, e só se você confirmar. Para fazer uma cópia de segurança, copie a primeira pasta com o Folio fechado.
