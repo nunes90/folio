@@ -18,6 +18,7 @@ use tracing::instrument;
 use crate::epub::{self, Capa, ErroEpub};
 use crate::formato::Formato;
 use crate::livro::{self, ErroAbrir};
+use crate::miniatura;
 use crate::pdf::{self, ErroPdf};
 use crate::preferencias::PreferenciasLeitura;
 
@@ -381,6 +382,31 @@ impl Biblioteca {
             )?;
         }
         Ok(sem_arquivo.len())
+    }
+
+    /// As capas do cache que passam do tamanho de uma miniatura: o id do livro e o nome do arquivo.
+    fn capas_grandes(&self) -> Resultado<Vec<(String, String)>> {
+        let mut consulta = self
+            .conexao
+            .prepare("SELECT id, capa FROM livros WHERE capa IS NOT NULL")?;
+        let todas: Vec<(String, String)> = consulta
+            .query_map([], |linha| Ok((linha.get(0)?, linha.get(1)?)))?
+            .collect::<Result<_, _>>()?;
+        Ok(todas
+            .into_iter()
+            .filter(|(_, nome)| {
+                fs::metadata(self.dir_capas.join(nome))
+                    .is_ok_and(|dados| dados.len() > miniatura::BYTES_PEQUENA as u64)
+            })
+            .collect())
+    }
+
+    fn trocar_capa(&self, id: &str, nome: &str) -> Resultado<()> {
+        self.conexao.execute(
+            "UPDATE livros SET capa = ?1 WHERE id = ?2",
+            params![nome, id],
+        )?;
+        Ok(())
     }
 
     /// Lê a capa da cópia do EPUB e a grava no cache; `None` se não der (sem capa, arquivo
@@ -1025,10 +1051,71 @@ fn copiar(pastas: &Pastas, lido: Lido) -> Resultado<Copiado> {
     })
 }
 
+/// Grava a capa no cache, reduzida se for grande (M36: ver `miniatura`), e devolve o nome do arquivo.
 fn gravar_capa(dir_capas: &Path, id: &str, capa: &Capa) -> Resultado<String> {
+    let reduzida = miniatura::reduzir(capa);
+    let capa = reduzida.as_ref().unwrap_or(capa);
     let nome = format!("{id}.{}", extensao(&capa.tipo_midia));
     gravar(&dir_capas.join(&nome), &capa.bytes)?;
     Ok(nome)
+}
+
+/// Reduz as capas grandes que já estavam no cache (as importadas antes do M36), uma vez: depois
+/// disso nenhuma passa do limite. Para a biblioteca atrás de um `Mutex`: travada só para listar e
+/// para trocar o nome de cada capa; decodificar e gravar (dezenas de ms por capa) é com ela solta.
+/// Devolve quantas foram reduzidas.
+#[instrument(skip(biblioteca))]
+pub fn reduzir_capas_sem_segurar(biblioteca: &Mutex<Biblioteca>) -> usize {
+    let (grandes, dir_capas) = {
+        let bib = travar(biblioteca);
+        (
+            bib.capas_grandes().unwrap_or_default(),
+            bib.dir_capas.clone(),
+        )
+    };
+    let mut reduzidas = 0;
+    for (id, nome) in grandes {
+        let antiga = dir_capas.join(&nome);
+        let Ok(bytes) = fs::read(&antiga) else {
+            continue;
+        };
+        let original = Capa {
+            tipo_midia: tipo_da_extensao(&nome).into(),
+            bytes,
+        };
+        let Some(menor) = miniatura::reduzir(&original) else {
+            continue;
+        };
+        let novo = format!("{id}.{}", extensao(&menor.tipo_midia));
+        if gravar(&dir_capas.join(&novo), &menor.bytes).is_err() {
+            continue;
+        }
+        match travar(biblioteca).trocar_capa(&id, &novo) {
+            Ok(()) => {
+                // O arquivo antigo só sai se o nome mudou (um .png que virou .jpg).
+                if novo != nome {
+                    let _ = fs::remove_file(&antiga);
+                }
+                reduzidas += 1;
+            }
+            Err(erro) => tracing::warn!(%erro, %id, "capa reduzida não registrada"),
+        }
+    }
+    if reduzidas > 0 {
+        tracing::info!(reduzidas, "capas grandes reduzidas");
+    }
+    reduzidas
+}
+
+fn tipo_da_extensao(nome: &str) -> &'static str {
+    match nome.rsplit('.').next() {
+        Some("jpg") => "image/jpeg",
+        Some("png") => "image/png",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("svg") => "image/svg+xml",
+        _ => "application/octet-stream",
+    }
 }
 
 /// A biblioteca atrás do `Mutex`. Se uma thread entrou em pânico segurando a trava, ela é
@@ -1188,6 +1275,67 @@ mod tests {
 
         assert!(bib.is_poisoned());
         assert!(travar(&bib).listar().unwrap().is_empty());
+    }
+
+    /// Uma capa grande (PNG de 1200 × 1800, ruído para não comprimir) como as que vinham dos EPUBs.
+    fn capa_grande() -> Capa {
+        let mut semente = 1u32;
+        let imagem = image::RgbImage::from_fn(1200, 1800, |_, _| {
+            semente = semente.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            image::Rgb([
+                (semente >> 24) as u8,
+                (semente >> 16) as u8,
+                (semente >> 8) as u8,
+            ])
+        });
+        let mut bytes = Vec::new();
+        imagem
+            .write_to(
+                &mut std::io::Cursor::new(&mut bytes),
+                image::ImageFormat::Png,
+            )
+            .unwrap();
+        Capa {
+            tipo_midia: "image/png".into(),
+            bytes,
+        }
+    }
+
+    #[test]
+    fn a_capa_gravada_e_uma_miniatura() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.pdf")).unwrap().into_livro();
+        let com_capa = bib.definir_capa(&livro.id, &capa_grande()).unwrap();
+        let caminho = com_capa.capa.unwrap();
+        assert_eq!(caminho.extension().unwrap(), "jpg");
+        let gravada = image::open(&caminho).unwrap();
+        assert_eq!((gravada.width(), gravada.height()), (480, 720));
+    }
+
+    #[test]
+    fn as_capas_grandes_de_antes_sao_reduzidas_uma_vez() {
+        let (_dir, bib) = nova();
+        let livro = bib.importar(&fixture("minimo.pdf")).unwrap().into_livro();
+        // Como ficava antes do M36: a capa do livro, inteira, no cache.
+        let grande = capa_grande();
+        let nome = format!("{}.png", livro.id);
+        fs::write(bib.dir_capas.join(&nome), &grande.bytes).unwrap();
+        bib.trocar_capa(&livro.id, &nome).unwrap();
+        let antiga = bib.dir_capas.join(&nome);
+        let bib = Mutex::new(bib);
+
+        assert_eq!(reduzir_capas_sem_segurar(&bib), 1);
+        let depois = travar(&bib)
+            .obter(&livro.id)
+            .unwrap()
+            .unwrap()
+            .capa
+            .unwrap();
+        assert_eq!(depois.extension().unwrap(), "jpg");
+        assert!(fs::metadata(&depois).unwrap().len() < grande.bytes.len() as u64 / 4);
+        assert!(!antiga.exists(), "o arquivo grande devia sair");
+        // Na segunda vez não há o que fazer.
+        assert_eq!(reduzir_capas_sem_segurar(&bib), 0);
     }
 
     #[test]

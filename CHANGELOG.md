@@ -9,6 +9,8 @@ estão na [página de versões](https://github.com/nunes90/folio/releases); os d
 - **Links do livro para a web** abrem no navegador, depois de uma confirmação que mostra o endereço. Antes, num EPUB
   o clique não fazia nada, e num PDF a janela do Folio ia para o site, sem caminho de volta ao livro.
 - **Notas de rodapé num balão** (EPUB): clicar no número da nota a mostra sem sair da página.
+- **Bibliotecas grandes mais rápidas**: as capas são guardadas como miniaturas, e a grade é desenhada aos poucos,
+  conforme a rolagem.
 - **Voltar para onde você estava** (Alt+←) depois de seguir um link, ir pelo índice, a um destaque ou pela busca.
 - Na "uma ideia por vez" do EPUB, o que vem antes do bloco atual também esmaece (em alguns livros, não esmaecia).
 - Ctrl+D com a voz lendo: a barra de destaque não fecha mais sozinha a partir do segundo uso.

@@ -16,6 +16,7 @@
   import { fade } from "svelte/transition";
   import { curva, duracao } from "../lib/animacao";
   import { tick, untrack } from "svelte";
+  import { LOTE, lotesAte, maisUmLote } from "../lib/lotes";
   import { sistema } from "../lib/ambiente.svelte";
   import Estantes from "./Estantes.svelte";
   import Icone from "./Icone.svelte";
@@ -133,7 +134,7 @@
     const id = menuDe;
     menuDe = null;
     const i = visiveis.findIndex((l) => l.id === id);
-    if (i >= 0) focar(i);
+    if (i >= 0) void focar(i);
   }
 
   // Clique fora do menu o fecha, sem mexer no foco.
@@ -225,10 +226,54 @@
       : [];
   }
 
-  function focar(indice: number) {
+  // A grade em lotes (M36, lib/lotes.ts): só os primeiros `limite` cartões existem; mais entram
+  // quando a rolagem chega perto do fim ou o teclado pede um livro adiante. Ao abrir, o bastante
+  // para o livro de onde se voltou estar lá (a transição da capa e o foco precisam do cartão).
+  let limite = $state(
+    lotesAte(untrack(() => (focarLivro ? visiveis.findIndex((l) => l.id === focarLivro) : 0))),
+  );
+  const naGrade = $derived(visiveis.slice(0, limite));
+  const restantes = $derived(Math.max(0, visiveis.length - limite));
+
+  // Outra busca ou outra estante: a grade recomeça do primeiro lote. (Só quando mudam: ao abrir,
+  // o limite já foi calculado para o livro de onde se voltou.)
+  let chaveDaGrade = untrack(() => `${filtro}\n${termo}`);
+  $effect(() => {
+    const chave = `${filtro}\n${termo}`;
+    if (chave === chaveDaGrade) return;
+    chaveDaGrade = chave;
+    limite = LOTE;
+  });
+
+  // O botão "Mostrar mais livros" no fim da grade: perto de aparecer na tela, já entra mais um lote
+  // (quem rola não chega a vê-lo); ele fica para o teclado e o leitor de tela.
+  let fimDaGrade = $state<HTMLElement>();
+  $effect(() => {
+    const el = fimDaGrade;
+    // Refeito a cada lote: se o fim continua perto da tela depois de um lote entrar (janela alta),
+    // o observador novo avisa de novo; um só não avisaria, porque nada mudou para ele.
+    void limite;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        if (entradas.some((e) => e.isIntersecting)) limite = maisUmLote(limite, visiveis.length);
+      },
+      { rootMargin: "1500px 0px" },
+    );
+    observador.observe(el);
+    return () => observador.disconnect();
+  });
+
+  async function focar(indice: number) {
+    const alvo = Math.max(0, Math.min(indice, visiveis.length - 1));
+    // Um livro além do que está desenhado (End, ↓ na última linha, voltar de um livro distante).
+    if (alvo >= limite) {
+      limite = lotesAte(alvo);
+      await tick();
+    }
     const todos = botoes();
     if (!todos.length) return;
-    ativo = Math.max(0, Math.min(indice, todos.length - 1));
+    ativo = Math.min(alvo, todos.length - 1);
     todos[ativo]!.focus();
   }
 
@@ -265,7 +310,7 @@
     const destino = destinos[e.key];
     if (!destino) return;
     e.preventDefault();
-    focar(destino());
+    void focar(destino());
   }
 
   // Ao voltar de um livro (ou remover um), o foco vai para o livro indicado. Só se o foco
@@ -282,7 +327,7 @@
       !atual || atual === document.body || (focarLivro !== livroJaFocado && lista.contains(atual));
     if (indice >= 0 && focoPerdido) {
       livroJaFocado = focarLivro;
-      untrack(() => focar(indice));
+      untrack(() => void focar(indice));
     }
   });
 
@@ -518,7 +563,7 @@
       <!-- As setas são tratadas no <ul> (delegação): o evento sobe do botão focado. -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <ul bind:this={lista} onkeydown={aoTeclar} aria-label="Livros" hidden={!visiveis.length}>
-        {#each visiveis as livro, i (livro.id)}
+        {#each naGrade as livro, i (livro.id)}
           {@const capa = urlDaCapa(livro)}
           <li>
             <button
@@ -602,6 +647,13 @@
           </li>
         {/each}
       </ul>
+      {#if restantes > 0}
+        <p class="mais-livros" bind:this={fimDaGrade}>
+          <button type="button" onclick={() => (limite = maisUmLote(limite, visiveis.length))}>
+            Mostrar mais livros ({restantes} {restantes === 1 ? "restante" : "restantes"})
+          </button>
+        </p>
+      {/if}
     {/if}
   </div>
 </main>
@@ -786,6 +838,12 @@
 
   ul[hidden] {
     display: none;
+  }
+
+  .mais-livros {
+    display: flex;
+    justify-content: center;
+    margin: 1.5rem 0;
   }
 
   .acoes button,
