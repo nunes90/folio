@@ -1613,6 +1613,7 @@
   {titulo}
   {anuncio}
   progresso={total ? pagina / total : 0}
+  voz={voz.estado}
   {onFechar}
 >
   {#snippet acoes()}

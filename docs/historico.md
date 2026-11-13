@@ -1066,3 +1066,11 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   do leitor à biblioteca 3.487 → 552 ms; refazer o layout 1.424 → 32 ms; End (a grade inteira) 2 s.
   `content-visibility: auto` nos cartões: layout 1.424 → 740 ms, rolagem quase igual, e a contenção cortaria o menu,
   o contorno de foco e a sombra que saem do cartão: descartado.
+- **M37 — descoberta** (branch `feat/m37-descoberta`): metas, foco com hora, "quanto falta" e boa parte do lado a lado
+  só existem na paleta, que só abria por Ctrl+K. `lib/paleta.svelte.ts` (`paleta.aberta`, `abrirPaleta()`: o estado
+  saiu do `App`). Biblioteca: botão discreto "Comandos" (ícone `comandos`, um prompt; `aria-keyshortcuts`), antes da
+  Aparência; na janela estreita, os três botões sem espaço entre si, para caberem ao lado do título a 360 px. Leitor:
+  item "Todos os comandos…" (Ctrl+K) no menu ⋯, não um botão na barra (a regra de densidade do M26a). Biblioteca
+  vazia: "Ctrl+K abre a lista de comandos e F1 mostra os atalhos de cada tela". Modo foco: a `MolduraLeitor` recebe
+  `voz` (o estado do `ControleVoz`) e o canto decorativo mostra "lendo em voz alta" ou "voz pausada" ao lado da
+  porcentagem (com as barras escondidas, não havia como saber).

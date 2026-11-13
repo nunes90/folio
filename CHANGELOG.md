@@ -9,6 +9,8 @@ estão na [página de versões](https://github.com/nunes90/folio/releases); os d
 - **Links do livro para a web** abrem no navegador, depois de uma confirmação que mostra o endereço. Antes, num EPUB
   o clique não fazia nada, e num PDF a janela do Folio ia para o site, sem caminho de volta ao livro.
 - **Notas de rodapé num balão** (EPUB): clicar no número da nota a mostra sem sair da página.
+- **Comandos à vista**: um botão "Comandos" na biblioteca e "Todos os comandos…" no menu ⋯ do leitor abrem a
+  paleta (antes, só Ctrl+K). No modo foco, o canto da tela diz se a voz está lendo ou pausada.
 - **Bibliotecas grandes mais rápidas**: as capas são guardadas como miniaturas, e a grade é desenhada aos poucos,
   conforme a rolagem.
 - **Voltar para onde você estava** (Alt+←) depois de seguir um link, ir pelo índice, a um destaque ou pela busca.

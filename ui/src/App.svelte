@@ -55,6 +55,7 @@
   import { transicionar } from "./lib/transicao";
   import type { ComandosDoLeitor } from "./lib/comandos";
   import { comandosDoApp } from "./lib/comandosDoApp";
+  import { abrirPaleta, paleta } from "./lib/paleta.svelte";
   import { abrirLinkConfirmado, cancelarLink, confirmacaoDeLink } from "./lib/linkExterno.svelte";
   import { SessaoDeLeitura } from "./lib/sessao.svelte";
 
@@ -73,7 +74,6 @@
   let importando = $state(false);
   let ajudaAberta = $state(false);
   let sobreAberto = $state(false);
-  let paletaAberta = $state(false);
   /** O que o leitor aberto oferece à paleta (índice, página, texto…); vazio na biblioteca. */
   let doLeitor = $state<ComandosDoLeitor>({ comandos: [] });
   /** A biblioteca na tela (para a paleta trocar de estante ou levar à busca). */
@@ -105,8 +105,7 @@
       ajudaAberta = true;
     } else if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k") {
       e.preventDefault();
-      // Não abre por cima de outro diálogo (confirmação, atalhos…).
-      if (!document.querySelector("dialog[open]")) paletaAberta = true;
+      abrirPaleta();
     }
   }
 
@@ -556,7 +555,7 @@
   }}
 />
 <Paleta
-  aberto={paletaAberta}
+  aberto={paleta.aberta}
   {comandos}
   porTermo={aberto ? doLeitor.porTermo : undefined}
   textoDoCampo={!aberto
@@ -565,7 +564,7 @@
       ? "Buscar comando ou número da página…"
       : "Buscar comando ou capítulo…"}
   onFechar={() => {
-    paletaAberta = false;
+    paleta.aberta = false;
     setTimeout(recuperarFoco);
   }}
 />

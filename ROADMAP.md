@@ -304,8 +304,9 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
   crate `image`), e as grandes que já estavam no cache são reduzidas uma vez, em segundo plano. A grade é desenhada
   em lotes de 120 cartões, conforme a rolagem. Medido com 5.000 livros: voltar do leitor à biblioteca, de 3,5 s para
   0,55 s. O `content-visibility` foi medido e descartado (só reduzia o layout pela metade, e corta o que sai do cartão).
-- [ ] **M37 — Descoberta** (9): botão "Comandos (Ctrl+K)" nas duas barras e no menu ⋯; texto de primeiro uso na
-  biblioteca vazia; indicador da voz no modo foco
+- [x] **M37 — Descoberta** (9): a paleta ganhou porta visível (botão "Comandos" na biblioteca; "Todos os comandos…"
+  no menu ⋯ do leitor, e não na barra, pela regra de densidade); a biblioteca vazia ensina Ctrl+K e F1; no modo foco,
+  o canto diz se a voz está lendo ou pausada.
 - [ ] **M38 — Cópia de segurança** (4): "Exportar a biblioteca…" (banco e preferências, com ou sem os livros) e
   "Restaurar…" com confirmação; formato versionado
 

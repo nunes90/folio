@@ -4,6 +4,7 @@ import { tick } from "svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sistema } from "../lib/ambiente.svelte";
 import type { Livro } from "../lib/biblioteca";
+import { paleta } from "../lib/paleta.svelte";
 import { PADRAO } from "../lib/preferencias.svelte";
 import Biblioteca from "./Biblioteca.svelte";
 
@@ -45,6 +46,21 @@ function itensDaGrade(): HTMLElement[] {
 }
 
 describe("Biblioteca", () => {
+  it("o botão Comandos abre a paleta (a porta visível do Ctrl+K)", async () => {
+    render(Biblioteca, { livros, ...semAcao });
+    paleta.aberta = false;
+    await fireEvent.click(screen.getByRole("button", { name: "Comandos" }));
+    expect(paleta.aberta).toBe(true);
+    paleta.aberta = false;
+  });
+
+  it("vazia, ensina as duas teclas que levam ao resto", () => {
+    render(Biblioteca, { livros: [], ...semAcao });
+    const vazia = screen.getByRole("region", { name: "Sua biblioteca está vazia" });
+    expect(vazia.textContent).toMatch(/Ctrl\s*\+\s*K abre a lista de comandos/);
+    expect(vazia.textContent).toMatch(/F1 mostra os atalhos/);
+  });
+
   it("lista os livros com título, autor e progresso no nome do botão", () => {
     render(Biblioteca, { livros, ...semAcao });
     expect(itensDaGrade()).toHaveLength(2);

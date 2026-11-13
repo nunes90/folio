@@ -7,6 +7,8 @@
   import { escala } from "../lib/escala.svelte";
   import Icone from "./Icone.svelte";
   import InfoDoRodape from "./InfoDoRodape.svelte";
+  import { abrirPaleta } from "../lib/paleta.svelte";
+  import type { EstadoVoz } from "../lib/voz";
   import PainelLateral from "./PainelLateral.svelte";
   import MenuLeitor, { type ItemMenuLeitor } from "./MenuLeitor.svelte";
   import ResumoDaMeta from "./ResumoDaMeta.svelte";
@@ -29,6 +31,7 @@
     titulo,
     anuncio = "",
     progresso = 0,
+    voz = "parado",
     indiceAberto = $bindable(true),
     aparenciaAberta = $bindable(false),
     modoFoco = $bindable(false),
@@ -55,6 +58,8 @@
     anuncio?: string;
     /** Fração lida (0 a 1), mostrada numa barra fina sob o cabeçalho. */
     progresso?: number;
+    /** A leitura em voz alta, para o canto da tela no modo foco (com as barras escondidas). */
+    voz?: EstadoVoz;
     indiceAberto?: boolean;
     aparenciaAberta?: boolean;
     /** Modo foco: só o livro na tela; as barras aparecem por cima quando chamadas. */
@@ -134,6 +139,14 @@
         atalho: "Control+Shift+L",
         executar: onAlternarLado,
       });
+    // A porta visível da paleta (M37): metas, foco com hora, "quanto falta" e outros só existem nela.
+    itens.push({
+      id: "comandos",
+      nome: "Todos os comandos…",
+      teclas: "Ctrl+K",
+      atalho: "Control+K",
+      executar: abrirPaleta,
+    });
     return itens;
   });
 
@@ -605,7 +618,7 @@
     <!-- Decorativo: a porcentagem lida continua no rodapé, como texto; a saída planejada foi
          anunciada ao entrar. -->
     <span class="progresso-canto" aria-hidden="true">
-      {Math.round(progresso * 100)}%{#if saidaDoFoco?.meta}&ensp;·&ensp;foco: {saidaDoFoco.texto}{/if}
+      {Math.round(progresso * 100)}%{#if saidaDoFoco?.meta}&ensp;·&ensp;foco: {saidaDoFoco.texto}{/if}{#if voz !== "parado"}&ensp;·&ensp;{voz === "pausado" ? "voz pausada" : "lendo em voz alta"}{/if}
     </span>
   {/if}
 

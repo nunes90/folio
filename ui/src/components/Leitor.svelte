@@ -1461,6 +1461,7 @@
   {titulo}
   {anuncio}
   {progresso}
+  voz={voz.estado}
   {onFechar}
 >
   {#snippet acoes()}

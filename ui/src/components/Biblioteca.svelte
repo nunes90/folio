@@ -17,6 +17,7 @@
   import { curva, duracao } from "../lib/animacao";
   import { tick, untrack } from "svelte";
   import { LOTE, lotesAte, maisUmLote } from "../lib/lotes";
+  import { abrirPaleta } from "../lib/paleta.svelte";
   import { sistema } from "../lib/ambiente.svelte";
   import Estantes from "./Estantes.svelte";
   import Icone from "./Icone.svelte";
@@ -459,6 +460,10 @@
         </search>
       {/if}
       <div class="acoes">
+        <!-- A porta visível da paleta (M37): o atalho sozinho escondia o que só existe nela. -->
+        <button type="button" class="discreto" aria-keyshortcuts="Control+K" title="Comandos (Ctrl+K)" onclick={abrirPaleta}>
+          <Icone nome="comandos" /><span class="rotulo">Comandos</span>
+        </button>
         {#if preferencias}
           <button
             type="button"
@@ -498,6 +503,11 @@
         <h2 id="titulo-vazia">Sua biblioteca está vazia</h2>
         <p>Importe um EPUB ou PDF para começar. O arquivo original fica onde está: a biblioteca guarda uma cópia.</p>
         {@render botaoImportar()}
+        <!-- Primeiro uso (M37): as duas teclas que levam a todo o resto. -->
+        <p class="dica-vazia">
+          Tudo no Folio funciona pelo teclado: <kbd>Ctrl</kbd>+<kbd>K</kbd> abre a lista de comandos e
+          <kbd>F1</kbd> mostra os atalhos de cada tela.
+        </p>
       </section>
     {:else}
       <p class="so-leitor-de-tela" role="status">{anuncioBusca}</p>
@@ -683,6 +693,13 @@
 
   .estreita header .acoes {
     margin-inline-start: auto;
+    /* Três botões só com ícone (M37: entrou o Comandos): juntos, para caberem ao lado do título
+       numa janela de 360 px. */
+    gap: 0;
+  }
+
+  .estreita header {
+    column-gap: 0.25rem;
   }
 
   /* Barra lateral como painel flutuante (igual ao PainelLateral): margem em relação à janela,
@@ -838,6 +855,12 @@
 
   ul[hidden] {
     display: none;
+  }
+
+  .dica-vazia {
+    margin-block-start: 1.5rem;
+    color: var(--suave);
+    font-size: 0.875rem;
   }
 
   .mais-livros {

@@ -28,6 +28,8 @@
     revisar: "M4.5 10a8 8 0 0114.3-3.2M19.5 14a8 8 0 01-14.3 3.2M19 3.5v4h-4M5 20.5v-4h4",
     mais: "M12 5v14M5 12h14",
     buscar: "M11 18a7 7 0 100-14 7 7 0 000 14zM20 20l-4-4",
+    // Um prompt: a paleta de comandos.
+    comandos: "M5 7l5 5-5 5M13 17h6",
     grade: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
     marcador: "M6 4h12v16l-6-4-6 4z",
     lido: "M5 12.5l4.5 4.5L19 7",
