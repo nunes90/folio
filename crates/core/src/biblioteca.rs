@@ -303,6 +303,8 @@ pub(crate) type Resultado<T> = Result<T, ErroBiblioteca>;
 /// Biblioteca`) usam estes campos; quem usa o crate, não.
 pub struct Biblioteca {
     pub(crate) conexao: Connection,
+    /// A pasta de dados (onde ficam o banco e a pasta dos livros).
+    pub(crate) dir_dados: PathBuf,
     dir_livros: PathBuf,
     dir_capas: PathBuf,
     /// Fonte do "agora"; trocável nos testes.
@@ -323,19 +325,10 @@ impl Biblioteca {
         for dir in [&dir_livros, capas] {
             criar_dir(dir)?;
         }
-        let mut conexao = Connection::open(dados.join(ARQUIVO_BANCO))?;
-        conexao.pragma_update(None, "foreign_keys", true)?;
-        conexao.pragma_update(None, "journal_mode", "WAL")?;
-        // Em WAL, NORMAL não corrompe o banco numa queda de energia (no máximo, as últimas
-        // gravações se perdem) e poupa um fsync por gravação: o progresso é gravado a cada página.
-        conexao.pragma_update(None, "synchronous", "NORMAL")?;
-        // O arquivo -wal não fica maior que isto depois de incorporado ao banco.
-        conexao.pragma_update(None, "journal_size_limit", 1024 * 1024)?;
-        // Outro processo do app com o banco aberto (dois "Abrir com"): esperar em vez de falhar.
-        conexao.busy_timeout(Duration::from_secs(5))?;
-        migrar(&mut conexao)?;
+        let conexao = conectar(&dados.join(ARQUIVO_BANCO))?;
         let biblioteca = Self {
             conexao,
+            dir_dados: dados.to_path_buf(),
             dir_livros,
             dir_capas: capas.to_path_buf(),
             relogio: agora,
@@ -348,6 +341,73 @@ impl Biblioteca {
             Err(erro) => tracing::warn!(%erro, "não foi possível conferir as capas"),
         }
         Ok(biblioteca)
+    }
+
+    pub(crate) fn dir_livros(&self) -> &Path {
+        &self.dir_livros
+    }
+
+    /// Os nomes dos arquivos de todos os livros (inclusive os da lixeira), na pasta dos livros.
+    pub(crate) fn arquivos_dos_livros(&self) -> Resultado<Vec<String>> {
+        let mut consulta = self
+            .conexao
+            .prepare("SELECT arquivo FROM livros ORDER BY id")?;
+        let nomes = consulta
+            .query_map([], |linha| linha.get(0))?
+            .collect::<Result<_, _>>()?;
+        Ok(nomes)
+    }
+
+    pub(crate) fn total_de_livros(&self) -> Resultado<usize> {
+        let n: i64 = self
+            .conexao
+            .query_row("SELECT COUNT(*) FROM livros", [], |l| l.get(0))?;
+        Ok(n as usize)
+    }
+
+    /// Troca o banco pelo arquivo `novo` (restaurar uma cópia de segurança, ver `copia.rs`): fecha
+    /// a conexão, põe o arquivo no lugar e abre de novo (o que roda as migrações que faltarem).
+    /// Se o banco novo não abrir, o anterior volta ao lugar: a biblioteca não fica sem banco.
+    pub(crate) fn trocar_banco(&mut self, novo: &Path) -> Resultado<()> {
+        let banco = self.dir_dados.join(ARQUIVO_BANCO);
+        let anterior = banco.with_extension("anterior");
+        let io = |caminho: &Path| {
+            let caminho = caminho.to_path_buf();
+            move |fonte| ErroBiblioteca::Io { caminho, fonte }
+        };
+        // Uma conexão em memória no lugar da de verdade: ao sair, a antiga incorpora o -wal e fecha.
+        drop(std::mem::replace(
+            &mut self.conexao,
+            Connection::open_in_memory()?,
+        ));
+        for sufixo in ["-wal", "-shm"] {
+            let _ = fs::remove_file(self.dir_dados.join(format!("{ARQUIVO_BANCO}{sufixo}")));
+        }
+        fs::rename(&banco, &anterior).map_err(io(&banco))?;
+        let aberto = fs::rename(novo, &banco)
+            .map_err(io(&banco))
+            .and_then(|()| conectar(&banco));
+        match aberto {
+            Ok(conexao) => {
+                self.conexao = conexao;
+                let _ = fs::remove_file(&anterior);
+                if let Err(erro) = self.conferir_capas() {
+                    tracing::warn!(%erro, "não foi possível conferir as capas");
+                }
+                Ok(())
+            }
+            Err(erro) => {
+                // Volta ao banco de antes.
+                let _ = fs::remove_file(&banco);
+                for sufixo in ["-wal", "-shm"] {
+                    let _ =
+                        fs::remove_file(self.dir_dados.join(format!("{ARQUIVO_BANCO}{sufixo}")));
+                }
+                fs::rename(&anterior, &banco).map_err(io(&banco))?;
+                self.conexao = conectar(&banco)?;
+                Err(erro)
+            }
+        }
     }
 
     /// Conserta as capas que sumiram do cache; devolve quantas. EPUB: a capa sai de novo da
@@ -428,6 +488,7 @@ impl Biblioteca {
     pub fn importar(&self, origem: &Path) -> Resultado<Importado> {
         let lido = ler_para_importar(origem)?;
         if let Some(existente) = self.ja_importado(&lido.id)? {
+            repor_arquivo(&self.pastas(), &lido)?;
             return Ok(existente);
         }
         let copiado = copiar(&self.pastas(), lido)?;
@@ -942,6 +1003,27 @@ const SELECT_LIVRO: &str = "
            (SELECT COUNT(*) FROM destaques d WHERE d.livro_id = l.id) AS destaques
     FROM livros l LEFT JOIN progresso p ON p.livro_id = l.id";
 
+/// A versão do esquema que este código cria (`PRAGMA user_version` depois das migrações).
+pub(crate) const fn versao_do_esquema() -> i64 {
+    MIGRACOES.len() as i64
+}
+
+/// Abre o banco em `caminho` com os ajustes do app e as migrações em dia.
+pub(crate) fn conectar(caminho: &Path) -> Resultado<Connection> {
+    let mut conexao = Connection::open(caminho)?;
+    conexao.pragma_update(None, "foreign_keys", true)?;
+    conexao.pragma_update(None, "journal_mode", "WAL")?;
+    // Em WAL, NORMAL não corrompe o banco numa queda de energia (no máximo, as últimas
+    // gravações se perdem) e poupa um fsync por gravação: o progresso é gravado a cada página.
+    conexao.pragma_update(None, "synchronous", "NORMAL")?;
+    // O arquivo -wal não fica maior que isto depois de incorporado ao banco.
+    conexao.pragma_update(None, "journal_size_limit", 1024 * 1024)?;
+    // Outro processo do app com o banco aberto (dois "Abrir com"): esperar em vez de falhar.
+    conexao.busy_timeout(Duration::from_secs(5))?;
+    migrar(&mut conexao)?;
+    Ok(conexao)
+}
+
 fn migrar(conexao: &mut Connection) -> rusqlite::Result<()> {
     let versao: i64 = conexao.pragma_query_value(None, "user_version", |l| l.get(0))?;
     let versao = usize::try_from(versao).unwrap_or(0);
@@ -1016,6 +1098,19 @@ fn ler_para_importar(origem: &Path) -> Resultado<Lido> {
         livro,
         id,
     })
+}
+
+/// O livro já está na biblioteca, mas a cópia do arquivo pode ter sumido (uma cópia de segurança
+/// restaurada só com os dados): importar o arquivo de novo a põe de volta.
+fn repor_arquivo(pastas: &Pastas, lido: &Lido) -> Resultado<()> {
+    let arquivo = pastas
+        .livros
+        .join(format!("{}.{}", lido.id, lido.livro.formato.como_texto()));
+    if arquivo.exists() {
+        return Ok(());
+    }
+    tracing::info!(id = %lido.id, "arquivo do livro reposto ao importar");
+    gravar(&arquivo, &lido.livro.bytes)
 }
 
 /// Lê os metadados e grava a cópia do livro e a capa. Não toca na biblioteca.
@@ -1134,10 +1229,13 @@ pub fn importar_sem_segurar(biblioteca: &Mutex<Biblioteca>, origem: &Path) -> Re
     let lido = ler_para_importar(origem)?;
     let pastas = {
         let bib = travar(biblioteca);
+        let pastas = bib.pastas();
         if let Some(existente) = bib.ja_importado(&lido.id)? {
+            drop(bib);
+            repor_arquivo(&pastas, &lido)?;
             return Ok(existente);
         }
-        bib.pastas()
+        pastas
     };
     let copiado = copiar(&pastas, lido)?;
     travar(biblioteca).registrar(&copiado)
@@ -1299,6 +1397,21 @@ mod tests {
             tipo_midia: "image/png".into(),
             bytes,
         }
+    }
+
+    #[test]
+    fn importar_de_novo_repoe_o_arquivo_que_sumiu() {
+        let (_dir, bib) = nova();
+        let origem = fixture("minimo.epub");
+        let livro = bib.importar(&origem).unwrap().into_livro();
+        fs::remove_file(&livro.arquivo).unwrap();
+
+        let de_novo = bib.importar(&origem).unwrap();
+        assert!(matches!(de_novo, Importado::JaExistia(_)), "{de_novo:?}");
+        assert_eq!(
+            fs::read(&livro.arquivo).unwrap(),
+            fs::read(&origem).unwrap()
+        );
     }
 
     #[test]

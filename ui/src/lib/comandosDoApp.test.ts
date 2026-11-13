@@ -25,6 +25,8 @@ function acoes(): AcoesDoApp {
     mostrar: vi.fn(),
     novaColecao: vi.fn(),
     esvaziarLixeira: vi.fn(),
+    exportarBiblioteca: vi.fn(),
+    restaurarCopia: vi.fn(),
     voltarABiblioteca: vi.fn(),
     mudarPreferencias: vi.fn(),
     mostrarAtalhos: vi.fn(),
@@ -65,6 +67,19 @@ describe("comandosDoApp", () => {
     expect(lista).not.toContain("livro-a");
     // O que vale nas duas telas continua.
     expect(lista).toEqual(expect.arrayContaining(["tema-escuro", "movimento-reduzido", "atalhos", "sobre"]));
+  });
+
+  it("a cópia de segurança: exportar (com ou sem os livros) e restaurar, só na biblioteca", () => {
+    const a = acoes();
+    const lista = comandosDoApp(estado(), a);
+    const rodar = (id: string) => lista.find((c) => c.id === id)!.executar();
+    rodar("exportar-dados");
+    rodar("exportar-tudo");
+    rodar("restaurar-copia");
+    expect(a.exportarBiblioteca).toHaveBeenNthCalledWith(1, false);
+    expect(a.exportarBiblioteca).toHaveBeenNthCalledWith(2, true);
+    expect(a.restaurarCopia).toHaveBeenCalledTimes(1);
+    expect(ids(estado({ lendo: true }))).not.toContain("restaurar-copia");
   });
 
   it("marca o tema e a animação atuais", () => {

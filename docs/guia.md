@@ -124,4 +124,16 @@ principal); voz, meta e progresso ficam só no principal.
 | Voz natural (o download) | `~/.local/share/io.github.nunes90.folio/vozes` |
 | Registros (logs) | `~/.local/state/folio/logs` |
 
-Nada sai do seu computador. A internet só é usada quando você baixa a voz natural; um link do livro para a web abre no seu navegador, e só se você confirmar. Para fazer uma cópia de segurança, copie a primeira pasta com o Folio fechado.
+Nada sai do seu computador. A internet só é usada quando você baixa a voz natural; um link do livro para a web abre no seu navegador, e só se você confirmar. 
+
+**Cópia de segurança.** Na paleta (`Ctrl+K`), na biblioteca:
+
+- **Exportar a biblioteca: só os dados…** grava um arquivo pequeno com o progresso, os destaques e notas, as coleções,
+  as sessões e as preferências.
+- **Exportar a biblioteca: com os livros…** leva também os arquivos dos livros (o arquivo fica do tamanho deles).
+- **Restaurar uma cópia de segurança…** mostra a data e o conteúdo da cópia e pede confirmação: a biblioteca passa a
+  ser a da cópia. A que estava antes fica guardada na pasta de dados, em `copias/`, e pode ser restaurada do mesmo
+  jeito. Se a cópia era só dos dados, os livros aparecem mas só abrem depois de importados de novo (o progresso e os
+  destaques já estarão lá).
+
+O arquivo `.folio-backup` é um ZIP comum: abre em qualquer programa de ZIP.

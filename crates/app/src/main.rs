@@ -204,6 +204,9 @@ fn main() -> anyhow::Result<()> {
             voz_natural::ouvir_amostra_voz,
             comandos::caminho_inicial,
             comandos::abrir_no_navegador,
+            comandos::exportar_copia,
+            comandos::ler_copia,
+            comandos::restaurar_copia,
             comandos::escala_texto
         ])
         .run(tauri::generate_context!())

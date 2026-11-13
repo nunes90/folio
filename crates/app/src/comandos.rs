@@ -549,3 +549,32 @@ pub fn abrir_no_navegador(app: tauri::AppHandle, url: String) -> Result<(), Stri
             "Não foi possível abrir o navegador.".to_string()
         })
 }
+
+/// Exporta a biblioteca para um arquivo `.folio-backup` (M38); `com_livros` leva os arquivos junto.
+#[tauri::command(async)]
+pub fn exportar_copia(
+    bib: State<'_, EstadoBiblioteca>,
+    caminho: PathBuf,
+    com_livros: bool,
+) -> Result<folio_core::copia::Manifesto, String> {
+    folio_core::copia::exportar(&bib, &caminho, com_livros).map_err(|e| registrar(&e))
+}
+
+/// O que uma cópia de segurança diz de si, para a confirmação antes de restaurar.
+#[tauri::command(async)]
+pub fn ler_copia(caminho: PathBuf) -> Result<folio_core::copia::Manifesto, String> {
+    folio_core::copia::ler_manifesto(&caminho).map_err(|e| registrar(&e))
+}
+
+/// Restaura uma cópia: a biblioteca passa a ser a dela (a atual é guardada antes). As preferências
+/// vêm junto, então a voz natural é reconfigurada.
+#[tauri::command(async)]
+pub fn restaurar_copia(
+    bib: State<'_, EstadoBiblioteca>,
+    voz: State<'_, EstadoVoz>,
+    caminho: PathBuf,
+) -> Result<folio_core::copia::Restaurada, String> {
+    let restaurada = folio_core::copia::restaurar(&bib, &caminho).map_err(|e| registrar(&e))?;
+    voz.aplicar(&travar(&bib).preferencias_leitura().unwrap_or_default());
+    Ok(restaurada)
+}

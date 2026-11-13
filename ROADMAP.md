@@ -307,8 +307,11 @@ interface nova; a segunda paga a dívida dos leitores; a terceira é acabamento 
 - [x] **M37 — Descoberta** (9): a paleta ganhou porta visível (botão "Comandos" na biblioteca; "Todos os comandos…"
   no menu ⋯ do leitor, e não na barra, pela regra de densidade); a biblioteca vazia ensina Ctrl+K e F1; no modo foco,
   o canto diz se a voz está lendo ou pausada.
-- [ ] **M38 — Cópia de segurança** (4): "Exportar a biblioteca…" (banco e preferências, com ou sem os livros) e
-  "Restaurar…" com confirmação; formato versionado
+- [x] **M38 — Cópia de segurança** (4): "Exportar a biblioteca…" (só os dados, ou com os arquivos dos livros) para um
+  `.folio-backup` (um ZIP com manifesto versionado) e "Restaurar uma cópia de segurança…", que substitui a biblioteca
+  depois de confirmar e guarda a anterior para desfazer.
+
+**v1.3 completa** (M34–M38).
 
 ### v1.4 — acabamento e produto
 

@@ -49,13 +49,24 @@
   import { avisar, avisarSeDemorar, mensagensDaImportacao } from "./lib/avisos.svelte";
   import { ouvirArraste } from "./lib/arrastar";
   import { movimentoReduzido, sistema, temaEfetivo } from "./lib/ambiente.svelte";
-  import { atualizarPreferencias, preferencias } from "./lib/preferencias.svelte";
+  import { carregarPreferencias, atualizarPreferencias, preferencias } from "./lib/preferencias.svelte";
   import { aplicarTema, resolverTema } from "./lib/temas";
   import { aplicarAnimacao } from "./lib/animacao";
   import { transicionar } from "./lib/transicao";
   import type { ComandosDoLeitor } from "./lib/comandos";
   import { comandosDoApp } from "./lib/comandosDoApp";
   import { abrirPaleta, paleta } from "./lib/paleta.svelte";
+  import {
+    dataDaCopia,
+    escolherCopia,
+    escolherDestino,
+    exportarBiblioteca,
+    restaurarCopia,
+    textoDaCopia,
+    textoDaExportacao,
+    textoDaRestauracao,
+    type Manifesto,
+  } from "./lib/copia";
   import { abrirLinkConfirmado, cancelarLink, confirmacaoDeLink } from "./lib/linkExterno.svelte";
   import { SessaoDeLeitura } from "./lib/sessao.svelte";
 
@@ -127,6 +138,8 @@
         mostrar: (filtro) => void biblioteca?.mostrar(filtro),
         novaColecao: () => (pedirNome = { colecao: null, erro: null }),
         esvaziarLixeira: () => (confirmar = { tipo: "esvaziar" }),
+        exportarBiblioteca: (comLivros) => void exportarCopia(comLivros),
+        restaurarCopia: () => void pedirRestauracao(),
         voltarABiblioteca: () => void fechar(),
         mudarPreferencias: atualizarPreferencias,
         mostrarAtalhos: () => (ajudaAberta = true),
@@ -208,6 +221,48 @@
     // Com outro livro aberto, ele é fechado primeiro (a sessão dele se encerra).
     if (aberto) await fechar();
     await abrir(livro);
+  }
+
+  // Cópia de segurança (M38).
+  /** A cópia escolhida para restaurar, à espera da confirmação. */
+  let copiaARestaurar = $state<{ caminho: string; manifesto: Manifesto } | null>(null);
+
+  async function exportarCopia(comLivros: boolean) {
+    try {
+      const caminho = await escolherDestino();
+      if (!caminho) return;
+      const manifesto = await avisarSeDemorar(
+        exportarBiblioteca(caminho, comLivros),
+        "Exportando a biblioteca…",
+      );
+      avisar(textoDaExportacao(manifesto));
+    } catch (e) {
+      avisar(`Não foi possível exportar a biblioteca: ${e}`, "erro");
+    }
+  }
+
+  async function pedirRestauracao() {
+    try {
+      copiaARestaurar = await escolherCopia();
+    } catch (e) {
+      avisar(`Não foi possível ler a cópia de segurança: ${e}`, "erro");
+    }
+  }
+
+  async function restaurarConfirmada() {
+    const copia = copiaARestaurar;
+    copiaARestaurar = null;
+    if (!copia) return;
+    try {
+      const restaurada = await avisarSeDemorar(restaurarCopia(copia.caminho), "Restaurando a biblioteca…");
+      // O banco é outro: as preferências, as listas e as capas de PDF vêm dele.
+      await carregarPreferencias();
+      await recarregar();
+      gerarCapasDePdfs();
+      avisar(textoDaRestauracao(restaurada), restaurada.semArquivo ? "erro" : "sucesso");
+    } catch (e) {
+      avisar(`Não foi possível restaurar a cópia: ${e}`, "erro");
+    }
   }
 
   async function recarregar() {
@@ -569,6 +624,22 @@
   }}
 />
 <Avisos />
+
+<!-- Restaurar uma cópia de segurança (M38): substitui a biblioteca, então confirma. -->
+<Confirmacao
+  aberto={copiaARestaurar !== null}
+  titulo={copiaARestaurar ? `Restaurar a cópia de ${dataDaCopia(copiaARestaurar.manifesto)}?` : ""}
+  rotuloConfirmar="Restaurar"
+  onConfirmar={() => void restaurarConfirmada()}
+  onCancelar={() => (copiaARestaurar = null)}
+>
+  <p>{copiaARestaurar ? textoDaCopia(copiaARestaurar.manifesto) : ""}</p>
+  <p>
+    A biblioteca atual será <strong>substituída</strong> pela da cópia. Antes, o Folio guarda a atual
+    (o progresso, os destaques, as coleções), para você poder desfazer; os arquivos dos seus livros
+    não são apagados.
+  </p>
+</Confirmacao>
 
 <!-- Um link do livro para fora dele (M35c): o leitor pede, aqui se confirma. -->
 <Confirmacao

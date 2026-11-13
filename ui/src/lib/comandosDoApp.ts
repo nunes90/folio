@@ -48,6 +48,9 @@ export interface AcoesDoApp {
   mostrar(filtro: Filtro): void;
   novaColecao(): void;
   esvaziarLixeira(): void;
+  /** Cópia de segurança (M38): exportar (com ou sem os arquivos dos livros) e restaurar. */
+  exportarBiblioteca(comLivros: boolean): void;
+  restaurarCopia(): void;
   voltarABiblioteca(): void;
   mudarPreferencias(mudancas: Partial<Preferencias>): void;
   mostrarAtalhos(): void;
@@ -100,6 +103,31 @@ export function comandosDoApp(estado: EstadoDoApp, acoes: AcoesDoApp): Comando[]
         grupo: "Lixeira",
         executar: acoes.esvaziarLixeira,
       });
+    lista.push(
+      {
+        id: "exportar-dados",
+        titulo: "Exportar a biblioteca: só os dados…",
+        grupo: "Cópia de segurança",
+        dica: "progresso, destaques, coleções e preferências",
+        palavras: "backup cópia de segurança salvar",
+        executar: () => acoes.exportarBiblioteca(false),
+      },
+      {
+        id: "exportar-tudo",
+        titulo: "Exportar a biblioteca: com os livros…",
+        grupo: "Cópia de segurança",
+        dica: "os dados e os arquivos dos livros",
+        palavras: "backup cópia de segurança salvar",
+        executar: () => acoes.exportarBiblioteca(true),
+      },
+      {
+        id: "restaurar-copia",
+        titulo: "Restaurar uma cópia de segurança…",
+        grupo: "Cópia de segurança",
+        palavras: "backup importar recuperar",
+        executar: acoes.restaurarCopia,
+      },
+    );
   } else {
     lista.push({
       id: "voltar",
