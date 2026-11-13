@@ -4,30 +4,38 @@ O que mudou para quem usa o app, da versão mais nova para a mais antiga. As not
 estão na [página de versões](https://github.com/nunes90/folio/releases); os detalhes de implementação, em
 [`docs/historico.md`](docs/historico.md).
 
-## Em desenvolvimento (1.3)
+## 1.3.0 — nov/2026
 
-- **Links do livro para a web** abrem no navegador, depois de uma confirmação que mostra o endereço. Antes, num EPUB
-  o clique não fazia nada, e num PDF a janela do Folio ia para o site, sem caminho de volta ao livro.
-- **Notas de rodapé num balão** (EPUB): clicar no número da nota a mostra sem sair da página.
-- **Cópia de segurança**: na paleta, "Exportar a biblioteca" (só os dados, ou com os livros) grava um arquivo
-  `.folio-backup`, e "Restaurar uma cópia de segurança" traz tudo de volta (a biblioteca atual é guardada antes).
-- **Comandos à vista**: um botão "Comandos" na biblioteca e "Todos os comandos…" no menu ⋯ do leitor abrem a
-  paleta (antes, só Ctrl+K). No modo foco, o canto da tela diz se a voz está lendo ou pausada.
-- **Bibliotecas grandes mais rápidas**: as capas são guardadas como miniaturas, e a grade é desenhada aos poucos,
-  conforme a rolagem.
-- **Voltar para onde você estava** (Alt+←) depois de seguir um link, ir pelo índice, a um destaque ou pela busca.
+A 1.2 não chegou a ser publicada: esta versão traz o que era dela e o que veio depois.
+
+### Correções importantes
+- **Links num PDF não levam mais a janela embora.** Clicar num link para a web dentro de um PDF fazia a janela do
+  Folio ir para o site, sem caminho de volta ao livro. Agora, nos dois formatos, o link mostra o endereço e pede
+  confirmação, e abre no navegador do sistema. A janela do app nunca sai do livro.
+- **A janela não para mais durante a importação** de livros grandes.
 - Na "uma ideia por vez" do EPUB, o que vem antes do bloco atual também esmaece (em alguns livros, não esmaecia).
 - Ctrl+D com a voz lendo: a barra de destaque não fecha mais sozinha a partir do segundo uso.
-- O texto da meta da sessão não quebra mais em duas linhas no rodapé.
 
-## 1.2 (sem versão publicada ainda)
-
+### Ler
 - **Busca no texto do EPUB** (Ctrl+F), igual à do PDF: ocorrências contornadas, a atual realçada, Enter e
   Shift+Enter para andar por elas.
+- **Notas de rodapé num balão** (EPUB): clicar no número da nota a mostra sem sair da página.
+- **Voltar para onde você estava** (Alt+←) depois de seguir um link, ir pelo índice, a um destaque ou pela busca.
+- No modo foco, o canto da tela diz se a voz está lendo ou pausada.
+
+### Biblioteca
+- **Cópia de segurança**: na paleta, "Exportar a biblioteca" (só os dados, ou com os livros) grava um arquivo
+  `.folio-backup`, e "Restaurar uma cópia de segurança" traz tudo de volta (a biblioteca atual é guardada antes).
 - **Uma janela só**: abrir um segundo livro pelo gerenciador de arquivos usa o Folio que já está aberto.
-- **A janela não para mais durante a importação** de livros grandes.
+- **Bibliotecas grandes mais rápidas**: as capas são guardadas como miniaturas, e a grade é desenhada aos poucos,
+  conforme a rolagem.
+- **Comandos à vista**: um botão "Comandos" na biblioteca e "Todos os comandos…" no menu ⋯ do leitor abrem a
+  paleta (antes, só Ctrl+K).
+
+### Segurança
 - Um livro não consegue rodar código nem acessar a rede, e agora um teste garante isso a cada mudança.
 - SQLite 3.54 (corrige o CVE-2026-119375).
+- A Release traz o `SHA256SUMS` do AppImage e a atestação de que ele foi gerado por este repositório.
 
 ## 1.1.1 — nov/2026
 

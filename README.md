@@ -3,7 +3,7 @@
 Leitor de livros **EPUB e PDF** para Linux, feito para ser lido do seu jeito: só com o teclado, em voz alta,
 com a letra e as cores que você escolher. Tudo fica no seu computador: sem conta, sem nuvem, sem telemetria.
 
-> **Estado:** estável (1.1). O que mudou em cada versão está no [CHANGELOG](CHANGELOG.md).
+> **Estado:** estável (1.3). O que mudou em cada versão está no [CHANGELOG](CHANGELOG.md).
 
 ## O que ele faz
 
