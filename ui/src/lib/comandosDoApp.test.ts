@@ -69,7 +69,7 @@ describe("comandosDoApp", () => {
     expect(lista).toEqual(expect.arrayContaining(["tema-escuro", "movimento-reduzido", "atalhos", "sobre"]));
   });
 
-  it("a cópia de segurança: exportar (com ou sem os livros) e restaurar, só na biblioteca", () => {
+  it("a cópia de segurança: exportar vale nas duas telas; restaurar, só na biblioteca", () => {
     const a = acoes();
     const lista = comandosDoApp(estado(), a);
     const rodar = (id: string) => lista.find((c) => c.id === id)!.executar();
@@ -79,7 +79,9 @@ describe("comandosDoApp", () => {
     expect(a.exportarBiblioteca).toHaveBeenNthCalledWith(1, false);
     expect(a.exportarBiblioteca).toHaveBeenNthCalledWith(2, true);
     expect(a.restaurarCopia).toHaveBeenCalledTimes(1);
-    expect(ids(estado({ lendo: true }))).not.toContain("restaurar-copia");
+    const lendo = ids(estado({ lendo: true }));
+    expect(lendo).toEqual(expect.arrayContaining(["exportar-dados", "exportar-tudo"]));
+    expect(lendo).not.toContain("restaurar-copia");
   });
 
   it("marca o tema e a animação atuais", () => {

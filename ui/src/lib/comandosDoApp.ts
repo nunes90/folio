@@ -103,31 +103,13 @@ export function comandosDoApp(estado: EstadoDoApp, acoes: AcoesDoApp): Comando[]
         grupo: "Lixeira",
         executar: acoes.esvaziarLixeira,
       });
-    lista.push(
-      {
-        id: "exportar-dados",
-        titulo: "Exportar a biblioteca: só os dados…",
-        grupo: "Cópia de segurança",
-        dica: "progresso, destaques, coleções e preferências",
-        palavras: "backup cópia de segurança salvar",
-        executar: () => acoes.exportarBiblioteca(false),
-      },
-      {
-        id: "exportar-tudo",
-        titulo: "Exportar a biblioteca: com os livros…",
-        grupo: "Cópia de segurança",
-        dica: "os dados e os arquivos dos livros",
-        palavras: "backup cópia de segurança salvar",
-        executar: () => acoes.exportarBiblioteca(true),
-      },
-      {
-        id: "restaurar-copia",
-        titulo: "Restaurar uma cópia de segurança…",
-        grupo: "Cópia de segurança",
-        palavras: "backup importar recuperar",
-        executar: acoes.restaurarCopia,
-      },
-    );
+    lista.push({
+      id: "restaurar-copia",
+      titulo: "Restaurar uma cópia de segurança…",
+      grupo: "Cópia de segurança",
+      palavras: "backup importar recuperar",
+      executar: acoes.restaurarCopia,
+    });
   } else {
     lista.push({
       id: "voltar",
@@ -155,6 +137,26 @@ export function comandosDoApp(estado: EstadoDoApp, acoes: AcoesDoApp): Comando[]
       palavras: "movimento reduzir",
       executar: () => acoes.mudarPreferencias({ movimento }),
     });
+  // Exportar não mexe em nada: vale também com um livro aberto. Restaurar troca a biblioteca
+  // inteira, então só na biblioteca.
+  lista.push(
+    {
+      id: "exportar-dados",
+      titulo: "Exportar a biblioteca: só os dados…",
+      grupo: "Cópia de segurança",
+      dica: "progresso, destaques, coleções e preferências",
+      palavras: "backup cópia de segurança salvar",
+      executar: () => acoes.exportarBiblioteca(false),
+    },
+    {
+      id: "exportar-tudo",
+      titulo: "Exportar a biblioteca: com os livros…",
+      grupo: "Cópia de segurança",
+      dica: "os dados e os arquivos dos livros",
+      palavras: "backup cópia de segurança salvar",
+      executar: () => acoes.exportarBiblioteca(true),
+    },
+  );
   lista.push({
     id: "atalhos",
     titulo: "Mostrar atalhos de teclado",

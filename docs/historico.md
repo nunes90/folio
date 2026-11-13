@@ -1088,6 +1088,7 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   que saem da lista ficam no disco (a cópia "de antes" só leva os dados e precisa deles para desfazer). Restaurada só
   com os dados, a biblioteca mostra os livros sem arquivo; importar o arquivo de novo o repõe (`repor_arquivo`, no
   caminho do "já existia"). Comandos `exportar_copia`, `ler_copia`, `restaurar_copia` (async; a voz é reconfigurada).
-  Frontend: `lib/copia.ts` (diálogos e textos) e três comandos na paleta, só na biblioteca; a `Confirmacao` mostra a
+  Frontend: `lib/copia.ts` (diálogos e textos) e três comandos na paleta (exportar nas duas telas; restaurar só na biblioteca: o Lucas procurou "exportar" com um
+  livro aberto e não achou); a `Confirmacao` mostra a
   data e o conteúdo da cópia. `copia.e2e.js` exporta, apaga o livro, restaura **com o app aberto** e reabre o livro
   no ponto em que estava. **v1.3 completa.**

@@ -126,7 +126,7 @@ principal); voz, meta e progresso ficam só no principal.
 
 Nada sai do seu computador. A internet só é usada quando você baixa a voz natural; um link do livro para a web abre no seu navegador, e só se você confirmar. 
 
-**Cópia de segurança.** Na paleta (`Ctrl+K`), na biblioteca:
+**Cópia de segurança.** Na paleta (`Ctrl+K`); exportar vale em qualquer tela, restaurar só na biblioteca:
 
 - **Exportar a biblioteca: só os dados…** grava um arquivo pequeno com o progresso, os destaques e notas, as coleções,
   as sessões e as preferências.
