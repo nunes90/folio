@@ -105,8 +105,16 @@ export function carregarPdfPorTrechos(
   /** O arquivo não pôde ser lido (ex.: foi apagado). Sem isto, a tarefa é encerrada. */
   aoFalhar?: () => void,
 ): pdfjs.PDFDocumentLoadingTask {
+  // Só nas medições de memória (medir-memoria.e2e.js): quanto do arquivo foi pedido, e opções do
+  // pdf.js para experimentar ("area=16": limite das imagens em MB; "trecho=64": trechos em KB).
+  const medir = globalThis.localStorage?.getItem("folio-medir") ?? "";
+  const opcao = (nome: string) => Number(medir.match(new RegExp(`${nome}=(\\d+)`))?.[1]) || undefined;
+  const pedidos = { n: 0, bytes: 0 };
+  if (medir) Object.assign(globalThis, { __folioTrechos: pedidos });
   class Trechos extends pdfjs.PDFDataRangeTransport {
     override requestDataRange(inicio: number, fim: number) {
+      pedidos.n++;
+      pedidos.bytes += fim - inicio;
       ler(id, inicio, fim - inicio).then(
         (bytes) => this.onDataRange(inicio, new Uint8Array(bytes)),
         (e) => {
@@ -123,7 +131,8 @@ export function carregarPdfPorTrechos(
     range: new Trechos(tamanho, null as unknown as Uint8Array),
     disableAutoFetch: true,
     disableStream: true,
-    rangeChunkSize: TRECHO,
+    rangeChunkSize: (opcao("trecho") ?? TRECHO / 1024) * 1024,
+    ...(opcao("area") && { canvasMaxAreaInBytes: opcao("area")! * 1024 * 1024 }),
   });
   return tarefa;
 }

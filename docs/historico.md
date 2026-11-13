@@ -1097,3 +1097,17 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   `tauri-plugin-single-instance` e as dependências deles) e o CHANGELOG com a seção da 1.3.0. O esquema do banco não
   mudou desde a v0.8.0 (11 migrações): as fixtures de `tests/fixtures/bancos` seguem valendo. Primeira Release com o
   `SHA256SUMS` e a atestação de proveniência (M33b).
+- **M39 — a memória do PDF** (branch `perf/m39-memoria-pdf`): investigação, sem mudança no que o app faz.
+  `e2e/specs/medir-memoria.e2e.js` (`FOLIO_MEDIR_MEMORIA=<pdf>`, `FOLIO_MEDIR_PAGINA`, `FOLIO_MEDIR_SEM`,
+  `FOLIO_MEDIR_CURTO`): sessão que começa num EPUB (base limpa, sem o pdf.js), mede a memória anônima do processo da
+  página e desliga partes da abertura. Ganchos só com `localStorage["folio-medir"]` ligado: `window.__folioPdf`
+  (documento e visor), `__folioTrechos` (quanto do arquivo foi pedido), `__folioSumario`, e os desligadores
+  `sem-sumario`/`sem-idioma` no `LeitorPdf`. Achados (PDF de 86 MB, 742 páginas, 508 entradas no sumário): a hipótese
+  da análise (cache de páginas, canvas) estava errada — a memória vem toda na abertura, com um canvas de 1 MB na
+  tela. ~30 MB são do pdf.js, ~90 do documento grande, ~65 de resolver a página de cada entrada do sumário
+  (`getPageIndex`: o pdf.js guarda tudo o que leu para isso; só 10 MB do arquivo são lidos), ~10 da detecção de
+  idioma; ao fechar, ~95 MB não voltam (o alocador do WebKit não devolve; não cresce a cada ciclo). **O ruído entre
+  rodadas iguais chega a 40 MB.** Testado e descartado: `canvasMaxAreaInBytes` (tira 80 MB da capa só com o sumário
+  desligado; com tudo ligado o ganho some, e escaneados perderiam nitidez), trechos menores (nada), `cleanup` depois do
+  sumário (nada). Adiado, por decisão do Lucas: o sumário sob demanda. Orçamento na CI: `pdf.e2e.js` reabre o PDF de
+  teste e falha acima de 5 s (~330 ms aqui): pega regressões grosseiras, não mede desempenho fino.

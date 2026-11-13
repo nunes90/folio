@@ -318,8 +318,11 @@ AppImage da CI, o `SHA256SUMS` e a atestação.
 
 ### v1.4 — acabamento e produto
 
-- [ ] **M39 — Memória do PDF** (8): achar os ~180 MB sem dono (inspetor do WebKit ou `heaptrack`); testar o cache de
-  páginas e `maxCanvasPixels`; orçamento de tempo de abertura na CI (`medir-pdf` num PDF fixo)
+- [x] **M39 — Memória do PDF** (8): os "~180 MB sem dono" têm dono (tabela em `docs/testes/desempenho.md`): ~30 MB do
+  pdf.js, ~90 de um documento grande, ~65 do sumário, ~10 da detecção de idioma, e ~95 que o alocador não devolve ao
+  fechar. Não são as páginas em cache nem os canvas, e não é vazamento. O limite de tamanho das imagens foi testado e
+  descartado (o ganho some no ruído com tudo ligado). Resolver o sumário sob demanda (~65 MB) fica adiado. Medição:
+  `FOLIO_MEDIR_MEMORIA`. Orçamento de abertura na CI: reabrir o PDF de teste em menos de 5 s (aqui, ~330 ms).
 - [ ] **M40 — Pacote e código** (5.8–5.12, 7.5, 7.6)
   - [ ] M40a — erros tipados nos comandos (`{ tipo, mensagem }`) e o frontend sem comparar texto
   - [ ] M40b — `[profile.release]` (LTO thin, `codegen-units = 1`, `strip`), medido; `commit_from_file` nos modelos;

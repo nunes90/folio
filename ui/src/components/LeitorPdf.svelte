@@ -492,11 +492,15 @@
     const documento = await tarefa.promise;
     pedidoSenha = null;
     documentoPdf = documento;
+    // Para as medições de memória (e2e/specs/medir-memoria.e2e.js): com a marca ligada, o
+    // documento e o visor ficam ao alcance da página de teste. Sem ela, nada muda.
+    const medir = localStorage.getItem("folio-medir") ?? "";
+    if (medir) Object.assign(window, { __folioPdf: { documento, visor: () => visor } });
     total = documento.numPages;
     // O idioma do PDF escolhe a voz (a natural para inglês, M27). A maioria dos PDFs não o declara
     // no catálogo: aí vale o idioma do texto, a partir da página salva.
     const paginaSalva = Number(inicio?.match(/^pagina:(\d+)$/)?.[1]) || 1;
-    documento
+    if (!medir.includes("sem-idioma")) documento
       .getMetadata()
       .then(async ({ info }) => {
         idiomaDoPdf = idiomaValido((info as { Language?: unknown }).Language);
@@ -506,7 +510,7 @@
       .catch(() => {});
     v.setDocument(documento);
     l.setDocument(documento);
-    carregarSumario(documento)
+    (medir.includes("sem-sumario") ? Promise.resolve() : carregarSumario(documento))
       .catch((e) => log.warn(`sumário do PDF indisponível: ${e}`))
       .finally(() => {
         sumarioPronto = true;
@@ -608,6 +612,7 @@
       }
     }
     paginasDoIndice = paginas;
+    if (localStorage.getItem("folio-medir")) Object.assign(window, { __folioSumario: { itens: destinos.size } });
   }
 
   // "De onde vim" (M35a), como no EPUB: os saltos (link do documento, índice, destaque, o campo da
