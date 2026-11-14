@@ -54,7 +54,8 @@ describe("cssDoLivro", () => {
 
   it("Lexend só declara os arquivos que existem (sem itálico)", () => {
     const resultado = css({ fonte: "lexend" });
-    expect(resultado.match(/@font-face \{ font-family: "Lexend"/g)).toHaveLength(2);
+    // Dois pesos, em latin e em latin-ext (M40c).
+    expect(resultado.match(/@font-face \{ font-family: "Lexend"/g)).toHaveLength(4);
     expect(resultado).not.toMatch(/"Lexend"; font-weight: \d+; font-style: italic/);
   });
 

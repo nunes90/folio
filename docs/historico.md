@@ -1118,3 +1118,12 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   `FOLIO_INSTANCIA_UNICA=0` (em release a instância única fica ligada, e as sessões seguidas se atropelam). Com a
   máquina ocupada (o Steam compilando shaders, carga 21), um teste do lado a lado falhou por tempo no binário antigo:
   medições e E2E só valem com a máquina quieta.
+- **M40c — fontes** (branch `perf/m40c-pacote-enxuto`): `lib/fontes.ts` acha os arquivos por `import.meta.glob`
+  (`<pacote>-{latin,latin-ext}-{400,700}-{normal,italic}.woff2`, com `?url`) em vez de 17 `import` à mão, e os
+  @font-face do documento principal são injetados pelo próprio módulo (`<style id="folio-fontes">`), no lugar dos CSS
+  do Fontsource, que traziam o `.woff` junto. Cada @font-face leva o `unicode-range` do subconjunto (as faixas do
+  Google Fonts): o navegador só baixa o `latin-ext` se a página tiver letras dele. A OpenDyslexic só existe em
+  `latin`. Pacote: 17 `.woff2` + 4 `.woff` (896 KB) → 32 `.woff2` (908 KB). Conferido no app: as cinco famílias
+  carregam nos dois subconjuntos, e o capítulo do livro usa a escolhida. O recorte do `pdf_viewer.css` e a retirada
+  dos módulos do foliate-js sem uso ficaram de fora (ver o ROADMAP). O `notas.e2e.js` conferia o foco no balão no mesmo instante em que ele
+  aparecia e falhou uma vez na CI (no #148, que não mexe nisso): agora espera.

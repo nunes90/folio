@@ -32,7 +32,8 @@ describe("Notas de rodapé", () => {
     // Sem o número de volta à chamada.
     expect(e.balao).not.toMatch(/Nota de rodapé\s*1/);
     expect(e.secao).toBe(0);
-    expect(e.focoNoBalao).toBe(true);
+    // O foco vai ao balão um instante depois de ele aparecer (falhou uma vez na CI, por conferir na hora).
+    await ate(async () => (await estado()).focoNoBalao, "o foco não foi ao balão");
     await browser.keys(Key.Escape);
     await ate(async () => (await estado()).balao === "", "Esc não fechou o balão");
   });
