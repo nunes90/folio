@@ -93,7 +93,7 @@
     /* Com um livro aberto, acima do rodapé do leitor (MolduraLeitor publica a altura). */
     inset-block-end: calc(var(--rodape-leitor, 0px) + 1rem);
     inset-inline-end: 1rem;
-    z-index: 10;
+    z-index: var(--camada-avisos);
     width: min(24rem, calc(100vw - 2rem));
     pointer-events: none;
   }

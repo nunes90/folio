@@ -1,4 +1,10 @@
 :root {
+  /* O que flutua por cima do app inteiro (position: fixed), em ordem. Os z-index pequenos (1 a 5)
+     dentro dos componentes são locais: ordenam as partes de uma mesma tela. Os diálogos ficam na
+     camada superior do navegador, acima de tudo isto. */
+  --camada-avisos: 10;
+  --camada-flutuante: 20;
+
   /* Animação: valores reais vêm de lib/animacao.ts (aplicarAnimacao), zerados com movimento
      reduzido. Estes valem só até o JS rodar. Use sempre estas variáveis, nos dois leitores. */
   --duracao-curta: 100ms;

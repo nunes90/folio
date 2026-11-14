@@ -76,7 +76,7 @@
   /* Flutua sobre o livro, acima da chamada da nota (ou abaixo, sem espaço), como a barra de destaque. */
   .balao-nota {
     position: fixed;
-    z-index: 20;
+    z-index: var(--camada-flutuante);
     width: min(28rem, calc(100vw - 1rem));
     padding: 0.75rem 1rem;
     border: 1px solid var(--divisoria);

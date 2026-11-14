@@ -38,6 +38,7 @@
   }
 </script>
 
+<!-- As setas são tratadas na lista (delegação): o evento sobe do botão focado. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <ol onkeydown={aoTeclar}>
   {#each itens as item (item.href)}
