@@ -325,8 +325,9 @@ AppImage da CI, o `SHA256SUMS` e a atestação.
   `FOLIO_MEDIR_MEMORIA`. Orçamento de abertura na CI: reabrir o PDF de teste em menos de 5 s (aqui, ~330 ms).
 - [ ] **M40 — Pacote e código** (5.8–5.12, 7.5, 7.6)
   - [ ] M40a — erros tipados nos comandos (`{ tipo, mensagem }`) e o frontend sem comparar texto
-  - [ ] M40b — `[profile.release]` (LTO thin, `codegen-units = 1`, `strip`), medido; `commit_from_file` nos modelos;
-    `ort` estável quando sair; a feature `_ring` do `ureq`
+  - [x] M40b — `[profile.release]` com LTO `thin`, `codegen-units = 1` e `strip`: o binário foi de 34,6 para 22,9 MB
+    (−34%); a compilação de release, de ~2 para ~3 min. Ficam para quando houver motivo: `commit_from_file` nos
+    modelos de voz, a `ort` estável (ainda não saiu) e a feature `_ring` do `ureq`
   - [ ] M40c — só as regras do `pdf_viewer.css` que o app usa; `@font-face` só com `.woff2` e `latin-ext`; módulos
     do foliate-js sem uso fora do pacote (ou assumir MOBI/FB2: decidir)
   - [ ] M40d — escala de `z-index` nomeada, tamanho mínimo da janela, revisão dos `svelte-ignore`, `exportar_destaques`

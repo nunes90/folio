@@ -68,6 +68,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 ## Rodar e testar
 - `cargo tauri dev` (requer `cargo install tauri-cli` e `npm ci` em `ui/`). Build: `cargo tauri build --no-bundle`;
   AppImage: `cargo tauri build --bundles appimage`.
+- Medições e E2E só valem com a máquina quieta (`uptime`): com a carga alta, testes falham por tempo e os números
+  não se comparam. Num binário de release, os E2E precisam de `FOLIO_INSTANCIA_UNICA=0`.
 - **E2E sem incomodar**: compilar em outra pasta e rodar na tela virtual.
   `cd crates/app && CARGO_TARGET_DIR=<raiz>/target/e2e cargo tauri build --debug --no-bundle` (caminho absoluto),
   depois, em `e2e/`, `FOLIO_APP=<raiz>/target/e2e/debug/folio ./virtual.sh npm test`.
