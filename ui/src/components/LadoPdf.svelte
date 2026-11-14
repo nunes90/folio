@@ -328,6 +328,7 @@
 </script>
 
 <section class="lado" aria-label="Ao lado: página {pagina} de {total}">
+  <!-- A área rolável precisa do foco (WCAG) e trata as teclas de virar a página. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
   <div
     class="conteiner paginas-pdf"

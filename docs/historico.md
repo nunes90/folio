@@ -1127,3 +1127,11 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   carregam nos dois subconjuntos, e o capítulo do livro usa a escolhida. O recorte do `pdf_viewer.css` e a retirada
   dos módulos do foliate-js sem uso ficaram de fora (ver o ROADMAP). O `notas.e2e.js` conferia o foco no balão no mesmo instante em que ele
   aparecia e falhou uma vez na CI (no #148, que não mexe nisso): agora espera.
+- **M40d — detalhes** (branch `refactor/m40d-detalhes`): os `z-index` do que flutua por cima do app inteiro viraram
+  variáveis no `app.css` (`--camada-avisos: 10`, `--camada-flutuante: 20`, usadas por `Avisos`, `BarraDestaque` e
+  `BalaoNota`); os pequenos (1 a 5) continuam nos componentes, porque só ordenam as partes de uma mesma tela, e os
+  diálogos ficam na camada superior do navegador. A janela ganhou `minWidth: 360` e `minHeight: 400` no
+  `tauri.conf.json` (num compositor tiling quem manda é o compositor; vale para janelas flutuantes). Os 14
+  `svelte-ignore` foram revistos: todos são de tratadores de teclado ou ponteiro num contêiner (delegação), e os 6
+  que não diziam o motivo agora dizem. Restringir o `exportar_destaques` ao caminho devolvido pelo diálogo não foi
+  feito (ver o ROADMAP).

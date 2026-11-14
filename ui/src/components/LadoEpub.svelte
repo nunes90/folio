@@ -321,6 +321,7 @@
   });
 </script>
 
+<!-- As teclas de virar a página são tratadas na seção: sobem do livro (iframe) que está dentro dela. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <section class="lado" aria-label="Ao lado: {secao || 'outro ponto do livro'}" onkeydown={aoTeclar}>
   <div class="palco" bind:this={palco}>

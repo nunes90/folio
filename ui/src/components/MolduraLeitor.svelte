@@ -539,6 +539,7 @@
   class:revelada
   {...{ [ATRIBUTO_TELA]: "" }}
 >
+  <!-- O ponteiro e o foco no cabeçalho só revelam as barras no modo foco: não é um controle. -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <header
     bind:this={cabecalhoEl}
@@ -659,6 +660,7 @@
     </PainelLateral>
   </div>
 
+  <!-- Como no cabeçalho: só revela as barras no modo foco. -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <footer
     bind:this={rodapeEl}

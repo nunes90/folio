@@ -198,7 +198,7 @@
   /* Flutua sobre o livro, acima do trecho (ou abaixo, sem espaço). */
   .barra-destaque {
     position: fixed;
-    z-index: 20;
+    z-index: var(--camada-flutuante);
     display: flex;
     align-items: center;
     gap: 0.25rem;

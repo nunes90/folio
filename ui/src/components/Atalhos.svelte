@@ -52,6 +52,7 @@
   }
 </script>
 
+<!-- As setas andam pelas linhas da tabela: tratadas no diálogo, que as recebe dos filhos. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <dialog class="modal" bind:this={dialogo} aria-labelledby="titulo-atalhos" onclose={onFechar} onkeydown={aoTeclar}>
   <!-- role="document" dentro da interface role="application": o Orca lê com as setas. O foco vai ao título, e não
