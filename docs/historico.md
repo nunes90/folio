@@ -1135,3 +1135,13 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   `svelte-ignore` foram revistos: todos são de tratadores de teclado ou ponteiro num contêiner (delegação), e os 6
   que não diziam o motivo agora dizem. Restringir o `exportar_destaques` ao caminho devolvido pelo diálogo não foi
   feito (ver o ROADMAP).
+- **M40a — erros tipados** (branch `refactor/m40a-erros-tipados`): todo comando devolvia o erro como texto. Agora
+  devolve `ErroDoComando { tipo, mensagem }` (`crates/app/src/erro.rs`), com nove categorias (`nome-em-uso`,
+  `nome-vazio`, `nao-encontrado`, `livro-invalido`, `copia-invalida`, `arquivo`, `banco`, `voz`, `outro`). A
+  categoria de cada erro do core sai do trait `Tipado`, implementado no app para `ErroBiblioteca`, `ErroAbrir`,
+  `ErroCopia` e `ErroVoz` com `match` sem o braço `_`: uma variante nova não compila até ganhar categoria. Na
+  página, `lib/comando.ts` embrulha o `invoke` e transforma o objeto num `ErroDoComando` (um `Error` cujo
+  `toString` é só a mensagem), então os ~50 lugares que escrevem `${erro}` num aviso não mudaram. Os módulos de
+  `lib/` importam o `invoke` dali, não do Tauri. Uso: `erroDoNome` no diálogo de nome da coleção. Armadilha do
+  Vitest achada no caminho: `beforeEach(() => mock.mockReset())` devolve o mock, e o Vitest chama o que o
+  `beforeEach` devolve como limpeza ao fim do teste (usar chaves).

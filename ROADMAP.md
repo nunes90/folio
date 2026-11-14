@@ -323,8 +323,11 @@ AppImage da CI, o `SHA256SUMS` e a atestação.
   fechar. Não são as páginas em cache nem os canvas, e não é vazamento. O limite de tamanho das imagens foi testado e
   descartado (o ganho some no ruído com tudo ligado). Resolver o sumário sob demanda (~65 MB) fica adiado. Medição:
   `FOLIO_MEDIR_MEMORIA`. Orçamento de abertura na CI: reabrir o PDF de teste em menos de 5 s (aqui, ~330 ms).
-- [ ] **M40 — Pacote e código** (5.8–5.12, 7.5, 7.6)
-  - [ ] M40a — erros tipados nos comandos (`{ tipo, mensagem }`) e o frontend sem comparar texto
+- [x] **M40 — Pacote e código** (5.8–5.12, 7.5, 7.6)
+  - [x] M40a — os comandos devolvem `{ tipo, mensagem }` (`crates/app/src/erro.rs`) e a página os recebe como
+    `ErroDoComando` (`lib/comando.ts`). Primeiro uso: no diálogo de nome da coleção, só o nome repetido ou vazio
+    marca o campo; um erro do banco vira aviso. **Não feito**: o auxiliar `com_biblioteca(|b| …)` (trocaria uma
+    linha por outra em cada comando, sem tirar nada)
   - [x] M40b — `[profile.release]` com LTO `thin`, `codegen-units = 1` e `strip`: o binário foi de 34,6 para 22,9 MB
     (−34%); a compilação de release, de ~2 para ~3 min. Ficam para quando houver motivo: `commit_from_file` nos
     modelos de voz, a `ort` estável (ainda não saiu) e a feature `_ring` do `ureq`

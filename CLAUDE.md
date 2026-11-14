@@ -60,7 +60,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **Barra do leitor**: o que não se usa em toda sessão vai para o menu ⋯, a paleta e o atalho.
 - **Números honestos**: sem dado medido, sem estimativa; folhear não conta como leitura.
 - Erros: `thiserror` no core (tipados), `anyhow` no app. Mensagens ao usuário em frases; a causa técnica vai
-  para o log.
+  para o log. Um comando devolve `ErroDoComando { tipo, mensagem }` (`crates/app/src/erro.rs`); a página chama os
+  comandos pelo `invoke` de `lib/comando.ts` e decide pelo `tipo`, nunca comparando o texto da mensagem.
 - Logs: `tracing` (`RUST_LOG=folio=debug`); os do frontend chegam ao mesmo arquivo pelo `tauri-plugin-log`.
 - Testes: unitários e de integração com fixtures, `insta`, `proptest` nos parsers (não podem dar panic), Vitest
   e axe no frontend, E2E em `e2e/`. Ferramentas que precisam de arquivos baixados são testes `#[ignore]`.
@@ -150,6 +151,7 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 ## Estado atual
 - **v1.3.0** (nov/2026): a 1.2 (M29–M33) e a 1.3 (M34–M38) do plano "Depois da análise" do `ROADMAP.md`
   (`docs/analise/2026-11-analise.md`), numa versão só; a 1.2 não foi publicada. Tag e Release são do Lucas.
-- v1.4 em andamento: M39 feito (a memória do PDF explicada e medida; tabela em `docs/testes/desempenho.md`).
-- Próximo passo: M40 (erros tipados, perfil de release, pacote mais enxuto, detalhes de CSS).
+- v1.4 em andamento: M39 (a memória do PDF explicada e medida; tabela em `docs/testes/desempenho.md`) e M40
+  (erros tipados, perfil de release, fontes, detalhes) feitos.
+- Próximo passo: M41 (rodapé e ícones; proposta com capturas antes).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.

@@ -47,6 +47,7 @@
   } from "./lib/biblioteca";
   import { log } from "./lib/log";
   import { avisar, avisarSeDemorar, mensagensDaImportacao } from "./lib/avisos.svelte";
+  import { erroDoNome } from "./lib/comando";
   import { ouvirArraste } from "./lib/arrastar";
   import { movimentoReduzido, sistema, temaEfetivo } from "./lib/ambiente.svelte";
   import { carregarPreferencias, atualizarPreferencias, preferencias } from "./lib/preferencias.svelte";
@@ -495,7 +496,9 @@
         avisar(`Coleção “${nova.nome}” criada.`);
       }
     } catch (e) {
-      pedirNome = { ...pedido, erro: String(e) };
+      // Nome repetido ou vazio: a frase vai no campo. O resto (banco, disco) não é erro do nome.
+      if (erroDoNome(e)) pedirNome = { ...pedido, erro: String(e) };
+      else avisar(`Não foi possível salvar a coleção: ${e}`, "erro");
       return;
     }
     pedirNome = null;

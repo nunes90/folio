@@ -1,7 +1,7 @@
 // Links que saem do livro (M35c), iguais no EPUB e no PDF: o leitor pede, o App mostra a
 // confirmação ("Abrir example.org no navegador?") e só então o Rust abre. O critério é o do core
 // (crates/core/src/links.rs), repetido aqui só para decidir o que mostrar: quem decide é o core.
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./comando";
 import { avisar } from "./avisos.svelte";
 
 export interface LinkExterno {

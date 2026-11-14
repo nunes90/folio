@@ -1,7 +1,7 @@
 // A voz natural (neural, M27): o catálogo que o core oferece, o download e a amostra. Um estado
 // só para o app todo: o download continua com o painel fechado, e a seção "Voz" dos dois leitores
 // e a paleta mostram o mesmo andamento.
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./comando";
 import { listen } from "@tauri-apps/api/event";
 import { avisar, avisarSeDemorar } from "./avisos.svelte";
 import type { Comando } from "./comandos";

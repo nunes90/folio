@@ -1,7 +1,7 @@
 // Cópia de segurança da biblioteca (M38): um arquivo `.folio-backup` (um ZIP) com o banco e,
 // se a pessoa quiser, os arquivos dos livros. O core faz o trabalho (crates/core/src/copia.rs);
 // aqui ficam os diálogos de arquivo e os textos.
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./comando";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 export const EXTENSAO = "folio-backup";

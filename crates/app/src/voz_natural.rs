@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use crate::erro::{ErroDoComando, Tipo};
 use folio_core::baixar::{self, ErroBaixar, RedeHttp};
 use folio_core::catalogo_vozes::{self, MODELOS, Modelo};
 use folio_core::kokoro::EspeakNg;
@@ -39,12 +40,15 @@ impl EstadoVoz {
         }
     }
 
-    pub fn motor(&self) -> Result<&dyn MotorDeVoz, String> {
+    pub fn motor(&self) -> Result<&dyn MotorDeVoz, ErroDoComando> {
         self.motor
             .as_ref()
             .map(|m| m as &dyn MotorDeVoz)
             .ok_or_else(|| {
-                "a leitura em voz alta precisa do speech-dispatcher ou da voz natural".to_string()
+                ErroDoComando::novo(
+                    Tipo::Voz,
+                    "a leitura em voz alta precisa do speech-dispatcher ou da voz natural",
+                )
             })
     }
 
@@ -155,7 +159,7 @@ pub fn baixar_voz_natural(
     app: AppHandle,
     voz: State<'_, EstadoVoz>,
     modelo: String,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     let modelo = catalogo_vozes::modelo(&modelo).ok_or("modelo desconhecido")?;
     let cancelar = {
         let mut baixando = voz.baixando.lock().unwrap();
@@ -243,13 +247,13 @@ pub fn remover_voz_natural(
     app: AppHandle,
     voz: State<'_, EstadoVoz>,
     modelo: String,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     let modelo = catalogo_vozes::modelo(&modelo).ok_or("modelo desconhecido")?;
     let _ = voz.neural.parar();
     voz.neural.configurar(None);
     let resultado = modelo.remover(&voz.vozes).map_err(|e| {
         tracing::warn!(erro = %e, modelo = modelo.id, "falha ao remover a voz natural");
-        e.to_string()
+        ErroDoComando::novo(Tipo::Arquivo, e.to_string())
     });
     reaplicar(&app);
     resultado
@@ -259,7 +263,7 @@ pub fn remover_voz_natural(
 /// com a duração em milissegundos (`async`: na primeira vez o modelo carrega, ~1 s, e a janela
 /// não pode congelar).
 #[tauri::command(async)]
-pub fn ouvir_amostra_voz(voz: State<'_, EstadoVoz>, id: String) -> Result<u64, String> {
+pub fn ouvir_amostra_voz(voz: State<'_, EstadoVoz>, id: String) -> Result<u64, ErroDoComando> {
     let (_, escolhida) = catalogo_vozes::voz(&id).ok_or("voz desconhecida")?;
     let texto = match escolhida.idioma {
         "en-GB" => "Hello. This is how I sound when I read your books aloud.",
@@ -271,6 +275,6 @@ pub fn ouvir_amostra_voz(voz: State<'_, EstadoVoz>, id: String) -> Result<u64, S
         .map(|d| d.as_millis() as u64)
         .map_err(|e| {
             tracing::warn!(erro = %e, "falha ao tocar a amostra");
-            e.to_string()
+            ErroDoComando::novo(Tipo::Voz, e.to_string())
         })
 }

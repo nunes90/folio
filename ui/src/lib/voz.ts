@@ -1,6 +1,6 @@
 // Leitura em voz alta: comandos do motor de voz (crates/core/src/voz.rs) e a conversão do SSML
 // que o tts.js do foliate-js produz para o formato que o speech-dispatcher entende bem.
-import { invoke } from "@tauri-apps/api/core";
+import { ErroDoComando, invoke } from "./comando";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { Comando } from "./comandos";
 
@@ -32,13 +32,12 @@ export function prepararVoz(ssml: string, config: ConfigVoz): Promise<void> {
 }
 
 /**
- * O que anunciar quando a leitura em voz alta não começa. Os erros do core chegam como texto
- * ("não há voz para o idioma es") e dizem o motivo; os outros, não (só vão ao log).
+ * O que anunciar quando a leitura em voz alta não começa. Os erros do core (um `ErroDoComando`:
+ * "não há voz para o idioma es") e dizem o motivo; os outros, não (só vão ao log).
  */
 export function textoDaFalhaDaVoz(erro: unknown): string {
-  return typeof erro === "string" && erro
-    ? `Não foi possível ler em voz alta: ${erro}.`
-    : "Não foi possível ler em voz alta.";
+  const motivo = erro instanceof ErroDoComando ? erro.message : typeof erro === "string" ? erro : "";
+  return motivo ? `Não foi possível ler em voz alta: ${motivo}.` : "Não foi possível ler em voz alta.";
 }
 
 export const pausarVoz = (): Promise<void> => invoke("pausar_voz");
