@@ -508,6 +508,24 @@ describe("Biblioteca", () => {
       expect(p.onEsvaziar).toHaveBeenCalledOnce();
     });
 
+    it("a lixeira diz o espaço e há quanto tempo cada livro está lá; só com antigos, oferece esvaziá-los (M43a)", async () => {
+      const agora = Date.now() / 1000;
+      const recente = { ...naLixeira, removidoEm: agora - 3 * 86_400 };
+      const p = props({ lixeira: [recente], espacoLixeira: 12_400_000, onEsvaziarAntigos: vi.fn() });
+      const { unmount } = render(Biblioteca, p);
+      await fireEvent.click(naBarra(/^Lixeira/));
+      expect(screen.getByText(/ocupam 12 MB/)).toBeTruthy();
+      expect(screen.getByRole("button", { name: /^Quincas Borba/ }).textContent).toContain("Na lixeira há 3 dias");
+      expect(screen.queryByRole("button", { name: "Esvaziar os de mais de 30 dias…" })).toBeNull();
+      unmount();
+      const antigo = { ...naLixeira, removidoEm: agora - 40 * 86_400 };
+      const onEsvaziarAntigos = vi.fn();
+      render(Biblioteca, props({ lixeira: [antigo], onEsvaziarAntigos }));
+      await fireEvent.click(naBarra(/^Lixeira/));
+      await fireEvent.click(screen.getByRole("button", { name: "Esvaziar os de mais de 30 dias…" }));
+      expect(onEsvaziarAntigos).toHaveBeenCalledOnce();
+    });
+
     it("só com livros na lixeira, a barra continua lá (para poder restaurá-los)", () => {
       render(Biblioteca, props({ livros: [] }));
       expect(naBarra(/^Lixeira 1$/)).toBeTruthy();

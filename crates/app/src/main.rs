@@ -183,6 +183,8 @@ fn main() -> anyhow::Result<()> {
             comandos::restaurar_livro,
             comandos::apagar_livro,
             comandos::esvaziar_lixeira,
+            comandos::esvaziar_lixeira_antiga,
+            comandos::espaco_da_lixeira,
             comandos::abrir_livro,
             comandos::tamanho_livro,
             comandos::definir_capa,

@@ -37,6 +37,8 @@ export interface EstadoDoApp {
   colecoes: Colecao[];
   /** Há livros na lixeira ("Esvaziar lixeira…" só aparece se houver). */
   lixeiraComLivros: boolean;
+  /** Livros na lixeira há 30 dias ou mais (M43a). */
+  antigosNaLixeira: number;
   preferencias: Pick<Preferencias, "tema" | "movimento">;
   /** Os comandos que o leitor aberto publica. */
   doLeitor: Comando[];
@@ -49,6 +51,8 @@ export interface AcoesDoApp {
   mostrar(filtro: Filtro): void;
   novaColecao(): void;
   esvaziarLixeira(): void;
+  /** Apagar de vez os que estão na lixeira há 30 dias ou mais (pede confirmação). */
+  esvaziarAntigos(): void;
   /** Cópia de segurança (M38): exportar (com ou sem os arquivos dos livros) e restaurar. */
   exportarBiblioteca(comLivros: boolean): void;
   restaurarCopia(): void;
@@ -103,6 +107,14 @@ export function comandosDoApp(estado: EstadoDoApp, acoes: AcoesDoApp): Comando[]
         titulo: "Esvaziar lixeira…",
         grupo: "Lixeira",
         executar: acoes.esvaziarLixeira,
+      });
+    if (estado.antigosNaLixeira)
+      lista.push({
+        id: "esvaziar-antigos",
+        titulo: "Esvaziar os livros de mais de 30 dias da lixeira…",
+        grupo: "Lixeira",
+        palavras: "apagar antigos",
+        executar: acoes.esvaziarAntigos,
       });
     lista.push({
       id: "restaurar-copia",

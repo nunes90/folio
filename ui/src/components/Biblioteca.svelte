@@ -11,6 +11,7 @@
   import { agruparPorAutor } from "../lib/autores";
   import ListaAutores from "./ListaAutores.svelte";
   import TodosOsDestaques from "./TodosOsDestaques.svelte";
+  import { antigosDaLixeira, textoDoEspaco, tiradoHa } from "../lib/lixeira";
   import type { Preferencias } from "../lib/preferencias.svelte";
   import type { TemaEfetivo } from "../lib/temas";
   import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
@@ -43,6 +44,8 @@
     onTirarDaColecao,
     onAcao,
     onEsvaziar,
+    onEsvaziarAntigos,
+    espacoLixeira,
     preferencias,
     onMudarPreferencias,
     temaDoSistema,
@@ -61,6 +64,10 @@
     /** Ação pedida pelo menu ou pelo teclado (quem chama confirma o que for irreversível). */
     onAcao?: (livro: Livro, acao: AcaoLivro) => void;
     onEsvaziar?: () => void;
+    /** "Esvaziar os de mais de 30 dias…" (M43a; quem chama confirma). */
+    onEsvaziarAntigos?: () => void;
+    /** Bytes que a lixeira ocupa (M43a), se conhecidos. */
+    espacoLixeira?: number;
     colecoes?: Colecao[];
     onNovaColecao?: () => void;
     onRenomearColecao?: (colecao: Colecao) => void;
@@ -351,6 +358,8 @@
   const porcento = new Intl.NumberFormat("pt-BR", { style: "percent" });
 
   function situacao(livro: Livro): string {
+    // Na lixeira (M43a): há quanto tempo está lá, para decidir o que esvaziar.
+    if (livro.removidoEm !== null) return tiradoHa(livro, Date.now() / 1000);
     // A regra (inclusive "o que arredonda para 100% está concluído") fica no core.
     if (livro.situacao === "nao-iniciado" || livro.fracao == null)
       return livro.paraLerEm !== null ? "Para ler" : "Não iniciado";
@@ -560,8 +569,17 @@
 
       {#if naLixeira && visiveis.length && onEsvaziar}
         <div class="aviso-lixeira">
-          <p>Os livros ficam na lixeira até você esvaziá-la. Para trazer um de volta, use Restaurar.</p>
-          <button type="button" onclick={onEsvaziar}>Esvaziar lixeira…</button>
+          <p>
+            Os livros ficam na lixeira até você esvaziá-la{espacoLixeira
+              ? ` (ocupam ${textoDoEspaco(espacoLixeira)})`
+              : ""}. Para trazer um de volta, use Restaurar.
+          </p>
+          <div class="acoes-lixeira">
+            {#if onEsvaziarAntigos && antigosDaLixeira(lixeira, Date.now() / 1000).length}
+              <button type="button" onclick={onEsvaziarAntigos}>Esvaziar os de mais de 30 dias…</button>
+            {/if}
+            <button type="button" onclick={onEsvaziar}>Esvaziar lixeira…</button>
+          </div>
         </div>
       {/if}
 
@@ -1044,6 +1062,12 @@
     border: 1px solid var(--divisoria);
     border-radius: var(--raio-grande);
     background: var(--painel);
+  }
+
+  .acoes-lixeira {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .aviso-lixeira p {

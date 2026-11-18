@@ -155,6 +155,6 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - v1.4 em andamento: M39 (a memória do PDF explicada e medida; tabela em `docs/testes/desempenho.md`) e M40
   (erros tipados, perfil de release, fontes, detalhes), M41 (linha de status sob o livro, ícones) e M42
   (marcadores de página, estante "Destaques") feitos.
-- Próximo passo: M43 (lixeira com prazo e aviso de versão nova). O M42a criou a migração 12 (marcadores): ao
+- Próximo passo: M43b (aviso de versão nova: desligado, oferecido uma vez). O M42a criou a migração 12 (marcadores): ao
   publicar a versão, acrescentar a tag em `tests/fixtures/bancos/gerar.py`.
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.
