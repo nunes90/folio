@@ -519,6 +519,28 @@
       </section>
     {/if}
 
+    {#if temLivros && preferencias?.avisarVersaoNova === null && onMudarPreferencias}
+      <!-- A pergunta do aviso de versão nova (M43b): uma vez, até ser respondida. Não é um aviso
+           passageiro (some em segundos); fica aqui, sem pressa. -->
+      <section class="oferta-versao" aria-labelledby="titulo-oferta-versao">
+        <div>
+          <h2 id="titulo-oferta-versao">Avisar quando sair uma versão nova?</h2>
+          <p>
+            O Folio consultaria o GitHub uma vez por dia; nada sobre você é enviado. Dá para mudar depois na
+            Aparência, aba Interface.
+          </p>
+        </div>
+        <div class="acoes-oferta">
+          <button type="button" class="primario" onclick={() => onMudarPreferencias({ avisarVersaoNova: true })}>
+            Avisar
+          </button>
+          <button type="button" onclick={() => onMudarPreferencias({ avisarVersaoNova: false })}>
+            Não avisar
+          </button>
+        </div>
+      </section>
+    {/if}
+
     {#if !temLivros}
       <section class="vazia" aria-labelledby="titulo-vazia">
         <span class="icone-vazia"><Icone nome="livro" /></span>
@@ -1064,6 +1086,30 @@
     background: var(--painel);
   }
 
+  .oferta-versao {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-block-start: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--divisoria);
+    border-radius: var(--raio-grande);
+    background: var(--painel);
+  }
+
+  .oferta-versao h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .oferta-versao p {
+    margin: 0.25rem 0 0;
+    color: var(--suave);
+  }
+
+  .acoes-oferta,
   .acoes-lixeira {
     display: flex;
     flex-wrap: wrap;

@@ -150,6 +150,10 @@ pub struct PreferenciasLeitura {
     pub pagina: Pagina,
     /// No modo foco, as barras aparecem só pelo teclado (Tab), não com o ponteiro nas bordas.
     pub barras_so_pelo_teclado: bool,
+    /// Avisar quando sair uma versão nova (M43b): consulta as Releases do GitHub no máximo uma vez
+    /// por dia. `None` = a pessoa ainda não respondeu (a biblioteca pergunta uma vez); até lá, não
+    /// consulta.
+    pub avisar_versao_nova: Option<bool>,
 }
 
 impl Default for PreferenciasLeitura {
@@ -175,6 +179,7 @@ impl Default for PreferenciasLeitura {
             modo_pdf: ModoPdf::Paginas,
             pagina: Pagina::Automatica,
             barras_so_pelo_teclado: false,
+            avisar_versao_nova: None,
         }
     }
 }

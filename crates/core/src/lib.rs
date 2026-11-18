@@ -20,6 +20,7 @@ pub mod preferencias;
 pub mod recuperacao;
 pub mod sessoes;
 mod ssip;
+pub mod versao;
 pub mod visitas;
 pub mod voz;
 pub mod voz_neural;

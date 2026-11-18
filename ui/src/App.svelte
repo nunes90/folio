@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, type Component } from "svelte";
+  import { onMount, untrack, type Component } from "svelte";
   import { isTauri } from "@tauri-apps/api/core";
   import Atalhos from "./components/Atalhos.svelte";
   import Sobre from "./components/Sobre.svelte";
@@ -71,6 +71,7 @@
     type Manifesto,
   } from "./lib/copia";
   import { abrirLinkConfirmado, cancelarLink, confirmacaoDeLink } from "./lib/linkExterno.svelte";
+  import { procurarVersaoNova } from "./lib/versaoNova";
   import { antigosDaLixeira } from "./lib/lixeira";
   import { localParaAbrir } from "./lib/todosOsDestaques";
   import { SessaoDeLeitura } from "./lib/sessao.svelte";
@@ -158,6 +159,7 @@
         mudarPreferencias: atualizarPreferencias,
         mostrarAtalhos: () => (ajudaAberta = true),
         mostrarSobre: () => (sobreAberto = true),
+        procurarVersaoNova: () => void procurarVersaoNova(true),
         abrir: (livro) => void abrir(livro),
       },
     ),
@@ -186,6 +188,12 @@
       .then((f) => (pararDeOuvir = f))
       .catch((e) => log.warn(`arrastar para importar indisponível: ${e}`));
     return () => pararDeOuvir?.();
+  });
+
+  // Aviso de versão nova (M43b): ao abrir e logo depois de a pessoa ligá-lo. A própria consulta
+  // respeita o intervalo de um dia; desligado (ou sem resposta), não consulta.
+  $effect(() => {
+    if (preferencias.avisarVersaoNova === true && isTauri()) untrack(() => void procurarVersaoNova(false));
   });
 
   onMount(async () => {

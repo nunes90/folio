@@ -96,6 +96,21 @@
       </span>
     </label>
   </fieldset>
+
+  <fieldset>
+    <legend>Versão nova</legend>
+    <label class="opcao">
+      <input
+        type="checkbox"
+        checked={preferencias.avisarVersaoNova === true}
+        onchange={(e) => onMudar({ avisarVersaoNova: e.currentTarget.checked })}
+      />
+      <span>
+        Avisar quando sair uma versão nova
+        <span class="descricao">consulta o GitHub uma vez por dia; nada sobre você é enviado</span>
+      </span>
+    </label>
+  </fieldset>
 </div>
 
 <style>

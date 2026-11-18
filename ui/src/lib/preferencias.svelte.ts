@@ -44,6 +44,8 @@ export interface Preferencias {
   pagina: Pagina;
   /** No modo foco, as barras aparecem só pelo teclado (Tab), não com o ponteiro nas bordas. */
   barrasSoPeloTeclado: boolean;
+  /** Avisar quando sair uma versão nova (M43b); `null` = ainda não respondeu (não consulta). */
+  avisarVersaoNova: boolean | null;
 }
 
 /** Mesmos padrões e limites do core; o core é quem decide no fim (normaliza ao salvar). */
@@ -68,6 +70,7 @@ export const PADRAO: Preferencias = {
   modoPdf: "paginas",
   pagina: "automatica",
   barrasSoPeloTeclado: false,
+  avisarVersaoNova: null,
 };
 
 export const LIMITES = {
