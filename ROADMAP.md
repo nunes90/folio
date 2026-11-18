@@ -345,8 +345,14 @@ AppImage da CI, o `SHA256SUMS` e a atestação.
   foco, a mesma linha leva o que era o canto (porcentagem, saída planejada, voz). O rodapé fica só para navegar.
   Ícones: o traço já era igual; cinco ganharam tamanho óptico parecido com o dos vizinhos (parar, grade, dividir,
   copiar, citar)
-- [ ] **M42 — Marcadores e destaques da biblioteca** (4, 9): marcador de página sem trecho (migração nova, os dois
-  formatos); vista "Todos os destaques" com busca e filtro por motivo
+- [x] **M42 — Marcadores e destaques da biblioteca** (4, 9)
+  - [x] M42a — marcadores de página (migração 12, `marcadores.rs`, `ControleMarcadores` com um adaptador por
+    formato): `Ctrl+B`, menu ⋯ e paleta; aba Marcadores no Índice (as abas perderam a contagem visível, que
+    não cabia; ela fica no nome acessível); fitinha no canto do livro. No EPUB, o marcador guarda o começo da
+    página e cai na página que contém o ponto, mesmo depois de a fonte mudar
+  - [x] M42b — estante "Destaques" na biblioteca: os destaques de todos os livros fora da lixeira, agrupados por
+    livro (títulos em ordem do pt-BR), com a busca da biblioteca (trecho, nota, capítulo, título) e o filtro por
+    motivo; escolher um abre o livro nele, sem o cartão "Onde você parou"
 - [ ] **M43 — Lixeira com prazo e aviso de versão** (4, 9): espaço ocupado e "esvaziar itens antigos"; consulta
   opcional às Releases, desligável e descrita no guia
 - Em aberto, a decidir: tradução da interface, Séries, Flatpak, cortar recursos pouco usados (anotar o uso por um mês)

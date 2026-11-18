@@ -81,7 +81,8 @@ describe("EPUB", () => {
     await paleta("mostrar os destaques");
     const aba = await $("#aba-destaques");
     await aba.waitForDisplayed();
-    expect(await texto("#aba-destaques")).toContain("1");
+    // A contagem fica no nome acessível da aba (M42a: três abas, sem espaço para o número).
+    expect(await aba.getAttribute("aria-label")).toBe("Destaques (1)");
   });
 
   it("depois de um Ctrl+D com o foco no livro, uma seleção feita pelo app não rola a página", async () => {
@@ -143,7 +144,10 @@ describe("EPUB", () => {
     await botao("Rosa", '//*[contains(@class,"barra-destaque")]').click();
     await barra.waitForDisplayed({ reverse: true });
     await paleta("mostrar os destaques");
-    await ate(async () => (await texto("#aba-destaques")).includes("2"), "o destaque do lado não entrou na lista");
+    await ate(
+      async () => (await $("#aba-destaques").getAttribute("aria-label")) === "Destaques (2)",
+      "o destaque do lado não entrou na lista",
+    );
     await browser.keys(Key.Escape);
     await browser.keys([Key.Ctrl, Key.Shift, "l"]);
     await ate(async () => !(await moldura("com-lado")), "o lado não fechou");
@@ -259,5 +263,29 @@ describe("EPUB", () => {
       async () => (await texto('ul[aria-label="Livros"] .titulo')) === "Dom Casmurro",
       "o livro não apareceu na biblioteca",
     );
+  });
+
+  it("a estante Destaques mostra os destaques do livro e abre o livro no escolhido (M42b)", async () => {
+    // O livro foi fechado a 12% (acima); o destaque mais antigo está perto do começo.
+    const posicoes = await browser.executeAsync((feito) => {
+      window.__TAURI_INTERNALS__.invoke("listar_todos_os_destaques").then(
+        (lista) => feito(lista.map((d) => d.posicao)),
+        () => feito([]),
+      );
+    });
+    expect(posicoes.length).toBeGreaterThan(0);
+    await paleta("Estante: Destaques");
+    const primeiro = 'section[aria-labelledby^="destaques-de-"] li button';
+    await ate(() => browser.execute((s) => !!document.querySelector(s), primeiro), "a estante não mostrou os destaques");
+    expect(await texto('section[aria-labelledby^="destaques-de-"] h3')).toBe("Dom Casmurro");
+    await browser.execute((s) => document.querySelector(s)?.click(), primeiro);
+    await esperarLivro("Dom Casmurro");
+    const porcento = () => browser.execute(() => parseInt(document.querySelector("footer .porcento")?.textContent ?? ""));
+    await ate(
+      async () => Math.abs((await porcento()) - Math.round(posicoes[0] * 100)) <= 2,
+      "o livro não abriu no destaque",
+    );
+    // Aberto num destaque, o cartão "Onde você parou" não aparece.
+    expect(await browser.execute(() => !!document.querySelector(".area-continuacao"))).toBe(false);
   });
 });

@@ -12,6 +12,7 @@
     colecoes = [],
     contagensColecoes = {},
     quantidadeAutores,
+    quantidadeDestaques,
     onEscolher,
     onNovaColecao,
   }: {
@@ -22,6 +23,8 @@
     contagensColecoes?: Record<number, number>;
     /** Se presente, mostra o item "Autores" (com o número de autores). */
     quantidadeAutores?: number;
+    /** Se presente, mostra o item "Destaques" (M42b; com o número de destaques). */
+    quantidadeDestaques?: number;
     onEscolher: (estante: Filtro) => void;
     /** Se presente, mostra "Nova coleção" (pede o nome). */
     onNovaColecao?: () => void;
@@ -35,7 +38,8 @@
     | "lido"
     | "lixeira"
     | "pasta"
-    | "pessoa";
+    | "pessoa"
+    | "destaque";
   type Item = { valor: Filtro; nome: string; icone: IconeEstante; contagem: number };
   const VISTAS: { valor: Vista; nome: string; icone: IconeEstante }[] = [
     { valor: "todos", nome: "Todos", icone: "grade" },
@@ -67,9 +71,14 @@
       ? []
       : [{ valor: "autores", nome: "Autores", icone: "pessoa", contagem: quantidadeAutores }],
   );
+  const destaques = $derived<Item[]>(
+    quantidadeDestaques === undefined
+      ? []
+      : [{ valor: "destaques", nome: "Destaques", icone: "destaque", contagem: quantidadeDestaques }],
+  );
   const naVista = (item: Item) =>
     item.valor === atual || (item.valor === "autores" && atual.startsWith("autor:"));
-  const todos = $derived([...vistas, ...autores, ...itensColecoes, lixeira]);
+  const todos = $derived([...vistas, ...autores, ...destaques, ...itensColecoes, lixeira]);
 
   let lista: HTMLUListElement;
   // A parada de Tab acompanha a estante atual.
@@ -118,10 +127,14 @@
     <li>{@render estante(item, vistas.length)}</li>
   {/each}
 
+  {#each destaques as item (item.valor)}
+    <li>{@render estante(item, vistas.length + autores.length)}</li>
+  {/each}
+
   {#if colecoes.length || onNovaColecao}
     <li class="separada"><h2 class="titulo-secao">Coleções</h2></li>
     {#each itensColecoes as item, i (item.valor)}
-      <li>{@render estante(item, vistas.length + autores.length + i)}</li>
+      <li>{@render estante(item, vistas.length + autores.length + destaques.length + i)}</li>
     {/each}
     {#if onNovaColecao}
       <li>

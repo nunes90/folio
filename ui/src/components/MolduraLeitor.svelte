@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick, untrack, type Snippet } from "svelte";
-  import { fade } from "svelte/transition";
+  import { fade, type TransitionConfig } from "svelte/transition";
   import { sistema } from "../lib/ambiente.svelte";
   import { cartoesEmbaixo } from "../lib/destaques";
   import { medirRotulos, type EstadoRotulos } from "../lib/densidade";
@@ -41,6 +41,8 @@
     saidaDoFoco,
     estimativa,
     margem = null,
+    marcada = false,
+    onMarcar,
     continuacao = null,
     onContinuar,
     onFechar,
@@ -80,6 +82,10 @@
      * (EPUB): ela parece a margem da página. Sem elas, as da interface (PDF).
      */
     margem?: { fundo: string; texto: string } | null;
+    /** A página que se vê tem marcador (M42a): a fitinha no canto do livro. */
+    marcada?: boolean;
+    /** Marca a página ou tira o marcador (Ctrl+B; no menu ⋯). */
+    onMarcar?: () => void;
     /** "Onde você parou" (M22): aparece quando o leitor o dá, ao reabrir o livro. */
     continuacao?: Continuacao | null;
     /** O cartão fechou pelo botão ou pelo Esc: o leitor mostra o ponto (ex.: fazendo-o piscar). */
@@ -123,6 +129,16 @@
   });
   const cobrindo = $derived(estreita && (indiceAberto || aparenciaAberta));
 
+  // A fitinha do marcador desce um pouco ao aparecer (e sobe ao sumir): só opacity e transform,
+  // com a duração da casa (zerada com movimento reduzido).
+  function fitaEntra(_no: Element): TransitionConfig {
+    return {
+      duration: duracao("media"),
+      easing: curva,
+      css: (t) => `opacity: ${t}; transform: translateY(${(t - 1) * 0.5}rem)`,
+    };
+  }
+
   // "Mais opções" (M26a): o que não se usa em toda sessão sai da barra (fica também na paleta
   // e no atalho). O modo foco continua na barra.
   const itensDoMenu = $derived.by(() => {
@@ -136,6 +152,15 @@
         executar: alternarUmaIdeia,
       },
     ];
+    if (onMarcar)
+      itens.push({
+        id: "marcador",
+        nome: "Página marcada",
+        marcado: marcada,
+        teclas: "Ctrl+B",
+        atalho: "Control+B",
+        executar: onMarcar,
+      });
     if (onAlternarLado)
       itens.push({
         id: "lado",
@@ -615,6 +640,13 @@
     {@render children()}
   </div>
 
+  {#if marcada}
+    <!-- Decorativa: o leitor de tela ouve "Página marcada." ao marcar, e o menu ⋯ diz o estado. -->
+    <span class="fita" aria-hidden="true" transition:fitaEntra>
+      <Icone nome="marcador" preenchido />
+    </span>
+  {/if}
+
   {#if modoFoco}
     <!-- Faixas nas bordas: o ponteiro nelas revela as barras (no teclado, o Tab as revela).
          Com "barras só pelo teclado" nas preferências, não há faixas. -->
@@ -1005,6 +1037,26 @@
 
   .sensor.base {
     bottom: 0;
+  }
+
+  /* A fitinha do marcador (M42a): no alto do livro, à direita, como uma fita entre as páginas. */
+  .fita {
+    grid-area: conteudo;
+    justify-self: end;
+    align-self: start;
+    z-index: 1;
+    margin-inline-end: 1.25rem;
+    color: var(--destaque);
+    font-size: 1.5rem;
+    line-height: 0;
+    pointer-events: none;
+  }
+
+  .foco .fita {
+    grid-area: auto;
+    position: absolute;
+    top: 0;
+    right: 0;
   }
 
   .area-status {

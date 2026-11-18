@@ -8,9 +8,10 @@ export type Vista = "todos" | "favoritos" | "lendo" | "para-ler" | "lidos" | "li
 
 /**
  * O que a área principal mostra: uma vista fixa, a lista de autores (`autores`), os livros de
- * um autor (`autor:<chave>`, ver lib/autores.ts) ou os de uma coleção (`colecao:<id>`).
+ * um autor (`autor:<chave>`, ver lib/autores.ts), os de uma coleção (`colecao:<id>`) ou os
+ * destaques de todos os livros (`destaques`, M42b).
  */
-export type Filtro = Vista | "autores" | `autor:${string}` | `colecao:${number}`;
+export type Filtro = Vista | "autores" | "destaques" | `autor:${string}` | `colecao:${number}`;
 
 /** Chave do autor, se o filtro for de um autor ("" = livros sem autor). */
 export function chaveDoAutor(filtro: Filtro): string | null {
@@ -60,8 +61,8 @@ function doAutor(chave: string): (livro: Livro) => boolean {
 }
 
 function naSituacao(livros: Livro[], filtro: Filtro): Livro[] {
-  // A lista de autores não é uma estante de livros.
-  if (filtro === "autores") return [];
+  // A lista de autores e a de destaques não são estantes de livros.
+  if (filtro === "autores" || filtro === "destaques") return [];
   const colecao = idDaColecao(filtro);
   if (colecao !== null) return livros.filter(naColecao(colecao));
   const autor = chaveDoAutor(filtro);

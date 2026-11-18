@@ -424,6 +424,18 @@ describe("Biblioteca", () => {
         },
       );
 
+    it("a estante Destaques (M42b) aparece com quem sabe abrir um destaque, com quantos há fora da lixeira", async () => {
+      const comDestaques = [livro({ id: "a", destaques: 2 }), livro({ id: "b", titulo: "Memórias Póstumas", destaques: 1 })];
+      const { unmount } = render(Biblioteca, props({ livros: comDestaques, lixeira: [{ ...naLixeira, destaques: 5 }] }));
+      expect(() => naBarra(/^Destaques/)).toThrow();
+      unmount();
+      render(Biblioteca, props({ livros: comDestaques, onAbrirDestaque: vi.fn() }));
+      await fireEvent.click(naBarra(/^Destaques 3$/));
+      expect(screen.getByRole("heading", { name: "Destaques" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /^Memórias Póstumas/ })).toBeNull();
+      expect(screen.getByRole("searchbox").getAttribute("placeholder")).toBe("Trecho, nota ou livro");
+    });
+
     it("Delete manda o livro focado para a lixeira (sem confirmar: dá para desfazer)", async () => {
       const p = props();
       render(Biblioteca, p);

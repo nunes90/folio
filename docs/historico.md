@@ -1158,3 +1158,26 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   da meta some. Ícones: o traço (2,25) já era igual em todos; o que variava era o tamanho óptico. "Parar" ficou
   do tamanho de pausar/continuar e com cantos arredondados, "grade" e "dividir" mais leves, "copiar" com duas
   folhas e "citar" maior. Custo: ~1,75 rem de altura do livro fora do modo foco.
+- **M42a — marcadores de página** (branch `feat/m42a-marcadores`): combinado com Lucas, uma aba própria no Índice
+  e `Ctrl+B`. Core: migração 12 (`marcadores`, um por lugar: `UNIQUE (livro_id, local)`, e marcar de novo devolve o
+  que existe; apagar o livro leva os marcadores), `marcadores.rs` com marcar, listar, apagar e restaurar
+  (Desfazer); `MarcadorNaoEncontrado` e `MarcadorSemLocal` entraram no `ErroBiblioteca`, e o `match` sem `_` do
+  `erro.rs` (M40a) obrigou a dar categoria a eles. Frontend: `ControleMarcadores`, com adaptador por formato
+  como os destaques. No PDF o lugar é `pagina:N`. No EPUB, o marcador guarda o começo da página (o `collapse` do
+  CFI do `relocate`) e cai na página que se vê quando fica entre o começo e o fim dela (`ferramentasCfi`): mudar
+  a fonte repagina o livro, e a igualdade de CFIs falharia. A fitinha (`.fita`, decorativa) desce 0,5 rem ao
+  aparecer, com a duração da casa. As três abas não cabiam no painel de 19,5 rem com a contagem: o índice
+  transbordava (o `epub.e2e.js` pegou) e, apertadas, os nomes se sobrepunham. A contagem saiu da aba e ficou no
+  nome acessível ("Destaques (3)"). Na captura a 360 px, o nome do marcador sumia: a classe era `.rotulo`, que o
+  `app.css` esconde nas barras compactas. Novo E2E: `marcadores.e2e.js` (10 sessões, 53 testes).
+- **M42b — estante "Destaques"** (branch `feat/m42b-estante-destaques`): combinado com Lucas, uma estante na barra
+  da biblioteca (depois de Autores), não um diálogo. Core: `listar_todos_os_destaques` (um `JOIN` com `livros`, fora
+  da lixeira, em ordem de leitura dentro de cada livro); a ordem dos livros fica com a interface
+  (`Intl.Collator` do pt-BR: "Às avessas" antes de "Dom Casmurro", o que o `ORDER BY` do SQLite não faz). A
+  lista é pedida quando a estante aparece; a contagem na barra soma o campo `destaques` que os livros já
+  traziam. `lib/todosOsDestaques.ts` agrupa, busca (trecho, nota, capítulo, título e autores, sem acentos) e
+  filtra por motivo; `TodosOsDestaques.svelte` usa o `.segmentado` para o motivo. Abrir num destaque reaproveita
+  o `inicio` do leitor: o CFI do destaque no EPUB e `pagina:N` no PDF (`localParaAbrir`). O E2E mostrou que o
+  cartão "Onde você parou" aparecia mesmo assim (sem a data da última leitura, a regra o mostra de propósito):
+  os dois leitores ganharam `ondeParou`. A estante não aparecia na barra no primeiro teste: as `Estantes`
+  desenham cada grupo à parte, e o novo precisava entrar no desenho e nos índices das setas.

@@ -95,10 +95,13 @@ impl Tipado for ErroBiblioteca {
             Self::NaoEncontrado(_)
             | Self::ColecaoNaoEncontrada(_)
             | Self::DestaqueNaoEncontrado(_)
-            | Self::SessaoNaoEncontrada(_) => Tipo::NaoEncontrado,
+            | Self::SessaoNaoEncontrada(_)
+            | Self::MarcadorNaoEncontrado(_) => Tipo::NaoEncontrado,
             Self::NomeDeColecaoVazio => Tipo::NomeVazio,
             Self::ColecaoJaExiste(_) => Tipo::NomeEmUso,
-            Self::DestaqueSemTrecho | Self::DestaqueSemLocal => Tipo::Outro,
+            Self::DestaqueSemTrecho | Self::DestaqueSemLocal | Self::MarcadorSemLocal => {
+                Tipo::Outro
+            }
             Self::Io { .. } | Self::Leitura { .. } => Tipo::Arquivo,
         }
     }

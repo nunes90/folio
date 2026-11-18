@@ -9,6 +9,7 @@ use folio_core::biblioteca::{
 };
 use folio_core::destaques::{Cor, Destaque, Motivo, NovoDestaque};
 use folio_core::epub::Capa;
+use folio_core::marcadores::{Marcador, NovoMarcador};
 use folio_core::preferencias::PreferenciasLeitura;
 use folio_core::sessoes::Sessao;
 use folio_core::visitas::{Trecho, Visita};
@@ -188,6 +189,16 @@ pub fn listar_destaques(
         .map_err(|e| registrar(&e))
 }
 
+/// Os destaques de todos os livros fora da lixeira (estante "Destaques", M42b).
+#[tauri::command]
+pub fn listar_todos_os_destaques(
+    bib: State<'_, EstadoBiblioteca>,
+) -> Result<Vec<Destaque>, ErroDoComando> {
+    travar(&bib)
+        .listar_todos_os_destaques()
+        .map_err(|e| registrar(&e))
+}
+
 #[tauri::command]
 pub fn criar_destaque(
     bib: State<'_, EstadoBiblioteca>,
@@ -250,6 +261,46 @@ pub fn restaurar_destaque(
 ) -> Result<Destaque, ErroDoComando> {
     travar(&bib)
         .restaurar_destaque(&destaque)
+        .map_err(|e| registrar(&e))
+}
+
+/// Marcadores do livro na ordem de leitura (M42a).
+#[tauri::command]
+pub fn listar_marcadores(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+) -> Result<Vec<Marcador>, ErroDoComando> {
+    travar(&bib)
+        .listar_marcadores(&livro)
+        .map_err(|e| registrar(&e))
+}
+
+/// Marca a página; se ela já estava marcada, devolve o marcador que existia.
+#[tauri::command]
+pub fn marcar_pagina(
+    bib: State<'_, EstadoBiblioteca>,
+    livro: String,
+    novo: NovoMarcador,
+) -> Result<Marcador, ErroDoComando> {
+    travar(&bib).marcar(&livro, novo).map_err(|e| registrar(&e))
+}
+
+/// Devolve o marcador apagado, para o "Desfazer" (`restaurar_marcador`).
+#[tauri::command]
+pub fn apagar_marcador(
+    bib: State<'_, EstadoBiblioteca>,
+    id: i64,
+) -> Result<Marcador, ErroDoComando> {
+    travar(&bib).apagar_marcador(id).map_err(|e| registrar(&e))
+}
+
+#[tauri::command]
+pub fn restaurar_marcador(
+    bib: State<'_, EstadoBiblioteca>,
+    marcador: Marcador,
+) -> Result<Marcador, ErroDoComando> {
+    travar(&bib)
+        .restaurar_marcador(&marcador)
         .map_err(|e| registrar(&e))
 }
 

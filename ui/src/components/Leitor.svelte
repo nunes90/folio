@@ -8,6 +8,7 @@
   import { mensagemAoAbrir } from "../lib/errosAoAbrir";
   import ControlesLado from "./ControlesLado.svelte";
   import ListaDestaques from "./ListaDestaques.svelte";
+  import ListaMarcadores from "./ListaMarcadores.svelte";
   import Carregando from "./Carregando.svelte";
   import Icone from "./Icone.svelte";
   import ControlesVoz from "./ControlesVoz.svelte";
@@ -41,6 +42,7 @@
   } from "../lib/buscaEpub";
   import {
     compararCfis,
+    ferramentasCfi,
     criarView,
     desenhoContorno,
     desenhoMarcaTexto,
@@ -64,6 +66,7 @@
   import { aguardarTransicao } from "../lib/transicao";
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
+  import { ControleMarcadores } from "../lib/controleMarcadores.svelte";
   import { tirarEspacoAposUltimaQuebra } from "../lib/contornosWebkit";
   import { blocoInicial, primeiroBlocoDaSecaoSeguinte } from "../lib/vozNaSecao";
   import { frasesDoDocumento, frasesDoTrecho, indiceDaFraseEm, trechoSeguinte, unir } from "../lib/frases";
@@ -125,6 +128,7 @@
     livroId,
     inicio,
     ultimaLeitura,
+    ondeParou = true,
     onFechar,
     onProgresso,
     onComandos,
@@ -136,6 +140,11 @@
     inicio?: string;
     /** Fim da última leitura (segundos desde 1970), para "Da última vez…" (M22). */
     ultimaLeitura?: number;
+    /**
+     * Mostrar o cartão "Onde você parou" ao abrir (M22)? Não, quando o livro abre num lugar
+     * escolhido agora (um destaque da estante "Destaques", M42b).
+     */
+    ondeParou?: boolean;
     onFechar: () => void;
     onProgresso?: (localizacao: string, fracao: number) => void;
     /** Publica os comandos deste livro para a paleta (Ctrl+K), de novo a cada mudança. */
@@ -202,6 +211,32 @@
   let abaIndice = $state<Aba>("indice");
   let abas = $state<AbasIndice>();
   let marcaTexto: Desenho | undefined;
+  // Marcadores de página (M42a). O marcador guarda o começo da página; cai na página que se vê
+  // quando fica entre o começo e o fim dela (a paginação muda com a fonte). As funções de CFI
+  // chegam com o livro (import dinâmico do foliate-js).
+  let cfis: Awaited<ReturnType<typeof ferramentasCfi>> | null = null;
+  const marcadores = new ControleMarcadores({
+    get livroId() {
+      return livroId;
+    },
+    aqui: () =>
+      cfiAtual && cfis
+        ? { local: cfis.recolher(cfiAtual), capitulo: secaoAnunciada ?? null, posicao: progresso }
+        : null,
+    naPagina: (m) => {
+      if (!cfiAtual || !cfis) return false;
+      const { comparar, recolher } = cfis;
+      return comparar(m.local, recolher(cfiAtual)) >= 0 && comparar(m.local, recolher(cfiAtual, true)) <= 0;
+    },
+    irPara: async (m) => {
+      if (!view) return;
+      vouSaltar();
+      await view.goTo(m.local);
+      view.renderer.focusView();
+    },
+    anunciar: (texto) => (anuncio = texto),
+  });
+
   const destaques = new ControleDestaques({
     get livroId() {
       return livroId;
@@ -786,6 +821,7 @@
         if (secaoAnunciada !== undefined) anuncio = `Seção: ${secao}`;
         secaoAnunciada = secao;
       }
+      marcadores.conferir();
     });
     // Cada capítulo é um iframe: teclas pressionadas lá dentro não chegam à janela. Uma cópia
     // é reenviada à janela, onde ficam todos os atalhos (inclusive o F1 do App e o Esc da moldura).
@@ -829,6 +865,8 @@
     livroRtl = v.book.dir === "rtl";
     void posicionarIndice(v);
     await destaques.carregar();
+    cfis = await ferramentasCfi();
+    await marcadores.carregar();
     await v.init({ lastLocation: inicio ?? null, showTextStart: !inicio });
     moldura.focarTitulo();
     montarContinuacao();
@@ -861,7 +899,7 @@
 
   function montarContinuacao() {
     const agora = Date.now() / 1000;
-    if (!deveMostrar(!!inicio, ultimaLeitura, agora)) return;
+    if (!ondeParou || !deveMostrar(!!inicio, ultimaLeitura, agora)) return;
     const capitulo = capituloVisivel();
     const ponto = view?.lastLocation?.range;
     let trecho: string[] = [];
@@ -1226,6 +1264,7 @@
     lista.push(...comandosDaVozNaturalDoApp(preferencias, atualizarPreferencias));
     lista.push(comandoQuantoFalta(estimativa, "epub", (texto) => (anuncio = texto)));
     lista.push(...comandosDasRevisitas(revisitas.lista, irParaTrecho));
+    lista.push(...marcadores.comandos("epub"));
     lista.push(...destaques.comandos(destacarSelecao), ...comandosDaMeta(meta, "epub"),
       ...comandosDoFoco(saidaDoFoco, "epub", (m) => moldura.focarPor(m)),
     );
@@ -1365,6 +1404,11 @@
       void destacarSelecao();
       return;
     }
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "b") {
+      e.preventDefault();
+      void marcadores.alternar();
+      return;
+    }
     if (e.key === "Escape" && destaques.barra) {
       e.preventDefault();
       destaques.fecharBarra();
@@ -1458,6 +1502,8 @@
   {meta}
   {saidaDoFoco}
   {margem}
+  marcada={!!marcadores.daPagina}
+  onMarcar={() => void marcadores.alternar()}
   {continuacao}
   onContinuar={piscarOndeParou}
   estimativa={estimativa ? textoDoRodape(estimativa, "epub") : undefined}
@@ -1476,7 +1522,21 @@
   {/snippet}
 
   {#snippet indice()}
-    <AbasIndice bind:this={abas} bind:aba={abaIndice} quantidade={destaques.lista.length}>
+    <AbasIndice
+      bind:this={abas}
+      bind:aba={abaIndice}
+      quantidade={destaques.lista.length}
+      marcadores={marcadores.lista.length}
+    >
+      {#snippet conteudoMarcadores()}
+        <ListaMarcadores
+          marcadores={marcadores.lista}
+          formato="epub"
+          atual={marcadores.daPagina}
+          onIr={(m) => void marcadores.ir(m)}
+          onApagar={(m) => void marcadores.apagar(m)}
+        />
+      {/snippet}
       {#snippet conteudoIndice()}
         {#if itensIndice.length}
           <Indice itens={itensIndice} atual={hrefAtual} onNavegar={irParaSecao} />

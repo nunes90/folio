@@ -2,11 +2,12 @@ import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import axe from "axe-core";
 import { createRawSnippet, tick } from "svelte";
 import { describe, expect, it, vi } from "vitest";
-import type { Destaque } from "../lib/biblioteca";
+import type { Destaque, Marcador } from "../lib/biblioteca";
 import AbasIndice from "./AbasIndice.svelte";
 import BarraDestaque from "./BarraDestaque.svelte";
 import EditarNota from "./EditarNota.svelte";
 import ListaDestaques from "./ListaDestaques.svelte";
+import ListaMarcadores from "./ListaMarcadores.svelte";
 
 const semViolacoes = async (container: HTMLElement) => {
   const { violations } = await axe.run(container);
@@ -224,11 +225,13 @@ describe("AbasIndice", () => {
   const renderizar = () =>
     render(AbasIndice, {
       quantidade: 3,
+      marcadores: 2,
       conteudoIndice: trecho("<p>Capítulos</p>"),
       conteudoDestaques: trecho("<p>Os destaques</p>"),
+      conteudoMarcadores: trecho("<p>Os marcadores</p>"),
     });
 
-  it("duas abas; a escolhida mostra o seu painel", async () => {
+  it("três abas (M42a); a escolhida mostra o seu painel", async () => {
     renderizar();
     const indice = screen.getByRole("tab", { name: "Índice" });
     const destaques = screen.getByRole("tab", { name: "Destaques (3)" });
@@ -237,6 +240,9 @@ describe("AbasIndice", () => {
     await fireEvent.click(destaques);
     expect(destaques.getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("tabpanel").textContent).toContain("Os destaques");
+    const marcadores = screen.getByRole("tab", { name: "Marcadores (2)" });
+    await fireEvent.click(marcadores);
+    expect(screen.getByRole("tabpanel").textContent).toContain("Os marcadores");
   });
 
   it("setas trocam de aba e levam o foco (uma parada de Tab)", async () => {
@@ -249,7 +255,12 @@ describe("AbasIndice", () => {
     expect(document.activeElement).toBe(destaques);
     expect(destaques.tabIndex).toBe(0);
     expect(indice.tabIndex).toBe(-1);
-    await fireEvent.keyDown(destaques, { key: "Home" });
+    await fireEvent.keyDown(destaques, { key: "End" });
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Marcadores (2)" }));
+    await fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(indice);
+    await fireEvent.keyDown(indice, { key: "ArrowLeft" });
+    await fireEvent.keyDown(document.activeElement!, { key: "Home" });
     expect(document.activeElement).toBe(indice);
   });
 
@@ -262,6 +273,47 @@ describe("AbasIndice", () => {
 
   it("não tem violações de acessibilidade (axe)", async () => {
     const { container } = renderizar();
+    await semViolacoes(container);
+  });
+});
+
+describe("ListaMarcadores", () => {
+  const marcador = (parcial: Partial<Marcador> = {}): Marcador => ({
+    id: 1,
+    livroId: "x",
+    local: "pagina:12",
+    capitulo: "III. A denúncia",
+    posicao: 0.25,
+    criadoEm: 0,
+    ...parcial,
+  });
+
+  it("cada marcador leva à página e tem o botão de tirar; o da página atual fica indicado", async () => {
+    const onIr = vi.fn();
+    const onApagar = vi.fn();
+    const lista = [marcador(), marcador({ id: 2, local: "pagina:30", capitulo: null, posicao: 0.6 })];
+    render(ListaMarcadores, { marcadores: lista, formato: "pdf", atual: lista[1], onIr, onApagar });
+    const ir = screen.getByRole("button", { name: "página 12, III. A denúncia (25%)" });
+    await fireEvent.click(ir);
+    expect(onIr).toHaveBeenCalledWith(lista[0]);
+    expect(ir.getAttribute("aria-current")).toBeNull();
+    expect(screen.getByRole("button", { name: "página 30 (60%)" }).getAttribute("aria-current")).toBe("location");
+    await fireEvent.click(screen.getByRole("button", { name: "Tirar o marcador: página 30 (60%)" }));
+    expect(onApagar).toHaveBeenCalledWith(lista[1]);
+  });
+
+  it("sem marcadores, ensina o atalho", () => {
+    render(ListaMarcadores, { marcadores: [], formato: "epub", onIr() {}, onApagar() {} });
+    expect(screen.getByText(/Nenhum marcador ainda/).textContent).toContain("Ctrl+B");
+  });
+
+  it("não tem violações de acessibilidade (axe)", async () => {
+    const { container } = render(ListaMarcadores, {
+      marcadores: [marcador()],
+      formato: "epub",
+      onIr() {},
+      onApagar() {},
+    });
     await semViolacoes(container);
   });
 });

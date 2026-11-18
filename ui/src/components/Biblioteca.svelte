@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { urlDaCapa, type Colecao, type Livro } from "../lib/biblioteca";
+  import { urlDaCapa, type Colecao, type Destaque, type Livro } from "../lib/biblioteca";
   import {
     contarPorColecao,
     contarPorFiltro,
@@ -10,6 +10,7 @@
   } from "../lib/filtro";
   import { agruparPorAutor } from "../lib/autores";
   import ListaAutores from "./ListaAutores.svelte";
+  import TodosOsDestaques from "./TodosOsDestaques.svelte";
   import type { Preferencias } from "../lib/preferencias.svelte";
   import type { TemaEfetivo } from "../lib/temas";
   import { ATRIBUTO_CAPA, ATRIBUTO_TELA } from "../lib/transicao";
@@ -32,6 +33,7 @@
     importando = false,
     arrastando = false,
     onAbrir,
+    onAbrirDestaque,
     onImportar,
     lixeira = [],
     colecoes = [],
@@ -51,6 +53,8 @@
     /** Arquivos sendo arrastados sobre a janela: mostra onde soltar. */
     arrastando?: boolean;
     onAbrir: (livro: Livro) => void;
+    /** Abre o livro no destaque (estante "Destaques", M42b); sem ele, a estante não aparece. */
+    onAbrirDestaque?: (livro: Livro, destaque: Destaque) => void;
     onImportar: () => void;
     /** Livros na lixeira (aparecem só na estante "Lixeira"). */
     lixeira?: Livro[];
@@ -93,6 +97,13 @@
   // Autores: a lista (com a busca) e o autor aberto, pela chave do filtro.
   const autores = $derived(agruparPorAutor(todos, termo));
   const naListaDeAutores = $derived(filtro === "autores");
+  // Os destaques de todos os livros (M42b): não é uma grade de livros.
+  const naEstanteDestaques = $derived(filtro === "destaques");
+  const quantidadeDestaques = $derived(
+    onAbrirDestaque
+      ? livros.reduce((soma, l) => soma + (l.removidoEm === null ? l.destaques : 0), 0)
+      : undefined,
+  );
   const autorAtual = $derived.by(() => {
     const chave = chaveDoAutor(filtro);
     return chave === null ? null : (agruparPorAutor(todos).find((a) => a.chave === chave) ?? null);
@@ -168,7 +179,7 @@
   }
   /** Para o leitor de tela: quantos livros a busca ou o filtro deixaram na grade. */
   const anuncioBusca = $derived(
-    !filtrando || (naListaDeAutores && !termo.trim())
+    !filtrando || naEstanteDestaques || (naListaDeAutores && !termo.trim())
       ? ""
       : naListaDeAutores
         ? autores.length === 1
@@ -392,6 +403,7 @@
         {colecoes}
         {contagensColecoes}
         quantidadeAutores={autores.length}
+        {quantidadeDestaques}
         onEscolher={escolher}
         {onNovaColecao}
       />
@@ -424,6 +436,7 @@
         {colecoes}
         {contagensColecoes}
         quantidadeAutores={autores.length}
+        {quantidadeDestaques}
         onEscolher={escolher}
         {onNovaColecao}
       />
@@ -455,7 +468,7 @@
             bind:value={termo}
             aria-label="Buscar na biblioteca"
             aria-keyshortcuts="Control+F"
-            placeholder="Título ou autor"
+            placeholder={naEstanteDestaques ? "Trecho, nota ou livro" : "Título ou autor"}
           />
         </search>
       {/if}
@@ -552,7 +565,11 @@
         </div>
       {/if}
 
-      {#if visiveis.length === 0 && !naListaDeAutores}
+      {#if naEstanteDestaques && onAbrirDestaque}
+        <TodosOsDestaques {livros} {termo} onAbrir={onAbrirDestaque} onLimparBusca={limparBusca} />
+      {/if}
+
+      {#if visiveis.length === 0 && !naListaDeAutores && !naEstanteDestaques}
         <div class="sem-resultado">
           {#if termo.trim()}
             <p>Nenhum livro encontrado para “{termo.trim()}”.</p>

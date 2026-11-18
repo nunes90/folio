@@ -62,7 +62,16 @@ Na biblioteca, só as abas Voz e Interface.
 
 Na barra: a **cor**, o **motivo** (dúvida, citar, revisar), **Nota**, **Copiar**, **Fixar ao lado** e **Ouvir**. A aba
 **Destaques**, no Índice, lista todos na ordem de leitura e filtra por motivo; "Exportar em Markdown…" exporta todos
-ou só os do motivo filtrado.
+ou só os do motivo filtrado. Na biblioteca, a estante **Destaques** reúne os de todos os livros, agrupados por livro:
+a busca (`Ctrl+F`) procura no trecho, na nota, no capítulo e no título, há o mesmo filtro por motivo, e escolher um
+destaque abre o livro nele.
+
+## Marcadores
+
+`Ctrl+B` marca a página que você está lendo (uma fitinha aparece no alto, à direita) ou, se ela já tem marcador,
+tira (com **Desfazer**). Também no menu ⋯ ("Página marcada") e na paleta ("Marcar esta página"). A aba
+**Marcadores**, no Índice, lista os marcadores na ordem do livro; a paleta também vai a cada um ("Ir ao
+marcador…"). No EPUB, o marcador acompanha o texto: mudar a fonte não o tira da página certa.
 
 ## Ouvir
 

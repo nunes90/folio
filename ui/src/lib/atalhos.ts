@@ -89,6 +89,11 @@ const BUSCA: Atalho[] = [
 
 const MARCAR: Atalho[] = [
   {
+    teclas: [["Ctrl", "B"]],
+    acao: "Marcar a página ou tirar o marcador dela (a lista fica na aba Marcadores do índice)",
+    grupo: "Marcar",
+  },
+  {
     teclas: [["Ctrl", "D"]],
     acao: "Destacar o trecho selecionado ou, sem seleção, a frase atual (abre a barra de cores; setas escolhem, Enter aplica)",
     grupo: "Marcar",

@@ -10,6 +10,7 @@ pub mod formato;
 pub mod kokoro;
 pub mod links;
 pub mod livro;
+pub mod marcadores;
 pub mod metadados;
 pub mod miniatura;
 pub mod pastas;

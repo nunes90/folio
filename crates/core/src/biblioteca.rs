@@ -139,6 +139,20 @@ const MIGRACOES: &[&str] = &[
     -- O avanço gravado antes desta regra contava a navegação pelo sumário como leitura.
     UPDATE sessoes SET avanco = 0;
 ",
+    "
+    -- Marcadores de página (M42a, ver marcadores.rs): um lugar no livro, sem trecho. Um por
+    -- lugar: marcar de novo a mesma página não cria outro.
+    CREATE TABLE marcadores (
+        id        INTEGER PRIMARY KEY,
+        livro_id  TEXT    NOT NULL REFERENCES livros(id) ON DELETE CASCADE,
+        local     TEXT    NOT NULL,  -- EPUB: CFI do começo da página; PDF: `pagina:N`
+        capitulo  TEXT,              -- título da seção no índice
+        posicao   REAL    NOT NULL,  -- 0.0 a 1.0 no livro: a ordem de leitura
+        criado_em INTEGER NOT NULL,
+        UNIQUE (livro_id, local)
+    );
+    CREATE INDEX marcadores_por_livro ON marcadores (livro_id, posicao);
+",
 ];
 
 /// Resultado de [`Biblioteca::importar`]: o livro, e se ele acabou de entrar ou já estava lá.
@@ -283,6 +297,10 @@ pub enum ErroBiblioteca {
     DestaqueSemLocal,
     #[error("sessão de leitura não encontrada: {0}")]
     SessaoNaoEncontrada(i64),
+    #[error("marcador não encontrado: {0}")]
+    MarcadorNaoEncontrado(i64),
+    #[error("o marcador precisa de um local no livro")]
+    MarcadorSemLocal,
     #[error("não foi possível gravar {}", caminho.display())]
     Io {
         caminho: PathBuf,

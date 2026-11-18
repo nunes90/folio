@@ -24,6 +24,7 @@ const ESTANTES: [Filtro, string][] = [
   ["para-ler", "Para ler"],
   ["lidos", "Lidos"],
   ["autores", "Autores"],
+  ["destaques", "Destaques"],
   ["lixeira", "Lixeira"],
 ];
 

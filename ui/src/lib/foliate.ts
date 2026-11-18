@@ -136,6 +136,20 @@ export async function compararCfis(): Promise<(a: string, b: string) => number> 
   return compare as (a: string, b: string) => number;
 }
 
+/**
+ * O começo e o fim de um CFI de intervalo (o `cfi` do `relocate` é o da página na tela) e a
+ * comparação: os marcadores (M42a) guardam o começo da página e caem na página que se vê quando
+ * ficam entre os dois, mesmo depois de a fonte mudar e a paginação com ela.
+ */
+export async function ferramentasCfi(): Promise<{
+  comparar: (a: string, b: string) => number;
+  recolher: (cfi: string, fim?: boolean) => string;
+}> {
+  // @ts-expect-error -- o foliate-js não publica tipos.
+  const { compare, collapse } = await import("../vendor/foliate-js/epubcfi.js");
+  return { comparar: compare, recolher: collapse };
+}
+
 /** O marca-texto do foliate-js (`Overlayer.highlight`). */
 export async function desenhoMarcaTexto(): Promise<Desenho> {
   // @ts-expect-error -- o foliate-js não publica tipos (o view.js é importado só pelo efeito).

@@ -747,6 +747,19 @@ describe("MolduraLeitor", () => {
   });
 
   describe("descoberta (M37)", () => {
+    it("marcador (M42a): o menu diz se a página está marcada e alterna; a fitinha aparece", async () => {
+      const onMarcar = vi.fn();
+      const { rerender, container } = renderizar({ onMarcar, marcada: false });
+      expect(container.querySelector(".fita")).toBeNull();
+      await fireEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+      const item = screen.getByRole("menuitemcheckbox", { name: /Página marcada/ });
+      expect(item.getAttribute("aria-checked")).toBe("false");
+      await fireEvent.click(item);
+      expect(onMarcar).toHaveBeenCalledOnce();
+      await rerender({ marcada: true });
+      expect(container.querySelector(".fita")?.getAttribute("aria-hidden")).toBe("true");
+    });
+
     it("Mais opções tem a porta da paleta: Todos os comandos…", async () => {
       renderizar();
       paleta.aberta = false;
