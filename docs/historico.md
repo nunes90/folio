@@ -1199,6 +1199,11 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   novidades, e erros só no log quando a consulta foi sozinha; pela paleta, diz o resultado e o erro. O que se
   lembra (quando consultou, qual versão foi vista) fica no `localStorage`. Nova regra no `CLAUDE.md`: a internet
   só a pedido. Com o M43, o plano "Depois da análise" (M29–M43) está completo.
+- **Balão da nota que sumia sozinho** (branch `fix/balao-nota-relocate`): o `notas.e2e.js` falhou duas vezes na CI
+  ("o foco não foi ao balão"; a espera do M40c não resolveu). A captura da falha mostrou o balão já fechado: ele
+  abriu e, logo depois, um `relocate` atrasado do foliate-js (o layout se acomodando, com a página igual) o
+  fechou. O `relocate` não diz o motivo, então o leitor passou a fechar o balão só quando o CFI muda. O teste
+  também espera o livro parar de se reposicionar (a porcentagem igual por 1 s) antes de clicar na nota.
 - **v1.4.0** (branch `chore/v1.4.0`): versão nos 4 lugares, `CHANGELOG` com a seção da 1.4.0 e o README. O
   `THIRD-PARTY-NOTICES.md` gerado de novo saiu igual (nenhuma dependência nova no AppImage desde a 1.3.0). O banco
   de exemplo da v1.4.0 (migração 12) só pode ser gerado depois da tag: o `gerar.py` lê as migrações de cada tag.
