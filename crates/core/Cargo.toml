@@ -8,7 +8,7 @@ repository.workspace = true
 
 [dependencies]
 libloading = "0.9.0"
-lopdf = { version = "0.45.0", default-features = false }
+lopdf = { version = "0.47.0", default-features = false }
 # ONNX Runtime para a voz neural (Kokoro), carregado durante a execução (`load-dynamic`): a
 # `libonnxruntime.so` oficial (MIT) é baixada junto com a voz. O binário pronto que a `ort` baixaria
 # ao compilar exige a glibc 2.38, e o AppImage é compilado no Ubuntu 22.04 (2.35); a oficial, 2.28.
