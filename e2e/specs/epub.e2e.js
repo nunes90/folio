@@ -81,7 +81,8 @@ describe("EPUB", () => {
     await paleta("mostrar os destaques");
     const aba = await $("#aba-destaques");
     await aba.waitForDisplayed();
-    expect(await texto("#aba-destaques")).toContain("1");
+    // A contagem fica no nome acessível da aba (M42a: três abas, sem espaço para o número).
+    expect(await aba.getAttribute("aria-label")).toBe("Destaques (1)");
   });
 
   it("depois de um Ctrl+D com o foco no livro, uma seleção feita pelo app não rola a página", async () => {
@@ -143,7 +144,10 @@ describe("EPUB", () => {
     await botao("Rosa", '//*[contains(@class,"barra-destaque")]').click();
     await barra.waitForDisplayed({ reverse: true });
     await paleta("mostrar os destaques");
-    await ate(async () => (await texto("#aba-destaques")).includes("2"), "o destaque do lado não entrou na lista");
+    await ate(
+      async () => (await $("#aba-destaques").getAttribute("aria-label")) === "Destaques (2)",
+      "o destaque do lado não entrou na lista",
+    );
     await browser.keys(Key.Escape);
     await browser.keys([Key.Ctrl, Key.Shift, "l"]);
     await ate(async () => !(await moldura("com-lado")), "o lado não fechou");

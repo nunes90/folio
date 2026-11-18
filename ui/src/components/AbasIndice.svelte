@@ -1,26 +1,36 @@
 <script lang="ts" module>
-  export type Aba = "indice" | "destaques";
+  export type Aba = "indice" | "destaques" | "marcadores";
 </script>
 
 <script lang="ts">
-  // Abas do painel da esquerda: "Índice" e "Destaques" (como no Apple Books). Padrão ARIA de
-  // abas: setas e Home/End trocam a aba (ativação automática), Tab vai para o conteúdo.
+  // Abas do painel da esquerda: "Índice", "Destaques" e "Marcadores" (M42a; como no Apple Books).
+  // Padrão ARIA de abas: setas e Home/End trocam a aba (ativação automática), Tab vai para o
+  // conteúdo.
   import type { Snippet } from "svelte";
 
   let {
     aba = $bindable("indice"),
     quantidade = 0,
+    marcadores = 0,
     conteudoIndice,
     conteudoDestaques,
+    conteudoMarcadores,
   }: {
     aba?: Aba;
     /** Quantos destaques o livro tem (no rótulo da aba). */
     quantidade?: number;
+    /** Quantos marcadores o livro tem (no rótulo da aba). */
+    marcadores?: number;
     conteudoIndice: Snippet;
     conteudoDestaques: Snippet;
+    conteudoMarcadores: Snippet;
   } = $props();
 
-  const ABAS: Aba[] = ["indice", "destaques"];
+  const ABAS: Aba[] = ["indice", "destaques", "marcadores"];
+  const NOMES: Record<Aba, string> = { indice: "Índice", destaques: "Destaques", marcadores: "Marcadores" };
+  const contagem = (a: Aba) => (a === "destaques" ? quantidade : a === "marcadores" ? marcadores : 0);
+  const conteudo = (a: Aba) =>
+    a === "indice" ? conteudoIndice : a === "destaques" ? conteudoDestaques : conteudoMarcadores;
   let botoes: Record<string, HTMLButtonElement> = {};
 
   function aoTeclar(e: KeyboardEvent) {
@@ -48,45 +58,30 @@
   }
 </script>
 
+<!-- As setas trocam a aba: tratadas na lista de abas, que as recebe dos botões. -->
 <div class="abas" role="tablist" aria-label="Conteúdo do painel" tabindex="-1" onkeydown={aoTeclar}>
-  <button
-    type="button"
-    role="tab"
-    id="aba-indice"
-    aria-selected={aba === "indice"}
-    aria-controls="painel-aba-indice"
-    tabindex={aba === "indice" ? 0 : -1}
-    bind:this={botoes.indice}
-    onclick={() => (aba = "indice")}
-  >
-    Índice
-  </button>
-  <button
-    type="button"
-    role="tab"
-    id="aba-destaques"
-    aria-selected={aba === "destaques"}
-    aria-controls="painel-aba-destaques"
-    aria-label={quantidade ? `Destaques (${quantidade})` : "Destaques"}
-    tabindex={aba === "destaques" ? 0 : -1}
-    bind:this={botoes.destaques}
-    onclick={() => (aba = "destaques")}
-  >
-    Destaques{#if quantidade}<span class="contagem">{quantidade}</span>{/if}
-  </button>
+  {#each ABAS as a (a)}
+    <button
+      type="button"
+      role="tab"
+      id="aba-{a}"
+      aria-selected={aba === a}
+      aria-controls="painel-aba-{a}"
+      aria-label={contagem(a) ? `${NOMES[a]} (${contagem(a)})` : NOMES[a]}
+      tabindex={aba === a ? 0 : -1}
+      bind:this={botoes[a]}
+      onclick={() => (aba = a)}
+    >
+      {NOMES[a]}
+    </button>
+  {/each}
 </div>
 
-<div id="painel-aba-indice" role="tabpanel" aria-labelledby="aba-indice" hidden={aba !== "indice"}>
-  {@render conteudoIndice()}
-</div>
-<div
-  id="painel-aba-destaques"
-  role="tabpanel"
-  aria-labelledby="aba-destaques"
-  hidden={aba !== "destaques"}
->
-  {@render conteudoDestaques()}
-</div>
+{#each ABAS as a (a)}
+  <div id="painel-aba-{a}" role="tabpanel" aria-labelledby="aba-{a}" hidden={aba !== a}>
+    {@render conteudo(a)()}
+  </div>
+{/each}
 
 <style>
   .abas {
@@ -102,14 +97,19 @@
     outline: none;
   }
 
+  /* Três abas no painel de 19,5 rem (M42a): cada uma do tamanho do nome, em letra um pouco menor.
+     A contagem saiu da aba (não cabia): fica no nome acessível ("Destaques (3)") e nas listas. */
   [role="tab"] {
-    flex: 1;
+    flex: 1 1 auto;
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.3rem;
+    min-width: 0;
     min-height: 2rem;
-    padding: 0.25rem 0.5rem;
+    padding: 0.25rem 0.3rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
     border: 1px solid transparent;
     border-radius: var(--raio-pequeno);
     background: transparent;
@@ -129,13 +129,4 @@
     border-color: var(--borda);
   }
 
-  .contagem {
-    min-width: 1.25rem;
-    padding: 0 0.3rem;
-    border-radius: 999px;
-    background: var(--destaque-suave);
-    color: var(--destaque);
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
 </style>

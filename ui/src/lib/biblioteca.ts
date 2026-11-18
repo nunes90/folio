@@ -160,6 +160,38 @@ export function removerDaColecao(colecao: number, livro: string): Promise<void> 
   return invoke("remover_da_colecao", { colecao, livro });
 }
 
+/** Um marcador de página (M42a): um lugar no livro, sem trecho. */
+export interface Marcador {
+  id: number;
+  livroId: string;
+  /** EPUB: o CFI do começo da página; PDF: `pagina:N`. */
+  local: string;
+  capitulo: string | null;
+  /** 0 a 1 no livro: a ordem de leitura. */
+  posicao: number;
+  criadoEm: number;
+}
+
+export type NovoMarcador = Pick<Marcador, "local" | "capitulo" | "posicao">;
+
+export function listarMarcadores(livro: string): Promise<Marcador[]> {
+  return invoke<Marcador[]>("listar_marcadores", { livro });
+}
+
+/** Se a página já estava marcada, devolve o marcador que existia. */
+export function marcarPagina(livro: string, novo: NovoMarcador): Promise<Marcador> {
+  return invoke<Marcador>("marcar_pagina", { livro, novo });
+}
+
+/** Devolve o marcador apagado, para o "Desfazer" (`restaurarMarcador`). */
+export function apagarMarcador(id: number): Promise<Marcador> {
+  return invoke<Marcador>("apagar_marcador", { id });
+}
+
+export function restaurarMarcador(marcador: Marcador): Promise<Marcador> {
+  return invoke<Marcador>("restaurar_marcador", { marcador });
+}
+
 /** Diálogo "Salvar como" para o Markdown dos destaques; null se cancelado. */
 export function escolherDestinoMarkdown(nomeSugerido: string): Promise<string | null> {
   return save({

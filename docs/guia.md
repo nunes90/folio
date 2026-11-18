@@ -64,6 +64,13 @@ Na barra: a **cor**, o **motivo** (dúvida, citar, revisar), **Nota**, **Copiar*
 **Destaques**, no Índice, lista todos na ordem de leitura e filtra por motivo; "Exportar em Markdown…" exporta todos
 ou só os do motivo filtrado.
 
+## Marcadores
+
+`Ctrl+B` marca a página que você está lendo (uma fitinha aparece no alto, à direita) ou, se ela já tem marcador,
+tira (com **Desfazer**). Também no menu ⋯ ("Página marcada") e na paleta ("Marcar esta página"). A aba
+**Marcadores**, no Índice, lista os marcadores na ordem do livro; a paleta também vai a cada um ("Ir ao
+marcador…"). No EPUB, o marcador acompanha o texto: mudar a fonte não o tira da página certa.
+
 ## Ouvir
 
 "Ler em voz alta" fica no rodapé e na paleta. A frase lida fica realçada, e a leitura segue pelos parágrafos e

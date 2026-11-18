@@ -1158,3 +1158,15 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   da meta some. Ícones: o traço (2,25) já era igual em todos; o que variava era o tamanho óptico. "Parar" ficou
   do tamanho de pausar/continuar e com cantos arredondados, "grade" e "dividir" mais leves, "copiar" com duas
   folhas e "citar" maior. Custo: ~1,75 rem de altura do livro fora do modo foco.
+- **M42a — marcadores de página** (branch `feat/m42a-marcadores`): combinado com Lucas, uma aba própria no Índice
+  e `Ctrl+B`. Core: migração 12 (`marcadores`, um por lugar: `UNIQUE (livro_id, local)`, e marcar de novo devolve o
+  que existe; apagar o livro leva os marcadores), `marcadores.rs` com marcar, listar, apagar e restaurar
+  (Desfazer); `MarcadorNaoEncontrado` e `MarcadorSemLocal` entraram no `ErroBiblioteca`, e o `match` sem `_` do
+  `erro.rs` (M40a) obrigou a dar categoria a eles. Frontend: `ControleMarcadores`, com adaptador por formato
+  como os destaques. No PDF o lugar é `pagina:N`. No EPUB, o marcador guarda o começo da página (o `collapse` do
+  CFI do `relocate`) e cai na página que se vê quando fica entre o começo e o fim dela (`ferramentasCfi`): mudar
+  a fonte repagina o livro, e a igualdade de CFIs falharia. A fitinha (`.fita`, decorativa) desce 0,5 rem ao
+  aparecer, com a duração da casa. As três abas não cabiam no painel de 19,5 rem com a contagem: o índice
+  transbordava (o `epub.e2e.js` pegou) e, apertadas, os nomes se sobrepunham. A contagem saiu da aba e ficou no
+  nome acessível ("Destaques (3)"). Na captura a 360 px, o nome do marcador sumia: a classe era `.rotulo`, que o
+  `app.css` esconde nas barras compactas. Novo E2E: `marcadores.e2e.js` (10 sessões, 53 testes).

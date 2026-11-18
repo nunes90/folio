@@ -29,8 +29,10 @@
   import { mensagemAoAbrir } from "../lib/errosAoAbrir";
   import ControlesLado from "./ControlesLado.svelte";
   import ListaDestaques from "./ListaDestaques.svelte";
+  import ListaMarcadores from "./ListaMarcadores.svelte";
   import type { Destaque } from "../lib/biblioteca";
   import { ControleDestaques, type MudancaDeTrecho } from "../lib/controleDestaques.svelte";
+  import { ControleMarcadores } from "../lib/controleMarcadores.svelte";
   import { frasesDoTrecho, trechoSeguinte, unir } from "../lib/frases";
   import {
     frasesDaCamada,
@@ -198,6 +200,23 @@
   // texto do pdf.js e uma camada própria sobre cada página (o arquivo do PDF não muda).
   let abaIndice = $state<Aba>("indice");
   let abas = $state<AbasIndice>();
+  // Marcadores de página (M42a): no PDF, a página é o próprio lugar (`pagina:N`).
+  const marcadores = new ControleMarcadores({
+    get livroId() {
+      return livroId;
+    },
+    aqui: () =>
+      pronto
+        ? { local: `pagina:${pagina}`, capitulo: capituloDa(pagina), posicao: total ? pagina / total : 0 }
+        : null,
+    naPagina: (m) => m.local === `pagina:${pagina}`,
+    irPara: async (m) => {
+      const n = Number(m.local.match(/^pagina:(\d+)$/)?.[1]);
+      if (n) irPara(n);
+    },
+    anunciar: (texto) => (anuncio = texto),
+  });
+
   const destaques = new ControleDestaques({
     get livroId() {
       return livroId;
@@ -444,6 +463,7 @@
       const n = Number(inicio?.match(/^pagina:(\d+)$/)?.[1]);
       if (n >= 1 && n <= v.pagesCount) v.currentPageNumber = n;
       pagina = v.currentPageNumber;
+      marcadores.conferir();
       void atualizarTextoAcessivel(pagina);
       moverContagens({ rotulo: `página ${pagina}`, pagina });
       // Registra a abertura mesmo sem troca de página (senão o livro aparece como "Não iniciado").
@@ -453,6 +473,7 @@
       // No modo frase, a página muda para acompanhar a frase: a barra vai junto.
       if (!modoFrase) destaques.esconderDe(false);
       pagina = pageNumber;
+      marcadores.conferir();
       void atualizarTextoAcessivel(pageNumber);
       onProgresso?.(`pagina:${pageNumber}`, total ? pageNumber / total : 0);
       moverContagens({ rotulo: `página ${pageNumber}`, pagina: pageNumber });
@@ -481,6 +502,7 @@
     );
 
     await destaques.carregar();
+    await marcadores.carregar();
     tarefa = carregarPdfPorTrechos(livroId, tamanho, trechoDoLivro, () => {
       erro = "Não foi possível ler o arquivo deste livro. Volte à biblioteca e importe-o de novo.";
     });
@@ -818,6 +840,7 @@
         dica: preferencias.modoPdf === modoPdf ? "atual" : undefined,
         executar: () => atualizarPreferencias({ modoPdf }),
       })),
+      ...marcadores.comandos("pdf"),
       ...destaques.comandos(destacarSelecao),
       ...caminho.comandos(voltarAoPonto),
       ...voz.comandos(),
@@ -1501,6 +1524,11 @@
       destacarSelecao();
       return;
     }
+    if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "b") {
+      e.preventDefault();
+      void marcadores.alternar();
+      return;
+    }
     if (e.key === "Escape" && destaques.barra) {
       e.preventDefault();
       destaques.fecharBarra();
@@ -1608,6 +1636,8 @@
   escOcupado={!!destaques.barra}
   {meta}
   {saidaDoFoco}
+  marcada={!!marcadores.daPagina}
+  onMarcar={() => void marcadores.alternar()}
   {continuacao}
   onContinuar={() => void piscarOndeParou()}
   estimativa={estimativa ? textoDoRodape(estimativa, "pdf") : undefined}
@@ -1626,7 +1656,21 @@
   {/snippet}
 
   {#snippet indice()}
-    <AbasIndice bind:this={abas} bind:aba={abaIndice} quantidade={destaques.lista.length}>
+    <AbasIndice
+      bind:this={abas}
+      bind:aba={abaIndice}
+      quantidade={destaques.lista.length}
+      marcadores={marcadores.lista.length}
+    >
+      {#snippet conteudoMarcadores()}
+        <ListaMarcadores
+          marcadores={marcadores.lista}
+          formato="pdf"
+          atual={marcadores.daPagina}
+          onIr={(m) => void marcadores.ir(m)}
+          onApagar={(m) => void marcadores.apagar(m)}
+        />
+      {/snippet}
       {#snippet conteudoIndice()}
         {#if itensIndice.length}
           <Indice itens={itensIndice} atual={hrefAtual} onNavegar={irParaSecao} />
