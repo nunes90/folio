@@ -26,6 +26,8 @@ export interface EstiloPagina {
   tinta: string;
   /** Links no EPUB. */
   link: string;
+  /** Texto secundário sobre o papel: a linha de status sob o livro do EPUB (M41). AA (4,5:1). */
+  suave: string;
   /** `color-scheme` do capítulo do EPUB (barras de rolagem, controles nativos). */
   esquema: "light" | "dark";
   /** Cor da camada multiply no PDF (creme, sépia). */
@@ -110,6 +112,7 @@ export const PAGINAS: Record<PaginaEfetiva, EstiloPagina> = {
     papel: "#ffffff",
     tinta: "#1a1a1a",
     link: "#0b57d0",
+    suave: "#5c5c5c",
     esquema: "light",
   },
   creme: {
@@ -118,6 +121,7 @@ export const PAGINAS: Record<PaginaEfetiva, EstiloPagina> = {
     papel: "#faf3e3",
     tinta: "#1a1a1a",
     link: "#0b57d0",
+    suave: "#5a5346",
     esquema: "light",
     camada: "#faf3e3",
   },
@@ -127,6 +131,7 @@ export const PAGINAS: Record<PaginaEfetiva, EstiloPagina> = {
     papel: "#f0e1c2",
     tinta: "#2e2416",
     link: "#7a3a00",
+    suave: "#5a4a30",
     esquema: "light",
     camada: "#f0e1c2",
   },
@@ -136,6 +141,7 @@ export const PAGINAS: Record<PaginaEfetiva, EstiloPagina> = {
     papel: inverter("#ffffff", INVERSAO),
     tinta: inverter("#000000", INVERSAO),
     link: "#8ab4f8",
+    suave: "#a6a6a6",
     esquema: "dark",
     filtro: `invert(${INVERSAO}) hue-rotate(180deg)`,
   },
@@ -145,6 +151,21 @@ export const PAGINAS: Record<PaginaEfetiva, EstiloPagina> = {
 export function resolverPagina(pagina: Pagina, interface_: TemaEfetivo): PaginaEfetiva {
   if (pagina !== "automatica") return pagina;
   return interface_ === "claro" ? "original" : "noite";
+}
+
+/**
+ * As cores da linha de status sob o livro do EPUB (M41): as do papel, para ela parecer a margem
+ * da página, e não uma faixa da interface. Em alto contraste, `null`: o livro fica em branco
+ * sobre preto, e a linha usa as cores da interface. (No PDF, em volta das páginas já é o fundo
+ * da interface: a linha fica com ele.)
+ */
+export function coresDaMargem(
+  pagina: PaginaEfetiva,
+  interface_: TemaEfetivo,
+): { fundo: string; texto: string } | null {
+  if (interface_ === "alto-contraste") return null;
+  const { papel, suave } = PAGINAS[pagina];
+  return { fundo: papel, texto: suave };
 }
 
 /**

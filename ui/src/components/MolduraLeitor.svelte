@@ -6,7 +6,7 @@
   import { medirRotulos, type EstadoRotulos } from "../lib/densidade";
   import { escala } from "../lib/escala.svelte";
   import Icone from "./Icone.svelte";
-  import InfoDoRodape from "./InfoDoRodape.svelte";
+  import LinhaDeStatus from "./LinhaDeStatus.svelte";
   import { abrirPaleta } from "../lib/paleta.svelte";
   import type { EstadoVoz } from "../lib/voz";
   import PainelLateral from "./PainelLateral.svelte";
@@ -40,6 +40,7 @@
     meta,
     saidaDoFoco,
     estimativa,
+    margem = null,
     continuacao = null,
     onContinuar,
     onFechar,
@@ -68,12 +69,17 @@
     umaIdeia?: boolean;
     /** O Esc é de outra coisa no leitor (ex.: a barra de destaque aberta): não sai da uma ideia. */
     escOcupado?: boolean;
-    /** Meta da sessão (M20b): indicador no rodapé e a pausa ao cumprir. O leitor a move. */
+    /** Meta da sessão (M20b): indicador na linha de status e a pausa ao cumprir. O leitor a move. */
     meta?: MetaDaSessao;
     /** Saída planejada do modo foco (M20c): conta como uma meta; ao cumprir, o foco acaba. */
     saidaDoFoco?: MetaDaSessao;
     /** Quanto falta no ritmo de quem lê (M21), ex.: "~12 min no capítulo". */
     estimativa?: string;
+    /**
+     * As cores da linha de status (M41), quando o livro ocupa a área inteira com a cor do papel
+     * (EPUB): ela parece a margem da página. Sem elas, as da interface (PDF).
+     */
+    margem?: { fundo: string; texto: string } | null;
     /** "Onde você parou" (M22): aparece quando o leitor o dá, ao reabrir o livro. */
     continuacao?: Continuacao | null;
     /** O cartão fechou pelo botão ou pelo Esc: o leitor mostra o ponto (ex.: fazendo-o piscar). */
@@ -341,7 +347,7 @@
   });
   // Rótulos quando cabem (M26a-2, lib/densidade.ts): o cabeçalho e o rodapé mostram ícone +
   // rótulo enquanto cabem e só o ícone quando não. Medido nas próprias barras: na mudança de
-  // tamanho delas e quando o conteúdo muda (a página, a estimativa, a voz…).
+  // tamanho delas e quando o conteúdo muda (a página, a voz…).
   let cabecalhoEl: HTMLElement;
   let rotulosCabecalho = $state<EstadoRotulos>({ compacto: false, necessario: 0 });
   let rotulosRodape = $state<EstadoRotulos>({ compacto: false, necessario: 0 });
@@ -616,12 +622,25 @@
       <div class="sensor topo" aria-hidden="true" onpointerenter={aoEntrarNasBarras}></div>
       <div class="sensor base" aria-hidden="true" onpointerenter={aoEntrarNasBarras}></div>
     {/if}
-    <!-- Decorativo: a porcentagem lida continua no rodapé, como texto; a saída planejada foi
-         anunciada ao entrar. -->
-    <span class="progresso-canto" aria-hidden="true">
-      {Math.round(progresso * 100)}%{#if saidaDoFoco?.meta}&ensp;·&ensp;foco: {saidaDoFoco.texto}{/if}{#if voz !== "parado"}&ensp;·&ensp;{voz === "pausado" ? "voz pausada" : "lendo em voz alta"}{/if}
-    </span>
   {/if}
+
+  <!-- Sob o livro (M41): a estimativa e a meta. No modo foco, flutua e leva o que era o canto
+       (a porcentagem, a saída planejada, a voz); ali é decorativa: a porcentagem continua no
+       rodapé, como texto, e a saída planejada foi anunciada ao entrar. -->
+  <div
+    class="area-status"
+    class:com-margem={!!margem}
+    style:--margem-fundo={margem?.fundo}
+    style:--margem-texto={margem?.texto}
+  >
+    <LinhaDeStatus
+      {estimativa}
+      {meta}
+      foco={modoFoco
+        ? { progresso, saida: saidaDoFoco?.meta ? saidaDoFoco.texto : undefined, voz }
+        : null}
+    />
+  </div>
 
   {#if lado && !modoFoco}
     <div class="area-lado">{@render lado()}</div>
@@ -672,7 +691,6 @@
     <!-- Sem o lado, só agrupa (display: contents); com ele, fica embaixo do livro principal. -->
     <div class="rodape-principal">
       {@render rodape()}
-      <InfoDoRodape {estimativa} {meta} />
     </div>
     {#if lado && rodapeLado && !modoFoco}
       <div class="rodape-lado" role="group" aria-label="Ao lado">{@render rodapeLado()}</div>
@@ -700,10 +718,11 @@
     display: grid;
     /* A 3ª coluna é o lado (M25b): sem largura até ele abrir (.com-lado). */
     grid-template-columns: auto minmax(0, 1fr) 0 auto auto;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto 1fr auto auto;
     grid-template-areas:
       "topo topo topo topo topo"
       "indice conteudo lado fixado aparencia"
+      "indice status lado fixado aparencia"
       "rodape rodape rodape rodape rodape";
     height: 100vh;
     background: var(--app);
@@ -816,10 +835,11 @@
   /* Sem largura para a coluna (o livro ficaria estreito demais; ver `cartoesEmbaixo`): os
      cartões vão para uma faixa embaixo do livro, lado a lado, sem cobrir o texto. */
   .fixados-embaixo {
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto 1fr auto auto auto;
     grid-template-areas:
       "topo topo topo topo topo"
       "indice conteudo lado lado aparencia"
+      "indice status lado lado aparencia"
       "fixado fixado fixado fixado fixado"
       "rodape rodape rodape rodape rodape";
   }
@@ -987,30 +1007,56 @@
     bottom: 0;
   }
 
-  .progresso-canto {
+  .area-status {
+    grid-area: status;
+    min-width: 0;
+  }
+
+  /* No EPUB, a cor do papel: a linha é a margem de baixo da página. O texto e o botão herdam a cor
+     suave do papel (lib/pagina.ts), que também vale no modo foco, por cima do livro. */
+  .area-status.com-margem {
+    background: var(--margem-fundo);
+  }
+
+  .area-status.com-margem :global(.linha-status) {
+    color: var(--margem-texto);
+  }
+
+  .area-status.com-margem :global(.linha-status button) {
+    color: inherit;
+  }
+
+  .area-status.com-margem :global(.linha-status button:hover) {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+  }
+
+  /* No modo foco, sobre a borda de baixo do livro, como o canto de antes; some quando o rodapé
+     aparece (ele cobre o mesmo lugar). grid-area auto: a área "status" não existe no grid do foco. */
+  .foco .area-status {
+    grid-area: auto;
+    background: none;
     position: absolute;
-    inset: auto 1rem 0.6rem auto;
+    inset: auto 0 0 0;
     z-index: 2;
-    color: var(--suave);
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
+    padding-block-end: 0.35rem;
     pointer-events: none;
     transition: opacity var(--duracao-media) var(--curva);
   }
 
-  .revelada .progresso-canto {
+  .revelada .area-status {
     opacity: 0;
   }
 
   /* Três colunas (M26a-2): a voz à esquerda, encostada; os controles de página e zoom no centro
-     exato; a estimativa e a meta à direita. O que muda de tamanho dos lados não move o centro.
+     exato; a terceira, vazia desde que a estimativa e a meta foram para a linha de status (M41),
+     equilibra a da voz. O que muda de tamanho dos lados não move o centro.
      Não caber aparece como transbordar, e o rodapé passa a só ícones (medirBarras); só então,
      se ainda faltar espaço, vira uma linha que quebra (.rodape-compacto). */
   footer {
     grid-area: rodape;
     display: grid;
     /* A coluna da voz nunca fica menor que ela (encolhendo, a voz transbordava para baixo dos
-       controles sem que a medição percebesse); a da estimativa encolhe, com "…". */
+       controles sem que a medição percebesse). */
     grid-template-columns: minmax(min-content, 1fr) auto minmax(0, 1fr);
     align-items: center;
     column-gap: 1.5rem;
@@ -1027,11 +1073,6 @@
   .rodape-principal > :global([data-fim-rodape]) {
     grid-column: 1;
     justify-self: end;
-  }
-
-  .rodape-principal > :global(.rodape-info) {
-    grid-column: 3;
-    justify-self: start;
   }
 
   /* Compacto (M28c): os grupos quebram de linha um a um (a barra do PDF se desfaz em grupos), e o
@@ -1074,9 +1115,8 @@
     padding-inline: 0;
   }
 
-  /* Cada metade igual nos dois lados: os controles de página no começo, a estimativa e a meta
-     logo depois, e o que é só daquele lado ([data-fim-rodape]: a voz, "Fechar o lado")
-     empurrado para o fim. Os controles de página ficam na mesma posição nos dois; sem espaço,
+  /* Cada metade igual nos dois lados: os controles de página no começo e o que é só daquele lado
+     ([data-fim-rodape]: a voz, "Fechar o lado") empurrado para o fim. Os controles de página ficam na mesma posição nos dois; sem espaço,
      quebram de linha (os botões mostram só o ícone: regra .com-lado footer .rotulo, app.css). */
   .com-lado .rodape-principal,
   .com-lado .rodape-lado {
@@ -1086,10 +1126,6 @@
     gap: 0.25rem 1rem;
     min-width: 0;
     padding-inline: 0.75rem;
-  }
-
-  .com-lado .rodape-principal > :global(.rodape-info) {
-    order: 1;
   }
 
   .com-lado .rodape-principal > :global([data-fim-rodape]),

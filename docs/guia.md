@@ -97,8 +97,8 @@ natural precisa também do pacote `espeak-ng` (para a pronúncia); o AppImage j�
 | Modo foco: só o livro na tela | `Ctrl+Shift+F`; `Esc` sai. `Tab` mostra as barras |
 | Foco com hora para sair | paleta: "Modo foco por 10 min", "até o fim do capítulo" |
 | Uma ideia por vez | `Ctrl+Shift+B`, ou Mais opções (⋯); `↑` `↓` passam de bloco; `Esc` sai |
-| Meta da sessão | paleta: "25 min", "12 páginas" (PDF), "até o fim do capítulo" (EPUB) |
-| Quanto falta | o rodapé mostra, no seu ritmo neste livro; ou a paleta: "Quanto falta?" |
+| Meta da sessão | paleta: "25 min", "12 páginas" (PDF), "até o fim do capítulo" (EPUB); o andamento fica na linha sob o livro |
+| Quanto falta | a linha sob o livro mostra, no seu ritmo neste livro; ou a paleta: "Quanto falta?" |
 
 A estimativa só aparece depois de leitura suficiente: folhear ou saltar pelo índice não conta como ler. Os dados das
 sessões ficam só no seu computador.

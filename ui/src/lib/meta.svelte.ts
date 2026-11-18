@@ -1,6 +1,7 @@
 // Meta da sessão (M20b): "20 min", "15 páginas" (PDF) ou "até o fim do capítulo" (EPUB). Uma
-// barra discreta no rodapé mostra quanto falta; ao cumprir, uma pausa suave com o resumo. Sem
-// sequência de dias, sem ranking: a meta vale para esta leitura e acaba nela.
+// barra discreta na linha de status, sob o livro, mostra quanto falta; ao cumprir, uma pausa
+// suave com o resumo. Sem sequência de dias, sem ranking: a meta vale para esta leitura e acaba
+// nela.
 //
 // Páginas só no PDF: no EPUB elas mudam com a letra e a janela, e "15 páginas" não diria nada.
 // O tempo conta como no core (crates/core/src/sessoes.rs): só enquanto há leitura, ou seja,

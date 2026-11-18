@@ -100,7 +100,7 @@
     resumo,
     selecaoNoEpub,
   } from "../lib/destaques";
-  import { resolverPagina } from "../lib/pagina";
+  import { coresDaMargem, resolverPagina } from "../lib/pagina";
   import {
     comandosDaPagina,
     comandosDaVelocidade,
@@ -456,6 +456,12 @@
       anuncio = sentido === "frente" ? "Fim do livro." : "Início do livro.";
     }
   }
+
+  // A linha de status sob o livro com as cores do papel (M41).
+  const margem = $derived.by(() => {
+    const iface = temaEfetivo();
+    return coresDaMargem(resolverPagina(preferencias.pagina, iface), iface);
+  });
 
   // O marca-texto se mistura com a página: multiply no papel claro, screen no escuro.
   const escura = $derived.by(() => {
@@ -1451,6 +1457,7 @@
   escOcupado={!!destaques.barra}
   {meta}
   {saidaDoFoco}
+  {margem}
   {continuacao}
   onContinuar={piscarOndeParou}
   estimativa={estimativa ? textoDoRodape(estimativa, "epub") : undefined}
