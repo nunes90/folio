@@ -278,6 +278,16 @@ export function apagarLivro(id: string): Promise<void> {
 }
 
 /** Apaga de vez tudo o que está na lixeira; devolve quantos livros foram. */
+/** Apaga de vez os livros que estão na lixeira há 30 dias ou mais (M43a); devolve quantos. */
+export function esvaziarLixeiraAntiga(): Promise<number> {
+  return invoke<number>("esvaziar_lixeira_antiga");
+}
+
+/** Bytes que os livros da lixeira ocupam no disco (M43a). */
+export function espacoDaLixeira(): Promise<number> {
+  return invoke<number>("espaco_da_lixeira");
+}
+
 export function esvaziarLixeira(): Promise<number> {
   return invoke<number>("esvaziar_lixeira");
 }

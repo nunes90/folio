@@ -12,6 +12,7 @@ function estado(mudancas: Partial<EstadoDoApp> = {}): EstadoDoApp {
     livros: [],
     colecoes: [],
     lixeiraComLivros: false,
+    antigosNaLixeira: 0,
     preferencias: { tema: "sistema", movimento: "sistema" },
     doLeitor: [],
     ...mudancas,
@@ -25,6 +26,7 @@ function acoes(): AcoesDoApp {
     mostrar: vi.fn(),
     novaColecao: vi.fn(),
     esvaziarLixeira: vi.fn(),
+    esvaziarAntigos: vi.fn(),
     exportarBiblioteca: vi.fn(),
     restaurarCopia: vi.fn(),
     voltarABiblioteca: vi.fn(),
@@ -57,6 +59,9 @@ describe("comandosDoApp", () => {
     expect(ids(estado({ importando: true }))).not.toContain("importar");
     expect(ids(estado())).not.toContain("esvaziar");
     expect(ids(estado({ lixeiraComLivros: true }))).toContain("esvaziar");
+    // Os de mais de 30 dias (M43a): só se houver algum.
+    expect(ids(estado({ lixeiraComLivros: true }))).not.toContain("esvaziar-antigos");
+    expect(ids(estado({ lixeiraComLivros: true, antigosNaLixeira: 2 }))).toContain("esvaziar-antigos");
   });
 
   it("no leitor: voltar e os comandos do leitor, sem os da biblioteca nem os livros", () => {

@@ -725,6 +725,32 @@ impl Biblioteca {
         )
     }
 
+    /// Apaga de vez os livros que estão na lixeira há [`PRAZO_DA_LIXEIRA`] ou mais (M43a: o
+    /// botão "Esvaziar os de mais de 30 dias"; nada é apagado sem ele). Devolve quantos foram.
+    #[instrument(skip(self))]
+    pub fn esvaziar_lixeira_antiga(&self) -> Resultado<usize> {
+        let limite = (self.relogio)() - PRAZO_DA_LIXEIRA;
+        let antigos: Vec<_> = self
+            .listar_lixeira()?
+            .into_iter()
+            .filter(|l| l.removido_em.is_some_and(|r| r <= limite))
+            .collect();
+        for livro in &antigos {
+            self.apagar_de_vez(&livro.id)?;
+        }
+        Ok(antigos.len())
+    }
+
+    /// Os arquivos que os livros da lixeira ocupam (a cópia e a capa): para somar o espaço sem
+    /// segurar a trava ([`espaco_da_lixeira_sem_segurar`]).
+    pub fn arquivos_da_lixeira(&self) -> Resultado<Vec<PathBuf>> {
+        Ok(self
+            .listar_lixeira()?
+            .into_iter()
+            .flat_map(|l| std::iter::once(l.arquivo).chain(l.capa))
+            .collect())
+    }
+
     /// Apaga de vez todos os livros da lixeira; devolve quantos foram.
     #[instrument(skip(self))]
     pub fn esvaziar_lixeira(&self) -> Resultado<usize> {
@@ -1257,6 +1283,20 @@ pub fn importar_sem_segurar(biblioteca: &Mutex<Biblioteca>, origem: &Path) -> Re
     };
     let copiado = copiar(&pastas, lido)?;
     travar(biblioteca).registrar(&copiado)
+}
+
+/// Há quanto tempo um livro está na lixeira para entrar em "Esvaziar os de mais de 30 dias".
+pub const PRAZO_DA_LIXEIRA: i64 = 30 * 86_400;
+
+/// Quantos bytes os livros da lixeira ocupam no disco. A lista vem com a trava; o tamanho de
+/// cada arquivo (disco) é lido depois de soltá-la. Um arquivo que sumiu conta 0.
+pub fn espaco_da_lixeira_sem_segurar(biblioteca: &Mutex<Biblioteca>) -> Resultado<u64> {
+    let arquivos = travar(biblioteca).arquivos_da_lixeira()?;
+    Ok(arquivos
+        .iter()
+        .filter_map(|a| fs::metadata(a).ok())
+        .map(|m| m.len())
+        .sum())
 }
 
 /// [`Biblioteca::ler`] para a biblioteca atrás de um `Mutex`: travada só para achar o arquivo
@@ -2032,6 +2072,47 @@ mod tests {
             0,
             "lixeira vazia: nada a fazer"
         );
+    }
+
+    #[test]
+    fn esvaziar_os_antigos_apaga_so_os_de_mais_de_30_dias() {
+        let (_dir, mut bib) = nova();
+        let antigo = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        let recente = bib
+            .importar(&fixture("dom-casmurro.epub"))
+            .unwrap()
+            .into_livro();
+        bib.relogio = || 1_000;
+        bib.mover_para_lixeira(&antigo.id).unwrap();
+        bib.relogio = || 1_000 + 20 * 86_400;
+        bib.mover_para_lixeira(&recente.id).unwrap();
+        // 30 dias depois do primeiro (e 10 do segundo).
+        bib.relogio = || 1_000 + PRAZO_DA_LIXEIRA;
+        assert_eq!(bib.esvaziar_lixeira_antiga().unwrap(), 1);
+        assert!(bib.obter(&antigo.id).unwrap().is_none());
+        assert!(!antigo.arquivo.exists());
+        assert_eq!(bib.listar_lixeira().unwrap().len(), 1);
+        assert_eq!(bib.esvaziar_lixeira_antiga().unwrap(), 0);
+    }
+
+    #[test]
+    fn o_espaco_da_lixeira_soma_os_arquivos_dos_livros_dela() {
+        let (_dir, bib) = nova();
+        let fora = bib.importar(&fixture("minimo.epub")).unwrap().into_livro();
+        let dentro = bib
+            .importar(&fixture("dom-casmurro.epub"))
+            .unwrap()
+            .into_livro();
+        let trava = Mutex::new(bib);
+        assert_eq!(espaco_da_lixeira_sem_segurar(&trava).unwrap(), 0);
+        travar(&trava).mover_para_lixeira(&dentro.id).unwrap();
+        let esperado = fs::metadata(&dentro.arquivo).unwrap().len()
+            + dentro
+                .capa
+                .as_ref()
+                .map_or(0, |c| fs::metadata(c).unwrap().len());
+        assert_eq!(espaco_da_lixeira_sem_segurar(&trava).unwrap(), esperado);
+        assert!(fora.arquivo.exists());
     }
 
     #[test]

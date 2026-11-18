@@ -1181,3 +1181,10 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   cartão "Onde você parou" aparecia mesmo assim (sem a data da última leitura, a regra o mostra de propósito):
   os dois leitores ganharam `ondeParou`. A estante não aparecia na barra no primeiro teste: as `Estantes`
   desenham cada grupo à parte, e o novo precisava entrar no desenho e nos índices das setas.
+- **M43a — lixeira com prazo** (branch `feat/m43a-lixeira`): combinado com Lucas, nada é apagado sozinho. Core:
+  `esvaziar_lixeira_antiga` (os que estão lá há `PRAZO_DA_LIXEIRA`, 30 dias, ou mais) e
+  `espaco_da_lixeira_sem_segurar` (a lista dos arquivos com a trava, o tamanho de cada um depois de soltá-la).
+  Na estante Lixeira, o aviso diz quanto os livros ocupam ("ocupam 12 MB") e ganha "Esvaziar os de mais de 30
+  dias…" quando há algum; o cartão diz "Na lixeira há 3 dias" no lugar da porcentagem lida. A confirmação diz
+  quantos vão e que os outros ficam; também na paleta. `lib/lixeira.ts` repete o prazo do core. O `Intl` diz
+  "ontem" e "anteontem" no lugar de "há 1 dia" e "há 2 dias": "Na lixeira desde anteontem".

@@ -387,6 +387,20 @@ pub fn esvaziar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<usize, ErroD
     travar(&bib).esvaziar_lixeira().map_err(|e| registrar(&e))
 }
 
+/// Apaga de vez os livros que estão na lixeira há 30 dias ou mais (M43a); devolve quantos.
+#[tauri::command(async)]
+pub fn esvaziar_lixeira_antiga(bib: State<'_, EstadoBiblioteca>) -> Result<usize, ErroDoComando> {
+    travar(&bib)
+        .esvaziar_lixeira_antiga()
+        .map_err(|e| registrar(&e))
+}
+
+/// Quantos bytes os livros da lixeira ocupam no disco (M43a).
+#[tauri::command(async)]
+pub fn espaco_da_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<u64, ErroDoComando> {
+    folio_core::biblioteca::espaco_da_lixeira_sem_segurar(&bib).map_err(|e| registrar(&e))
+}
+
 /// Tamanho do livro, sem marcá-lo como aberto (para gerar a capa de PDFs, por trechos).
 #[tauri::command(async)]
 pub fn tamanho_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<u64, ErroDoComando> {

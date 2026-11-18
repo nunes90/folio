@@ -39,6 +39,8 @@
     definirLido,
     definirParaLer,
     esvaziarLixeira,
+    esvaziarLixeiraAntiga,
+    espacoDaLixeira,
     listarLixeira,
     moverParaLixeira,
     restaurarLivro,
@@ -69,6 +71,7 @@
     type Manifesto,
   } from "./lib/copia";
   import { abrirLinkConfirmado, cancelarLink, confirmacaoDeLink } from "./lib/linkExterno.svelte";
+  import { antigosDaLixeira } from "./lib/lixeira";
   import { localParaAbrir } from "./lib/todosOsDestaques";
   import { SessaoDeLeitura } from "./lib/sessao.svelte";
 
@@ -96,10 +99,15 @@
   /** Leitor de PDF, importado sob demanda (o pdf.js é grande) antes de a transição começar. */
   let LeitorPdf = $state<Component<any> | null>(null);
   let lixeira = $state<Livro[]>([]);
+  /** Bytes que a lixeira ocupa (M43a); `undefined` se não deu para saber. */
+  let espacoLixeira = $state<number | undefined>(0);
+  /** Os livros na lixeira há 30 dias ou mais: o que "Esvaziar os de mais de 30 dias" apaga. */
+  const antigos = $derived(antigosDaLixeira(lixeira, Date.now() / 1000));
   /** O que espera confirmação: apagar um livro de vez ou esvaziar a lixeira. */
   let confirmar = $state<
     | { tipo: "apagar"; livro: Livro }
     | { tipo: "esvaziar" }
+    | { tipo: "esvaziar-antigos" }
     | { tipo: "apagar-colecao"; colecao: Colecao }
     | null
   >(null);
@@ -133,6 +141,7 @@
         livros,
         colecoes,
         lixeiraComLivros: lixeira.length > 0,
+        antigosNaLixeira: antigos.length,
         preferencias,
         doLeitor: doLeitor.comandos,
       },
@@ -142,6 +151,7 @@
         mostrar: (filtro) => void biblioteca?.mostrar(filtro),
         novaColecao: () => (pedirNome = { colecao: null, erro: null }),
         esvaziarLixeira: () => (confirmar = { tipo: "esvaziar" }),
+        esvaziarAntigos: () => (confirmar = { tipo: "esvaziar-antigos" }),
         exportarBiblioteca: (comLivros) => void exportarCopia(comLivros),
         restaurarCopia: () => void pedirRestauracao(),
         voltarABiblioteca: () => void fechar(),
@@ -279,6 +289,8 @@
     } catch (e) {
       avisar(`Não foi possível carregar a biblioteca: ${e}`, "erro");
     }
+    // O espaço da lixeira (M43a) é só informação: se falhar, fica sem o número.
+    espacoLixeira = lixeira.length ? await espacoDaLixeira().catch(() => undefined) : 0;
   }
 
   async function importar(caminhos: string[]) {
@@ -577,6 +589,13 @@
         `A coleção “${colecao.nome}” foi apagada. Os livros continuam na biblioteca.`,
         `Não foi possível apagar a coleção “${colecao.nome}”`,
       );
+    } else if (pedido?.tipo === "esvaziar-antigos") {
+      const n = antigos.length;
+      await executar(
+        () => esvaziarLixeiraAntiga(),
+        n === 1 ? "1 livro apagado de vez." : `${n} livros apagados de vez.`,
+        "Não foi possível esvaziar a lixeira",
+      );
     } else if (pedido?.tipo === "esvaziar") {
       const n = lixeira.length;
       await executar(
@@ -668,10 +687,12 @@
   aberto={confirmar !== null}
   titulo={confirmar?.tipo === "esvaziar"
     ? "Esvaziar a lixeira?"
-    : confirmar?.tipo === "apagar-colecao"
+    : confirmar?.tipo === "esvaziar-antigos"
+      ? "Esvaziar os livros de mais de 30 dias?"
+      : confirmar?.tipo === "apagar-colecao"
       ? `Apagar a coleção “${confirmar.colecao.nome}”?`
       : `Apagar ${confirmar?.livro.titulo ?? ""} de vez?`}
-  rotuloConfirmar={confirmar?.tipo === "esvaziar"
+  rotuloConfirmar={confirmar?.tipo === "esvaziar" || confirmar?.tipo === "esvaziar-antigos"
     ? "Esvaziar"
     : confirmar?.tipo === "apagar-colecao"
       ? "Apagar coleção"
@@ -681,6 +702,13 @@
 >
   {#if confirmar?.tipo === "apagar-colecao"}
     <p>Só a coleção é apagada: os livros continuam na biblioteca e nas outras coleções.</p>
+  {:else if confirmar?.tipo === "esvaziar-antigos"}
+    <p>
+      {antigos.length === 1
+        ? "O livro que está na lixeira há 30 dias ou mais será apagado"
+        : `Os ${antigos.length} livros que estão na lixeira há 30 dias ou mais serão apagados`}
+      de vez, com o progresso de leitura. Os outros continuam lá. Não dá para desfazer.
+    </p>
   {:else if confirmar?.tipo === "esvaziar"}
     <p>
       {lixeira.length === 1 ? "O livro da lixeira será apagado" : `Os ${lixeira.length} livros da lixeira serão apagados`}
@@ -756,6 +784,8 @@
     {lixeira}
     onAcao={aoAcao}
     onEsvaziar={() => (confirmar = { tipo: "esvaziar" })}
+    onEsvaziarAntigos={() => (confirmar = { tipo: "esvaziar-antigos" })}
+    {espacoLixeira}
     {colecoes}
     onNovaColecao={() => (pedirNome = { colecao: null, erro: null })}
     onRenomearColecao={(colecao) => (pedirNome = { colecao, erro: null })}

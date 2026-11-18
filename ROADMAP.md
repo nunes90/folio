@@ -353,8 +353,11 @@ AppImage da CI, o `SHA256SUMS` e a atestação.
   - [x] M42b — estante "Destaques" na biblioteca: os destaques de todos os livros fora da lixeira, agrupados por
     livro (títulos em ordem do pt-BR), com a busca da biblioteca (trecho, nota, capítulo, título) e o filtro por
     motivo; escolher um abre o livro nele, sem o cartão "Onde você parou"
-- [ ] **M43 — Lixeira com prazo e aviso de versão** (4, 9): espaço ocupado e "esvaziar itens antigos"; consulta
-  opcional às Releases, desligável e descrita no guia
+- [ ] **M43 — Lixeira com prazo e aviso de versão** (4, 9)
+  - [x] M43a — a lixeira nunca se esvazia sozinha (combinado com Lucas): diz quanto espaço ocupa e há quanto tempo
+    cada livro está lá, e oferece "Esvaziar os de mais de 30 dias…" (com confirmação; também na paleta)
+  - [ ] M43b — aviso de versão nova: desligado; oferecido uma vez ("Avisar quando sair uma versão nova?"); ligado,
+    consulta as Releases no máximo uma vez por dia; descrito no guia
 - Em aberto, a decidir: tradução da interface, Séries, Flatpak, cortar recursos pouco usados (anotar o uso por um mês)
 
 ## Futuro

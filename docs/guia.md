@@ -13,6 +13,10 @@ no menu ⋯ do leitor. Todo recurso abaixo pode ser usado só com o teclado.
 | Buscar por título ou autor | `Ctrl+F` |
 | Marcar como favorito, para ler ou lido; pôr numa coleção | `Shift+F10` ou a tecla `Menu` no livro, ou o ⋯ do cartão (a estrela do cartão favorita direto) |
 | Mandar para a lixeira | `Delete`; o aviso oferece "Desfazer" |
+| Liberar espaço | na estante Lixeira: "Esvaziar os de mais de 30 dias…" ou "Esvaziar lixeira…" (também na paleta) |
+
+A lixeira nunca se esvazia sozinha: ela diz quanto espaço ocupa e há quanto tempo cada livro está lá, e você
+escolhe o que apagar de vez.
 
 O Folio guarda uma cópia do livro; o arquivo original não é alterado. Um arquivo danificado é recusado, com o motivo.
 Um PDF com senha entra na biblioteca e pede a senha ao abrir, sem guardá-la.
