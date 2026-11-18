@@ -12,6 +12,22 @@ const estado = () =>
     };
   });
 
+/**
+ * Espera o livro parar de se reposicionar (a porcentagem igual por 1 s): logo depois de abrir, o
+ * layout ainda se acomoda, e a CI, mais lenta, recebia um `relocate` depois do clique na nota.
+ */
+async function livroParado() {
+  const ponto = () => browser.execute(() => document.querySelector("footer .porcento")?.textContent ?? "");
+  let antes = await ponto();
+  await ate(async () => {
+    await browser.pause(1000);
+    const agora = await ponto();
+    const parado = agora !== "" && agora === antes;
+    antes = agora;
+    return parado;
+  }, "o livro não parou de se reposicionar");
+}
+
 /** Clica num link do capítulo à vista (o clique chega ao foliate-js como o do mouse). */
 const clicarNoLink = (id) =>
   browser.execute((id) => {
@@ -23,7 +39,7 @@ describe("Notas de rodapé", () => {
   it("a nota marcada pelo livro abre num balão, sem sair da página; Esc fecha", async () => {
     await esperarLivro("Livro com notas");
     await ate(async () => (await estado()).secao === 0, "o livro não abriu no capítulo um");
-    await browser.pause(500);
+    await livroParado();
     await clicarNoLink("r1");
     await ate(async () => (await estado()).balao !== "", "o balão não abriu");
     const e = await estado();
