@@ -805,9 +805,11 @@
     v.addEventListener("relocate", (e) => {
       // No modo frase, a página vira para acompanhar a frase: a barra vai junto.
       if (!modoFrase) destaques.esconderDe(false, "a página mudou");
-      // A página virou: o balão da nota ficaria sobre outro texto.
-      fecharNota(false);
       const { fraction, tocItem, cfi } = (e as CustomEvent<DetalheRelocate>).detail;
+      // A página virou: o balão da nota ficaria sobre outro texto. Só quando o lugar muda de fato:
+      // o foliate-js também avisa quando o layout se acomoda (o livro acabou de abrir) e a página
+      // fica a mesma, e o balão sumia sozinho logo depois de aparecer.
+      if (cfi !== cfiAtual) fecharNota(false);
       relocacoes++;
       progresso = fraction;
       if (cfi) cfiAtual = cfi;
