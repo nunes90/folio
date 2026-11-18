@@ -189,6 +189,16 @@ pub fn listar_destaques(
         .map_err(|e| registrar(&e))
 }
 
+/// Os destaques de todos os livros fora da lixeira (estante "Destaques", M42b).
+#[tauri::command]
+pub fn listar_todos_os_destaques(
+    bib: State<'_, EstadoBiblioteca>,
+) -> Result<Vec<Destaque>, ErroDoComando> {
+    travar(&bib)
+        .listar_todos_os_destaques()
+        .map_err(|e| registrar(&e))
+}
+
 #[tauri::command]
 pub fn criar_destaque(
     bib: State<'_, EstadoBiblioteca>,

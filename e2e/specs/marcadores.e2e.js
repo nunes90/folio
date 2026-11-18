@@ -10,6 +10,13 @@ const fita = () => browser.execute(() => !!document.querySelector(".fita"));
 const abaMarcadores = () =>
   browser.execute(() => document.querySelector("#aba-marcadores")?.getAttribute("aria-label") ?? "");
 const paginaPdf = () => browser.execute(() => document.querySelector("footer input[type=number]")?.value ?? "");
+// O PDF terminou de abrir (o texto acessível da página 1 apareceu): antes disso, ir a uma página
+// não tem efeito (no WebKitGTK 2.50, da CI, a paleta chegava antes).
+const pdfAberto = () =>
+  ate(
+    () => browser.execute(() => !!document.querySelector(".texto-acessivel")?.textContent?.includes("Primeira pagina")),
+    "o PDF não terminou de abrir",
+  );
 const porcento = () => browser.execute(() => parseInt(document.querySelector("footer .porcento")?.textContent ?? ""));
 
 describe("marcadores", () => {
@@ -68,6 +75,7 @@ describe("marcadores", () => {
     await browser.pause(1000);
     await paleta("abrir documento");
     await esperarLivro("Documento de Teste");
+    await pdfAberto();
     await browser.keys(Key.Escape);
     await paleta("página 2");
     await ate(async () => (await paginaPdf()) === "2", "não foi à página 2");
@@ -79,6 +87,10 @@ describe("marcadores", () => {
     await browser.pause(1000);
     await paleta("abrir documento");
     await esperarLivro("Documento de Teste");
+    await ate(
+      () => browser.execute(() => !!document.querySelector(".texto-acessivel h2")),
+      "o PDF não terminou de abrir de novo",
+    );
     await browser.keys(Key.Escape);
     await paleta("Ir ao marcador: página 2");
     await ate(async () => (await paginaPdf()) === "2", "o comando da paleta não levou à página 2");

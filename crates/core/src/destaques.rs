@@ -233,6 +233,23 @@ impl Biblioteca {
         Ok(destaques)
     }
 
+    /// Os destaques de todos os livros fora da lixeira (a estante "Destaques", M42b), agrupados
+    /// por livro e, em cada um, na ordem de leitura. Quem mostra ordena os livros (pelo título,
+    /// com as regras do idioma, que o `ORDER BY` do SQLite não conhece).
+    pub fn listar_todos_os_destaques(&self) -> Resultado<Vec<Destaque>> {
+        let mut consulta = self.conexao.prepare(
+            "SELECT d.id, d.livro_id, d.local, d.trecho, d.cor, d.motivo, d.nota, d.capitulo,
+                    d.posicao, d.criado_em, d.atualizado_em
+             FROM destaques d JOIN livros l ON l.id = d.livro_id
+             WHERE l.removido_em IS NULL
+             ORDER BY d.livro_id, d.posicao, d.criado_em, d.id",
+        )?;
+        let destaques = consulta
+            .query_map([], destaque_da_linha)?
+            .collect::<Result<_, _>>()?;
+        Ok(destaques)
+    }
+
     /// Um destaque pelo id.
     pub fn destaque(&self, id: i64) -> Resultado<Destaque> {
         self.conexao
@@ -433,6 +450,29 @@ mod tests {
             capitulo: None,
             posicao,
         }
+    }
+
+    #[test]
+    fn todos_os_destaques_de_todos_os_livros_menos_os_da_lixeira() {
+        let (_dir, bib, livro) = nova_com_livro();
+        let outro_pdf =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/texto.pdf");
+        let outro = bib.importar(&outro_pdf).unwrap().into_livro().id;
+        bib.criar_destaque(&livro, novo("depois", 0.8)).unwrap();
+        bib.criar_destaque(&livro, novo("antes", 0.1)).unwrap();
+        bib.criar_destaque(&outro, novo("do pdf", 0.5)).unwrap();
+        let todos = bib.listar_todos_os_destaques().unwrap();
+        assert_eq!(todos.len(), 3);
+        // Em cada livro, a ordem de leitura.
+        let deste: Vec<_> = todos
+            .iter()
+            .filter(|d| d.livro_id == livro)
+            .map(|d| d.trecho.as_str())
+            .collect();
+        assert_eq!(deste, ["antes", "depois"]);
+        bib.mover_para_lixeira(&outro).unwrap();
+        let todos = bib.listar_todos_os_destaques().unwrap();
+        assert!(todos.iter().all(|d| d.livro_id == livro));
     }
 
     #[test]

@@ -201,6 +201,11 @@ export function escolherDestinoMarkdown(nomeSugerido: string): Promise<string | 
   });
 }
 
+/** Os destaques de todos os livros fora da lixeira (estante "Destaques", M42b). */
+export function listarTodosOsDestaques(): Promise<Destaque[]> {
+  return invoke<Destaque[]>("listar_todos_os_destaques");
+}
+
 export function listarDestaques(livro: string): Promise<Destaque[]> {
   return invoke<Destaque[]>("listar_destaques", { livro });
 }

@@ -69,6 +69,7 @@
     type Manifesto,
   } from "./lib/copia";
   import { abrirLinkConfirmado, cancelarLink, confirmacaoDeLink } from "./lib/linkExterno.svelte";
+  import { localParaAbrir } from "./lib/todosOsDestaques";
   import { SessaoDeLeitura } from "./lib/sessao.svelte";
 
 
@@ -80,6 +81,8 @@
     inicio?: string;
     /** Fim da sessão anterior (segundos desde 1970): "Da última vez (há 2 dias)…" (M22). */
     ultimaLeitura?: number;
+    /** Aberto num destaque (estante "Destaques", M42b): sem o cartão "Onde você parou". */
+    noDestaque?: boolean;
   } | null>(null);
   /** A sessão de leitura do livro aberto (M20): começa no primeiro progresso do leitor. */
   let sessao: SessaoDeLeitura | null = null;
@@ -300,7 +303,11 @@
     if (caminhos.length) await importar(caminhos);
   }
 
-  async function abrir(livro: Livro) {
+  /**
+   * Abre o livro onde a pessoa parou ou, com `destino` (um destaque da estante "Destaques", M42b),
+   * nele. Indo a um destaque, o cartão "Onde você parou" não aparece: o lugar foi escolhido agora.
+   */
+  async function abrir(livro: Livro, destino?: string) {
     try {
       // Tudo o que é lento acontece antes da transição: durante ela a tela fica congelada.
       const [dados, progresso, sessoes] = await Promise.all([
@@ -316,8 +323,9 @@
         aberto = {
           livro,
           dados,
-          inicio: progresso?.localizacao,
+          inicio: destino ?? progresso?.localizacao,
           ultimaLeitura: sessoes[0]?.fim,
+          noDestaque: !!destino,
         };
         sessao = new SessaoDeLeitura(livro.id);
       });
@@ -715,6 +723,7 @@
       titulo={aberto.livro.titulo}
       inicio={aberto.inicio}
       ultimaLeitura={aberto.ultimaLeitura}
+      ondeParou={!aberto.noDestaque}
       onFechar={fechar}
       onProgresso={aoProgredir}
       onComandos={(c: ComandosDoLeitor) => (doLeitor = c)}
@@ -726,6 +735,7 @@
     livroId={aberto.livro.id}
     inicio={aberto.inicio}
     ultimaLeitura={aberto.ultimaLeitura}
+    ondeParou={!aberto.noDestaque}
     onFechar={fechar}
     onProgresso={aoProgredir}
     onComandos={(c) => (doLeitor = c)}
@@ -736,7 +746,8 @@
     {livros}
     {importando}
     {arrastando}
-    onAbrir={abrir}
+    onAbrir={(livro) => void abrir(livro)}
+    onAbrirDestaque={(livro, destaque) => void abrir(livro, localParaAbrir(destaque, livro.formato))}
     onImportar={escolherEImportar}
     {preferencias}
     onMudarPreferencias={atualizarPreferencias}

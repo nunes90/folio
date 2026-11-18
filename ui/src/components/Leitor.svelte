@@ -128,6 +128,7 @@
     livroId,
     inicio,
     ultimaLeitura,
+    ondeParou = true,
     onFechar,
     onProgresso,
     onComandos,
@@ -139,6 +140,11 @@
     inicio?: string;
     /** Fim da última leitura (segundos desde 1970), para "Da última vez…" (M22). */
     ultimaLeitura?: number;
+    /**
+     * Mostrar o cartão "Onde você parou" ao abrir (M22)? Não, quando o livro abre num lugar
+     * escolhido agora (um destaque da estante "Destaques", M42b).
+     */
+    ondeParou?: boolean;
     onFechar: () => void;
     onProgresso?: (localizacao: string, fracao: number) => void;
     /** Publica os comandos deste livro para a paleta (Ctrl+K), de novo a cada mudança. */
@@ -893,7 +899,7 @@
 
   function montarContinuacao() {
     const agora = Date.now() / 1000;
-    if (!deveMostrar(!!inicio, ultimaLeitura, agora)) return;
+    if (!ondeParou || !deveMostrar(!!inicio, ultimaLeitura, agora)) return;
     const capitulo = capituloVisivel();
     const ponto = view?.lastLocation?.range;
     let trecho: string[] = [];

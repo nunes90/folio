@@ -264,4 +264,28 @@ describe("EPUB", () => {
       "o livro não apareceu na biblioteca",
     );
   });
+
+  it("a estante Destaques mostra os destaques do livro e abre o livro no escolhido (M42b)", async () => {
+    // O livro foi fechado a 12% (acima); o destaque mais antigo está perto do começo.
+    const posicoes = await browser.executeAsync((feito) => {
+      window.__TAURI_INTERNALS__.invoke("listar_todos_os_destaques").then(
+        (lista) => feito(lista.map((d) => d.posicao)),
+        () => feito([]),
+      );
+    });
+    expect(posicoes.length).toBeGreaterThan(0);
+    await paleta("Estante: Destaques");
+    const primeiro = 'section[aria-labelledby^="destaques-de-"] li button';
+    await ate(() => browser.execute((s) => !!document.querySelector(s), primeiro), "a estante não mostrou os destaques");
+    expect(await texto('section[aria-labelledby^="destaques-de-"] h3')).toBe("Dom Casmurro");
+    await browser.execute((s) => document.querySelector(s)?.click(), primeiro);
+    await esperarLivro("Dom Casmurro");
+    const porcento = () => browser.execute(() => parseInt(document.querySelector("footer .porcento")?.textContent ?? ""));
+    await ate(
+      async () => Math.abs((await porcento()) - Math.round(posicoes[0] * 100)) <= 2,
+      "o livro não abriu no destaque",
+    );
+    // Aberto num destaque, o cartão "Onde você parou" não aparece.
+    expect(await browser.execute(() => !!document.querySelector(".area-continuacao"))).toBe(false);
+  });
 });

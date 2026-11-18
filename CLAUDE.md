@@ -153,8 +153,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **v1.3.0** (nov/2026): a 1.2 (M29–M33) e a 1.3 (M34–M38) do plano "Depois da análise" do `ROADMAP.md`
   (`docs/analise/2026-11-analise.md`), numa versão só; a 1.2 não foi publicada. Tag e Release são do Lucas.
 - v1.4 em andamento: M39 (a memória do PDF explicada e medida; tabela em `docs/testes/desempenho.md`) e M40
-  (erros tipados, perfil de release, fontes, detalhes), M41 (linha de status sob o livro, ícones) e M42a
-  (marcadores de página) feitos.
-- Próximo passo: M42b (estante "Destaques" na biblioteca). O M42a criou a migração 12 (marcadores): ao publicar
-  a versão, acrescentar a tag em `tests/fixtures/bancos/gerar.py`.
+  (erros tipados, perfil de release, fontes, detalhes), M41 (linha de status sob o livro, ícones) e M42
+  (marcadores de página, estante "Destaques") feitos.
+- Próximo passo: M43 (lixeira com prazo e aviso de versão nova). O M42a criou a migração 12 (marcadores): ao
+  publicar a versão, acrescentar a tag em `tests/fixtures/bancos/gerar.py`.
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.

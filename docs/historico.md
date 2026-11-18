@@ -1170,3 +1170,14 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   transbordava (o `epub.e2e.js` pegou) e, apertadas, os nomes se sobrepunham. A contagem saiu da aba e ficou no
   nome acessível ("Destaques (3)"). Na captura a 360 px, o nome do marcador sumia: a classe era `.rotulo`, que o
   `app.css` esconde nas barras compactas. Novo E2E: `marcadores.e2e.js` (10 sessões, 53 testes).
+- **M42b — estante "Destaques"** (branch `feat/m42b-estante-destaques`): combinado com Lucas, uma estante na barra
+  da biblioteca (depois de Autores), não um diálogo. Core: `listar_todos_os_destaques` (um `JOIN` com `livros`, fora
+  da lixeira, em ordem de leitura dentro de cada livro); a ordem dos livros fica com a interface
+  (`Intl.Collator` do pt-BR: "Às avessas" antes de "Dom Casmurro", o que o `ORDER BY` do SQLite não faz). A
+  lista é pedida quando a estante aparece; a contagem na barra soma o campo `destaques` que os livros já
+  traziam. `lib/todosOsDestaques.ts` agrupa, busca (trecho, nota, capítulo, título e autores, sem acentos) e
+  filtra por motivo; `TodosOsDestaques.svelte` usa o `.segmentado` para o motivo. Abrir num destaque reaproveita
+  o `inicio` do leitor: o CFI do destaque no EPUB e `pagina:N` no PDF (`localParaAbrir`). O E2E mostrou que o
+  cartão "Onde você parou" aparecia mesmo assim (sem a data da última leitura, a regra o mostra de propósito):
+  os dois leitores ganharam `ondeParou`. A estante não aparecia na barra no primeiro teste: as `Estantes`
+  desenham cada grupo à parte, e o novo precisava entrar no desenho e nos índices das setas.

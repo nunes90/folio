@@ -164,6 +164,7 @@ fn main() -> anyhow::Result<()> {
             comandos::adicionar_a_colecao,
             comandos::remover_da_colecao,
             comandos::listar_destaques,
+            comandos::listar_todos_os_destaques,
             comandos::criar_destaque,
             comandos::definir_cor_destaque,
             comandos::definir_motivo_destaque,
