@@ -340,8 +340,11 @@ AppImage da CI, o `SHA256SUMS` e a atestação.
     se justificam; os 6 sem explicação ganharam uma). **Não feito, de propósito**: `exportar_destaques` só para o
     caminho que o diálogo devolveu. Exigiria abrir o diálogo pelo Rust (nesse comando e nos da cópia de segurança),
     e os E2E, que passam o caminho direto, deixariam de cobrir a gravação; quem barra um script de livro é a CSP
-- [ ] **M41 — Rodapé e ícones** (9): estimativa e meta fora do rodapé (proposta com capturas antes); ícones com o
-  mesmo peso de traço
+- [x] **M41 — Rodapé e ícones** (9): a estimativa e a meta saíram do rodapé (entre 600 e 1000 px a meta era
+  cortada e o botão de tirá-la sumia) para uma linha de status sob o livro, com a cor do papel no EPUB; no modo
+  foco, a mesma linha leva o que era o canto (porcentagem, saída planejada, voz). O rodapé fica só para navegar.
+  Ícones: o traço já era igual; cinco ganharam tamanho óptico parecido com o dos vizinhos (parar, grade, dividir,
+  copiar, citar)
 - [ ] **M42 — Marcadores e destaques da biblioteca** (4, 9): marcador de página sem trecho (migração nova, os dois
   formatos); vista "Todos os destaques" com busca e filtro por motivo
 - [ ] **M43 — Lixeira com prazo e aviso de versão** (4, 9): espaço ocupado e "esvaziar itens antigos"; consulta

@@ -1145,3 +1145,16 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   `lib/` importam o `invoke` dali, não do Tauri. Uso: `erroDoNome` no diálogo de nome da coleção. Armadilha do
   Vitest achada no caminho: `beforeEach(() => mock.mockReset())` devolve o mock, e o Vitest chama o que o
   `beforeEach` devolve como limpeza ao fim do teste (usar chaves).
+- **M41 — rodapé e ícones** (branch `feat/m41-rodape-icones`): as capturas mostraram que, com a meta ligada, o
+  rodapé cortava o texto dela e escondia o botão de tirá-la entre 600 e 1000 px (a 600, sobravam "m…" e "Meta:"),
+  e no PDF a 360. Das três propostas (linha de status sob o livro, quebrar a linha do rodapé, tirar a estimativa
+  da tela), Lucas escolheu a primeira. `InfoDoRodape` virou `LinhaDeStatus`, numa linha própria da grade da
+  moldura (área `status`, só na coluna do livro), de altura fixa: o livro não é repaginado quando a estimativa
+  aparece ou a meta é posta. No EPUB ela tem a cor do papel e um texto suave por página (`suave` em
+  `PAGINAS`, AA testado; `coresDaMargem`), e parece a margem de baixo; no PDF, em volta das páginas já é o fundo
+  da interface, e ela fica com ele. Em alto contraste, as cores da interface. No modo foco, flutua por cima da
+  borda do livro e absorve o antigo canto (porcentagem, saída planejada, voz), sem o botão e com `aria-hidden`,
+  como o canto. O × de tirar a meta passou a `.discreto`, com 24 px (WCAG 2.5.8); abaixo de 30 rem a barrinha
+  da meta some. Ícones: o traço (2,25) já era igual em todos; o que variava era o tamanho óptico. "Parar" ficou
+  do tamanho de pausar/continuar e com cantos arredondados, "grade" e "dividir" mais leves, "copiar" com duas
+  folhas e "citar" maior. Custo: ~1,75 rem de altura do livro fora do modo foco.

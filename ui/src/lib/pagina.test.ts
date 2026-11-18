@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  coresDaMargem,
   cssDaPagina,
   inverter,
   inverterCanvas,
@@ -21,6 +22,18 @@ describe("páginas (iguais no EPUB e no PDF)", () => {
     const { papel, tinta, link } = PAGINAS[pagina];
     expect(contraste(tinta, papel)).toBeGreaterThanOrEqual(7);
     expect(contraste(link, papel)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(paginas)("%s: o texto suave (linha de status) é AA sobre o papel e mais leve que a tinta", (pagina) => {
+    const { papel, tinta, suave } = PAGINAS[pagina];
+    expect(contraste(suave, papel)).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(suave, papel)).toBeLessThan(contraste(tinta, papel));
+  });
+
+  it("a margem do EPUB tem as cores do papel; em alto contraste, as da interface", () => {
+    expect(coresDaMargem("sepia", "claro")).toEqual({ fundo: PAGINAS.sepia.papel, texto: PAGINAS.sepia.suave });
+    expect(coresDaMargem("noite", "claro")).toEqual({ fundo: PAGINAS.noite.papel, texto: PAGINAS.noite.suave });
+    expect(coresDaMargem("sepia", "alto-contraste")).toBeNull();
   });
 
   it("no PDF: creme e sépia são uma camada multiply; noite, a inversão", () => {

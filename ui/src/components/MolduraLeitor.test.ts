@@ -566,6 +566,34 @@ describe("MolduraLeitor", () => {
       ).toBeNull();
     });
 
+    it("a estimativa e a meta ficam na linha de status, sob o livro, não no rodapé (M41)", async () => {
+      const meta = new MetaDaSessao();
+      meta.mover({ rotulo: "página 1", pagina: 1 });
+      meta.definir({ tipo: "minutos", minutos: 20 });
+      const { container } = renderizar({ meta, estimativa: "~12 min no capítulo" });
+      await tick();
+      const rodape = container.querySelector("footer")?.textContent ?? "";
+      expect(rodape).not.toContain("Meta");
+      expect(rodape).not.toContain("~12 min");
+      const status = container.querySelector(".linha-status");
+      expect(status?.textContent).toContain("~12 min no capítulo");
+      expect(status?.textContent).toContain("Meta: 0 de 20 min");
+      expect(status?.getAttribute("aria-hidden")).toBeNull();
+    });
+
+    it("no modo foco, a linha de status é só para ver: a porcentagem e a meta, sem o botão", async () => {
+      const meta = new MetaDaSessao();
+      meta.mover({ rotulo: "página 1", pagina: 1 });
+      meta.definir({ tipo: "minutos", minutos: 20 });
+      const { container } = renderizar({ meta, modoFoco: true, progresso: 0.42 });
+      await tick();
+      const status = container.querySelector(".linha-status");
+      expect(status?.getAttribute("aria-hidden")).toBe("true");
+      expect(status?.textContent).toContain("42%");
+      expect(status?.textContent).toContain("Meta: 0 de 20 min");
+      expect(status?.querySelector("button")).toBeNull();
+    });
+
     it("ao cumprir, a pausa aparece; Voltar à biblioteca fecha o livro", async () => {
       const meta = new MetaDaSessao();
       meta.mover({ rotulo: "página 1", pagina: 1 });
@@ -651,11 +679,9 @@ describe("MolduraLeitor", () => {
     });
   });
 
-  it("mostra a estimativa no rodapé, como texto, quando o leitor a dá", () => {
+  it("mostra a estimativa como texto, sob o livro, quando o leitor a dá", () => {
     renderizar({ estimativa: "~12 min no capítulo" });
-    expect(
-      screen.getByText("~12 min no capítulo").closest("footer"),
-    ).toBeTruthy();
+    expect(screen.getByText("~12 min no capítulo").closest(".area-status")).toBeTruthy();
   });
 
   describe("onde você parou", () => {
@@ -732,7 +758,7 @@ describe("MolduraLeitor", () => {
 
     it("no modo foco, o canto diz se a voz está lendo ou pausada", async () => {
       const { rerender, container } = renderizar({ modoFoco: true, voz: "falando" });
-      const canto = () => container.querySelector(".progresso-canto")?.textContent ?? "";
+      const canto = () => container.querySelector(".linha-status")?.textContent ?? "";
       expect(canto()).toContain("lendo em voz alta");
       await rerender({ voz: "pausado" });
       expect(canto()).toContain("voz pausada");

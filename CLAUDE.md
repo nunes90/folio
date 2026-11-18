@@ -57,7 +57,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **Animações**: durações e curva em `lib/animacao.ts` (mola, 100/140/200 ms), só `transform` e `opacity`, nada
   pesado durante o movimento, zeradas com movimento reduzido. O que se repete centenas de vezes (virada de
   página) deve ser quase imperceptível.
-- **Barra do leitor**: o que não se usa em toda sessão vai para o menu ⋯, a paleta e o atalho.
+- **Barra do leitor**: o que não se usa em toda sessão vai para o menu ⋯, a paleta e o atalho. O rodapé é para
+  navegar; o que informa (estimativa, meta) fica na linha de status sob o livro (`LinhaDeStatus`).
 - **Números honestos**: sem dado medido, sem estimativa; folhear não conta como leitura.
 - Erros: `thiserror` no core (tipados), `anyhow` no app. Mensagens ao usuário em frases; a causa técnica vai
   para o log. Um comando devolve `ErroDoComando { tipo, mensagem }` (`crates/app/src/erro.rs`); a página chama os
@@ -152,6 +153,6 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **v1.3.0** (nov/2026): a 1.2 (M29–M33) e a 1.3 (M34–M38) do plano "Depois da análise" do `ROADMAP.md`
   (`docs/analise/2026-11-analise.md`), numa versão só; a 1.2 não foi publicada. Tag e Release são do Lucas.
 - v1.4 em andamento: M39 (a memória do PDF explicada e medida; tabela em `docs/testes/desempenho.md`) e M40
-  (erros tipados, perfil de release, fontes, detalhes) feitos.
-- Próximo passo: M41 (rodapé e ícones; proposta com capturas antes).
+  (erros tipados, perfil de release, fontes, detalhes) e M41 (linha de status sob o livro, ícones) feitos.
+- Próximo passo: M42 (marcadores de página e "Todos os destaques").
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.
