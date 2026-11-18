@@ -318,6 +318,8 @@ AppImage da CI, o `SHA256SUMS` e a atestação.
 
 ### v1.4 — acabamento e produto
 
+Publicada como **1.4.0** (nov/2026). Com ela, o plano está completo.
+
 - [x] **M39 — Memória do PDF** (8): os "~180 MB sem dono" têm dono (tabela em `docs/testes/desempenho.md`): ~30 MB do
   pdf.js, ~90 de um documento grande, ~65 do sumário, ~10 da detecção de idioma, e ~95 que o alocador não devolve ao
   fechar. Não são as páginas em cache nem os canvas, e não é vazamento. O limite de tamanho das imagens foi testado e

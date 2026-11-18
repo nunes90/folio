@@ -1199,3 +1199,6 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   novidades, e erros só no log quando a consulta foi sozinha; pela paleta, diz o resultado e o erro. O que se
   lembra (quando consultou, qual versão foi vista) fica no `localStorage`. Nova regra no `CLAUDE.md`: a internet
   só a pedido. Com o M43, o plano "Depois da análise" (M29–M43) está completo.
+- **v1.4.0** (branch `chore/v1.4.0`): versão nos 4 lugares, `CHANGELOG` com a seção da 1.4.0 e o README. O
+  `THIRD-PARTY-NOTICES.md` gerado de novo saiu igual (nenhuma dependência nova no AppImage desde a 1.3.0). O banco
+  de exemplo da v1.4.0 (migração 12) só pode ser gerado depois da tag: o `gerar.py` lê as migrações de cada tag.

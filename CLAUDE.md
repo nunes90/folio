@@ -152,11 +152,10 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - O WebDriver do sistema não dirige o WebKitGTK de outra versão (o do AppImage é testado na CI, no Ubuntu 22.04).
 
 ## Estado atual
-- **v1.3.0** (nov/2026): a 1.2 (M29–M33) e a 1.3 (M34–M38) do plano "Depois da análise" do `ROADMAP.md`
-  (`docs/analise/2026-11-analise.md`), numa versão só; a 1.2 não foi publicada. Tag e Release são do Lucas.
-- v1.4 pronta para publicar: M39 (a memória do PDF), M40 (erros tipados, perfil de release, fontes, detalhes), M41
-  (linha de status sob o livro, ícones), M42 (marcadores de página, estante "Destaques") e M43 (lixeira com prazo,
-  aviso de versão nova). Fecha o plano "Depois da análise".
-- Próximo passo: publicar a v1.4.0 (versão nos 4 lugares, `THIRD-PARTY-NOTICES.md`; a migração 12 do M42a pede a
-  tag nova em `tests/fixtures/bancos/gerar.py`).
+- **v1.4.0** (nov/2026): M39–M43, o fim do plano "Depois da análise" do `ROADMAP.md`
+  (`docs/analise/2026-11-analise.md`): memória do PDF, erros tipados, pacote menor, linha de status, marcadores,
+  estante "Destaques", lixeira com prazo e aviso de versão nova. A 1.3.0 trouxe M29–M38. Tag e Release são do Lucas.
+- Depois da tag: a migração 12 (marcadores) pede o banco da v1.4.0 em `tests/fixtures/bancos/` (acrescentar a tag
+  em `gerar.py` e rodá-lo).
+- Próximo passo: a decidir (ver "Em aberto").
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.
