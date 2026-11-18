@@ -23,6 +23,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "tracing-log"]
 tracing-appender = "0.2"
 directories = "6"
 
+[dev-dependencies]
+# Só nos testes (o formato do erro que vai para a página); já vem com o Tauri.
+serde_json = "1"
+
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
 # O mesmo do Tauri (wry): nada novo é compilado. A assinatura do sinal do processo que cai.

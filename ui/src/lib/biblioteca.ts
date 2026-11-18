@@ -1,5 +1,6 @@
 // Acesso à biblioteca (crates/core/src/biblioteca.rs) pelos comandos do Tauri.
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { invoke } from "./comando";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { log } from "./log";
 

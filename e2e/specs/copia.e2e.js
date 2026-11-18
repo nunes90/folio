@@ -10,7 +10,8 @@ const invocar = (comando, argumentos = {}) =>
     (c, a, feito) =>
       window.__TAURI_INTERNALS__.invoke(c, a).then(
         (valor) => feito({ valor }),
-        (erro) => feito({ erro: String(erro) }),
+        // O erro de um comando chega como { tipo, mensagem } (M40a).
+        (erro) => feito({ erro }),
       ),
     comando,
     argumentos,
@@ -63,7 +64,8 @@ describe("Cópia de segurança", () => {
 
   it("um arquivo que não é cópia é recusado, e a biblioteca fica como estava", async () => {
     const r = await invocar("restaurar_copia", { caminho: path.resolve("../tests/fixtures/minimo.epub") });
-    expect(r.erro).toContain("não é uma cópia de segurança do Folio");
+    expect(r.erro.tipo).toBe("copia-invalida");
+    expect(r.erro.mensagem).toContain("não é uma cópia de segurança do Folio");
     expect(await titulos()).toEqual(["Dom Casmurro"]);
   });
 });

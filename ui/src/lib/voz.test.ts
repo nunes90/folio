@@ -1,3 +1,4 @@
+import { ErroDoComando } from "./comando";
 import { describe, expect, it } from "vitest";
 import {
   textoDaFalhaDaVoz,
@@ -127,6 +128,9 @@ describe("textoDaFalhaDaVoz", () => {
   it("o motivo do core quando há; senão, só a falha", () => {
     expect(textoDaFalhaDaVoz("não há voz para o idioma es")).toBe(
       "Não foi possível ler em voz alta: não há voz para o idioma es.",
+    );
+    expect(textoDaFalhaDaVoz(new ErroDoComando("voz", "a voz natural não está instalada"))).toBe(
+      "Não foi possível ler em voz alta: a voz natural não está instalada.",
     );
     expect(textoDaFalhaDaVoz(new TypeError("x is undefined"))).toBe("Não foi possível ler em voz alta.");
     expect(textoDaFalhaDaVoz("")).toBe("Não foi possível ler em voz alta.");

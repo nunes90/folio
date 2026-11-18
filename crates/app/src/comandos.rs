@@ -14,6 +14,7 @@ use folio_core::sessoes::Sessao;
 use folio_core::visitas::{Trecho, Visita};
 use folio_core::voz::{ConfigVoz, MotorDeVoz};
 
+use crate::erro::{ErroDoComando, registrar};
 use crate::voz_natural::EstadoVoz;
 use serde::Serialize;
 use tauri::State;
@@ -39,7 +40,9 @@ pub fn processo_recuperado(estado: State<'_, crate::processo::ProcessoRecuperado
 }
 
 #[tauri::command]
-pub fn listar_livros(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<LivroNaBiblioteca>, String> {
+pub fn listar_livros(
+    bib: State<'_, EstadoBiblioteca>,
+) -> Result<Vec<LivroNaBiblioteca>, ErroDoComando> {
     travar(&bib).listar().map_err(|e| registrar(&e))
 }
 
@@ -75,7 +78,7 @@ pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>)
             Ok(Importado::JaExistia(livro)) => resultado.ja_existentes.push(livro),
             Ok(Importado::Restaurado(livro)) => resultado.restaurados.push(livro),
             Err(e) => resultado.falhas.push(Falha {
-                erro: registrar(&e),
+                erro: registrar(&e).mensagem,
                 caminho,
             }),
         }
@@ -86,14 +89,20 @@ pub fn importar_livros(bib: State<'_, EstadoBiblioteca>, caminhos: Vec<PathBuf>)
 /// Bytes crus do livro. O `Response` evita serializar o arquivo como JSON (um array de
 /// números); o frontend recebe um ArrayBuffer.
 #[tauri::command(async)]
-pub fn abrir_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<Response, String> {
+pub fn abrir_livro(
+    bib: State<'_, EstadoBiblioteca>,
+    id: String,
+) -> Result<Response, ErroDoComando> {
     let bytes = ler_sem_segurar(&bib, &id).map_err(|e| registrar(&e))?;
     Ok(Response::new(bytes))
 }
 
 /// Registra a abertura de um PDF e devolve o tamanho dele: o pdf.js pede os trechos que precisar.
 #[tauri::command(async)]
-pub fn abrir_por_trechos(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<u64, String> {
+pub fn abrir_por_trechos(
+    bib: State<'_, EstadoBiblioteca>,
+    id: String,
+) -> Result<u64, ErroDoComando> {
     travar(&bib)
         .abrir_por_trechos(&id)
         .map_err(|e| registrar(&e))
@@ -106,7 +115,7 @@ pub fn trecho_livro(
     id: String,
     inicio: u64,
     tamanho: u64,
-) -> Result<Response, String> {
+) -> Result<Response, ErroDoComando> {
     let caminho = travar(&bib)
         .caminho_do_arquivo(&id)
         .map_err(|e| registrar(&e))?;
@@ -116,13 +125,16 @@ pub fn trecho_livro(
 }
 
 #[tauri::command]
-pub fn listar_colecoes(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<Colecao>, String> {
+pub fn listar_colecoes(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<Colecao>, ErroDoComando> {
     travar(&bib).listar_colecoes().map_err(|e| registrar(&e))
 }
 
 /// Nome vazio ou repetido volta como erro com a mensagem para o usuário.
 #[tauri::command]
-pub fn criar_colecao(bib: State<'_, EstadoBiblioteca>, nome: String) -> Result<Colecao, String> {
+pub fn criar_colecao(
+    bib: State<'_, EstadoBiblioteca>,
+    nome: String,
+) -> Result<Colecao, ErroDoComando> {
     travar(&bib).criar_colecao(&nome).map_err(|e| registrar(&e))
 }
 
@@ -131,7 +143,7 @@ pub fn renomear_colecao(
     bib: State<'_, EstadoBiblioteca>,
     id: i64,
     nome: String,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     travar(&bib)
         .renomear_colecao(id, &nome)
         .map_err(|e| registrar(&e))
@@ -139,7 +151,7 @@ pub fn renomear_colecao(
 
 /// Os livros continuam na biblioteca.
 #[tauri::command]
-pub fn apagar_colecao(bib: State<'_, EstadoBiblioteca>, id: i64) -> Result<(), String> {
+pub fn apagar_colecao(bib: State<'_, EstadoBiblioteca>, id: i64) -> Result<(), ErroDoComando> {
     travar(&bib).apagar_colecao(id).map_err(|e| registrar(&e))
 }
 
@@ -148,7 +160,7 @@ pub fn adicionar_a_colecao(
     bib: State<'_, EstadoBiblioteca>,
     colecao: i64,
     livro: String,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     travar(&bib)
         .adicionar_a_colecao(colecao, &livro)
         .map_err(|e| registrar(&e))
@@ -159,7 +171,7 @@ pub fn remover_da_colecao(
     bib: State<'_, EstadoBiblioteca>,
     colecao: i64,
     livro: String,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     travar(&bib)
         .remover_da_colecao(colecao, &livro)
         .map_err(|e| registrar(&e))
@@ -170,7 +182,7 @@ pub fn remover_da_colecao(
 pub fn listar_destaques(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
-) -> Result<Vec<Destaque>, String> {
+) -> Result<Vec<Destaque>, ErroDoComando> {
     travar(&bib)
         .listar_destaques(&livro)
         .map_err(|e| registrar(&e))
@@ -181,7 +193,7 @@ pub fn criar_destaque(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
     novo: NovoDestaque,
-) -> Result<Destaque, String> {
+) -> Result<Destaque, ErroDoComando> {
     travar(&bib)
         .criar_destaque(&livro, novo)
         .map_err(|e| registrar(&e))
@@ -192,7 +204,7 @@ pub fn definir_cor_destaque(
     bib: State<'_, EstadoBiblioteca>,
     id: i64,
     cor: Cor,
-) -> Result<Destaque, String> {
+) -> Result<Destaque, ErroDoComando> {
     travar(&bib)
         .definir_cor_do_destaque(id, cor)
         .map_err(|e| registrar(&e))
@@ -204,7 +216,7 @@ pub fn definir_motivo_destaque(
     bib: State<'_, EstadoBiblioteca>,
     id: i64,
     motivo: Option<Motivo>,
-) -> Result<Destaque, String> {
+) -> Result<Destaque, ErroDoComando> {
     travar(&bib)
         .definir_motivo_do_destaque(id, motivo)
         .map_err(|e| registrar(&e))
@@ -216,7 +228,7 @@ pub fn definir_nota_destaque(
     bib: State<'_, EstadoBiblioteca>,
     id: i64,
     nota: Option<String>,
-) -> Result<Destaque, String> {
+) -> Result<Destaque, ErroDoComando> {
     travar(&bib)
         .definir_nota_do_destaque(id, nota.as_deref())
         .map_err(|e| registrar(&e))
@@ -224,7 +236,10 @@ pub fn definir_nota_destaque(
 
 /// Devolve o destaque apagado, para o "Desfazer" (`restaurar_destaque`).
 #[tauri::command]
-pub fn apagar_destaque(bib: State<'_, EstadoBiblioteca>, id: i64) -> Result<Destaque, String> {
+pub fn apagar_destaque(
+    bib: State<'_, EstadoBiblioteca>,
+    id: i64,
+) -> Result<Destaque, ErroDoComando> {
     travar(&bib).apagar_destaque(id).map_err(|e| registrar(&e))
 }
 
@@ -232,7 +247,7 @@ pub fn apagar_destaque(bib: State<'_, EstadoBiblioteca>, id: i64) -> Result<Dest
 pub fn restaurar_destaque(
     bib: State<'_, EstadoBiblioteca>,
     destaque: Destaque,
-) -> Result<Destaque, String> {
+) -> Result<Destaque, ErroDoComando> {
     travar(&bib)
         .restaurar_destaque(&destaque)
         .map_err(|e| registrar(&e))
@@ -246,7 +261,7 @@ pub fn exportar_destaques(
     livro: String,
     caminho: PathBuf,
     motivo: Option<Motivo>,
-) -> Result<usize, String> {
+) -> Result<usize, ErroDoComando> {
     travar(&bib)
         .exportar_destaques(&livro, &caminho, motivo)
         .map_err(|e| registrar(&e))
@@ -254,7 +269,9 @@ pub fn exportar_destaques(
 
 /// Livros na lixeira, o removido por último primeiro.
 #[tauri::command]
-pub fn listar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<Vec<LivroNaBiblioteca>, String> {
+pub fn listar_lixeira(
+    bib: State<'_, EstadoBiblioteca>,
+) -> Result<Vec<LivroNaBiblioteca>, ErroDoComando> {
     travar(&bib).listar_lixeira().map_err(|e| registrar(&e))
 }
 
@@ -263,7 +280,7 @@ pub fn definir_favorito(
     bib: State<'_, EstadoBiblioteca>,
     id: String,
     favorito: bool,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     travar(&bib)
         .definir_favorito(&id, favorito)
         .map_err(|e| registrar(&e))
@@ -274,7 +291,7 @@ pub fn definir_para_ler(
     bib: State<'_, EstadoBiblioteca>,
     id: String,
     para_ler: bool,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     travar(&bib)
         .definir_para_ler(&id, para_ler)
         .map_err(|e| registrar(&e))
@@ -285,7 +302,7 @@ pub fn definir_lido(
     bib: State<'_, EstadoBiblioteca>,
     id: String,
     lido: bool,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     travar(&bib)
         .definir_lido(&id, lido)
         .map_err(|e| registrar(&e))
@@ -293,32 +310,35 @@ pub fn definir_lido(
 
 /// Reversível: a cópia, a capa e o progresso ficam até restaurar ou esvaziar a lixeira.
 #[tauri::command]
-pub fn mover_para_lixeira(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
+pub fn mover_para_lixeira(
+    bib: State<'_, EstadoBiblioteca>,
+    id: String,
+) -> Result<(), ErroDoComando> {
     travar(&bib)
         .mover_para_lixeira(&id)
         .map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
-pub fn restaurar_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
+pub fn restaurar_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), ErroDoComando> {
     travar(&bib).restaurar(&id).map_err(|e| registrar(&e))
 }
 
 /// Apaga de vez (a cópia do app; o arquivo original não é tocado).
 #[tauri::command(async)]
-pub fn apagar_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), String> {
+pub fn apagar_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<(), ErroDoComando> {
     travar(&bib).apagar_de_vez(&id).map_err(|e| registrar(&e))
 }
 
 /// Apaga de vez tudo o que está na lixeira; devolve quantos livros foram.
 #[tauri::command(async)]
-pub fn esvaziar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<usize, String> {
+pub fn esvaziar_lixeira(bib: State<'_, EstadoBiblioteca>) -> Result<usize, ErroDoComando> {
     travar(&bib).esvaziar_lixeira().map_err(|e| registrar(&e))
 }
 
 /// Tamanho do livro, sem marcá-lo como aberto (para gerar a capa de PDFs, por trechos).
 #[tauri::command(async)]
-pub fn tamanho_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<u64, String> {
+pub fn tamanho_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<u64, ErroDoComando> {
     travar(&bib)
         .tamanho_do_arquivo(&id)
         .map_err(|e| registrar(&e))
@@ -331,7 +351,7 @@ pub fn tamanho_livro(bib: State<'_, EstadoBiblioteca>, id: String) -> Result<u64
 pub fn definir_capa(
     bib: State<'_, EstadoBiblioteca>,
     requisicao: Request<'_>,
-) -> Result<LivroNaBiblioteca, String> {
+) -> Result<LivroNaBiblioteca, ErroDoComando> {
     let InvokeBody::Raw(bytes) = requisicao.body() else {
         return Err("a capa deve vir como bytes".into());
     };
@@ -356,7 +376,7 @@ pub fn definir_capa(
 pub fn progresso_livro(
     bib: State<'_, EstadoBiblioteca>,
     id: String,
-) -> Result<Option<Progresso>, String> {
+) -> Result<Option<Progresso>, ErroDoComando> {
     travar(&bib).progresso(&id).map_err(|e| registrar(&e))
 }
 
@@ -366,7 +386,7 @@ pub fn iniciar_sessao(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
     onde: Progresso,
-) -> Result<Sessao, String> {
+) -> Result<Sessao, ErroDoComando> {
     travar(&bib)
         .iniciar_sessao(&livro, &onde)
         .map_err(|e| registrar(&e))
@@ -378,7 +398,7 @@ pub fn registrar_sessao(
     bib: State<'_, EstadoBiblioteca>,
     id: i64,
     onde: Option<Progresso>,
-) -> Result<Sessao, String> {
+) -> Result<Sessao, ErroDoComando> {
     travar(&bib)
         .registrar_na_sessao(id, onde.as_ref())
         .map_err(|e| registrar(&e))
@@ -390,7 +410,7 @@ pub fn encerrar_sessao(
     bib: State<'_, EstadoBiblioteca>,
     id: i64,
     onde: Option<Progresso>,
-) -> Result<Option<Sessao>, String> {
+) -> Result<Option<Sessao>, ErroDoComando> {
     travar(&bib)
         .encerrar_sessao(id, onde.as_ref())
         .map_err(|e| registrar(&e))
@@ -401,7 +421,7 @@ pub fn encerrar_sessao(
 pub fn ritmo_de_leitura(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
-) -> Result<Option<f64>, String> {
+) -> Result<Option<f64>, ErroDoComando> {
     travar(&bib)
         .ritmo_de_leitura(&livro)
         .map_err(|e| registrar(&e))
@@ -413,7 +433,7 @@ pub fn visitar_trecho(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
     trecho: Trecho,
-) -> Result<Visita, String> {
+) -> Result<Visita, ErroDoComando> {
     travar(&bib)
         .visitar_trecho(&livro, &trecho)
         .map_err(|e| registrar(&e))
@@ -425,7 +445,7 @@ pub fn trechos_revisitados(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
     minimo: i64,
-) -> Result<Vec<Visita>, String> {
+) -> Result<Vec<Visita>, ErroDoComando> {
     travar(&bib)
         .trechos_revisitados(&livro, minimo)
         .map_err(|e| registrar(&e))
@@ -436,7 +456,7 @@ pub fn trechos_revisitados(
 pub fn listar_sessoes(
     bib: State<'_, EstadoBiblioteca>,
     livro: String,
-) -> Result<Vec<Sessao>, String> {
+) -> Result<Vec<Sessao>, ErroDoComando> {
     travar(&bib)
         .listar_sessoes(&livro)
         .map_err(|e| registrar(&e))
@@ -447,7 +467,7 @@ pub fn salvar_progresso(
     bib: State<'_, EstadoBiblioteca>,
     id: String,
     progresso: Progresso,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     travar(&bib)
         .salvar_progresso(&id, &progresso)
         .map_err(|e| registrar(&e))
@@ -456,7 +476,7 @@ pub fn salvar_progresso(
 #[tauri::command]
 pub fn preferencias_leitura(
     bib: State<'_, EstadoBiblioteca>,
-) -> Result<PreferenciasLeitura, String> {
+) -> Result<PreferenciasLeitura, ErroDoComando> {
     travar(&bib)
         .preferencias_leitura()
         .map_err(|e| registrar(&e))
@@ -469,18 +489,12 @@ pub fn salvar_preferencias_leitura(
     bib: State<'_, EstadoBiblioteca>,
     voz: State<'_, EstadoVoz>,
     preferencias: PreferenciasLeitura,
-) -> Result<PreferenciasLeitura, String> {
+) -> Result<PreferenciasLeitura, ErroDoComando> {
     let salvas = travar(&bib)
         .salvar_preferencias_leitura(preferencias)
         .map_err(|e| registrar(&e))?;
     voz.aplicar(&salvas);
     Ok(salvas)
-}
-
-/// Erros de comando precisam ser serializáveis; viram texto depois de ir para o log.
-fn registrar(erro: &(dyn std::error::Error + 'static)) -> String {
-    tracing::warn!(erro, "comando falhou");
-    erro.to_string()
 }
 
 /// Caminho passado na linha de comando (`folio livro.epub`), usado pelo "Abrir com…" do sistema.
@@ -502,7 +516,11 @@ pub fn voz_disponivel(voz: State<'_, EstadoVoz>) -> bool {
 
 /// Fala um bloco SSML; o progresso chega pelo evento `voz` (emitido em `main.rs`).
 #[tauri::command]
-pub fn falar(voz: State<'_, EstadoVoz>, ssml: String, config: ConfigVoz) -> Result<(), String> {
+pub fn falar(
+    voz: State<'_, EstadoVoz>,
+    ssml: String,
+    config: ConfigVoz,
+) -> Result<(), ErroDoComando> {
     voz.motor()?.falar(ssml, config).map_err(|e| registrar(&e))
 }
 
@@ -512,30 +530,30 @@ pub fn preparar_voz(
     voz: State<'_, EstadoVoz>,
     ssml: String,
     config: ConfigVoz,
-) -> Result<(), String> {
+) -> Result<(), ErroDoComando> {
     voz.motor()?.preparar(ssml, config);
     Ok(())
 }
 
 #[tauri::command]
-pub fn pausar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
+pub fn pausar_voz(voz: State<'_, EstadoVoz>) -> Result<(), ErroDoComando> {
     voz.motor()?.pausar().map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
-pub fn retomar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
+pub fn retomar_voz(voz: State<'_, EstadoVoz>) -> Result<(), ErroDoComando> {
     voz.motor()?.retomar().map_err(|e| registrar(&e))
 }
 
 #[tauri::command]
-pub fn parar_voz(voz: State<'_, EstadoVoz>) -> Result<(), String> {
+pub fn parar_voz(voz: State<'_, EstadoVoz>) -> Result<(), ErroDoComando> {
     voz.motor()?.parar().map_err(|e| registrar(&e))
 }
 
 /// Abre no navegador um link que sai do livro (M35c), depois de o usuário confirmar. O endereço vem
 /// do livro: o core decide se ele pode ser aberto (só http e https, sem usuário e senha).
 #[tauri::command]
-pub fn abrir_no_navegador(app: tauri::AppHandle, url: String) -> Result<(), String> {
+pub fn abrir_no_navegador(app: tauri::AppHandle, url: String) -> Result<(), ErroDoComando> {
     use tauri_plugin_opener::OpenerExt;
     let Some(externo) = folio_core::links::externo(&url) else {
         tracing::warn!(%url, "link recusado: não é http nem https");
@@ -546,7 +564,7 @@ pub fn abrir_no_navegador(app: tauri::AppHandle, url: String) -> Result<(), Stri
         .open_url(externo.url, None::<&str>)
         .map_err(|e| {
             tracing::warn!(%e, "o navegador não abriu");
-            "Não foi possível abrir o navegador.".to_string()
+            "Não foi possível abrir o navegador.".into()
         })
 }
 
@@ -556,13 +574,13 @@ pub fn exportar_copia(
     bib: State<'_, EstadoBiblioteca>,
     caminho: PathBuf,
     com_livros: bool,
-) -> Result<folio_core::copia::Manifesto, String> {
+) -> Result<folio_core::copia::Manifesto, ErroDoComando> {
     folio_core::copia::exportar(&bib, &caminho, com_livros).map_err(|e| registrar(&e))
 }
 
 /// O que uma cópia de segurança diz de si, para a confirmação antes de restaurar.
 #[tauri::command(async)]
-pub fn ler_copia(caminho: PathBuf) -> Result<folio_core::copia::Manifesto, String> {
+pub fn ler_copia(caminho: PathBuf) -> Result<folio_core::copia::Manifesto, ErroDoComando> {
     folio_core::copia::ler_manifesto(&caminho).map_err(|e| registrar(&e))
 }
 
@@ -573,7 +591,7 @@ pub fn restaurar_copia(
     bib: State<'_, EstadoBiblioteca>,
     voz: State<'_, EstadoVoz>,
     caminho: PathBuf,
-) -> Result<folio_core::copia::Restaurada, String> {
+) -> Result<folio_core::copia::Restaurada, ErroDoComando> {
     let restaurada = folio_core::copia::restaurar(&bib, &caminho).map_err(|e| registrar(&e))?;
     voz.aplicar(&travar(&bib).preferencias_leitura().unwrap_or_default());
     Ok(restaurada)

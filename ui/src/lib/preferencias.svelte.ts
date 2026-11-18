@@ -1,6 +1,7 @@
 // Preferências de leitura (espelho de crates/core/src/preferencias.rs). O core valida e
 // normaliza; aqui ficam o estado reativo, a gravação com debounce e o CSS do livro.
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { isTauri } from "@tauri-apps/api/core";
+import { invoke } from "./comando";
 import { familiaCss, fontFace, MONO } from "./fontes";
 import { log } from "./log";
 import { cssDaPagina, resolverPagina, type Pagina } from "./pagina";

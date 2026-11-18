@@ -1,6 +1,7 @@
 // Escala de texto do sistema, aplicada via CSS (ver crates/app/src/escala.rs para o porquê
 // de não usar o zoom da webview). Reativa: muda se o usuário alterar a escala com o app aberto.
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { isTauri } from "@tauri-apps/api/core";
+import { invoke } from "./comando";
 import { listen } from "@tauri-apps/api/event";
 import { log } from "./log";
 
