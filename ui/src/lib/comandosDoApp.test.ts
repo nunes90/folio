@@ -27,6 +27,7 @@ function acoes(): AcoesDoApp {
     novaColecao: vi.fn(),
     esvaziarLixeira: vi.fn(),
     esvaziarAntigos: vi.fn(),
+    procurarVersaoNova: vi.fn(),
     exportarBiblioteca: vi.fn(),
     restaurarCopia: vi.fn(),
     voltarABiblioteca: vi.fn(),

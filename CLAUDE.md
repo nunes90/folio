@@ -114,6 +114,8 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
   duvidosa no modo de desenvolvimento.
 - **Um ambiente do ONNX Runtime por processo** (`kokoro::ambiente_onnx`); o espeak-ng tem estado global (um
   `Arc` só, atrás de um `Mutex`).
+- **A internet só a pedido**: o download da voz natural e o aviso de versão nova (`core::versao`, desligado até a
+  pessoa responder; uma consulta por dia). Nada de rede sem que a pessoa tenha escolhido; o guia descreve cada uso.
 - **Um endereço que vem do livro só abre depois de `core::links::externo`** (só `http`/`https`) e da confirmação do
   usuário; o `tauri-plugin-opener` é usado só do Rust, sem permissão para a página. **A janela nunca navega para fora do
   app**: o plugin `navegacao` (`on_navigation`) barra, por `core::links::navegacao_do_app`.
@@ -152,9 +154,9 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 ## Estado atual
 - **v1.3.0** (nov/2026): a 1.2 (M29–M33) e a 1.3 (M34–M38) do plano "Depois da análise" do `ROADMAP.md`
   (`docs/analise/2026-11-analise.md`), numa versão só; a 1.2 não foi publicada. Tag e Release são do Lucas.
-- v1.4 em andamento: M39 (a memória do PDF explicada e medida; tabela em `docs/testes/desempenho.md`) e M40
-  (erros tipados, perfil de release, fontes, detalhes), M41 (linha de status sob o livro, ícones) e M42
-  (marcadores de página, estante "Destaques") feitos.
-- Próximo passo: M43b (aviso de versão nova: desligado, oferecido uma vez). O M42a criou a migração 12 (marcadores): ao
-  publicar a versão, acrescentar a tag em `tests/fixtures/bancos/gerar.py`.
+- v1.4 pronta para publicar: M39 (a memória do PDF), M40 (erros tipados, perfil de release, fontes, detalhes), M41
+  (linha de status sob o livro, ícones), M42 (marcadores de página, estante "Destaques") e M43 (lixeira com prazo,
+  aviso de versão nova). Fecha o plano "Depois da análise".
+- Próximo passo: publicar a v1.4.0 (versão nos 4 lugares, `THIRD-PARTY-NOTICES.md`; a migração 12 do M42a pede a
+  tag nova em `tests/fixtures/bancos/gerar.py`).
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.

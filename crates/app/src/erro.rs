@@ -33,6 +33,8 @@ pub enum Tipo {
     Banco,
     /// A leitura em voz alta.
     Voz,
+    /// Sem conexão (ou uma resposta que não serve) ao consultar a internet.
+    Rede,
     Outro,
 }
 
@@ -124,6 +126,12 @@ impl Tipado for ErroCopia {
             Self::NaoECopia | Self::VersaoMaisNova | Self::Danificada(_) => Tipo::CopiaInvalida,
             Self::Io { .. } => Tipo::Arquivo,
         }
+    }
+}
+
+impl Tipado for folio_core::versao::ErroVersao {
+    fn tipo(&self) -> Tipo {
+        Tipo::Rede
     }
 }
 

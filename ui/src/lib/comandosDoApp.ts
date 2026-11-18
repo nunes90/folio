@@ -60,6 +60,8 @@ export interface AcoesDoApp {
   mudarPreferencias(mudancas: Partial<Preferencias>): void;
   mostrarAtalhos(): void;
   mostrarSobre(): void;
+  /** Consulta agora se há versão nova (M43b; a pedido, com o aviso ligado ou não). */
+  procurarVersaoNova(): void;
   abrir(livro: Livro): void;
 }
 
@@ -183,6 +185,14 @@ export function comandosDoApp(estado: EstadoDoApp, acoes: AcoesDoApp): Comando[]
     grupo: "Ajuda",
     palavras: "versão licença",
     executar: acoes.mostrarSobre,
+  });
+  lista.push({
+    id: "versao-nova",
+    titulo: "Procurar versão nova do Folio",
+    grupo: "Ajuda",
+    dica: "consulta o GitHub",
+    palavras: "atualizar atualização release",
+    executar: acoes.procurarVersaoNova,
   });
   // Livros por último: são muitos, e o nome do comando costuma ser o que se procura.
   if (!estado.lendo)

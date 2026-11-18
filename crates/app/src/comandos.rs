@@ -615,6 +615,14 @@ pub fn parar_voz(voz: State<'_, EstadoVoz>) -> Result<(), ErroDoComando> {
     voz.motor()?.parar().map_err(|e| registrar(&e))
 }
 
+/// A última versão do Folio, se for mais nova que esta (M43b). Só é chamado com o aviso ligado
+/// ou a pedido (paleta); `async`: a rede pode demorar.
+#[tauri::command(async)]
+pub fn procurar_versao_nova() -> Result<Option<folio_core::versao::VersaoNova>, ErroDoComando> {
+    let rede = folio_core::baixar::RedeHttp::nova();
+    folio_core::versao::consultar(&rede, env!("CARGO_PKG_VERSION")).map_err(|e| registrar(&e))
+}
+
 /// Abre no navegador um link que sai do livro (M35c), depois de o usuário confirmar. O endereço vem
 /// do livro: o core decide se ele pode ser aberto (só http e https, sem usuário e senha).
 #[tauri::command]

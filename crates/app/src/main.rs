@@ -185,6 +185,7 @@ fn main() -> anyhow::Result<()> {
             comandos::esvaziar_lixeira,
             comandos::esvaziar_lixeira_antiga,
             comandos::espaco_da_lixeira,
+            comandos::procurar_versao_nova,
             comandos::abrir_livro,
             comandos::tamanho_livro,
             comandos::definir_capa,

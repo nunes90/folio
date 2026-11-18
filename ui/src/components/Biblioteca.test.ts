@@ -344,6 +344,23 @@ describe("Biblioteca", () => {
     expect(screen.getByRole("radio", { name: "Alto contraste" })).toBeTruthy();
   });
 
+  it("pergunta uma vez se deve avisar de versão nova (M43b); respondida, a pergunta some", async () => {
+    const onMudarPreferencias = vi.fn();
+    const { rerender } = render(Biblioteca, {
+      livros,
+      ...semAcao,
+      preferencias: PADRAO,
+      onMudarPreferencias,
+      temaDoSistema: "claro",
+    });
+    const pergunta = screen.getByRole("region", { name: "Avisar quando sair uma versão nova?" });
+    expect(pergunta.textContent).toContain("nada sobre você é enviado");
+    await fireEvent.click(within(pergunta).getByRole("button", { name: "Não avisar" }));
+    expect(onMudarPreferencias).toHaveBeenCalledWith({ avisarVersaoNova: false });
+    await rerender({ preferencias: { ...PADRAO, avisarVersaoNova: false } });
+    expect(screen.queryByRole("region", { name: "Avisar quando sair uma versão nova?" })).toBeNull();
+  });
+
   describe("teclado (roving tabindex)", () => {
     const tres = [
       livro({ id: "a" }),

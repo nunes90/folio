@@ -137,7 +137,16 @@ principal); voz, meta e progresso ficam só no principal.
 | Voz natural (o download) | `~/.local/share/io.github.nunes90.folio/vozes` |
 | Registros (logs) | `~/.local/state/folio/logs` |
 
-Nada sai do seu computador. A internet só é usada quando você baixa a voz natural; um link do livro para a web abre no seu navegador, e só se você confirmar. 
+Nada sai do seu computador. A internet só é usada quando você baixa a voz natural e, se você escolher, para saber
+de versões novas; um link do livro para a web abre no seu navegador, e só se você confirmar.
+
+## Versão nova
+
+Uma vez, a biblioteca pergunta: "Avisar quando sair uma versão nova?". Até você responder, o Folio não consulta
+nada. Com o aviso ligado, ele pergunta ao GitHub qual é a última versão no máximo uma vez por dia (o pedido leva só
+o nome e a versão do app, e o GitHub vê o seu endereço IP, como em qualquer acesso); saindo uma, um aviso oferece
+"Ver novidades", que abre a página da versão no navegador. Para mudar: Aparência, aba Interface, "Avisar quando
+sair uma versão nova". Para consultar na hora, com o aviso ligado ou não: paleta, "Procurar versão nova do Folio".
 
 **Cópia de segurança.** Na paleta (`Ctrl+K`); exportar vale em qualquer tela, restaurar só na biblioteca:
 

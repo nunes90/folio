@@ -1188,3 +1188,14 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
   dias…" quando há algum; o cartão diz "Na lixeira há 3 dias" no lugar da porcentagem lida. A confirmação diz
   quantos vão e que os outros ficam; também na paleta. `lib/lixeira.ts` repete o prazo do core. O `Intl` diz
   "ontem" e "anteontem" no lugar de "há 1 dia" e "há 2 dias": "Na lixeira desde anteontem".
+- **M43b — aviso de versão nova** (branch `feat/m43b-versao-nova`): combinado com Lucas, desligado e oferecido uma
+  vez. Core: `versao.rs` consulta `releases/latest` do GitHub pelo `RedeHttp` que o download da voz já usava
+  (`User-Agent: Folio/<versão>`, nada mais), lê no máximo 1 MB e trata a resposta como dado de fora: a versão tem
+  de ser `x.y.z` (`ler_versao`, com proptest: nenhum texto dá panic) e o endereço tem de ser a página das
+  Releases do Folio, sem `..`. Comando `procurar_versao_nova`; o erro ganhou a categoria `rede`. Preferência
+  `avisarVersaoNova: Option<bool>` (`None` = não respondeu; não consulta). A pergunta é um cartão na biblioteca,
+  não um aviso: um aviso de sucesso some em 6 s, e a pergunta precisa esperar a resposta. `lib/versaoNova.ts`:
+  um dia entre as consultas (uma falha também conta), a versão avisada de novo a cada dia até a pessoa abrir as
+  novidades, e erros só no log quando a consulta foi sozinha; pela paleta, diz o resultado e o erro. O que se
+  lembra (quando consultou, qual versão foi vista) fica no `localStorage`. Nova regra no `CLAUDE.md`: a internet
+  só a pedido. Com o M43, o plano "Depois da análise" (M29–M43) está completo.
