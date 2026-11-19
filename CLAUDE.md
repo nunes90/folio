@@ -155,7 +155,6 @@ reais: `XDG_DATA_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`.
 - **v1.4.0** (nov/2026): M39–M43, o fim do plano "Depois da análise" do `ROADMAP.md`
   (`docs/analise/2026-11-analise.md`): memória do PDF, erros tipados, pacote menor, linha de status, marcadores,
   estante "Destaques", lixeira com prazo e aviso de versão nova. A 1.3.0 trouxe M29–M38. Tag e Release são do Lucas.
-- Depois da tag: a migração 12 (marcadores) pede o banco da v1.4.0 em `tests/fixtures/bancos/` (acrescentar a tag
-  em `gerar.py` e rodá-lo).
+- O banco da v1.4.0 (esquema 12, com marcadores) está em `tests/fixtures/bancos/`; o `migracoes.rs` o abre.
 - Próximo passo: a decidir (ver "Em aberto").
 - Em aberto, a decidir: Séries, Flatpak, tradução da interface, macOS/Windows.

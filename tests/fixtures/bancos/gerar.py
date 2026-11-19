@@ -22,6 +22,12 @@ VERSOES = {
     "v0.6.0": '{"tamanho":1.1,"larguraMaxima":800,"tema":"claro","pagina":"sepia"}',
     "v0.7.0": '{"tamanho":1.1,"larguraMaxima":800,"tema":"claro","pagina":"sepia"}',
     "v0.8.0": '{"tamanho":1.25,"larguraMaxima":720,"pagina":"noite","barrasSoPeloTeclado":true}',
+    # Da 1.4 em diante, o JSON completo, como o serde o grava (todos os campos, na ordem do struct).
+    "v1.4.0": '{"fonte":"atkinson","tamanho":1.15,"entrelinha":1.6,"espacoLetras":0.0,"espacoPalavras":0.0,'
+    '"caracteresPorLinha":70,"colunas":1,"alinhamento":"justificado","hifenizacao":true,"tema":"escuro",'
+    '"movimento":"reduzido","velocidadeVoz":10,"vozNatural":"af_heart","vozNaturalPortugues":"pm_alex",'
+    '"vozNaturalEmIngles":true,"vozNaturalEmPortugues":false,"virada":"esmaecer","modoPdf":"rolagem",'
+    '"pagina":"creme","barrasSoPeloTeclado":false,"avisarVersaoNova":true}',
 }
 
 EPUB = "a" * 64
@@ -87,6 +93,17 @@ def dados(banco: sqlite3.Connection, preferencias: str) -> None:
             "INSERT INTO visitas (livro_id, trecho, rotulo, local, voltas, primeira, ultima_volta) "
             "VALUES (?, 3, 'Capítulo 3', 'secao:3', 2, 2500, 3500)",
             (EPUB,),
+        )
+    if "marcadores" in tabelas(banco):
+        banco.execute(
+            "INSERT INTO marcadores (id, livro_id, local, capitulo, posicao, criado_em) "
+            "VALUES (1, ?, 'epubcfi(/6/8!/4/2/1:0)', 'XXXII', 0.37, 2200)",
+            (EPUB,),
+        )
+        banco.execute(
+            "INSERT INTO marcadores (id, livro_id, local, capitulo, posicao, criado_em) "
+            "VALUES (2, ?, 'pagina:4', NULL, 0.4, 2300)",
+            (PDF,),
         )
 
 

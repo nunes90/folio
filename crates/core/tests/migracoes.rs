@@ -10,14 +10,14 @@ use std::path::{Path, PathBuf};
 
 use folio_core::biblioteca::Biblioteca;
 use folio_core::destaques::{Cor, Motivo};
-use folio_core::preferencias::{Pagina, Tema};
+use folio_core::preferencias::{Alinhamento, Fonte, ModoPdf, Pagina, Tema, Virada};
 use rusqlite::Connection;
 
 const EPUB: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const PDF: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 /// A primeira versão publicada com cada esquema.
-const VERSOES: [&str; 5] = ["v0.1.0", "v0.3.0", "v0.6.0", "v0.7.0", "v0.8.0"];
+const VERSOES: [&str; 6] = ["v0.1.0", "v0.3.0", "v0.6.0", "v0.7.0", "v0.8.0", "v1.4.0"];
 
 fn banco_da_versao(versao: &str) -> String {
     let caminho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -184,6 +184,29 @@ fn o_que_cada_versao_ja_guardava_continua_la() {
         } else {
             assert!(sessoes.is_empty(), "{versao}");
         }
+
+        // v1.4: marcadores de página, no EPUB (CFI) e no PDF (`pagina:N`).
+        let marcados = [
+            bib.listar_marcadores(EPUB).unwrap(),
+            bib.listar_marcadores(PDF).unwrap(),
+        ];
+        if i >= 5 {
+            let [no_epub, no_pdf] = &marcados;
+            assert_eq!(no_epub.len(), 1, "{versao}");
+            assert_eq!(
+                (no_epub[0].local.as_str(), no_epub[0].capitulo.as_deref()),
+                ("epubcfi(/6/8!/4/2/1:0)", Some("XXXII")),
+                "{versao}"
+            );
+            assert_eq!(no_pdf.len(), 1, "{versao}");
+            assert_eq!(
+                (no_pdf[0].local.as_str(), no_pdf[0].capitulo.as_deref()),
+                ("pagina:4", None),
+                "{versao}"
+            );
+        } else {
+            assert!(marcados.iter().all(Vec::is_empty), "{versao}");
+        }
     }
 }
 
@@ -198,6 +221,7 @@ fn as_preferencias_antigas_sao_lidas() {
         (1.1, 100, Tema::Claro, Pagina::Sepia),
         (1.1, 100, Tema::Claro, Pagina::Sepia),
         (1.25, 90, Tema::Sistema, Pagina::Noite),
+        (1.15, 70, Tema::Escuro, Pagina::Creme),
     ];
     for (versao, (tamanho, caracteres, tema, pagina)) in VERSOES.iter().zip(esperado) {
         let (_dir, bib) = abrir_com(Some(&banco_da_versao(versao)));
@@ -208,4 +232,24 @@ fn as_preferencias_antigas_sao_lidas() {
     }
     let (_dir, bib) = abrir_com(Some(&banco_da_versao("v0.8.0")));
     assert!(bib.preferencias_leitura().unwrap().barras_so_pelo_teclado);
+
+    // A 1.4 grava o JSON completo: nenhum campo pode voltar ao padrão.
+    let (_dir, bib) = abrir_com(Some(&banco_da_versao("v1.4.0")));
+    let p = bib.preferencias_leitura().unwrap();
+    assert_eq!(
+        (p.fonte, p.alinhamento, p.virada, p.modo_pdf),
+        (
+            Fonte::Atkinson,
+            Alinhamento::Justificado,
+            Virada::Esmaecer,
+            ModoPdf::Rolagem
+        )
+    );
+    assert_eq!((p.entrelinha, p.colunas, p.hifenizacao), (1.6, 1, true));
+    assert_eq!(
+        (p.voz_natural.as_str(), p.voz_natural_portugues.as_str()),
+        ("af_heart", "pm_alex")
+    );
+    assert_eq!((p.velocidade_voz, p.voz_natural_em_portugues), (10, false));
+    assert_eq!(p.avisar_versao_nova, Some(true));
 }
