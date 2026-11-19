@@ -1207,3 +1207,7 @@ retirado em `chore/sem-orca`): são histórico, não instrução.
 - **v1.4.0** (branch `chore/v1.4.0`): versão nos 4 lugares, `CHANGELOG` com a seção da 1.4.0 e o README. O
   `THIRD-PARTY-NOTICES.md` gerado de novo saiu igual (nenhuma dependência nova no AppImage desde a 1.3.0). O banco
   de exemplo da v1.4.0 (migração 12) só pode ser gerado depois da tag: o `gerar.py` lê as migrações de cada tag.
+- **Banco da v1.4.0** (branch `test/banco-v1.4.0`): com a tag publicada, o `gerar.py` ganhou a v1.4.0 (esquema
+  12) e gerou `v1.4.0.sql`, com um marcador no EPUB (CFI) e outro no PDF (`pagina:N`). Desta versão em diante, as
+  preferências do banco de exemplo são o JSON completo, como o serde o grava: o `migracoes.rs` confere campo a
+  campo, porque um valor que o serde não lê faz o JSON inteiro voltar ao padrão. Os bancos antigos saíram iguais.
