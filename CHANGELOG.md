@@ -4,6 +4,31 @@ O que mudou para quem usa o app, da versão mais nova para a mais antiga. As not
 estão na [página de versões](https://github.com/nunes90/folio/releases); os detalhes de implementação, em
 [`docs/historico.md`](docs/historico.md).
 
+## 1.4.0 — nov/2026
+
+### Ler
+- **Marcadores de página** nos dois formatos: `Ctrl+B` marca a página (uma fitinha aparece no alto) ou tira o
+  marcador, com Desfazer. A aba **Marcadores**, no Índice, leva de volta a cada um. No EPUB, mudar a fonte não tira o
+  marcador da página certa.
+- **Linha de status sob o livro**: quanto falta no seu ritmo e a meta da sessão saíram do rodapé, que fica só para
+  navegar. Com a meta ligada, o rodapé cortava o texto dela (e escondia o botão de tirá-la) em janelas médias. No
+  EPUB, a linha tem a cor do papel; no modo foco, também diz a porcentagem e o estado da voz.
+- Ícones com o tamanho mais parecido entre si (parar, grade, dividir, copiar, citar).
+
+### Biblioteca
+- **Estante Destaques**: os destaques de todos os livros, agrupados por livro, com busca (trecho, nota, capítulo,
+  título) e filtro por motivo. Escolher um abre o livro nele.
+- **Lixeira com prazo**: ela diz quanto espaço ocupa e há quanto tempo cada livro está lá, e oferece "Esvaziar os de
+  mais de 30 dias…". Nada é apagado sozinho.
+- **Aviso de versão nova**, se você quiser: a biblioteca pergunta uma vez; até você responder, o Folio não consulta
+  nada. Ligado, consulta o GitHub no máximo uma vez por dia. Também pela paleta, a pedido.
+
+### Por dentro
+- O AppImage ficou menor: o executável foi de 34,6 para 22,9 MB, e as fontes vão só em WOFF2 (com as letras do
+  polonês, do tcheco e do turco, entre outras).
+- A janela não fica menor que 360×400.
+- Erros vindos do núcleo chegam à interface com o tipo (ex.: "nome em uso"), não só com o texto.
+
 ## 1.3.0 — nov/2026
 
 A 1.2 não chegou a ser publicada: esta versão traz o que era dela e o que veio depois.
